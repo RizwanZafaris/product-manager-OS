@@ -35,6 +35,7 @@ Stage: <DISCOVER | DEFINE | DESIGN | BUILD | DELIVER | OPERATE>
 Gate attempts: <gate n: attempt count and outcome, one line each>
 Next question: <bank ID, e.g. DEFINE-5>
 Overlays active: <AI: yes/no> <regulated: yes/no> <decided at: date, logged where>
+Domain: <knowledge/domains/ card or none>
 
 ## Accepted answers
 

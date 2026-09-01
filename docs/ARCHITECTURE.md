@@ -38,6 +38,8 @@ The loop is defined in `os/OPERATING-LOOP.md`, the gate checklists in `os/STAGE-
 | System prompts | `system/` | WHO the model becomes | Boot prompt installs the PM team persona |
 | Routing | `routing/` | WITH WHICH model each task runs | Extraction on cheap tier, judgment on frontier tier |
 
+Since v0.3.0 the knowledge layer carries two sub-layers, `knowledge/roles/` (WHO each product title is) and `knowledge/domains/` (WHERE the product plays, ten market cards with a fintech pointer to the regulated module), and a sixth layer sits beside the five: `learn/` (three study paths, a library, a tutor skill, and a practice workspace). `learn/` depends downward only, on `knowledge/`, `templates/`, the `os/` loop files, and the Conductor's question banks, all read-only; nothing outside `learn/` depends on it existing.
+
 Dependencies point downward only. Templates cite knowledge cards. Skills cite templates. System prompts cite skills and templates by repo path. Routing serves all of them. Nothing in `knowledge/` or `templates/` depends on any AI layer existing.
 
 ### 1.4 What the field is missing, and what this OS does about it
@@ -79,7 +81,18 @@ product-manager-OS/
 │   ├── okrs.md  Objectives and key results; attribution to Andy Grove via John Doerr; trap: key results that are tasks
 │   ├── amazon-pr-faq.md  Working backwards from the press release; attribution to Amazon practice per Bryar and Carr; trap: selling a decision already made
 │   ├── high-output-management.md  Managerial output is team output; attribution to Andrew Grove; trap: busyness mistaken for impact
-│   └── crossing-the-chasm.md  Beachhead before broadcast; attribution to Geoffrey Moore; trap: the beachhead that is secretly everyone
+│   ├── crossing-the-chasm.md  Beachhead before broadcast; attribution to Geoffrey Moore; trap: the beachhead that is secretly everyone
+│   ├── roles/
+│   │   ├── INDEX.md  The roles layer map: eight-rung ladder table, the IC/management fork, directional-naming caveat
+│   │   ├── ladder.md  APM to CPO, each rung with owns/decides/docs-out/docs-in/success/failure-mode and stage variance
+│   │   ├── specializations.md  Core, PO (with the split-is-an-anti-pattern position), TPM, Growth, Platform, Data, AI PM
+│   │   ├── pmm-boundary.md  PM vs PMM decision table, frontloaded/backloaded framing, document ownership, the unwritten-boundary warning
+│   │   └── stage-shift.md  Startup vs scale-up vs enterprise per title; the title-inflation trap
+│   └── domains/
+│       ├── INDEX.md  Pick-your-domain table, the Conductor usage note, and the card-to-template-pack graduation rule
+│       ├── ecommerce.md · streaming-ott.md · gaming.md · saas-b2b.md · consumer-social.md  Digital-market cards
+│       ├── healthtech.md · edtech.md · logistics.md · ai-products.md  Regulated-adjacent market cards
+│       └── fintech.md  Pointer card only: routes to modules/regulated and skills/reg-gap-check, duplicates nothing
 ├── templates/
 │   ├── discovery/
 │   │   ├── discovery-document.md  Trigger, target user, pain, hypothesis, success signal, go or no-go
@@ -88,7 +101,10 @@ product-manager-OS/
 │   │   ├── personas.md  Archetype fields plus a mandatory evidence section: minimum five interviews cited or the persona is marked assumption
 │   │   ├── journey-map.md  Stages, actions, emotions, current vs future, opportunity areas
 │   │   ├── competitive-analysis.md  Decision-to-inform as the one mandatory field, job and current alternatives, dated evidence per claim, axes that can move the decision
-│   │   └── evidence-note.md  One note per source: claim, verbatim load-bearing quote, source, dates, confidence; rows feed the STATE.md evidence ledger
+│   │   ├── evidence-note.md  One note per source: claim, verbatim load-bearing quote, source, dates, confidence; rows feed the STATE.md evidence ledger
+│   │   ├── opportunity-assessment.md  The Cagan ten-question go/no-go before an idea earns discovery time
+│   │   ├── discovery-synthesis.md  Research question, themes with verbatim quotes, confidence, implications; sits between the research plan and problem framing
+│   │   └── jtbd-spec.md  Job statement, four forces, tools hired and fired, switch barriers
 │   ├── definition/
 │   │   ├── brd.md  Business objectives, scope, stakeholders, constraints, ROI, sponsor sign-off
 │   │   ├── prd.md  Background, objectives, stories, functional scope, success metrics, out of scope, launch criteria; opens with the delete-unused-sections rule and the weight question
@@ -97,7 +113,8 @@ product-manager-OS/
 │   │   ├── nfr.md  Latency, availability, scale, security, accessibility, retention targets, each with a number or a named owner for the number
 │   │   ├── business-rules.md  Rule ID, statement, trigger, source of truth, exceptions, test traceability
 │   │   ├── assumptions-register.md  Assumption, confidence, validation method, validate-by date; the most skipped artifact in the field, so the template opens with the cost of skipping it
-│   │   └── acceptance-criteria.md  Given/when/then blocks, edge and negative cases, measurable thresholds
+│   │   ├── acceptance-criteria.md  Given/when/then blocks, edge and negative cases, measurable thresholds
+│   │   └── prfaq.md  Working backwards: mock press release, customer quote, external and internal FAQ, availability
 │   ├── architecture/
 │   │   ├── system-design.md  Goals, non-goals, diagram, components, alternatives considered, tradeoffs
 │   │   ├── solution-architecture.md  Context diagram, capability map, integration points, build vs buy rationale
@@ -119,17 +136,29 @@ product-manager-OS/
 │   │   ├── edge-cases.md  Case, trigger, expected behavior, linked test ID; no case left "to be decided"
 │   │   ├── failure-scenarios.md  Scenario, blast radius, detection, recovery, data loss risk
 │   │   ├── uat-plan.md  Scope, entry and exit criteria, testers, defect severity, sign-off form
-│   │   └── release-readiness.md  Go or no-go checklist: features, tests, known issues, rollback, comms, sign-offs per function
+│   │   ├── release-readiness.md  Go or no-go checklist: features, tests, known issues, rollback, comms, sign-offs per function
+│   │   ├── analytics-instrumentation-spec.md  Event taxonomy, properties, owners, QA plan; filed in delivery, written during DESIGN before build starts
+│   │   └── launch-comms-plan.md  Audiences, channel and timeline, messaging per audience, rollback comms
 │   ├── operate/
 │   │   ├── operational-readiness-review.md  Runbooks, on-call, backup and recovery, blast radius, checks derived from past incidents
 │   │   ├── compliance-impact-assessment.md  Applicable regulations, data categories, DPIA flag, retention, legal sign-off
-│   │   └── metrics-review.md  Outcome vs target per KR, input metric movement, decision: persist, pivot, or sunset
+│   │   ├── metrics-review.md  Outcome vs target per KR, input metric movement, decision: persist, pivot, or sunset
+│   │   ├── experiment-brief.md  Hypothesis, target metric, variants, sample size and duration, decision rule
+│   │   ├── win-loss-review.md  Outcome, primary and secondary reasons, competitor, quotes, action items
+│   │   ├── qbr-board-update.md  Metrics vs goal, wins, risks and asks, next-quarter roadmap, decisions needed
+│   │   ├── post-launch-review.md  Goal vs actual per launch, once per launch; the recurring instrument stays metrics-review.md
+│   │   └── sunset-eol-plan.md  EOL rationale, timeline, migration path, comms cascade, decommission steps
 │   ├── planning/
 │   │   ├── roadmap.md  Now, Next, Later horizons with theme, initiative, target period, confidence, dependencies, status, and a pre-written expectations-not-commitments preamble to keep above the tables
 │   │   ├── okrs.md  Objective, three to five key results with baseline and target, scoring cadence
 │   │   ├── first-90-days.md  Mandate in the hirer's words, three learning questions, 30/60/90 blocks, one commitment that can fail, first meetings feeding the stakeholder map
 │   │   ├── gtm-plan.md  Written at DELIVER: first cohort and channel with evidence the channel reaches them, positioning against the named alternative, launch sequence, the one launch metric, the stop condition
-│   │   └── growth-plan.md  Written at OPERATE: the input-metric bet, the cheapest experiment that would move it, the loop or channel behind it, the counter-metric, the kill condition
+│   │   ├── growth-plan.md  Written at OPERATE: the input-metric bet, the cheapest experiment that would move it, the loop or channel behind it, the counter-metric, the kill condition
+│   │   ├── vision.md  Future-state narrative, why now, who for, north-star tie-in, non-goals
+│   │   ├── product-strategy.md  Strategic context, where-to-play bets, differentiation, sequencing, key risks
+│   │   ├── north-star-metric.md  NSM definition, input-metric tree with owners, guardrails, review cadence
+│   │   ├── positioning.md  The Dunford chain: competitive alternatives, unique attributes, value and proof, target customer, market category
+│   │   └── pricing-packaging.md  Pricing model, tiers, value metric, competitive benchmark, discount rules, owner
 │   └── ai/
 │       ├── eval-spec.md  Scenario set, golden dataset, metrics, pass threshold, gate that blocks on failure
 │       ├── guardrails.md  Input and output constraints, blocked behaviors, enforcement point per rail
@@ -181,6 +210,14 @@ product-manager-OS/
 │       └── examples/
 │           └── dispute-summary/
 │               └── PRD.md           (COPY, byte-exact)  The verified worked example; never reworded here
+├── learn/
+│   ├── INDEX.md  Path picker, step anatomy (Read/Study/Do/Done when), the checkbox-ledger convention, tutor mode entry
+│   ├── library.md  Book and podcast pointers in own words with named attribution; cards and index entries linked where they exist
+│   ├── path-foundations.md  Six steps plus a Gate 1 capstone on Streakline, a fictional habit tracker
+│   ├── path-transitioning.md  Seven steps plus a Gate 2 capstone on Restow, a fictional returns portal
+│   ├── path-senior.md  Six steps plus a Gate 6 capstone on Meterly, fictional API usage metering
+│   ├── skills/tutor/SKILL.md  Tutor mode: quizzes from the Conductor's banks read-only, one push then a model answer, 0/1/2 scoring on the evidence ladder
+│   └── products/README.md  Practice workspace convention mirroring os/PRODUCT-WORKSPACE.md; invented evidence labeled, real work stays in products/
 └── examples/
     ├── README.md  Index of worked examples and how each was produced with the templates
     ├── expense-copilot-discovery.md  templates/discovery/discovery-document.md filled in for a fictional expense-report copilot
@@ -193,7 +230,7 @@ product-manager-OS/
 
 1. All links are relative repo paths (`../knowledge/rice-prioritization.md`), never absolute, never external for internal content. Lint resolves every one.
 2. Every template opens with a three-line header block: `Stage:` (the loop stage and gate it feeds), `Knowledge:` (link to the card or index entry behind it), `Skill:` (link to the skill or agent that drives it, or "manual" where none applies).
-3. Every knowledge card carries a `Skip it when` line between its uses and its trap, and ends with a `Used by:` list linking the templates that draw on it.
+3. Every method card in `knowledge/` carries a `Skip it when` line between its uses and its trap, and ends with a `Used by:` list linking the templates that draw on it. The consolidated cards under `knowledge/roles/` and `knowledge/domains/` are a different genre and use their own field lists, stated in their INDEX files; the domain cards state their skip condition once, in `knowledge/domains/INDEX.md`.
 4. Every SKILL.md uses exactly two frontmatter fields, `name` and `description`, where the description contains an explicit "Use when" clause; triggering is external (CLAUDE.md and AGENTS.md map triggers to skills).
 5. `system/` prompts cannot assume file access, so they reference repo paths as things the human pastes on request: "ask the user to paste templates/definition/prd.md". Every path named in a system prompt must exist; lint checks this.
 6. CLAUDE.md contains no content of its own beyond the router table; AGENTS.md is the single source of truth for agent behavior, mirroring the pattern OmniRoute itself uses at its root.

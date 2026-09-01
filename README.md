@@ -91,7 +91,10 @@ A filled example is one file away: [examples/expense-copilot-discovery.md](examp
 | Directory | Layer | Answers |
 |---|---|---|
 | [knowledge/](knowledge/INDEX.md) | Knowledge | WHY a method exists and when it misleads |
+| [knowledge/roles/](knowledge/roles/INDEX.md) | Roles | WHO each product title is: what it owns, decides, and how it fails |
+| [knowledge/domains/](knowledge/domains/INDEX.md) | Domains | WHERE the product plays: what a specific market changes about the loop |
 | `templates/` | Templates | WHAT to produce at each stage |
+| [learn/](learn/INDEX.md) | Learning | HOW to study the OS on fictional products before running a real one |
 | `skills/`, `agents/` | Skills and agents | HOW to produce it with an AI runtime |
 | `system/` | System prompts | WHO the model becomes |
 | `routing/` | Routing | WITH WHICH model each task runs |
@@ -100,6 +103,14 @@ A filled example is one file away: [examples/expense-copilot-discovery.md](examp
 | [modules/regulated/](modules/regulated/README.md) | Regulated overlay | What a regulated AI feature must answer before it ships |
 
 Dependencies point downward only. Templates cite knowledge cards, skills cite templates, system prompts cite skills and templates by repo path, routing serves all of them.
+
+## Who you are and where you play
+
+Two knowledge sub-layers answer the questions that arrive before any template does. [knowledge/roles/](knowledge/roles/INDEX.md) is the PM role map: an eight-rung ladder from Associate PM to CPO with the IC and management fork after Senior PM, the specializations, the PM and PMM boundary as a decision table, and what the same title means at a startup versus an enterprise. Rung names are marked directional, because titles are the least standardized vocabulary in software. [knowledge/domains/](knowledge/domains/INDEX.md) is ten market cards, ecommerce through AI products, each naming the gatekeepers who can stop a launch and the metrics practitioners are judged on, plus how each metric lies. Fintech is deliberately a pointer card: its domain pack is the regulated module below. Record your product's domain, or "none", in STATE.md at DISCOVER; the Gate 1 checklist asks for it.
+
+## Learn mode
+
+[learn/](learn/INDEX.md) teaches the OS the only way a document system can be taught: by making you fill it in. Three paths (foundations, transitioning into PM, senior sharpening), each a stepped sequence over fictional products with a capstone at a real gate checklist, a [library](learn/library.md) of attributed one-line book and podcast pointers, and a [tutor skill](learn/skills/tutor/SKILL.md) that quizzes and scores your filled artifacts the way the Conductor cross-examines answers. Practice work lives in `learn/products/<name>/`, never in `products/`, and is labeled as invented evidence throughout. Say "learn" or "quiz me" to enter. The layer depends downward only; delete the folder and the OS loses nothing but the curriculum.
 
 ## The regulated module
 
@@ -130,7 +141,7 @@ This is stated because the failure is common enough to plan for: systems in this
 
 ## Scope and sunset
 
-The knowledge layer covers eleven canonical methods with named attribution and an index of seventeen more; it grows slowly and only with attribution. The regulated overlay covers exactly what its source repository covers, no more, and inherits that repository's currency policy: citations carry verification dates, and staleness fails the gate rather than looking maintained. If maintenance of this repository stops, an ARCHIVED notice will go at the top of this README with the date, instead of the repository quietly rotting.
+The knowledge layer covers eleven canonical methods with named attribution and an index of eighteen more; it grows slowly and only with attribution. The roles and domains sub-layers follow the same rule, and a domain card graduates to a template pack only when the card proves insufficient in real use. The learn layer covers exactly three paths and one tutor; it is curriculum over the existing tree, adds no infrastructure, and is deleted before it is allowed to rot. The regulated overlay covers exactly what its source repository covers, no more, and inherits that repository's currency policy: citations carry verification dates, and staleness fails the gate rather than looking maintained. If maintenance of this repository stops, an ARCHIVED notice will go at the top of this README with the date, instead of the repository quietly rotting.
 
 ## License
 

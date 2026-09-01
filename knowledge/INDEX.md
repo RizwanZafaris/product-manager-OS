@@ -4,7 +4,11 @@ The knowledge layer answers WHY a method exists and when it misleads. Templates 
 
 Every card also carries one line beginning **Skip it when**, sitting between the uses and the trap. It names the situation where reaching for that method costs a week and returns nothing. A method library that only tells you when to use things quietly teaches that every method is always worth its overhead, and that is how a team ends up running a survey to learn what the support queue already said.
 
-Eleven methods earned full cards because a template in this repository leans on them directly. Seventeen more are indexed below with a one-line essence. An index entry graduates to a card when a template starts depending on it, not before: a knowledge layer that catalogs everything teaches nothing. Crossing the Chasm is the newest graduation, promoted when the GTM plan template started depending on it.
+Eleven methods earned full cards because a template in this repository leans on them directly. Eighteen more are indexed below with a one-line essence. An index entry graduates to a card when a template starts depending on it, not before: a knowledge layer that catalogs everything teaches nothing. Crossing the Chasm is the newest graduation, promoted when the GTM plan template started depending on it.
+
+## Role and domain layers
+
+Two sub-layers sit beside the method cards and answer different questions. [Roles](roles/INDEX.md) answers WHO: what each product title owns and decides, the IC and management fork, the PM and PMM boundary, and how the same title changes meaning as a company grows. [Domains](domains/INDEX.md) answers WHERE: what changes about the operating loop when the product lives in a specific market, in ten cards from ecommerce to a fintech pointer that routes to the regulated module. Both follow this layer's rules: named attribution, own words, and a stated reason to skip.
 
 ## Cards
 
@@ -45,3 +49,4 @@ Each entry is the essence in one line, with originator and year. Cite an entry f
 | Strategy kernel | Diagnosis, guiding policy, coherent action: the three-part test that separates strategy from goals | Richard Rumelt | 2011 |
 | Playing to Win | Strategy as five linked choices, from winning aspiration and where-to-play down to management systems | A.G. Lafley and Roger Martin | 2013 |
 | Sean Ellis PMF survey | The share of users who would be very disappointed to lose the product, as a product-market fit signal | Sean Ellis | 2009 |
+| Obviously Awesome positioning | Position deliberately from competitive alternatives through unique attributes and provable value to the market category, never from a tagline backward | April Dunford | 2019 |

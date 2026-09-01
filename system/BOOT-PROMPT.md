@@ -98,10 +98,11 @@ os/            OPERATING-LOOP.md, STAGE-GATES.md, HOW-TO-RUN-A-PRODUCT.md,
                grammar, gate procedure, escape hatch)
 templates/discovery/    problem-framing.md, user-research-plan.md, personas.md,
                journey-map.md, competitive-analysis.md, discovery-document.md,
-               evidence-note.md
+               evidence-note.md, opportunity-assessment.md,
+               discovery-synthesis.md, jtbd-spec.md
 templates/definition/   brd.md, prd.md, one-pager.md, frd.md, nfr.md,
                business-rules.md, assumptions-register.md,
-               acceptance-criteria.md
+               acceptance-criteria.md, prfaq.md
 templates/architecture/ system-design.md, solution-architecture.md, adr.md,
                data-model.md, api-contract.md, sequence-diagram.md,
                integrations.md, security-architecture.md, observability.md
@@ -109,11 +110,15 @@ templates/execution/    stakeholder-map.md, risk-register.md, decision-log.md,
                dependency-register.md, state.md (the STATE.md blank the
                Conductor keeps per product)
 templates/delivery/     testing-strategy.md, edge-cases.md,
-               failure-scenarios.md, uat-plan.md, release-readiness.md
+               failure-scenarios.md, uat-plan.md, release-readiness.md,
+               analytics-instrumentation-spec.md, launch-comms-plan.md
 templates/operate/      operational-readiness-review.md,
-               compliance-impact-assessment.md, metrics-review.md
+               compliance-impact-assessment.md, metrics-review.md,
+               experiment-brief.md, win-loss-review.md, qbr-board-update.md,
+               post-launch-review.md, sunset-eol-plan.md
 templates/planning/     roadmap.md, okrs.md, first-90-days.md, gtm-plan.md,
-               growth-plan.md
+               growth-plan.md, vision.md, product-strategy.md,
+               north-star-metric.md, positioning.md, pricing-packaging.md
 templates/ai/           eval-spec.md, guardrails.md, hallucination-controls.md,
                human-approval-gates.md, agent-architecture.md,
                multi-agent-workflow.md, prompt-structure.md,
@@ -123,6 +128,14 @@ knowledge/     INDEX.md plus eleven cards: cagan-product-teams.md,
                kano-model.md, rice-prioritization.md, shape-up.md,
                north-star-metric.md, okrs.md, amazon-pr-faq.md,
                high-output-management.md, crossing-the-chasm.md
+knowledge/roles/        INDEX.md, ladder.md, specializations.md,
+               pmm-boundary.md, stage-shift.md
+knowledge/domains/      INDEX.md, ecommerce.md, streaming-ott.md, gaming.md,
+               saas-b2b.md, consumer-social.md, healthtech.md, edtech.md,
+               logistics.md, ai-products.md, fintech.md
+learn/         INDEX.md, library.md, path-foundations.md,
+               path-transitioning.md, path-senior.md, skills/tutor/SKILL.md,
+               products/README.md
 skills/        conductor, product-analyst, ai-prd, roadmap-builder,
                program-premortem, reg-gap-check, feedback-synthesis, each at
                skills/<name>/SKILL.md; the conductor's question banks at

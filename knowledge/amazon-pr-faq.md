@@ -27,3 +27,4 @@ The instrument assumes the decision is still open. Write the PR/FAQ after the in
 - [Discovery document](../templates/discovery/discovery-document.md)
 - [BRD](../templates/definition/brd.md)
 - [PRD](../templates/definition/prd.md)
+- [PR/FAQ](../templates/definition/prfaq.md)

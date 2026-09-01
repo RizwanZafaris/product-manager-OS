@@ -27,3 +27,4 @@ The tree is a living index of what the team currently believes, and it earns tha
 - [User research plan](../templates/discovery/user-research-plan.md)
 - [Discovery document](../templates/discovery/discovery-document.md)
 - [Journey map](../templates/discovery/journey-map.md)
+- [Discovery synthesis](../templates/discovery/discovery-synthesis.md)

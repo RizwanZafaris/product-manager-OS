@@ -28,3 +28,5 @@ The format is seductive: "when [circumstance], I want to [motivation], so I can 
 - [Personas](../templates/discovery/personas.md)
 - [User research plan](../templates/discovery/user-research-plan.md)
 - [Competitive analysis](../templates/discovery/competitive-analysis.md)
+- [JTBD spec](../templates/discovery/jtbd-spec.md)
+- [Win-loss review](../templates/operate/win-loss-review.md)

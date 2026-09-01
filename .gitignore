@@ -5,3 +5,7 @@ __pycache__/
 .venv/
 node_modules/
 .pytest_cache/
+
+# Practice and product workspaces stay out of the repo
+learn/products/*/
+products/

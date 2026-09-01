@@ -35,3 +35,5 @@ The failure mode is adopting the vocabulary and skipping the trade. Teams get re
 - [PRD](../templates/definition/prd.md)
 - [One-pager](../templates/definition/one-pager.md)
 - [OKRs](../templates/planning/okrs.md)
+- [Vision](../templates/planning/vision.md)
+- [Opportunity assessment](../templates/discovery/opportunity-assessment.md)

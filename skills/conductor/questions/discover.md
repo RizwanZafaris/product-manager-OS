@@ -70,6 +70,15 @@ Cross-examine when: the signal is an adjective or has no source system. Move: na
 Accept when: signal, threshold or direction, source system, all named before any solution exists.
 Lands in: `discovery/discovery-document.md` section 5, and STATE.md accepted answers.
 
+### DISCOVER-8: the domain pack
+
+Ask: Which domain pack governs this product?
+Wrong costs: Every later gatekeeper and metric question gets answered generically, and the market-specific blocker surfaces at launch instead of here.
+Evidence class: 2, artifact: the chosen card's gatekeeper list in [../../../knowledge/domains/INDEX.md](../../../knowledge/domains/INDEX.md) consulted, or "none" recorded with the table checked.
+Cross-examine when: a domain is claimed but no gatekeeper from its card can be named. Move: open the card together; if none of its rows bite, the honest answer is "none".
+Accept when: one card from the domain index named, or "none", either way recorded.
+Lands in: STATE.md position block, `Domain:` line.
+
 ## Forced pair
 
 On "advance anyway": DISCOVER-1, then DISCOVER-5. A team that cannot name one person or count its conversations is the gate's own skip warning in progress.
@@ -83,5 +92,6 @@ On "advance anyway": DISCOVER-1, then DISCOVER-5. A team that cannot name one pe
 | Personas under five cited interviews marked as assumptions | DISCOVER-5 |
 | Cost of inaction written down, calculation shown | DISCOVER-3, DISCOVER-4 |
 | A plausible no-go seriously argued | DISCOVER-6 |
+| Domain selected from the domain index, or "none" recorded | DISCOVER-8 |
 | Gate 6 success signal named now | DISCOVER-7 |
 | Go or no-go recorded with rationale | The signed gate attempt itself; the Conductor never records this line as pass on its own authority |
