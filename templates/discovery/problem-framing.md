@@ -1,0 +1,91 @@
+# Problem Framing: [problem short name]
+
+Stage: DISCOVER, feeds Gate 1 (problem worth solving)
+Knowledge: [Knowledge index, SCR entry](../../knowledge/INDEX.md)
+Skill: [research-agent](../../agents/research-agent.md)
+
+<!-- One problem, one page, one owner. The discovery document records the whole
+     exploration; this file distills it into a single statement a sponsor can fund
+     or kill in one reading.
+
+     The structure follows the situation-complication-resolution pattern
+     associated with Barbara Minto's work on structured writing, encoded here in
+     this repo's own words: establish the stable situation, name what broke it,
+     and only then propose what to do about it.
+
+     One problem per file. If you find yourself writing "and also", split the file. -->
+
+**Owner:** [name, the single person accountable for this problem being solved or retired]
+**Date:** [YYYY-MM-DD] · **Status:** Draft / Framed / Funded / Retired
+
+## 1. Situation
+
+[Two or three sentences of stable context that everyone already agrees on. No news here; this is the shared ground the reader stands on.]
+
+## 2. Complication
+
+[What changed or was discovered that makes the situation untenable. This is the news. One or two sentences.]
+
+## 3. Problem statement
+
+> [User or segment] needs a way to [outcome they seek] because [driver], but today [obstacle], which costs them [consequence, quantified where possible].
+
+<!-- One sentence. No solution words allowed: if the statement contains "app",
+     "dashboard", "AI", or a feature name, it is a solution in disguise. Reframe
+     around the outcome the user cannot reach. -->
+
+## 4. Evidence
+
+| # | Evidence item | Type (interview / ticket / metric / observation) | Source or ID | Strength (strong / weak) |
+|---|---|---|---|---|
+| 1 | | | | |
+| 2 | | | | |
+| 3 | | | | |
+
+<!-- Mark strength honestly. A metric from your own warehouse is strong. A
+     secondhand quote from one sales call is weak. Weak evidence is allowed at
+     this stage; unlabeled weak evidence is not. -->
+
+## 5. Cost of inaction
+
+- **To the user:** [what they lose per week or month if nothing changes]
+- **To the business:** [revenue, cost, risk, or trust impact; a number or a named owner who will produce the number by a date]
+- **Trajectory:** [is this getting worse, stable, or fading on its own? Say how you know]
+
+<!-- "Fading on its own" is a legitimate finding. Some problems retire themselves,
+     and framing that honestly saves a quarter of work. -->
+
+## 6. Who feels it and how often
+
+| Segment | How many | Frequency of the pain | Severity (blocks work / slows work / annoys) |
+|---|---|---|---|
+| | | | |
+
+## 7. Constraints on any resolution
+
+[Known boundaries a solution must respect: budget ceiling, platform, regulatory regime, team capacity, deadline. If the product operates under a financial or data regulator, note it here and raise it again at Gate 2; the regulated overlay is described in ../../modules/regulated/README.md.]
+
+## 8. Decision requested
+
+- **Ask:** [fund discovery / fund definition / retire the problem]
+- **From:** [sponsor name] · **By:** [date]
+
+---
+
+### Worked micro-example (illustrative, invented)
+
+> **Situation:** Finance closes the books monthly, and expense reports feed the close.
+> **Complication:** Failed receipt submissions tripled in March, and the close slipped four days.
+> **Problem statement:** Field sales reps need a way to submit expenses that are accepted on the first pass because they file from phones in poor light, but today half of receipt photos fail validation after submission, which costs each rep about an hour a week and delays the monthly close.
+> **Cost of inaction:** Close slips compound quarterly; the controller owns producing the cost figure by April 15.
+
+---
+
+## Exit gate (feeds Gate 1: problem worth solving)
+
+- [ ] Exactly one problem in this file
+- [ ] Problem statement contains no solution words
+- [ ] Every evidence row has a source ID and a strength label
+- [ ] Cost of inaction carries a number or a named owner and date for the number
+- [ ] A single accountable owner is named
+- [ ] The decision requested names the sponsor and a date
