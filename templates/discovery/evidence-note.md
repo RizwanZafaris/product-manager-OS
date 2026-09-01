@@ -1,0 +1,65 @@
+# Evidence Note: [source short name]
+
+Stage: DISCOVER and OPERATE, feeds Gate 1 and Gate 6
+Knowledge: [Knowledge index](../../knowledge/INDEX.md)
+Skill: [product-analyst](../../skills/product-analyst/SKILL.md)
+
+<!-- One note per source. Not per claim, not per topic: per source. If one
+     source supports three claims, write three claim blocks in one note; if one
+     claim needs three sources, that is three notes that cite each other.
+
+     The verbatim quote is the point of this file. A paraphrase drifts a little
+     with every retelling, and six weeks later nobody can check it without
+     re-reading the source. A quote is checkable in ten seconds. If no single
+     sentence in the source carries your claim, your claim is not in the source.
+
+     The ledger row at the bottom is copied unchanged into the product's
+     STATE.md evidence ledger. Keep it to one line; the note above it holds
+     everything that does not fit. -->
+
+**Note ID:** E[number, unique within the product workspace]
+**Author:** [name or runtime] · **Retrieved:** [YYYY-MM-DD]
+
+## Source
+
+- **Name:** [publication, document, system, or person]
+- **Locator:** [URL, file path, ticket ID, or interview reference a reader could open]
+- **Source date:** [YYYY-MM-DD, when the source was published or the interview held]
+- **Type:** [interview / ticket / metric export / document / public page / dataset / observation]
+
+## Claim
+
+[One sentence, your words, stating what this source supports. If the source supports several distinct claims, repeat this section and the two below it per claim.]
+
+**Verbatim quote:**
+
+> "[The load-bearing sentence, unchanged, in quotation marks. Ellipses only for true omissions, never to bend meaning.]"
+
+**Evidence class:** [observed behavior / artifact / named commitment / interview claim / team belief]
+
+<!-- Strongest first: observed behavior (something a user did, recorded, dated),
+     artifact (a document or export a reader could open), named commitment (a
+     person with standing said yes in writing), interview claim (a real person
+     said it, cited by source and date), team belief (goes to the assumptions
+     register, never into a template as fact). -->
+
+## Weight
+
+- **Confidence:** [verified / single-source / contested / unverified]
+- **Agrees with:** [note IDs, or "none found"]
+- **Disagrees with:** [note IDs plus one line on the conflict, or "none found"]
+- **What this note cannot support:** [the nearby, bigger claim someone will be tempted to hang on it; name it so they do not]
+
+<!-- Confidence definitions: verified means two or more independent sources
+     agree (name them in Agrees with); single-source means this note stands
+     alone; contested means a listed note disagrees and the tension is carried,
+     not resolved; unverified means belief, and the claim goes to
+     ../definition/assumptions-register.md instead of into any template. -->
+
+## Ledger row
+
+Copy this row, filled, into the evidence ledger in the product's STATE.md:
+
+| E# | Claim | Verbatim quote | Source | Source date | Retrieved | Confidence |
+|---|---|---|---|---|---|---|
+| E[n] | [claim, short] | "[quote]" | [locator] | [YYYY-MM-DD] | [YYYY-MM-DD] | [confidence] |
