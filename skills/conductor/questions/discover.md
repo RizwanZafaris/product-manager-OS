@@ -2,6 +2,8 @@
 
 Stage: DISCOVER, feeds Gate 1 (problem worth solving) in [../../../os/STAGE-GATES.md](../../../os/STAGE-GATES.md).
 Working handoffs: research via [../../../agents/research-agent.md](../../../agents/research-agent.md); the accepted answers roll into the filled `templates/discovery/` set, headed by the discovery document.
+Applies: [Jobs to Be Done](../../../knowledge/jobs-to-be-done.md), the Christensen, Ulwick, and Moesta framing that people hire products to make progress in a circumstance, and doing nothing is a competing hire. The Conductor names this method aloud when DISCOVER-2 and DISCOVER-4 run.
+Applies: [Continuous Discovery](../../../knowledge/torres-continuous-discovery.md), Teresa Torres's argument that a weekly interview habit beats commissioned research phases because evidence arrives before the decision, not after. The Conductor names this method aloud when DISCOVER-5 runs.
 Format and ladder: [README.md](README.md).
 
 ### DISCOVER-1: name the person

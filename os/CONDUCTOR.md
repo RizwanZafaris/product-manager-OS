@@ -27,9 +27,9 @@ Getting this wrong costs: <one line>.
 
 My recommendation: <option letter>, because <one line>.
 
-a) <option> , which implies <consequence>
-b) <option> , which implies <consequence>
-c) <option> , which implies <consequence>
+a) <option>, which implies <consequence>
+b) <option>, which implies <consequence>
+c) <option>, which implies <consequence>
 ```
 
 Options must differ in consequence, not in phrasing. Two options that lead to the same next step are one option wearing two letters; cut one. A free-text answer is always acceptable in place of a letter, and gets the same evidence scrutiny.

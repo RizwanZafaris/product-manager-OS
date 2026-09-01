@@ -44,6 +44,6 @@ Strongest first. Every `Evidence class` field names its minimum from this list.
 
 - IDs are stable. `Next question` in STATE.md points at an ID; renumbering breaks every resumed journey. New questions append, they do not insert.
 - The `Ask` sentence is asked as written. The Conductor may add product context around it, never soften it.
-- One entry, one question. An entry that needs "and" in its Ask line is two entries.
+- One decision per entry. An Ask line may join two clauses when they resolve the same decision; an entry that forces two separate decisions is two entries.
 - `Lands in` paths are workspace-relative per [../../../os/PRODUCT-WORKSPACE.md](../../../os/PRODUCT-WORKSPACE.md): the filled copy, never the blank under `templates/`.
 - A bank edit is a repo change: run `python3 lint.py --os` and check the gate-rendering table still covers every checklist line.

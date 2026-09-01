@@ -26,7 +26,7 @@ The product: Renewal Radar, a weekly digest that flags accounts at renewal risk,
 
 ```
 ## Accepted answers
-| DISCOVER-1 | who has this problem | Dana Okonkwo, senior CSM, Fernwood Software: eats the Monday churn escalation | Interview claim (2026-07-18) + workaround artifact | discovery/problem-framing.md, "Who has this problem" |
+| DISCOVER-1 | who has this problem | Dana Okonkwo, senior CSM, Fernwood Software: eats the Monday churn escalation | Interview claim (2026-07-18) + workaround artifact | discovery/problem-framing.md, "Who feels it and how often" |
 
 ## Evidence ledger
 | E4 | The workaround is manual and failing | "I have rebuilt that tracker three times this year and it still missed the Corvale renewal." | Interview notes, D. Okonkwo, filed discovery/research-notes.md | 2026-07-18 | 2026-08-20 | single-source |
