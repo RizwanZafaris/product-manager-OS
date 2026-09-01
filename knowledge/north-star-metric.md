@@ -27,3 +27,4 @@ The counterfeit north star is the number that only goes up: cumulative signups, 
 - [OKRs](../templates/planning/okrs.md)
 - [Metrics review](../templates/operate/metrics-review.md)
 - [PRD](../templates/definition/prd.md)
+- [Growth plan](../templates/planning/growth-plan.md)

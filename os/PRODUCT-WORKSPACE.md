@@ -12,6 +12,7 @@ One folder per product, named for the product, holding one subfolder per stage o
 products/
 └── ledgerline/
     ├── README.md              what this product is, one paragraph, plus the current stage and gate
+    ├── STATE.md               the Conductor's running memory: position, accepted answers, evidence ledger
     ├── discovery/             filled copies of templates/discovery/
     ├── definition/            filled copies of templates/definition/
     ├── architecture/          filled copies of templates/architecture/
@@ -32,14 +33,14 @@ Where the folder sits is your choice. Three arrangements work, and only the thir
 
 1. **Filled copies, never edits to the originals.** Copy the template out, fill the copy. `templates/` stays blank so the next product starts clean. This is the same rule the agent files state and the reason for it is the same.
 2. **Keep the file name of the template you copied.** A filled PRD is `definition/prd.md`, not `PRD_v3_final_FINAL.md`. Versions are the file's history, not its name. When one product genuinely needs two of something, the suffix names the thing, not the version: `architecture/adr-004-precompute-explanations.md`.
-3. **Three files never get archived, whatever the stage.** The decision log, the risk register, and the assumptions register run the length of the product. Everything else is written at a stage and read afterward; these three are written continuously and are the first things a new owner reads.
+3. **Four files never get archived, whatever the stage.** The decision log, the risk register, the assumptions register, and STATE.md run the length of the product. Everything else is written at a stage and read afterward; these four are written continuously and are the first things a new owner reads. STATE.md appears once a Conductor run starts (the blank ships at `templates/execution/state.md`); a product run entirely with a pencil may never have one, and loses nothing but the resume protocol.
 4. **Gate attempts are kept, including the failures.** `gates/gate-2-attempt-1.md` is more useful than `gates/gate-2.md`, because the attempt that was returned records what the team did not know at the time. A gate history with no failures in it is either a very lucky product or a rewritten one.
 
 ## The product README is the index
 
 One paragraph on what the product is, then a short table: current stage, last gate passed and when, next gate and what it is waiting on, and the owner. Update it at each gate, which is six edits a year, not a maintenance burden.
 
-This is what an AI runtime reads first when you point it at a product. It is also what a new PM reads first, which is the same requirement.
+This is what an AI runtime reads first when you point it at a product, followed by STATE.md where one exists. It is also what a new PM reads first, which is the same requirement.
 
 ## What this convention is deliberately not
 

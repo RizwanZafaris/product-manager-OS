@@ -4,7 +4,7 @@ The knowledge layer answers WHY a method exists and when it misleads. Templates 
 
 Every card also carries one line beginning **Skip it when**, sitting between the uses and the trap. It names the situation where reaching for that method costs a week and returns nothing. A method library that only tells you when to use things quietly teaches that every method is always worth its overhead, and that is how a team ends up running a survey to learn what the support queue already said.
 
-Ten methods earned full cards because a template in this repository leans on them directly. Eighteen more are indexed below with a one-line essence. An index entry graduates to a card when a template starts depending on it, not before: a knowledge layer that catalogs everything teaches nothing.
+Eleven methods earned full cards because a template in this repository leans on them directly. Seventeen more are indexed below with a one-line essence. An index entry graduates to a card when a template starts depending on it, not before: a knowledge layer that catalogs everything teaches nothing. Crossing the Chasm is the newest graduation, promoted when the GTM plan template started depending on it.
 
 ## Cards
 
@@ -20,6 +20,7 @@ Ten methods earned full cards because a template in this repository leans on the
 | [OKRs](okrs.md) | A qualitative objective with three to five measurable key results that state outcomes, not tasks | Andy Grove, via John Doerr | 1983 |
 | [Amazon PR/FAQ](amazon-pr-faq.md) | Write the launch press release and hard-question FAQ first, then work backward to the product | Amazon practice, per Colin Bryar and Bill Carr | 2021 |
 | [High Output Management](high-output-management.md) | A manager's output is the output of the team, so spend time where a small action moves that output most | Andrew Grove | 1983 |
+| [Crossing the Chasm](crossing-the-chasm.md) | Early adopters and mainstream buyers purchase for different reasons; win one beachhead niche before generalizing | Geoffrey Moore | 1991 |
 
 ## Index entries
 
@@ -35,7 +36,6 @@ Each entry is the essence in one line, with originator and year. Cite an entry f
 | SCR | Situation, complication, resolution: the narrative spine that makes an executive document land in one read | Barbara Minto | 1978 |
 | Lean Startup | Build, measure, learn loops with validated learning, not shipped code, as the unit of progress | Eric Ries | 2011 |
 | AARRR | Acquisition, activation, retention, referral, revenue: a funnel that locates where growth actually leaks | Dave McClure | 2007 |
-| Crossing the Chasm | Early adopters and mainstream buyers purchase for different reasons; win one beachhead niche before generalizing | Geoffrey Moore | 1991 |
 | User story mapping | Arrange stories along the user journey so releases become horizontal slices of a working experience | Jeff Patton | 2005 |
 | MoSCoW | Must, should, could, won't: scope negotiation language that forces a ranking before the deadline does | Dai Clegg | 1994 |
 | Premortem | Assume the project has already failed, then write down why, while it is still cheap to be right | Gary Klein | 2007 |
