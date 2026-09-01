@@ -46,7 +46,7 @@ A teardown of the strongest existing systems (BMAD-METHOD, github/spec-kit, buil
 
 ## 2. Complete file tree
 
-Legend: (COPY) is a verbatim copy from the source repo, github.com/RizwanZafaris/regulated-ai-prd, byte-exact where marked; fixes to that material land in the source repo and are re-copied here, never edited here. (EXTEND) starts as a copy of that repo's file and is then modified here. Everything else is original to this repo.
+Legend: (COPY) is a verbatim copy from the source repo, the standalone regulated-ai-prd repository (pre-release), byte-exact where marked; fixes to that material land in the source repo and are re-copied here, never edited here. (EXTEND) starts as a copy of that repo's file and is then modified here. Everything else is original to this repo.
 
 ```
 product-manager-OS/
@@ -154,7 +154,7 @@ product-manager-OS/
 │   └── README.md  OmniRoute setup (npm install -g omniroute, dashboard at localhost:20128), the OpenAI-compatible endpoint contract, tier doctrine (which pipeline work goes to which tier and why), fixed-fallback combo recipe, and the litellm note for Hermes users
 ├── modules/
 │   └── regulated/
-│       ├── README.md  Names github.com/RizwanZafaris/regulated-ai-prd as the canonical source, states the byte-exact policy, explains when this overlay activates
+│       ├── README.md  Names the standalone regulated-ai-prd repository as the canonical source, states the byte-exact policy, explains when this overlay activates
 │       ├── SKILL.md                 (COPY)  Verbatim from the source repo; its relative paths to templates/, examples/, lint.py resolve inside this directory
 │       ├── lint.py                  (COPY)  Verbatim module gate, kept runnable in place
 │       ├── test_lint.py             (COPY)  Verbatim module tests

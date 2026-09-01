@@ -2,7 +2,7 @@
 
 The flagship module of Product Manager OS, and the one that seeded the whole repository. Every design rule the OS runs on, gates that can fail, controls with named owners, graceful degradation as structure rather than aspiration, was proven here first.
 
-**Canonical source: [github.com/RizwanZafaris/regulated-ai-prd](https://github.com/RizwanZafaris/regulated-ai-prd).** This directory is a copy, not a fork. The standalone repository is where the material lives, where issues are filed, and where every fix lands first. Nothing regulated is ever fixed here and back-ported; it is fixed there and re-copied.
+**Canonical source: the standalone regulated-ai-prd repository, currently pre-release; it opens publicly at its v0.1 tag.** This directory is a copy, not a fork. The standalone repository is where the material lives, where issues are filed, and where every fix lands first. Nothing regulated is ever fixed here and back-ported; it is fixed there and re-copied.
 
 ## The byte-exact policy
 
