@@ -1,0 +1,59 @@
+{
+  "name": "product-manager-os-routing",
+  "doc": "Tiered model routing for the Product Manager OS. Contract, doctrine, and setup live in routing/README.md. Values in ${VAR} form are resolved from the environment by the caller; never commit resolved values.",
+  "endpoint": {
+    "protocol": "openai-chat-completions",
+    "baseUrl": "${OMNIROUTE_BASE_URL}",
+    "baseUrlDefault": "http://localhost:20128/v1",
+    "apiKeyEnv": "OMNIROUTE_API_KEY",
+    "dashboard": "http://localhost:20128"
+  },
+  "tiers": {
+    "extraction": {
+      "model": "auto/cheap",
+      "purpose": "Mechanical transforms where the answer is checkable: pull fields from documents, normalize backlogs, tag and summarize sources, convert formats, check a draft against a template's field list.",
+      "temperature": 0,
+      "maxOutputTokens": 4096
+    },
+    "drafting": {
+      "model": "auto/coding",
+      "purpose": "First complete drafts of structured artifacts: fill one named template from supplied evidence, write ADRs, produce diagrams-as-code, restructure a document without changing its claims.",
+      "temperature": 0.3,
+      "maxOutputTokens": 16384
+    },
+    "judgment": {
+      "model": "auto/reasoning:pro",
+      "purpose": "Work where being wrong is expensive and unverifiable locally: prioritization calls, premortems, red-team passes, gap analyses, gate reviews, anything a human will sign.",
+      "temperature": 0.2,
+      "maxOutputTokens": 16384
+    }
+  },
+  "fixedFallback": {
+    "doc": "Optional recipe for deployments that must pin exact models instead of auto tiers. Replace the placeholders with model IDs your OmniRoute instance serves, in preference order; the first available model in the list is used. Leave enabled false to stay on auto tiers.",
+    "enabled": false,
+    "combos": {
+      "extraction": ["<primary-cheap-model-id>", "<fallback-cheap-model-id>"],
+      "drafting": ["<primary-coding-model-id>", "<fallback-coding-model-id>"],
+      "judgment": ["<primary-reasoning-model-id>", "<fallback-reasoning-model-id>"]
+    }
+  },
+  "taskMap": {
+    "template-field-extraction": "extraction",
+    "backlog-normalization": "extraction",
+    "source-tagging-and-summary": "extraction",
+    "validation-agent-runs": "extraction",
+    "drafting-agent-runs": "drafting",
+    "adr-and-design-drafts": "drafting",
+    "skill-ai-prd-restructure": "drafting",
+    "skill-roadmap-builder-scoring-and-defense": "judgment",
+    "skill-program-premortem": "judgment",
+    "skill-reg-gap-check": "judgment",
+    "red-team-agent-runs": "judgment",
+    "gate-reviews": "judgment"
+  },
+  "limits": {
+    "doc": "Fail closed: at the cap, halt the tier and queue the work; never overspend and never silently downgrade judgment work to a cheaper tier.",
+    "dailySpendCapUsdEnv": "OMNIROUTE_DAILY_CAP_USD",
+    "onCapReached": "halt-tier-and-queue"
+  }
+}
