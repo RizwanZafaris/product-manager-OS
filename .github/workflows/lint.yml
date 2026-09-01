@@ -1,0 +1,36 @@
+name: lint
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      # Pinned by commit SHA, not by tag. A tag is a moving pointer, and a
+      # workflow that trusts one is trusting whoever can move it. The comment
+      # records which tag the SHA was at the time it was pinned.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11"
+
+      # Structure only. An unfilled template is supposed to be unfilled, so the
+      # fill checks are skipped here and exercised on the example below.
+      - name: Lint the regulated template (structure mode)
+        run: python3 lint.py --template modules/regulated/templates/regulated-ai-prd-template.md
+
+      - name: Lint the regulated worked example (full gate)
+        run: python3 lint.py modules/regulated/examples/dispute-summary/PRD.md
+
+      - name: OS tree gate
+        run: python3 lint.py --os
+
+      - name: Unit tests (root)
+        run: python3 -m unittest test_lint.py -v
+
+      - name: Unit tests (regulated module, in place)
+        run: python3 -m unittest test_lint.py -v
+        working-directory: modules/regulated
