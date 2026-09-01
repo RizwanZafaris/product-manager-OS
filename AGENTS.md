@@ -8,6 +8,7 @@ Product Manager OS: a document system that runs one product through six stages (
 
 ## Load order on any user request
 
+0. **Check for a journey in progress, and offer one when there is none.** If `products/<name>/STATE.md` exists for the product in question, read the product README, then STATE.md, then the newest file under `products/<name>/gates/`, and follow the resume protocol in [os/CONDUCTOR.md](os/CONDUCTOR.md) before anything else; STATE.md outranks your assumptions about where the product stands. If no workspace exists and the request is product work, offer the conducted path once, in one line: the Conductor at [skills/conductor/SKILL.md](skills/conductor/SKILL.md) interviews stage by stage and writes only accepted answers. "Start" accepts the offer. A declined offer is not repeated in the session, and the offer never replaces doing the work the user actually asked for.
 1. **Read [os/OPERATING-LOOP.md](os/OPERATING-LOOP.md)** and place the request in a stage. A request for "a PRD" is DEFINE work; "why is nobody using this" is OPERATE work feeding a new DISCOVER pass.
 2. **Check the overlays.** Product contains a model: the `templates/ai/` overlay applies. Product operates under a financial or data regulator: `modules/regulated/` applies, routed through [skills/reg-gap-check/SKILL.md](skills/reg-gap-check/SKILL.md).
 3. **Check the router.** If a skill in `skills/` covers the request, follow that SKILL.md exactly. Triggering lives here and in CLAUDE.md, never inside the skill.
@@ -22,7 +23,7 @@ Product Manager OS: a document system that runs one product through six stages (
 | `os/` | The loop, the gates, the walkthrough, the document-weight decision, the workspace convention | Read; quote gate checklists back to the user |
 | `knowledge/` | 10 canon cards plus index, each with named attribution | Read; cite cards in drafts |
 | `templates/` | Fill-in artifacts for every stage, plus the `ai/` overlay | Copy out and fill; never edit the templates themselves |
-| `skills/` | Procedures: ai-prd, roadmap-builder, program-premortem, reg-gap-check, feedback-synthesis | Follow when routed |
+| `skills/` | Procedures: conductor (the stage-gated interviewer, protocol in `os/CONDUCTOR.md`), product-analyst (DISCOVER and OPERATE research), ai-prd, roadmap-builder, program-premortem, reg-gap-check, feedback-synthesis | Follow when routed |
 | `agents/` | Role instruction files (see below) | Adopt one role per run |
 | `system/` | Boot and role prompts for file-less chat models | Read; not for you, you have file access |
 | `routing/` | OmniRoute tier config | Read when the user runs Method 4 |

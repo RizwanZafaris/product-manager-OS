@@ -52,6 +52,18 @@ Three rules bind the doctrine:
 2. **Chains split by tier.** An extract-then-draft-then-judge pipeline is three calls on three tiers, not one call on the judgment tier. The `taskMap` block in the config records the standing assignments for this repository's skills and agents.
 3. **Degrade by queueing, never by downgrading.** When the judgment tier is capped or down, judgment work waits. Silently rerouting a premortem to the cheap tier produces a document that looks reviewed and is not, which is worse than a late one. This is the `onCapReached: halt-tier-and-queue` setting in the config.
 
+## Conductor stage routing
+
+The Conductor (protocol in [../os/CONDUCTOR.md](../os/CONDUCTOR.md)) splits every stage of its interview across the same three tiers, by blast radius, never by convenience:
+
+| Work | Tier |
+|---|---|
+| Transcribing accepted answers into STATE.md and template fields; formatting; smart-skip lookups | extraction, `auto/cheap` |
+| Drafting a template section from a set of accepted answers; gtm-plan and growth-plan first drafts | drafting, `auto/coding` |
+| Cross-examination, gate-checklist evaluation, premortem, red team, the analyst's reconcile-before-handoff pass, persist-pivot-sunset framing | judgment, `auto/reasoning:pro` |
+
+Queue when the judgment tier is capped, per rule 3 above, and never downgrade a cross-examination to the cheap tier: an interrogation that cannot spot a weak answer is worse than a delayed one. The `taskMap` entries prefixed `skill-conductor-` and `skill-product-analyst-` in the config record these assignments.
+
 ## Fixed-fallback combo recipe
 
 Auto tiers are the default and the right choice for most users: OmniRoute picks a live, priced model per request. Deployments that must know exactly which model produced an artifact (audit requirements, regulated sign-offs, reproducibility) enable the `fixedFallback` block instead:

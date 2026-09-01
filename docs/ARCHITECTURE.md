@@ -26,7 +26,7 @@ OPERATE  -> [Gate 6: outcomes verified, learn or sunset]
 
 Two tracks run across the loop rather than inside one stage: PLANNING (roadmap, OKRs) which feeds every stage, and AI OVERLAY (eval specs, guardrails, red team) which activates whenever the product itself contains a model. The regulated module is a third overlay for products under a financial or data regulator.
 
-The loop is defined in `os/OPERATING-LOOP.md`, the gate checklists in `os/STAGE-GATES.md`, and a narrative walkthrough of a full pass in `os/HOW-TO-RUN-A-PRODUCT.md`.
+The loop is defined in `os/OPERATING-LOOP.md`, the gate checklists in `os/STAGE-GATES.md`, and a narrative walkthrough of a full pass in `os/HOW-TO-RUN-A-PRODUCT.md`. Since v0.2.0 the Conductor (`os/CONDUCTOR.md`, driven from `skills/conductor/`) can run the loop as a stage-gated interview whose memory is `products/<name>/STATE.md`; the loop itself, and the pencil path through it, are unchanged.
 
 ### 1.3 The five layers
 
@@ -34,7 +34,7 @@ The loop is defined in `os/OPERATING-LOOP.md`, the gate checklists in `os/STAGE-
 |---|---|---|---|
 | Knowledge | `knowledge/` | WHY a method exists and when it misleads | RICE card explains false precision |
 | Templates | `templates/` | WHAT to produce at each stage | PRD template with fill-in fields |
-| Skills and agents | `skills/`, `agents/` | HOW to produce it with an AI runtime | ai-prd skill drives the PRD template |
+| Skills and agents | `skills/`, `agents/` | HOW to produce it with an AI runtime | conductor interviews the loop; ai-prd drives the PRD template |
 | System prompts | `system/` | WHO the model becomes | Boot prompt installs the PM team persona |
 | Routing | `routing/` | WITH WHICH model each task runs | Extraction on cheap tier, judgment on frontier tier |
 
@@ -58,15 +58,17 @@ product-manager-OS/
 ├── lint.py  (EXTEND)  OS-wide quality gate, stdlib only; original regulated checks preserved, tree mode added (spec in section 4)
 ├── test_lint.py  (EXTEND)  Unit tests for every original and every added lint check
 ├── docs/
-│   └── ARCHITECTURE.md  (this file)  The blueprint: concept, tree, cross-link conventions, lint spec
+│   ├── ARCHITECTURE.md  (this file)  The blueprint: concept, tree, cross-link conventions, lint spec
+│   └── CONDUCTOR-DESIGN.md  The v0.2.0 design: prior art, the Conductor's contract, journey map, evidence classes, STATE.md format, resume protocol, build plan
 ├── os/
 │   ├── OPERATING-LOOP.md  The six-stage loop, the two overlays, entry and exit definition for each stage
+│   ├── CONDUCTOR.md  The interview protocol: seven-rule contract, challenge grammar, gate procedure, escape hatch, per-method notes
 │   ├── STAGE-GATES.md  Six gate checklists, each a fill-in form with sign-off lines and a skip-risk warning drawn from field data
 │   ├── HOW-TO-RUN-A-PRODUCT.md  Narrative walkthrough: one fictional product taken through all six gates, naming every template used, plus the interview-to-backlog chain hop by hop
 │   ├── WHICH-DOCUMENT.md  Picks the artifact weight (logged decision, ticket, one-pager, PRD, BRD+PRD+FRD stack) by stakes, audience, and reversibility
-│   └── PRODUCT-WORKSPACE.md  The products/<name>/ folder convention: where filled artifacts accumulate as the product's memory, and why it is a folder and not software
+│   └── PRODUCT-WORKSPACE.md  The products/<name>/ folder convention: where filled artifacts accumulate as the product's memory, why it is a folder and not software, and STATE.md's place in the layout
 ├── knowledge/
-│   ├── INDEX.md  All 10 cards plus 18 one-line index entries (Mom Test, ICE, WSJF, HEART, 7 Powers, SCR, and the rest), each with originator and year
+│   ├── INDEX.md  All 11 cards plus 17 one-line index entries (Mom Test, ICE, WSJF, HEART, 7 Powers, SCR, and the rest), each with originator and year
 │   ├── cagan-product-teams.md  Empowered teams, outcomes over output, four risks; attribution to Marty Cagan's Inspired and Empowered; trap: the label without the accountability
 │   ├── torres-continuous-discovery.md  Weekly touchpoints and the opportunity solution tree; attribution to Teresa Torres; trap: a stale tree
 │   ├── jobs-to-be-done.md  Progress-based competition framing; attribution to Ulwick, Christensen, Moesta; trap: job stories without interview evidence
@@ -76,7 +78,8 @@ product-manager-OS/
 │   ├── north-star-metric.md  One value metric plus input metrics; attribution to Sean Ellis and Amplitude; trap: vanity metrics
 │   ├── okrs.md  Objectives and key results; attribution to Andy Grove via John Doerr; trap: key results that are tasks
 │   ├── amazon-pr-faq.md  Working backwards from the press release; attribution to Amazon practice per Bryar and Carr; trap: selling a decision already made
-│   └── high-output-management.md  Managerial output is team output; attribution to Andrew Grove; trap: busyness mistaken for impact
+│   ├── high-output-management.md  Managerial output is team output; attribution to Andrew Grove; trap: busyness mistaken for impact
+│   └── crossing-the-chasm.md  Beachhead before broadcast; attribution to Geoffrey Moore; trap: the beachhead that is secretly everyone
 ├── templates/
 │   ├── discovery/
 │   │   ├── discovery-document.md  Trigger, target user, pain, hypothesis, success signal, go or no-go
@@ -84,7 +87,8 @@ product-manager-OS/
 │   │   ├── user-research-plan.md  Questions, method, screener, script, notes, synthesis themes
 │   │   ├── personas.md  Archetype fields plus a mandatory evidence section: minimum five interviews cited or the persona is marked assumption
 │   │   ├── journey-map.md  Stages, actions, emotions, current vs future, opportunity areas
-│   │   └── competitive-analysis.md  Decision-to-inform as the one mandatory field, job and current alternatives, dated evidence per claim, axes that can move the decision
+│   │   ├── competitive-analysis.md  Decision-to-inform as the one mandatory field, job and current alternatives, dated evidence per claim, axes that can move the decision
+│   │   └── evidence-note.md  One note per source: claim, verbatim load-bearing quote, source, dates, confidence; rows feed the STATE.md evidence ledger
 │   ├── definition/
 │   │   ├── brd.md  Business objectives, scope, stakeholders, constraints, ROI, sponsor sign-off
 │   │   ├── prd.md  Background, objectives, stories, functional scope, success metrics, out of scope, launch criteria; opens with the delete-unused-sections rule and the weight question
@@ -108,7 +112,8 @@ product-manager-OS/
 │   │   ├── stakeholder-map.md  Name, interest, influence, RACI tag, cadence, concerns
 │   │   ├── risk-register.md  Risk, likelihood, impact, score, mitigation, owner, review date
 │   │   ├── decision-log.md  Numbered decisions with context, options, rationale, decider
-│   │   └── dependency-register.md  Dependency, owning team, needed-by, status, escalation contact; governed weekly, not kickoff-only
+│   │   ├── dependency-register.md  Dependency, owning team, needed-by, status, escalation contact; governed weekly, not kickoff-only
+│   │   └── state.md  The STATE.md blank: position, accepted answers, open challenges, evidence ledger, journal; append-mostly, the Conductor's per-product memory
 │   ├── delivery/
 │   │   ├── testing-strategy.md  Test levels, coverage targets, environments, entry and exit criteria
 │   │   ├── edge-cases.md  Case, trigger, expected behavior, linked test ID; no case left "to be decided"
@@ -122,7 +127,9 @@ product-manager-OS/
 │   ├── planning/
 │   │   ├── roadmap.md  Now, Next, Later horizons with theme, initiative, target period, confidence, dependencies, status, and a pre-written expectations-not-commitments preamble to keep above the tables
 │   │   ├── okrs.md  Objective, three to five key results with baseline and target, scoring cadence
-│   │   └── first-90-days.md  Mandate in the hirer's words, three learning questions, 30/60/90 blocks, one commitment that can fail, first meetings feeding the stakeholder map
+│   │   ├── first-90-days.md  Mandate in the hirer's words, three learning questions, 30/60/90 blocks, one commitment that can fail, first meetings feeding the stakeholder map
+│   │   ├── gtm-plan.md  Written at DELIVER: first cohort and channel with evidence the channel reaches them, positioning against the named alternative, launch sequence, the one launch metric, the stop condition
+│   │   └── growth-plan.md  Written at OPERATE: the input-metric bet, the cheapest experiment that would move it, the loop or channel behind it, the counter-metric, the kill condition
 │   └── ai/
 │       ├── eval-spec.md  Scenario set, golden dataset, metrics, pass threshold, gate that blocks on failure
 │       ├── guardrails.md  Input and output constraints, blocked behaviors, enforcement point per rail
@@ -134,10 +141,21 @@ product-manager-OS/
 │       ├── context-management.md  Context sources, token budget, priority order, staleness policy, PII filter
 │       └── red-team-review.md  Entry points, attack scenarios (injection, jailbreak, leak, tool misuse), break-fix log, re-test sign-off
 ├── system/
-│   ├── BOOT-PROMPT.md  Master paste-anywhere prompt: installs the operating loop, gate discipline, evidence-first rules, a compact manifest of every file so the model asks by exact path, and the team of roles into any chat model with no file access assumed; sized for ChatGPT or Gemini custom instructions
-│   └── ROLE-PROMPTS.md  Five labeled, individually copyable role blocks: Discovery Researcher, PRD Writer, Architect, Red Teamer, Program Lead; each block names the repo templates it drives so a chat user can paste file contents on request
+│   ├── BOOT-PROMPT.md  Master paste-anywhere prompt: installs the operating loop, gate discipline, evidence-first rules, the Conductor mode with state-in-conversation, a compact manifest of every file so the model asks by exact path, and the team of roles into any chat model with no file access assumed
+│   └── ROLE-PROMPTS.md  Six labeled, individually copyable blocks: the Conductor, then Discovery Researcher, PRD Writer, Architect, Red Teamer, Program Lead; each block names the repo templates it drives so a chat user can paste file contents on request
 ├── knowledge, templates cross-links: see section 3
 ├── skills/
+│   ├── conductor/
+│   │   ├── SKILL.md  Entry skill for the stage-gated interviewer; the full protocol lives in os/CONDUCTOR.md, the triggering in CLAUDE.md and AGENTS.md
+│   │   └── questions/
+│   │       ├── README.md  Bank file format and the five-class evidence ladder
+│   │       ├── discover.md  Seven core questions, each with evidence class, cross-examination trigger, and target template field
+│   │       ├── define.md  Eight core questions, opening with the WHICH-DOCUMENT weight tree
+│   │       ├── design.md  Seven core questions, including the twice-asked premortem entry
+│   │       ├── build.md  Six core questions against acceptance criteria, edge cases, and the red team
+│   │       ├── deliver.md  Six core questions, rollback proven and the gtm-plan set
+│   │       └── operate.md  Six core questions, the Gate 1 signal measured and the persist-pivot-sunset decision
+│   ├── product-analyst/SKILL.md  DISCOVER and OPERATE research engine: decompose, three-lens search, one evidence note per source with a verbatim quote, named tensions, committed positions, one adversarial pass before handoff
 │   ├── ai-prd/SKILL.md  Drafts a PRD for an AI-powered feature using templates/definition/prd.md plus the templates/ai/ overlay; two-field frontmatter per section 3
 │   ├── roadmap-builder/SKILL.md  Builds and stress-tests a roadmap from templates/planning/roadmap.md and okrs.md
 │   ├── program-premortem/SKILL.md  Runs a premortem against the risk register and dependency register before Gate 3
@@ -151,7 +169,7 @@ product-manager-OS/
 │   └── hermes-agent.md  Hermes-compatible skill file: two-field frontmatter, request routing table, non-negotiable invariants, key facts, escalation; routes Hermes task types onto this repo's tiers and templates
 ├── routing/
 │   ├── omniroute.config.json  Tiered config: extraction -> auto/cheap, drafting -> auto/coding, judgment -> auto/reasoning:pro; baseUrl from OMNIROUTE_BASE_URL, key from OMNIROUTE_API_KEY
-│   └── README.md  OmniRoute setup (npm install -g omniroute, dashboard at localhost:20128), the OpenAI-compatible endpoint contract, tier doctrine (which pipeline work goes to which tier and why), fixed-fallback combo recipe, and the litellm note for Hermes users
+│   └── README.md  OmniRoute setup (npm install -g omniroute, dashboard at localhost:20128), the OpenAI-compatible endpoint contract, tier doctrine (which pipeline work goes to which tier and why), the Conductor's per-stage tier table, fixed-fallback combo recipe, and the litellm note for Hermes users
 ├── modules/
 │   └── regulated/
 │       ├── README.md  Names the standalone regulated-ai-prd repository as the canonical source, states the byte-exact policy, explains when this overlay activates
@@ -167,7 +185,8 @@ product-manager-OS/
     ├── README.md  Index of worked examples and how each was produced with the templates
     ├── expense-copilot-discovery.md  templates/discovery/discovery-document.md filled in for a fictional expense-report copilot
     ├── expense-copilot-prd.md  templates/definition/prd.md filled in for the same fictional product, cross-referencing the discovery doc, with the trade-offs accepted at Gate 2 left visible
-    └── checkout-modernization-brownfield.md  The templates attached mid-flight to a live legacy checkout: a reconstructed Gate 1 labeled as such, a coupling written into the data model, and one decision reversed with both log entries kept
+    ├── checkout-modernization-brownfield.md  The templates attached mid-flight to a live legacy checkout: a reconstructed Gate 1 labeled as such, a coupling written into the data model, and one decision reversed with both log entries kept
+    └── conductor-transcript.md  A fictional interview across two stages: one full cross-examination shown push by push, and one advance refused at a gate
 ```
 
 ## 3. Cross-link conventions

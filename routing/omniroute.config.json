@@ -38,6 +38,12 @@
     }
   },
   "taskMap": {
+    "skill-conductor-state-transcription-and-skip-lookups": "extraction",
+    "skill-conductor-section-drafts-from-accepted-answers": "drafting",
+    "skill-conductor-cross-examination": "judgment",
+    "skill-conductor-gate-checklist-evaluation": "judgment",
+    "skill-product-analyst-source-notes": "extraction",
+    "skill-product-analyst-reconcile-before-handoff": "judgment",
     "template-field-extraction": "extraction",
     "backlog-normalization": "extraction",
     "source-tagging-and-summary": "extraction",

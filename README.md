@@ -6,6 +6,21 @@ Six stages, six gates, a knowledge layer with named attribution, fill-in templat
 
 Every prompt here is a file you can read. There is no wrapper, no account, and no hosted prompt you cannot inspect: this is a versioned prompt library in a git repository, which means you can fork it, diff it, and see exactly what changed between one version and the next. The four ways to run it are below, and the first one uses no model at all.
 
+## Say "start"
+
+The fastest way in is a conversation:
+
+```bash
+git clone https://github.com/RizwanZafaris/product-manager-OS.git
+cd product-manager-OS
+claude        # or any agent CLI that reads AGENTS.md
+> start
+```
+
+That word wakes the Conductor, the interviewer defined in [os/CONDUCTOR.md](os/CONDUCTOR.md). It asks before it writes. One question at a time, each with a recommended default and lettered options, so most answers cost you one word. A vague answer gets cross-examined, at most twice, then parked visibly instead of accepted quietly. Every accepted answer lands immediately in your product workspace: in the template field it belongs to, and in `products/<name>/STATE.md`, the file that lets any later session, in any runtime, pick up exactly where you stopped. Say "resume" or "where are we" and it does.
+
+The Conductor refuses to advance a stage until the stage's gate checklist passes on evidence, and it never signs; a named human does. No agent CLI at hand? The boot prompt in [system/BOOT-PROMPT.md](system/BOOT-PROMPT.md) runs the same interview in any chat model: you paste STATE.md at session start and save the updated sections it dictates back. And nothing below requires the Conductor at all; everything under it is the same template system, fillable with a pencil.
+
 ## The problem, first
 
 A PM's tools are scattered. Discovery lives in one product, specs in another, delivery in a tracker, and judgment nowhere. The strongest open systems each own one segment: spec-kit owns spec-to-code, product-os owns discovery, BMAD owns agentic build. None of them chains discovery through requirements, architecture, delivery, and post-launch verification in one system. None carries a regulated overlay, a canon knowledge layer with named attribution, tiered model routing, or a whole-tree consistency gate.
@@ -45,9 +60,9 @@ The loop is defined in [os/OPERATING-LOOP.md](os/OPERATING-LOOP.md), the gate ch
 
 **Method 1: bare templates, no model.** Clone the repository, copy the template for the artifact you need, fill it in with any editor. The gates are checklists a human works through. Nothing in `knowledge/` or `templates/` depends on any AI layer existing.
 
-**Method 2: any chat model.** Paste [system/BOOT-PROMPT.md](system/BOOT-PROMPT.md) into ChatGPT, Gemini, Claude, or a free model. It installs the operating loop, the gate discipline, the evidence-first rules, and the team of roles with no file access assumed. When the session needs a specific template or role, paste the contents of the file it names, or a role block from [system/ROLE-PROMPTS.md](system/ROLE-PROMPTS.md). Whenever a prompt needs a file, it asks for it by exact repo path; the role blocks in [system/ROLE-PROMPTS.md](system/ROLE-PROMPTS.md) name every file they drive.
+**Method 2: any chat model.** Paste [system/BOOT-PROMPT.md](system/BOOT-PROMPT.md) into ChatGPT, Gemini, Claude, or a free model. It installs the operating loop, the gate discipline, the evidence-first rules, the team of roles, and the Conductor mode, with no file access assumed. When the session needs a specific template or role, paste the contents of the file it names, or a role block from [system/ROLE-PROMPTS.md](system/ROLE-PROMPTS.md). Whenever a prompt needs a file, it asks for it by exact repo path; the role blocks in [system/ROLE-PROMPTS.md](system/ROLE-PROMPTS.md) name every file they drive.
 
-**Method 3: agent CLIs.** Claude Code reads [CLAUDE.md](CLAUDE.md), Codex and other agent runtimes read [AGENTS.md](AGENTS.md), and both pick up the procedures in `skills/` and the instruction files in `agents/`. Open the repository in the CLI and ask for the artifact you need; the router maps the request to the right skill and template.
+**Method 3: agent CLIs.** Claude Code reads [CLAUDE.md](CLAUDE.md), Codex and other agent runtimes read [AGENTS.md](AGENTS.md), and both pick up the procedures in `skills/` and the instruction files in `agents/`. Say "start" for the conducted interview above, or ask for the artifact you need directly; the router maps the request to the right skill and template.
 
 **Method 4: API-driven with OmniRoute.** Point [routing/omniroute.config.json](routing/omniroute.config.json) at an OmniRoute instance and each pipeline stage calls its tier: extraction on a cheap tier, drafting on a coding tier, judgment on a frontier reasoning tier. Setup and the tier doctrine are in [routing/README.md](routing/README.md).
 
@@ -115,7 +130,7 @@ This is stated because the failure is common enough to plan for: systems in this
 
 ## Scope and sunset
 
-The knowledge layer covers ten canonical methods with named attribution and an index of eighteen more; it grows slowly and only with attribution. The regulated overlay covers exactly what its source repository covers, no more, and inherits that repository's currency policy: citations carry verification dates, and staleness fails the gate rather than looking maintained. If maintenance of this repository stops, an ARCHIVED notice will go at the top of this README with the date, instead of the repository quietly rotting.
+The knowledge layer covers eleven canonical methods with named attribution and an index of seventeen more; it grows slowly and only with attribution. The regulated overlay covers exactly what its source repository covers, no more, and inherits that repository's currency policy: citations carry verification dates, and staleness fails the gate rather than looking maintained. If maintenance of this repository stops, an ARCHIVED notice will go at the top of this README with the date, instead of the repository quietly rotting.
 
 ## License
 
