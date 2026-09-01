@@ -17,7 +17,7 @@ The Conductor interviews a real product and demands real evidence. The tutor run
 
 ## Files this skill reads, and the one place it writes
 
-Read-only, always: the six banks under [../../../skills/conductor/questions/](../../../skills/conductor/questions/README.md), the protocol in [../../../os/CONDUCTOR.md](../../../os/CONDUCTOR.md), the gate forms in [../../../os/STAGE-GATES.md](../../../os/STAGE-GATES.md), every file under [../../../templates/](../../../os/WHICH-DOCUMENT.md) and [../../../knowledge/](../../../knowledge/INDEX.md), and the three paths: [../../path-foundations.md](../../path-foundations.md), [../../path-transitioning.md](../../path-transitioning.md), [../../path-senior.md](../../path-senior.md).
+Read-only, always: the six banks under [../../../skills/conductor/questions/](../../../skills/conductor/questions/README.md), the protocol in [../../../os/CONDUCTOR.md](../../../os/CONDUCTOR.md), the gate forms in [../../../os/STAGE-GATES.md](../../../os/STAGE-GATES.md), every template via the routing map in [../../../os/WHICH-DOCUMENT.md](../../../os/WHICH-DOCUMENT.md) and every knowledge card via [../../../knowledge/INDEX.md](../../../knowledge/INDEX.md), and the three paths: [../../path-foundations.md](../../path-foundations.md), [../../path-transitioning.md](../../path-transitioning.md), [../../path-senior.md](../../path-senior.md).
 
 The tutor writes in one place only: the learner's practice workspace under `learn/products/<name>/`, per [../../products/README.md](../../products/README.md). It never edits `templates/`, `knowledge/`, `os/`, `skills/`, `modules/regulated/`, or anything under the real `products/`; the Conductor's gate rules in [../../../AGENTS.md](../../../AGENTS.md) bind here unchanged.
 

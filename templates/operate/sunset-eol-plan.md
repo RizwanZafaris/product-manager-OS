@@ -73,7 +73,7 @@
 ## 6. Decommission steps
 
 - [ ] Billing stopped and final invoices handled: [owner]
-- [ ] Integrations and API consumers notified and disconnected (see ../architecture/integrations.md register): [owner]
+- [ ] Integrations and API consumers notified and disconnected (see the [integrations register](../architecture/integrations.md)): [owner]
 - [ ] Infrastructure torn down, recurring costs at zero: [owner, verified how]
 - [ ] Monitoring and alerts retired, on-call rotation updated: [owner]
 - [ ] Public docs, marketing pages, and app store listings removed or archived: [owner]
@@ -82,7 +82,7 @@
 ## 7. Post-sunset check
 
 - On [YYYY-MM-DD, 30 days after shutdown]: data deletion verified, costs confirmed at zero, by [name]
-- What this product taught us, one paragraph, logged in ../execution/decision-log.md: [link to the entry]
+- What this product taught us, one paragraph, logged in the [decision log](../execution/decision-log.md): [link to the entry]
 
 ## Exit gate
 

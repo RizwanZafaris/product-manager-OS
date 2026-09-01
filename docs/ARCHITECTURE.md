@@ -70,7 +70,7 @@ product-manager-OS/
 │   ├── WHICH-DOCUMENT.md  Picks the artifact weight (logged decision, ticket, one-pager, PRD, BRD+PRD+FRD stack) by stakes, audience, and reversibility
 │   └── PRODUCT-WORKSPACE.md  The products/<name>/ folder convention: where filled artifacts accumulate as the product's memory, why it is a folder and not software, and STATE.md's place in the layout
 ├── knowledge/
-│   ├── INDEX.md  All 11 cards plus 17 one-line index entries (Mom Test, ICE, WSJF, HEART, 7 Powers, SCR, and the rest), each with originator and year
+│   ├── INDEX.md  All 11 cards plus 18 one-line index entries (Mom Test, ICE, WSJF, HEART, 7 Powers, SCR, and the rest), each with originator and year
 │   ├── cagan-product-teams.md  Empowered teams, outcomes over output, four risks; attribution to Marty Cagan's Inspired and Empowered; trap: the label without the accountability
 │   ├── torres-continuous-discovery.md  Weekly touchpoints and the opportunity solution tree; attribution to Teresa Torres; trap: a stale tree
 │   ├── jobs-to-be-done.md  Progress-based competition framing; attribution to Ulwick, Christensen, Moesta; trap: job stories without interview evidence
