@@ -4,7 +4,7 @@
 
 Six stages, six gates, a knowledge layer with named attribution, fill-in templates for every artifact a product needs, and optional AI layers stacked on top. It is a document system first and an AI system second. Every template works with a text editor and a pencil. The AI layers, boot prompts, skills, agents, and model routing, are accelerants on a format that stands without them.
 
-Every prompt here is a file you can read. There is no wrapper, no account, and no hosted prompt you cannot inspect: this is a versioned prompt library in a git repository, which means you can fork it, diff it, and see exactly what changed between one version and the next. The four ways to run it are below, and the first one uses no model at all.
+Every prompt here is a file you can read. There is no wrapper, no account, and no hosted prompt you cannot inspect: this is a versioned prompt library in a git repository, which means you can fork it, diff it, and see exactly what changed between one version and the next. The four ways to run it are below, and the first one uses no model at all. And one more thing you can inspect: this repository was built with Claude Code by a working payments CPO. Every commit trailer says so, and every prompt it produced is a file you can read and argue with.
 
 ## Say "start"
 
@@ -23,7 +23,7 @@ The Conductor refuses to advance a stage until the stage's gate checklist passes
 
 ## The problem, first
 
-A PM's tools are scattered. Discovery lives in one product, specs in another, delivery in a tracker, and judgment nowhere. The strongest open systems each own one segment: spec-kit owns spec-to-code, product-os owns discovery, BMAD owns agentic build. None of them chains discovery through requirements, architecture, delivery, and post-launch verification in one system. None carries a regulated overlay, a canon knowledge layer with named attribution, tiered model routing, or a whole-tree consistency gate.
+A PM's tools are scattered. Discovery lives in one product, specs in another, delivery in a tracker, and judgment nowhere. The strongest open systems each own one segment: [spec-kit](https://github.com/github/spec-kit) owns spec-to-code, [product-os](https://github.com/topics/product-os) owns discovery, [BMAD](https://github.com/bmad-code-org/BMAD-METHOD) owns agentic build. None that I found (as of September 2026) chains discovery through requirements, architecture, delivery, and post-launch verification in one system. None carries a regulated overlay, a canon knowledge layer with named attribution, tiered model routing, or a whole-tree consistency gate.
 
 This repository is the whole loop in one place, and it works without any AI at all. If the model is free-tier, offline, or wrong, the artifacts and gates still function. That is a design rule here, not a hope: graceful degradation is structural.
 
@@ -68,7 +68,7 @@ The loop is defined in [os/OPERATING-LOOP.md](os/OPERATING-LOOP.md), the gate ch
 
 ## Quickstart
 
-Ten lines, no tooling.
+No tooling, no dependencies.
 
 ```bash
 git clone https://github.com/RizwanZafaris/product-manager-OS.git
@@ -77,8 +77,9 @@ cd product-manager-OS
 cat os/OPERATING-LOOP.md            # the six stages and what each gate demands
 cat os/WHICH-DOCUMENT.md            # how much document this decision deserves
 
-cp templates/discovery/discovery-document.md my-product-discovery.md
-# Fill every field with any editor. Angle-bracket fields are the blanks.
+mkdir -p products/my-product
+cp templates/discovery/discovery-document.md products/my-product/discovery-document.md
+# Fill every field with any editor. Square-bracket fields are the blanks.
 # Delete any section you do not need; an empty section is worse than no section.
 
 cat os/STAGE-GATES.md               # take the filled document to Gate 1
@@ -116,7 +117,7 @@ Two knowledge sub-layers answer the questions that arrive before any template do
 
 This repository does not assume a US software company. Discovery and compliance templates ask for markets, jurisdictions, and locales as first-class fields, the planning and roadmap material treats a regulator's calendar as something that outranks a RICE score, and the module below exists because a large share of the world's product work ships into a market with a supervisor in it.
 
-`modules/regulated/` is a verbatim import of the regulated AI PRD system: a section-0 regulatory overlay, eval-set acceptance criteria, guardrails with owners, and its own review gate. Its canonical source is the standalone regulated-ai-prd repository (pre-release; it opens publicly at its v0.1 tag). The citation-bearing files inside it are byte-exact copies, pinned by hash in the quality gate, and are never edited in this repository. Fixes happen in the source repo and are re-copied here. The overlay activates at Gate 2 and Gate 5 whenever the product operates under a financial or data regulator; see [modules/regulated/README.md](modules/regulated/README.md).
+`modules/regulated/` is a verbatim import of the regulated AI PRD system: a section-0 regulatory overlay, eval-set acceptance criteria, guardrails with owners, and its own review gate. Its canonical source is the standalone regulated-ai-prd repository, which opens publicly at its v0.1 tag; until then the copies in this tree are the full readable reference, byte-exact and pinned by hash in the quality gate, never edited here. Fixes happen in the source repo and are re-copied. The overlay activates at Gate 2 and Gate 5 whenever the product operates under a financial or data regulator; see [modules/regulated/README.md](modules/regulated/README.md).
 
 ## Quality gate
 

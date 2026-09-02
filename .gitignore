@@ -8,4 +8,4 @@ node_modules/
 
 # Practice and product workspaces stay out of the repo
 learn/products/*/
-products/
+/products/

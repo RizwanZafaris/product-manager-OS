@@ -354,11 +354,21 @@ HEADER_KEYS = ("Stage:", "Knowledge:", "Skill:")
 
 
 def tracked_files(root):
-    """Every file in the tree except VCS internals and caches."""
+    """Every file in the tree except VCS internals, caches, and user workspaces.
+
+    products/ and learn/products/ hold a user's own filled drafts (gitignored);
+    the gate judges the shipped system, never someone's work in progress. The
+    two workspace README.md files stay in scope because they ship with the repo.
+    """
     skip = {".git", "__pycache__", ".venv", "node_modules"}
     for path in sorted(root.rglob("*")):
         if path.is_file() and not (skip & set(path.parts)) \
                 and not path.name.startswith("._"):
+            rel = path.relative_to(root).parts
+            in_workspace = (rel[:1] == ("products",) and rel[1:] != ("README.md",)) \
+                or (rel[:2] == ("learn", "products") and rel[2:] != ("README.md",))
+            if in_workspace:
+                continue
             yield path
 
 

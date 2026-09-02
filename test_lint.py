@@ -283,3 +283,19 @@ class OsTreeGateTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class WorkspaceExclusion(unittest.TestCase):
+    """A user's filled draft in products/ must never fail the OS gate."""
+
+    def test_user_workspace_draft_is_skipped(self):
+        import lint, pathlib, shutil
+        ws = pathlib.Path("products/_gate_test")
+        ws.mkdir(parents=True, exist_ok=True)
+        try:
+            (ws / "draft.md").write_text("[broken](nowhere.md) and TBD\n")
+            names = [str(p) for p in lint.tracked_files(pathlib.Path("."))]
+            self.assertFalse(any("_gate_test" in n for n in names))
+            self.assertTrue(any(n.endswith("learn/products/README.md") for n in names))
+        finally:
+            shutil.rmtree(ws)
