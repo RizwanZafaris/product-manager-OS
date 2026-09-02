@@ -69,6 +69,22 @@
 |---|---|---|---|
 | | | | |
 
+## Cadence
+
+<!-- Practice note, not a section to fill. This document is the quarterly
+     instrument; do not clone it weekly. The reporting rhythm underneath it:
+
+     Weekly: a short async narrative to stakeholders. Three parts, a few sentences
+     of narrative on what changed, the 3 to 5 commitments for next week, and the
+     task-level detail below a fold for whoever wants it. Written, not presented;
+     a weekly meeting to read a page aloud is a page tax.
+
+     Monthly: a live review by exception only. Rows on track get a line and no
+     airtime; the meeting spends itself on what moved off plan and the decisions
+     that reopens.
+
+     Quarterly: this document, in front of the room that can act on section 2. -->
+
 ## Exit gate
 
 This update is done when:

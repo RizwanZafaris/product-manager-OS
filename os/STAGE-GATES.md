@@ -135,6 +135,8 @@ Closes DELIVER. Feeds OPERATE.
 
 **Inputs on the table:** UAT results against `../templates/delivery/uat-plan.md`, the completed `../templates/delivery/release-readiness.md`, and the rollback evidence.
 
+**Run of show.** Chair: <the release owner, or a delegate who can say no-go>. Attendees: the sign-off owners below, plus on-call and support leads. Pre-read: the readiness doc and UAT results circulate at least 48 hours ahead, and the gate opens with questions, not a walkthrough; unread pre-reads reschedule the gate. Demo, not slides: every readiness claim is shown in the release candidate itself. Outcomes are GO, NO-GO, or CONDITIONAL GO, and a conditional go without a named owner and close-by date per condition is a no-go wearing a smile.
+
 - [ ] UAT exit criteria are met, with real users or their named proxies, and every severity-1 defect is closed
 - [ ] The rollback was actually performed in a pre-production environment, and the time to roll back is recorded
 - [ ] Known issues going out with the release are listed in the readiness doc, each with a workaround or an accepted-risk sign-off
@@ -144,7 +146,7 @@ Closes DELIVER. Feeds OPERATE.
 - [ ] **AI overlay:** guardrails verified live in the release candidate; the kill switch was tested, not just designed
 - [ ] **Regulated overlay:** the section 0 answers from Gate 2 are still true of the artifact that ships (model version, vendor terms, data residency, disclosures); any drift is written up and re-signed by the regulatory owner
 
-**Decision:** GO / NO-GO, because: <one paragraph>
+**Decision:** GO / NO-GO / CONDITIONAL GO with <each condition, its owner, and its close-by date>, because: <one paragraph>
 
 | Sign-off | Name | Date |
 |---|---|---|

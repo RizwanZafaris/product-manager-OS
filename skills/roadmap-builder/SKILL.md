@@ -40,19 +40,32 @@ RICE is Reach x Impact x Confidence / Effort, originated by Sean McBride at Inte
 - **Effort**: person-months, including compliance and operational readiness effort, which is where payments estimates usually lie.
 - Compliance items and hard mandates do NOT get RICE-ranked against features. They get a deadline lane. Ranking a mandate against a revenue feature is how you get to explain to a regulator why the feature won.
 
-### 3. Sequence with the three overlays
+### 3. Have the stakeholder conversations
+
+Scores create losers, and a loser who first learns their fate in the review becomes an enemy of the whole sequence. Before sequencing, walk each requesting stakeholder through their item's score, arithmetic visible. For the items that lost, use the saying-no moves from [../../knowledge/roles/triad-decision-rights.md](../../knowledge/roles/triad-decision-rights.md): ask them to stack-rank their own P0s, and ask which outcome the item moves, by how much, and how you would both know. Two outcomes are acceptable: the stakeholder surfaces evidence that changes a score (log the change and the evidence), or they understand why the item waits. Seniority changes no score; only evidence does.
+
+### 4. Sequence with the three overlays
 
 - **Dependency overlay**: for each item, list what must exist first (technical, vendor, license, data), and record each in the dependency register so it gets governed weekly rather than remembered at kickoff. An item with an unbuilt dependency moves after it, whatever its score.
 - **Regulatory calendar overlay**: hard external dates pin items to quarters regardless of score. Mark each pinned item with its date and the cost of missing it.
 - **Capacity overlay**: fill quarters to 80% of stated capacity, never 100%. The remaining 20% is incident response, review findings and discovery. It WILL be used.
 
-### 4. Attach the program spine
+### 5. Attach the program spine
 
 For each quarter: entry gate (what must be true to start), exit gate (what must be demonstrably true to call it done, a number, not a demo), and the top three risks with owner and trigger. A roadmap without gates is a wish list with dates.
 
-### 5. Write the defense page
+### 6. Write the defense page
 
 One page, three parts: the five highest-scored items NOT funded and the one-line reason; the items funded DESPITE lower scores (pinned by mandate or dependency) and why; what would change the sequence (the two assumptions doing the most work).
+
+## Planning as a process
+
+A roadmap built in one sitting is a document; a roadmap the org believes is the residue of a process people were part of. Run the quarter's planning as a three-week campaign:
+
+- **Strategy session, three weeks before the quarter starts.** Leadership restates the strategy sentence and the metric the year is judged on, so teams score against the actual target instead of last quarter's memory. Thirty minutes, written output.
+- **Team breakouts, week two.** Each team drafts its slice: normalized items, scores with arithmetic, and its dependency list. Breakouts, not one big room, because a room of forty produces the loudest voice's roadmap.
+- **Capacity negotiation, week three.** Slices meet stated capacity and the cuts happen here, in the room, with the stakeholder conversations from step 3 already held. A cut made in a negotiation is owned; a cut discovered in the published roadmap is appealed.
+- **Separate the review forums afterward.** The QBR scores last quarter's commitments, number versus number; the initiative review inspects one item's health in depth. One meeting asked to do both does neither, and the roadmap stops being checked against anything.
 
 ## Output format
 
