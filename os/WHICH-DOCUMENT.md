@@ -63,6 +63,7 @@ Upstream, before any single decision is worth weighing:
 | Nobody can say in one sentence why a buyer picks you over the named alternative | [positioning.md](../templates/planning/positioning.md) |
 | Price came from a meeting, not a document | [pricing-packaging.md](../templates/planning/pricing-packaging.md) |
 | An idea wants discovery time and has not earned it | [opportunity-assessment.md](../templates/discovery/opportunity-assessment.md), the go or no-go before the weight question even applies |
+| A partnership is on the table and nobody has written the go or no-go | [partner-integration-brief.md](../templates/planning/partner-integration-brief.md), at one-pager weight; the decision lands in the decision log |
 | Research happened and lives in seven heads | [discovery-synthesis.md](../templates/discovery/discovery-synthesis.md) |
 | You know who the user is but not the progress they are hiring for | [jtbd-spec.md](../templates/discovery/jtbd-spec.md) |
 | The org decides by narrative, working backward from launch | [prfaq.md](../templates/definition/prfaq.md), a DEFINE front door at one-pager to PRD weight |

@@ -71,6 +71,12 @@ Skill: [drafting-agent](../../agents/drafting-agent.md)
 | Keyboard-only operation of core flows | [yes / no per flow] | |
 | Localization and language support | [languages, or "single language, revisit at [date]"] | |
 
+<!-- A buyer or agency asking for a VPAT/ACR wants the Accessibility Conformance
+     Report per Section508.gov; that is a compliance-team output built from this
+     table's audit artifact, not a template here. The market and locale list that
+     drives the localization row lives in the discovery document's target market
+     fields: ../discovery/discovery-document.md. -->
+
 ## 6. Data retention
 
 | Data class | Retention period | Deletion behavior | Driven by (policy, regulation, choice) | Owner |

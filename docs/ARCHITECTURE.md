@@ -87,7 +87,9 @@ product-manager-OS/
 │   │   ├── ladder.md  APM to CPO, each rung with owns/decides/docs-out/docs-in/success/failure-mode and stage variance
 │   │   ├── specializations.md  Core, PO (with the split-is-an-anti-pattern position), TPM, Growth, Platform, Data, AI PM
 │   │   ├── pmm-boundary.md  PM vs PMM decision table, frontloaded/backloaded framing, document ownership, the unwritten-boundary warning
-│   │   └── stage-shift.md  Startup vs scale-up vs enterprise per title; the title-inflation trap
+│   │   ├── stage-shift.md  Startup vs scale-up vs enterprise per title; the title-inflation trap
+│   │   ├── triad-decision-rights.md  Who decides value, usability, feasibility; the how-might-we-never-a-veto rule; the three-step dispute path ending in the decision log; the saying-no pattern
+│   │   └── pm-hiring-and-growth.md  Structured hiring loop (screens, project, blind-vote debrief) and the manager 1:1 and career conversation, both calibrated against ladder.md
 │   └── domains/
 │       ├── INDEX.md  Pick-your-domain table, the Conductor usage note, and the card-to-template-pack graduation rule
 │       ├── ecommerce.md · streaming-ott.md · gaming.md · saas-b2b.md · consumer-social.md  Digital-market cards
@@ -104,7 +106,9 @@ product-manager-OS/
 │   │   ├── evidence-note.md  One note per source: claim, verbatim load-bearing quote, source, dates, confidence; rows feed the STATE.md evidence ledger
 │   │   ├── opportunity-assessment.md  The Cagan ten-question go/no-go before an idea earns discovery time
 │   │   ├── discovery-synthesis.md  Research question, themes with verbatim quotes, confidence, implications; sits between the research plan and problem framing
-│   │   └── jtbd-spec.md  Job statement, four forces, tools hired and fired, switch barriers
+│   │   ├── jtbd-spec.md  Job statement, four forces, tools hired and fired, switch barriers
+│   │   ├── opportunity-solution-tree.md  Torres's structural tool as diffable tables: outcome, evidence-cited opportunity branches, solutions, assumption tests with this week's test
+│   │   └── service-blueprint.md  One scenario, eight to twelve actions: frontstage, backstage, support systems, line-of-visibility failure points each with an owner
 │   ├── definition/
 │   │   ├── brd.md  Business objectives, scope, stakeholders, constraints, ROI, sponsor sign-off
 │   │   ├── prd.md  Background, objectives, stories, functional scope, success metrics, out of scope, launch criteria; opens with the delete-unused-sections rule and the weight question
@@ -147,7 +151,9 @@ product-manager-OS/
 │   │   ├── win-loss-review.md  Outcome, primary and secondary reasons, competitor, quotes, action items
 │   │   ├── qbr-board-update.md  Metrics vs goal, wins, risks and asks, next-quarter roadmap, decisions needed
 │   │   ├── post-launch-review.md  Goal vs actual per launch, once per launch; the recurring instrument stays metrics-review.md
-│   │   └── sunset-eol-plan.md  EOL rationale, timeline, migration path, comms cascade, decommission steps
+│   │   ├── sunset-eol-plan.md  EOL rationale, timeline, migration path, comms cascade, decommission steps
+│   │   ├── incident-postmortem.md  Blameless per-incident review: facts, severity, timeline, quantified impact, systems-language causes with no names, corrective actions with owner and verification
+│   │   └── feedback-program.md  Charter for a standing feedback program (CAB, beta, panel): goal tied to a decision, recruiting, cadence, terms, intake routed to evidence notes, program exit criteria
 │   ├── planning/
 │   │   ├── roadmap.md  Now, Next, Later horizons with theme, initiative, target period, confidence, dependencies, status, and a pre-written expectations-not-commitments preamble to keep above the tables
 │   │   ├── okrs.md  Objective, three to five key results with baseline and target, scoring cadence
@@ -158,7 +164,8 @@ product-manager-OS/
 │   │   ├── product-strategy.md  Strategic context, where-to-play bets, differentiation, sequencing, key risks
 │   │   ├── north-star-metric.md  NSM definition, input-metric tree with owners, guardrails, review cadence
 │   │   ├── positioning.md  The Dunford chain: competitive alternatives, unique attributes, value and proof, target customer, market category
-│   │   └── pricing-packaging.md  Pricing model, tiers, value metric, competitive benchmark, discount rules, owner
+│   │   ├── pricing-packaging.md  Pricing model, tiers, value metric, competitive benchmark, discount rules, owner
+│   │   └── partner-integration-brief.md  One lean go/no-go file per partnership: the exchange, the evidenced user problem, the integration surface with owners on both sides, commercial shape and exit terms, dependency and data-sharing risks
 │   └── ai/
 │       ├── eval-spec.md  Scenario set, golden dataset, metrics, pass threshold, gate that blocks on failure
 │       ├── guardrails.md  Input and output constraints, blocked behaviors, enforcement point per rail
@@ -168,7 +175,8 @@ product-manager-OS/
 │       ├── multi-agent-workflow.md  Handoff sequence, shared state, escalation, termination, cost cap
 │       ├── prompt-structure.md  Versioned system prompt fields, guardrails, few-shot slots, change log
 │       ├── context-management.md  Context sources, token budget, priority order, staleness policy, PII filter
-│       └── red-team-review.md  Entry points, attack scenarios (injection, jailbreak, leak, tool misuse), break-fix log, re-test sign-off
+│       ├── red-team-review.md  Entry points, attack scenarios (injection, jailbreak, leak, tool misuse), break-fix log, re-test sign-off
+│       └── model-card.md  Intended use and out-of-scope, known limitations citing the eval spec and red-team review, performance with segment variance, data provenance, update policy and contact
 ├── system/
 │   ├── BOOT-PROMPT.md  Master paste-anywhere prompt: installs the operating loop, gate discipline, evidence-first rules, the Conductor mode with state-in-conversation, a compact manifest of every file so the model asks by exact path, and the team of roles into any chat model with no file access assumed
 │   └── ROLE-PROMPTS.md  Six labeled, individually copyable blocks: the Conductor, then Discovery Researcher, PRD Writer, Architect, Red Teamer, Program Lead; each block names the repo templates it drives so a chat user can paste file contents on request
@@ -189,7 +197,9 @@ product-manager-OS/
 │   ├── roadmap-builder/SKILL.md  Builds and stress-tests a roadmap from templates/planning/roadmap.md and okrs.md
 │   ├── program-premortem/SKILL.md  Runs a premortem against the risk register and dependency register before Gate 3
 │   ├── reg-gap-check/SKILL.md  Routes regulated questions into modules/regulated/ and refuses to invent regulator text
-│   └── feedback-synthesis/SKILL.md  Transcripts, tickets, and reviews to weighted themes with source counts and contradictions, landed in the discovery templates
+│   ├── feedback-synthesis/SKILL.md  Transcripts, tickets, and reviews to weighted themes with source counts and contradictions, landed in the discovery templates
+│   ├── product-review/SKILL.md  The weekly WIP walk: 48-hour pre-read, per-team 20-minute walk across pre-build, in-progress, and post-build work, decisions landed in the decision log same day
+│   └── escalation/SKILL.md  The stuck-decision brief (Situation, Impact, Urgency, Options, Recommendation, Ask) and the routing ladder with SLAs; outcomes feed the risk register and decision log
 ├── agents/
 │   ├── research-agent.md  Instruction file: gathers evidence, cites sources, never asserts beyond them; feeds discovery templates
 │   ├── drafting-agent.md  Instruction file: fills one named template per run, marks every unknown as an open field, never invents numbers

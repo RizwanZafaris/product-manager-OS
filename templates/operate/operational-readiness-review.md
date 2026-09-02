@@ -52,7 +52,9 @@
 ## 6. Checks derived from past incidents
 
 <!-- Mine your incident reviews, your team's and the wider org's. Each past incident
-     that could recur here becomes a concrete check with evidence. -->
+     that could recur here becomes a concrete check with evidence. The reviews you
+     are mining are filled copies of incident-postmortem.md in this directory; its
+     verified corrective actions are this table's best rows. -->
 
 | Past incident (yours or a neighboring team's) | Check added here | Evidence it holds | Verified date |
 |---|---|---|---|

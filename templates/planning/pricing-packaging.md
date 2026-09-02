@@ -75,6 +75,8 @@
 - **What triggers an off-cycle review:** [win-loss pattern, competitor move, value-metric drift]
 - **Next review:** [date, owner]
 
+A price change worth testing before committing runs as a pricing experiment through [experiment-brief.md](../operate/experiment-brief.md), decision rule and all, before it lands in section 2.
+
 ## Exit gate
 
 This pricing is fit to publish when:

@@ -99,7 +99,8 @@ os/            OPERATING-LOOP.md, STAGE-GATES.md, HOW-TO-RUN-A-PRODUCT.md,
 templates/discovery/    problem-framing.md, user-research-plan.md, personas.md,
                journey-map.md, competitive-analysis.md, discovery-document.md,
                evidence-note.md, opportunity-assessment.md,
-               discovery-synthesis.md, jtbd-spec.md
+               discovery-synthesis.md, jtbd-spec.md,
+               opportunity-solution-tree.md, service-blueprint.md
 templates/definition/   brd.md, prd.md, one-pager.md, frd.md, nfr.md,
                business-rules.md, assumptions-register.md,
                acceptance-criteria.md, prfaq.md
@@ -115,21 +116,24 @@ templates/delivery/     testing-strategy.md, edge-cases.md,
 templates/operate/      operational-readiness-review.md,
                compliance-impact-assessment.md, metrics-review.md,
                experiment-brief.md, win-loss-review.md, qbr-board-update.md,
-               post-launch-review.md, sunset-eol-plan.md
+               post-launch-review.md, sunset-eol-plan.md,
+               incident-postmortem.md, feedback-program.md
 templates/planning/     roadmap.md, okrs.md, first-90-days.md, gtm-plan.md,
                growth-plan.md, vision.md, product-strategy.md,
-               north-star-metric.md, positioning.md, pricing-packaging.md
+               north-star-metric.md, positioning.md, pricing-packaging.md,
+               partner-integration-brief.md
 templates/ai/           eval-spec.md, guardrails.md, hallucination-controls.md,
                human-approval-gates.md, agent-architecture.md,
                multi-agent-workflow.md, prompt-structure.md,
-               context-management.md, red-team-review.md
+               context-management.md, red-team-review.md, model-card.md
 knowledge/     INDEX.md plus eleven cards: cagan-product-teams.md,
                torres-continuous-discovery.md, jobs-to-be-done.md,
                kano-model.md, rice-prioritization.md, shape-up.md,
                north-star-metric.md, okrs.md, amazon-pr-faq.md,
                high-output-management.md, crossing-the-chasm.md
 knowledge/roles/        INDEX.md, ladder.md, specializations.md,
-               pmm-boundary.md, stage-shift.md
+               pmm-boundary.md, stage-shift.md, triad-decision-rights.md,
+               pm-hiring-and-growth.md
 knowledge/domains/      INDEX.md, ecommerce.md, streaming-ott.md, gaming.md,
                saas-b2b.md, consumer-social.md, healthtech.md, edtech.md,
                logistics.md, ai-products.md, fintech.md
@@ -137,7 +141,8 @@ learn/         INDEX.md, library.md, path-foundations.md,
                path-transitioning.md, path-senior.md, skills/tutor/SKILL.md,
                products/README.md
 skills/        conductor, product-analyst, ai-prd, roadmap-builder,
-               program-premortem, reg-gap-check, feedback-synthesis, each at
+               program-premortem, reg-gap-check, feedback-synthesis,
+               product-review, escalation, each at
                skills/<name>/SKILL.md; the conductor's question banks at
                skills/conductor/questions/ (README.md, discover.md,
                define.md, design.md, build.md, deliver.md, operate.md)

@@ -28,3 +28,5 @@ The tree is a living index of what the team currently believes, and it earns tha
 - [Discovery document](../templates/discovery/discovery-document.md)
 - [Journey map](../templates/discovery/journey-map.md)
 - [Discovery synthesis](../templates/discovery/discovery-synthesis.md)
+- [Opportunity solution tree](../templates/discovery/opportunity-solution-tree.md)
+- [Feedback program](../templates/operate/feedback-program.md)

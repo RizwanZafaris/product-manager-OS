@@ -23,7 +23,7 @@ Product Manager OS: a document system that runs one product through six stages (
 | `os/` | The loop, the gates, the walkthrough, the document-weight decision, the workspace convention | Read; quote gate checklists back to the user |
 | `knowledge/` | 11 method cards plus index, each with named attribution; `roles/` (the PM role map) and `domains/` (per-market cards) as sub-layers | Read; cite cards in drafts |
 | `templates/` | Fill-in artifacts for every stage, plus the `ai/` overlay | Copy out and fill; never edit the templates themselves |
-| `skills/` | Procedures: conductor (the stage-gated interviewer, protocol in `os/CONDUCTOR.md`), product-analyst (DISCOVER and OPERATE research), ai-prd, roadmap-builder, program-premortem, reg-gap-check, feedback-synthesis | Follow when routed |
+| `skills/` | Procedures: conductor (the stage-gated interviewer, protocol in `os/CONDUCTOR.md`), product-analyst (DISCOVER and OPERATE research), ai-prd, roadmap-builder, program-premortem, reg-gap-check, feedback-synthesis, product-review (the weekly WIP walk), escalation (the stuck-decision brief and routing ladder) | Follow when routed |
 | `agents/` | Role instruction files (see below) | Adopt one role per run |
 | `system/` | Boot and role prompts for file-less chat models | Read; not for you, you have file access |
 | `routing/` | OmniRoute tier config | Read when the user runs Method 4 |

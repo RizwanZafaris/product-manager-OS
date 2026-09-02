@@ -8,7 +8,7 @@ Eleven methods earned full cards because a template in this repository leans on 
 
 ## Role and domain layers
 
-Two sub-layers sit beside the method cards and answer different questions. [Roles](roles/INDEX.md) answers WHO: what each product title owns and decides, the IC and management fork, the PM and PMM boundary, and how the same title changes meaning as a company grows. [Domains](domains/INDEX.md) answers WHERE: what changes about the operating loop when the product lives in a specific market, in ten cards from ecommerce to a fintech pointer that routes to the regulated module. Both follow this layer's rules: named attribution, own words, and a stated reason to skip.
+Two sub-layers sit beside the method cards and answer different questions. [Roles](roles/INDEX.md) answers WHO: what each product title owns and decides, the IC and management fork, the PM and PMM boundary, the triad's decision rights and dispute path, the hiring and growth rituals, and how the same title changes meaning as a company grows. [Domains](domains/INDEX.md) answers WHERE: what changes about the operating loop when the product lives in a specific market, in ten cards from ecommerce to a fintech pointer that routes to the regulated module. Both follow this layer's rules: named attribution, own words, and a stated reason to skip.
 
 ## Cards
 

@@ -27,10 +27,13 @@ Eight rungs from Associate PM to Chief Product Officer. The ladder forks after S
 | [Specializations](specializations.md) | Core, Product Owner, Technical, Growth, Platform, Data, and AI PM: same ladder, different terrain |
 | [The PM and PMM boundary](pmm-boundary.md) | Which decisions and documents belong to product and which to product marketing |
 | [Stage shift](stage-shift.md) | What the same title means at a startup, a scale-up, and an enterprise, and the title-inflation trap |
+| [Triad decision rights](triad-decision-rights.md) | Who decides value, usability, and feasibility, and the written dispute path for the day two seats disagree |
+| [PM hiring and growth](pm-hiring-and-growth.md) | The structured hiring loop and the manager rituals that grow PMs against the ladder instead of flattering them |
 
 ## How to use this layer
 
 - **Hiring or being hired:** read [stage-shift.md](stage-shift.md) first, then [ladder.md](ladder.md). Most bad hires at senior levels are stage mismatches wearing a matching title.
-- **A boundary dispute:** read [pmm-boundary.md](pmm-boundary.md), then write the answer down in a [stakeholder map](../../templates/execution/stakeholder-map.md) and a [decision log](../../templates/execution/decision-log.md) entry. The dispute is rarely about the boundary; it is about the boundary being unwritten.
+- **A boundary dispute:** read [pmm-boundary.md](pmm-boundary.md), then write the answer down in a [stakeholder map](../../templates/execution/stakeholder-map.md) and a [decision log](../../templates/execution/decision-log.md) entry. The dispute is rarely about the boundary; it is about the boundary being unwritten. Inside the product triad, the dispute path is [triad-decision-rights.md](triad-decision-rights.md).
+- **Hiring a PM, or growing one:** [pm-hiring-and-growth.md](pm-hiring-and-growth.md), calibrated against [ladder.md](ladder.md) rungs, never against interview polish.
 - **Career planning:** [ladder.md](ladder.md) for altitude, [specializations.md](specializations.md) for terrain. Scope moves first and the title follows, usually by six to eighteen months.
 - **Running the loop:** the roles here are lenses on the same six stages in [os/OPERATING-LOOP.md](../../os/OPERATING-LOOP.md). No rung and no specialization is excused from gate discipline.

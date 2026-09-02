@@ -4,6 +4,7 @@ Stage: DELIVER, feeds Gate 5 (release readiness green) in [../../../os/STAGE-GAT
 Working handoffs: [../../../agents/drafting-agent.md](../../../agents/drafting-agent.md) drafts the release set and the go-to-market plan (workspace copy of [../../../templates/planning/gtm-plan.md](../../../templates/planning/gtm-plan.md)); [../../reg-gap-check/SKILL.md](../../reg-gap-check/SKILL.md) re-runs when the regulated overlay is active.
 Applies: [Crossing the Chasm](../../../knowledge/crossing-the-chasm.md), Geoffrey Moore's argument that early adopters and mainstream buyers purchase for different reasons, so the first cohort is a beachhead choice, not a broadcast. The Conductor names this method aloud when DELIVER-4 runs.
 Questions 4 and 7 through 10 are the go-to-market block; their accepted answers fill the gtm plan.
+Gate 5 itself now carries a run-of-show block in [../../../os/STAGE-GATES.md](../../../os/STAGE-GATES.md): chair, attendees, the 48-hour pre-read, demo-not-slides, and GO / NO-GO / CONDITIONAL GO with a named owner and close-by date per condition. The Conductor renders the checklist; the run of show governs the humans in the room.
 Format and ladder: [README.md](README.md).
 
 ### DELIVER-1: the rollback

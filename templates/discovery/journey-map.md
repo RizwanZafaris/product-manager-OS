@@ -34,7 +34,7 @@ Skill: manual
 | **Pain and friction** | [what breaks, slows, or worries] | | | | |
 | **Moments of truth** | [where the user decides to continue, abandon, or work around] | | | | |
 
-**Backstage note:** [what happens out of the user's sight at each painful stage: systems, teams, approvals. Often the fix lives backstage.]
+**Backstage note:** [what happens out of the user's sight at each painful stage: systems, teams, approvals. Often the fix lives backstage.] When one line stops being enough, map the worst scenario properly in a [service blueprint](service-blueprint.md).
 
 ## 2. Future journey
 

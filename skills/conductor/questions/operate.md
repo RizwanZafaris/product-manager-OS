@@ -4,6 +4,7 @@ Stage: OPERATE, feeds Gate 6 (outcomes verified) in [../../../os/STAGE-GATES.md]
 Working handoffs: metric evidence via the [product analyst](../../product-analyst/SKILL.md); the accepted answers fill [../../../templates/operate/metrics-review.md](../../../templates/operate/metrics-review.md) and the workspace copy of [../../../templates/planning/growth-plan.md](../../../templates/planning/growth-plan.md).
 Applies: the north star method in [../../../knowledge/north-star-metric.md](../../../knowledge/north-star-metric.md), one metric expressing delivered customer value, driven by input metrics teams can actually move. The Conductor names this method aloud when OPERATE-3 and OPERATE-5 run.
 Questions 5 and 7 through 9 are the growth block; their accepted answers fill the growth plan.
+Standing instruments, pointers only: a qualifying incident inside the review window gets its own [../../../templates/operate/incident-postmortem.md](../../../templates/operate/incident-postmortem.md) (OPERATE-4's operational numbers cite it when one exists), and a standing CAB, beta, or panel is chartered once in [../../../templates/operate/feedback-program.md](../../../templates/operate/feedback-program.md), its intake routed to evidence notes. No question below depends on either existing.
 Format and ladder: [README.md](README.md).
 
 ### OPERATE-1: the promised signal
