@@ -8,17 +8,45 @@ OmniRoute is a local router that fronts many model providers behind one OpenAI-c
 
 ```bash
 npm install -g omniroute
-omniroute start
+omniroute serve
 ```
 
-The dashboard runs at `http://localhost:20128`; the API serves OpenAI-compatible chat completions under `http://localhost:20128/v1`. Add your provider keys in the dashboard, then export two variables for anything that reads the config:
+The dashboard runs at `http://localhost:20128`; the API serves OpenAI-compatible chat completions under `http://localhost:20128/v1`. Connect at least one provider (dashboard, or `omniroute providers add <provider> --oauth` for the Claude Code, Codex and Gemini subscriptions; `omniroute providers add ollama-local --name ollama --credential ollama --provider-specific-data '{"baseUrl":"http://localhost:11434/v1"}'` for a local Ollama), create an API key on the dashboard's Endpoints page, then export two variables for anything that reads the config:
 
 ```bash
 export OMNIROUTE_BASE_URL="http://localhost:20128/v1"
-export OMNIROUTE_API_KEY="<the key you set in the OmniRoute dashboard>"
+export OMNIROUTE_API_KEY="<the key you created in the OmniRoute dashboard>"
 ```
 
 The config never contains a key or a resolved URL. It names the environment variables, and the caller resolves them at run time. If you find a literal credential in any config in this repository, that is a defect; the lint gate checks for common key patterns.
+
+### Verify the tiers before trusting them
+
+A tier name is a promise about which models may answer, not a guarantee that one is connected. On a fresh install only the keyless free provider is wired, so `auto/cheap`, `auto/coding` and `auto/reasoning` all resolve to the same free model, and `auto/reasoning:pro` answers `404 Combo has no executable targets` until a provider that serves a pro reasoning model is connected. Probe all three before running anything that matters:
+
+```bash
+for tier in auto/cheap auto/coding auto/reasoning:pro; do
+  printf '%-20s ' "$tier"
+  curl -s "$OMNIROUTE_BASE_URL/chat/completions" \
+    -H "Authorization: Bearer $OMNIROUTE_API_KEY" -H "Content-Type: application/json" \
+    -d "{\"model\":\"$tier\",\"messages\":[{\"role\":\"user\",\"content\":\"Reply with exactly: PONG\"}],\"max_tokens\":300}" \
+    | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("model") or d["error"]["message"])'
+done
+```
+
+Each line should print the concrete model that answered. If the judgment line prints the error instead, the tier has no executable target: connect a provider, or queue the judgment work (rule 3 below). Do not point the judgment tier at the free model to make the error go away; the config carries an explicit, off-by-default `keylessFallback` for people who accept that trade knowingly, and every artifact produced under it must say so.
+
+### Request headers that keep OmniRoute out of your prompts
+
+OmniRoute can rewrite prompts (RTK and Caveman compression), replay cached answers for temperature-0 requests (semantic cache) and inject conversational memory and skills. All three are useful for chat and harmful for this OS's extraction and transcription work, where a model is supposed to copy text verbatim and a replayed bad answer would repeat forever. The `endpoint.requestHeaders` block in the config lists the headers every caller should send:
+
+| Header | Value | Why |
+|---|---|---|
+| `x-omniroute-compression` | `off` | never let the router paraphrase a document the model must quote |
+| `X-OmniRoute-No-Cache` | `true` | the caller keeps its own exact-match cache; the router's semantic cache would serve one wrong answer to every similar prompt |
+| `x-omniroute-no-memory` | `true` | no memory or skill injection, so the prompt the model sees is the prompt you wrote |
+
+The response echoes `X-OmniRoute-Compression`, `X-OmniRoute-Cache` and `X-OmniRoute-Model`; log them next to every artifact.
 
 ## The endpoint contract
 

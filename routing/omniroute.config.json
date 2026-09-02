@@ -6,7 +6,17 @@
     "baseUrl": "${OMNIROUTE_BASE_URL}",
     "baseUrlDefault": "http://localhost:20128/v1",
     "apiKeyEnv": "OMNIROUTE_API_KEY",
-    "dashboard": "http://localhost:20128"
+    "dashboard": "http://localhost:20128",
+    "requestHeaders": {
+      "doc": "Send on every call. Compression would paraphrase text the model must quote verbatim; the router's semantic cache would replay one bad temperature-0 answer to every similar prompt; memory and skill injection change the prompt the model sees. The response echoes X-OmniRoute-Compression, X-OmniRoute-Cache and X-OmniRoute-Model; log them with each artifact.",
+      "x-omniroute-compression": "off",
+      "X-OmniRoute-No-Cache": "true",
+      "x-omniroute-no-memory": "true"
+    },
+    "verify": {
+      "doc": "A tier name is not proof a model is connected. Probe each tier with a one-line prompt before a run; a 404 'Combo has no executable targets' means no connected provider serves that tier. See routing/README.md, 'Verify the tiers before trusting them'.",
+      "expectedOnKeylessInstall": "auto/cheap, auto/coding and auto/reasoning answer from the free model; auto/reasoning:pro returns 404 until a provider with a pro reasoning model is connected"
+    }
   },
   "tiers": {
     "extraction": {
@@ -25,7 +35,13 @@
       "model": "auto/reasoning:pro",
       "purpose": "Work where being wrong is expensive and unverifiable locally: prioritization calls, premortems, red-team passes, gap analyses, gate reviews, anything a human will sign.",
       "temperature": 0.2,
-      "maxOutputTokens": 16384
+      "maxOutputTokens": 16384,
+      "requires": "A connected provider that serves a pro reasoning model (a Claude Code, Codex or Gemini subscription via OAuth, or an API-key provider). On a keyless install this tier returns 404 'Combo has no executable targets' and judgment work queues; it is never routed to the cheap tier silently.",
+      "keylessFallback": {
+        "enabled": false,
+        "model": "auto/reasoning",
+        "doc": "Opt-in only. When enabled, judgment work on an install with no pro provider runs on auto/reasoning (the free reasoning model) and every artifact produced must carry the line 'judgment tier: degraded, reviewed by a person before use'. Off by default because rule 3 in routing/README.md says queue, not downgrade."
+      }
     }
   },
   "fixedFallback": {
