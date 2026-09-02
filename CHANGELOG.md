@@ -16,7 +16,7 @@ Nothing yet.
 
 ## 0.4.0, 2026-09-02
 
-The gap-audit release: nine files a practitioner would actually reach for, plus four sharpened edits. A minor version because everything is added; no field renames, no file moves, and every edit is an appended section or column, so a document filled against 0.3.0 keeps working untouched.
+The gap-audit release: ten files a practitioner would actually reach for, plus four sharpened edits. A minor version because everything is added; no field renames, no file moves, and every edit is an appended section or column, so a document filled against 0.3.0 keeps working untouched.
 
 ### Added
 
