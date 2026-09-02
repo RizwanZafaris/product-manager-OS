@@ -30,3 +30,7 @@ The counterfeit north star is the number that only goes up: cumulative signups, 
 - [Growth plan](../templates/planning/growth-plan.md)
 - [North star sheet](../templates/planning/north-star-metric.md)
 - [Analytics instrumentation spec](../templates/delivery/analytics-instrumentation-spec.md)
+
+**Run it:** the worksheet form of this method lives in the [frameworks layer](../frameworks/README.md).
+
+- [North star input tree](../frameworks/metrics/north-star-input-tree.md), the tree, its owners, and the lead against lag split

@@ -22,9 +22,10 @@ Product Manager OS: a document system that runs one product through six stages (
 |---|---|---|
 | `os/` | The loop, the gates, the walkthrough, the document-weight decision, the workspace convention | Read; quote gate checklists back to the user |
 | `knowledge/` | 11 method cards plus index, each with named attribution; `roles/` (the PM role map) and `domains/` (per-market cards) as sub-layers | Read; cite cards in drafts |
+| `frameworks/` | 46 runnable worksheets in six groups (strategy, discovery, prioritization, metrics, pricing, execution), each with its scales, its arithmetic, and a skip line; faced by `frameworks/README.md` | Copy out and fill; run the stated arithmetic, never a variant of it |
 | `templates/` | Fill-in artifacts for every stage, plus the `ai/` overlay | Copy out and fill; never edit the templates themselves |
-| `skills/` | Procedures: conductor (the stage-gated interviewer, protocol in `os/CONDUCTOR.md`), product-analyst (DISCOVER and OPERATE research), ai-prd, roadmap-builder, program-premortem, reg-gap-check, feedback-synthesis, product-review (the weekly WIP walk), escalation (the stuck-decision brief and routing ladder) | Follow when routed |
-| `agents/` | Role instruction files (see below) | Adopt one role per run |
+| `skills/` | Procedures: conductor (the stage-gated interviewer, protocol in `os/CONDUCTOR.md`), product-analyst, ai-prd, roadmap-builder, program-premortem, reg-gap-check, feedback-synthesis, product-review, escalation, plus the v0.5 set: user-interview, competitive-intel, market-sizing, pricing-packaging, gtm-launch-planner, experiment-designer, metrics-tree, stakeholder-update, story-writer, okr-critic, strategy-critic, decision-memo, postmortem-facilitator, launch-readiness, pm-hiring | Follow when routed |
+| `agents/` | Role instruction files (see below) and the team protocol in `agents/TEAM.md` | Adopt one role per run; emit the handoff packet |
 | `system/` | Boot and role prompts for file-less chat models | Read; not for you, you have file access |
 | `routing/` | OmniRoute tier config | Read when the user runs Method 4 |
 | `modules/regulated/` | Byte-exact regulated overlay, hash-pinned | Read and quote ONLY. Never edit, reformat, or reword anything under it |
@@ -33,7 +34,7 @@ Product Manager OS: a document system that runs one product through six stages (
 
 ## Agent roles
 
-One role per run, from `agents/`:
+One role per run, from `agents/`. Who leads which stage, what one agent hands the next, and the escalation ladder are in [agents/TEAM.md](agents/TEAM.md); read it before running more than one agent on the same product.
 
 | File | Role | Hard rule |
 |---|---|---|
@@ -41,6 +42,13 @@ One role per run, from `agents/`:
 | [agents/drafting-agent.md](agents/drafting-agent.md) | Fills one named template per run | Marks every unknown as an open field; never invents numbers |
 | [agents/validation-agent.md](agents/validation-agent.md) | Checks a draft against its template and gate | Reports misses; does not rewrite |
 | [agents/red-team-agent.md](agents/red-team-agent.md) | Attacks a draft as a hostile stakeholder or attacker | Uses `templates/ai/red-team-review.md` when the product contains a model |
+| [agents/architect-agent.md](agents/architect-agent.md) | Options and trade-offs for DESIGN, drafts ADRs, names coupling risk | Presents options with costs; never picks silently |
+| [agents/acceptance-agent.md](agents/acceptance-agent.md) | Turns acceptance criteria into test cases and checks Gate 4 evidence exists | Reports missing evidence as missing; never assumes a pass |
+| [agents/release-manager-agent.md](agents/release-manager-agent.md) | Readiness, rollback, comms, and the go decision packet for DELIVER | Recommends; the named human decides |
+| [agents/analyst-agent.md](agents/analyst-agent.md) | Defines metrics precisely and reads funnels and cohorts for OPERATE | Never invents a number or a baseline |
+| [agents/growth-agent.md](agents/growth-agent.md) | Diagnoses the loop or funnel and ranks experiments by expected learning | Hands experiments to the experiment-designer skill, never runs them blind |
+| [agents/pmm-agent.md](agents/pmm-agent.md) | Positioning, messaging, launch narrative, sales enablement | Claims trace to evidence or become open fields |
+| [agents/estimator-agent.md](agents/estimator-agent.md) | Effort and capacity with reference classes and ranges | Ranges, never a single number; flags the work everyone forgets |
 | [agents/hermes-agent.md](agents/hermes-agent.md) | Routes Hermes task types onto this repo | Per its own routing table |
 
 ## Gate rules (non-negotiable)

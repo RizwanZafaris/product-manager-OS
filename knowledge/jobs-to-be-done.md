@@ -30,3 +30,7 @@ The format is seductive: "when [circumstance], I want to [motivation], so I can 
 - [Competitive analysis](../templates/discovery/competitive-analysis.md)
 - [JTBD spec](../templates/discovery/jtbd-spec.md)
 - [Win-loss review](../templates/operate/win-loss-review.md)
+
+**Run it:** the worksheet form of this method lives in the [frameworks layer](../frameworks/README.md).
+
+- [JTBD job map and forces](../frameworks/discovery/jtbd-job-map.md), the job in steps, with push, pull, anxiety, and habit weighed

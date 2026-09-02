@@ -26,3 +26,7 @@ The most copied part of Shape Up is the six-week cycle, because renaming sprints
 
 - [Roadmap](../templates/planning/roadmap.md)
 - [PRD](../templates/definition/prd.md)
+
+**Run it:** the worksheet form of this method lives in the [frameworks layer](../frameworks/README.md).
+
+- [Estimation sheet](../frameworks/execution/estimation-sheet.md), the appetite against estimate comparison, with ranges

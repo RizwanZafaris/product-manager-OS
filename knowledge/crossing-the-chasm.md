@@ -26,3 +26,7 @@ The most common failure is nominal compliance: a "beachhead" defined as "mid-mar
 
 - [GTM plan](../templates/planning/gtm-plan.md)
 - [Conductor DELIVER question bank](../skills/conductor/questions/deliver.md)
+
+**Run it:** the worksheet form of this method lives in the [frameworks layer](../frameworks/README.md).
+
+- [Positioning canvas](../frameworks/strategy/positioning-canvas.md), names the beachhead segment and the category it buys in

@@ -25,3 +25,7 @@ The most common corruption is quiet: "Launch the new onboarding flow" appears in
 - [OKRs](../templates/planning/okrs.md)
 - [Roadmap](../templates/planning/roadmap.md)
 - [Metrics review](../templates/operate/metrics-review.md)
+
+**Run it:** the worksheet form of this method lives in the [frameworks layer](../frameworks/README.md).
+
+- [North star input tree](../frameworks/metrics/north-star-input-tree.md), supplies the measurable inputs a key result can name
