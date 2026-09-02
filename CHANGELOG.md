@@ -17,6 +17,26 @@ The stability promise is stated in [README.md](README.md) and repeated here so i
 - `routing/README.md`: the install command is `omniroute serve` (there is no `start`); added the provider-connection commands, a tier probe that shows which concrete model answers each tier, and the request headers that stop OmniRoute's compression, semantic cache and memory injection from altering prompts that must be quoted verbatim. Found by running the config against a live OmniRoute: on a keyless install `auto/reasoning:pro` returns `404 Combo has no executable targets`, which the doctrine expects but the manual never said.
 - `routing/omniroute.config.json`: the judgment tier now states what it requires and carries an explicit, off-by-default `keylessFallback` instead of leaving a fresh install to fail silently; `endpoint.requestHeaders` and `endpoint.verify` record the headers and the probe. No tier model changed.
 
+## 0.4.1, 2026-09-02
+
+The directory-rendering fix. A code host renders `README.md` in a directory listing and nothing else, so a visitor who clicked into `templates/`, `skills/`, or `agents/` on the web met a bare file list with no framework around it, and the indexes that did exist were named `INDEX.md`, which nothing renders. A patch version: no field renamed, no file moved or deleted, and every link that resolved before still resolves.
+
+### Added
+
+- **Five directory faces.** `templates/README.md` catalogs all 73 templates, one table per stage directory, each row saying what the template is and when to reach for it, closing on the document-weight question. `skills/README.md` defines what a skill is here, lists the nine with a use-when and an entry point, and says how they load in an agent CLI versus a pasted chat session. `agents/README.md` separates identities from procedures and names who invokes each of the five role files. `system/README.md` and `os/README.md` do the same for the boot prompts and for the loop, the second with a read order for a first-timer.
+
+### Changed
+
+- **Four indexes became READMEs.** The content of `knowledge/INDEX.md`, `knowledge/roles/INDEX.md`, `knowledge/domains/INDEX.md`, and `learn/INDEX.md` moved into the `README.md` beside it, unchanged apart from links that pointed at a sibling index. Each `INDEX.md` stays behind as a two-line pointer, so a link written against the old name still lands somewhere useful.
+- **Prose links across the tree** now point at the README: the module map in `README.md`, which also links `templates/`, `skills/`, `agents/`, `system/`, `routing/`, and `os/` for the first time; the router rows in `CLAUDE.md` and `AGENTS.md`; the four manifest lines in `system/BOOT-PROMPT.md`; the domain line in the Gate 1 checklist; two conductor question banks; and the learn layer's own cross-links. The `Knowledge:` header field in the 47 templates that name the knowledge index still points at `knowledge/INDEX.md` on purpose, because that field has been copied into filled documents outside this repository and the pointer costs one line to follow.
+- **`docs/ARCHITECTURE.md`**: the file tree carries the nine new files, and cross-link convention 10 states the rule (every browsable directory carries a README, which is its rendered face) along with both exceptions above.
+
+### Known gaps
+
+- Nothing enforces the new convention. A directory added tomorrow with no README passes the gate; the rule lives in the architecture document and in review, not in `lint.py`.
+- `templates/README.md` carries a Stage/Knowledge/Skill header because the header gate applies to every file under `templates/`. A catalog wearing a template's header is slightly odd; the alternative was carving an exception into the detector, and a detector with exceptions is the start of a detector nobody trusts.
+- The catalog now describes the template set in a second place, alongside the tree in `docs/ARCHITECTURE.md`. Two descriptions of the same 73 files can drift, and only a human reading both will catch it.
+
 ## 0.4.0, 2026-09-02
 
 The gap-audit release: ten files a practitioner would actually reach for, plus four sharpened edits. A minor version because everything is added; no field renames, no file moves, and every edit is an appended section or column, so a document filled against 0.3.0 keeps working untouched.

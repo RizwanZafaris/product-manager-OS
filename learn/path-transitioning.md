@@ -26,7 +26,7 @@ Before step 1: create `learn/products/restow/`, copy the ledger below into `PROG
 
 ## Step 2: evidence, the unit of the job
 
-**Read:** the Mom Test entry in the [knowledge index](../knowledge/INDEX.md): past behavior over opinions, always. Then the evidence ladder in [the bank format](../skills/conductor/questions/README.md).
+**Read:** the Mom Test entry in the [knowledge index](../knowledge/README.md): past behavior over opinions, always. Then the evidence ladder in [the bank format](../skills/conductor/questions/README.md).
 **Study:** [the evidence note](../templates/discovery/evidence-note.md).
 **Do:** write three evidence notes for Restow: one from an invented support-ticket export, one from an invented customer interview, one from an invented analytics query. Each gets a claim, a load-bearing detail, a source ID, a date, and a confidence label; place each on the evidence ladder.
 **Done when:** the three notes sit on three different ladder rungs and you can say, per note, what the Conductor's challenge grammar would attack first.
@@ -47,7 +47,7 @@ Before step 1: create `learn/products/restow/`, copy the ledger below into `PROG
 
 ## Step 5: acceptance criteria and edges, your unfair advantage
 
-**Read:** the premortem entry in the [knowledge index](../knowledge/INDEX.md); you are about to run one in miniature against your own spec.
+**Read:** the premortem entry in the [knowledge index](../knowledge/README.md); you are about to run one in miniature against your own spec.
 **Study:** [acceptance criteria](../templates/definition/acceptance-criteria.md) and [edge cases](../templates/delivery/edge-cases.md).
 **Do:** write given-when-then criteria for the return-label flow, then the edge-case table: the damaged item, the return window expiring mid-flow, the order paid with a gift card, the customer with no printer. Your technical instincts are an advantage here; spend them on behavior, not architecture.
 **Done when:** every edge case has an expected behavior rather than "handle gracefully", and at least three criteria are negative cases, because the flow that only works when everything works does not work.

@@ -91,15 +91,15 @@ A filled example is one file away: [examples/expense-copilot-discovery.md](examp
 
 | Directory | Layer | Answers |
 |---|---|---|
-| [knowledge/](knowledge/INDEX.md) | Knowledge | WHY a method exists and when it misleads |
-| [knowledge/roles/](knowledge/roles/INDEX.md) | Roles | WHO each product title is: what it owns, decides, and how it fails |
-| [knowledge/domains/](knowledge/domains/INDEX.md) | Domains | WHERE the product plays: what a specific market changes about the loop |
-| `templates/` | Templates | WHAT to produce at each stage |
-| [learn/](learn/INDEX.md) | Learning | HOW to study the OS on fictional products before running a real one |
-| `skills/`, `agents/` | Skills and agents | HOW to produce it with an AI runtime |
-| `system/` | System prompts | WHO the model becomes |
-| `routing/` | Routing | WITH WHICH model each task runs |
-| `os/` | Operating loop | The six stages, the six gates, which document to write, and where filled artifacts live |
+| [knowledge/](knowledge/README.md) | Knowledge | WHY a method exists and when it misleads |
+| [knowledge/roles/](knowledge/roles/README.md) | Roles | WHO each product title is: what it owns, decides, and how it fails |
+| [knowledge/domains/](knowledge/domains/README.md) | Domains | WHERE the product plays: what a specific market changes about the loop |
+| [templates/](templates/README.md) | Templates | WHAT to produce at each stage, all 73 blanks cataloged by stage |
+| [learn/](learn/README.md) | Learning | HOW to study the OS on fictional products before running a real one |
+| [skills/](skills/README.md), [agents/](agents/README.md) | Skills and agents | HOW to produce it with an AI runtime: procedures, and the roles that run them |
+| [system/](system/README.md) | System prompts | WHO the model becomes |
+| [routing/](routing/README.md) | Routing | WITH WHICH model each task runs |
+| [os/](os/README.md) | Operating loop | The six stages, the six gates, which document to write, and where filled artifacts live |
 | [examples/](examples/README.md) | Worked examples | What a filled artifact looks like, greenfield and brownfield |
 | [modules/regulated/](modules/regulated/README.md) | Regulated overlay | What a regulated AI feature must answer before it ships |
 
@@ -107,11 +107,11 @@ Dependencies point downward only. Templates cite knowledge cards, skills cite te
 
 ## Who you are and where you play
 
-Two knowledge sub-layers answer the questions that arrive before any template does. [knowledge/roles/](knowledge/roles/INDEX.md) is the PM role map: an eight-rung ladder from Associate PM to CPO with the IC and management fork after Senior PM, the specializations, the PM and PMM boundary as a decision table, the triad's decision rights with a written dispute path, the hiring loop and growth rituals, and what the same title means at a startup versus an enterprise. Rung names are marked directional, because titles are the least standardized vocabulary in software. [knowledge/domains/](knowledge/domains/INDEX.md) is ten market cards, ecommerce through AI products, each naming the gatekeepers who can stop a launch and the metrics practitioners are judged on, plus how each metric lies. Fintech is deliberately a pointer card: its domain pack is the regulated module below. Record your product's domain, or "none", in STATE.md at DISCOVER; the Gate 1 checklist asks for it.
+Two knowledge sub-layers answer the questions that arrive before any template does. [knowledge/roles/](knowledge/roles/README.md) is the PM role map: an eight-rung ladder from Associate PM to CPO with the IC and management fork after Senior PM, the specializations, the PM and PMM boundary as a decision table, the triad's decision rights with a written dispute path, the hiring loop and growth rituals, and what the same title means at a startup versus an enterprise. Rung names are marked directional, because titles are the least standardized vocabulary in software. [knowledge/domains/](knowledge/domains/README.md) is ten market cards, ecommerce through AI products, each naming the gatekeepers who can stop a launch and the metrics practitioners are judged on, plus how each metric lies. Fintech is deliberately a pointer card: its domain pack is the regulated module below. Record your product's domain, or "none", in STATE.md at DISCOVER; the Gate 1 checklist asks for it.
 
 ## Learn mode
 
-[learn/](learn/INDEX.md) teaches the OS the only way a document system can be taught: by making you fill it in. Three paths (foundations, transitioning into PM, senior sharpening), each a stepped sequence over fictional products with a capstone at a real gate checklist, a [library](learn/library.md) of attributed one-line book and podcast pointers, and a [tutor skill](learn/skills/tutor/SKILL.md) that quizzes and scores your filled artifacts the way the Conductor cross-examines answers. Practice work lives in `learn/products/<name>/`, never in `products/`, and is labeled as invented evidence throughout. Say "learn" or "quiz me" to enter. The layer depends downward only; delete the folder and the OS loses nothing but the curriculum.
+[learn/](learn/README.md) teaches the OS the only way a document system can be taught: by making you fill it in. Three paths (foundations, transitioning into PM, senior sharpening), each a stepped sequence over fictional products with a capstone at a real gate checklist, a [library](learn/library.md) of attributed one-line book and podcast pointers, and a [tutor skill](learn/skills/tutor/SKILL.md) that quizzes and scores your filled artifacts the way the Conductor cross-examines answers. Practice work lives in `learn/products/<name>/`, never in `products/`, and is labeled as invented evidence throughout. Say "learn" or "quiz me" to enter. The layer depends downward only; delete the folder and the OS loses nothing but the curriculum.
 
 ## The regulated module
 

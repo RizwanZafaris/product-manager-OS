@@ -2,7 +2,7 @@
 
 Stage: DESIGN, feeds Gate 3 (architecture and risks reviewed) in [../../../os/STAGE-GATES.md](../../../os/STAGE-GATES.md).
 Working handoffs: [../../../agents/drafting-agent.md](../../../agents/drafting-agent.md) in the Architect role for the `templates/architecture/` set; [../../program-premortem/SKILL.md](../../program-premortem/SKILL.md) for the failure pass.
-Applies: the premortem method, Gary Klein's entry in [../../../knowledge/INDEX.md](../../../knowledge/INDEX.md), assume the failure has happened, then explain it while being right is still cheap. The Conductor names this method aloud when DESIGN-4 runs.
+Applies: the premortem method, Gary Klein's entry in [../../../knowledge/README.md](../../../knowledge/README.md), assume the failure has happened, then explain it while being right is still cheap. The Conductor names this method aloud when DESIGN-4 runs.
 Format and ladder: [README.md](README.md).
 
 ### DESIGN-1: the rejected alternative

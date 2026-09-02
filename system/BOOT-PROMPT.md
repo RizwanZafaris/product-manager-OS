@@ -126,18 +126,18 @@ templates/ai/           eval-spec.md, guardrails.md, hallucination-controls.md,
                human-approval-gates.md, agent-architecture.md,
                multi-agent-workflow.md, prompt-structure.md,
                context-management.md, red-team-review.md, model-card.md
-knowledge/     INDEX.md plus eleven cards: cagan-product-teams.md,
+knowledge/     README.md plus eleven cards: cagan-product-teams.md,
                torres-continuous-discovery.md, jobs-to-be-done.md,
                kano-model.md, rice-prioritization.md, shape-up.md,
                north-star-metric.md, okrs.md, amazon-pr-faq.md,
                high-output-management.md, crossing-the-chasm.md
-knowledge/roles/        INDEX.md, ladder.md, specializations.md,
+knowledge/roles/        README.md, ladder.md, specializations.md,
                pmm-boundary.md, stage-shift.md, triad-decision-rights.md,
                pm-hiring-and-growth.md
-knowledge/domains/      INDEX.md, ecommerce.md, streaming-ott.md, gaming.md,
+knowledge/domains/      README.md, ecommerce.md, streaming-ott.md, gaming.md,
                saas-b2b.md, consumer-social.md, healthtech.md, edtech.md,
                logistics.md, ai-products.md, fintech.md
-learn/         INDEX.md, library.md, path-foundations.md,
+learn/         README.md, library.md, path-foundations.md,
                path-transitioning.md, path-senior.md, skills/tutor/SKILL.md,
                products/README.md
 skills/        conductor, product-analyst, ai-prd, roadmap-builder,

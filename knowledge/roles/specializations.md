@@ -35,7 +35,7 @@ A PM whose users or buyers are engineers: APIs, developer tools, infrastructure 
 
 ## Growth PM
 
-Owns a metric, not a surface: activation, retention, monetization, or the loop that connects them. Works in experiment portfolios where most bets lose. The craft descends from Sean Ellis's growth practice and the loops-over-funnels framing argued by Brian Balfour and Casey Winters; the [north star metric](../north-star-metric.md) card and the AARRR entry in the [knowledge index](../INDEX.md) carry the underlying models.
+Owns a metric, not a surface: activation, retention, monetization, or the loop that connects them. Works in experiment portfolios where most bets lose. The craft descends from Sean Ellis's growth practice and the loops-over-funnels framing argued by Brian Balfour and Casey Winters; the [north star metric](../north-star-metric.md) card and the AARRR entry in the [knowledge index](../README.md) carry the underlying models.
 
 - **Decides:** the experiment portfolio and its kill thresholds, which input metric is the current bet, when a result is real versus noise.
 - **Documents:** produces experiment briefs and the [growth plan](../../templates/planning/growth-plan.md); consumes the [metrics review](../../templates/operate/metrics-review.md) and instrumentation specs.

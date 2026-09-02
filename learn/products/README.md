@@ -29,4 +29,4 @@ The repo-root `products/` name is reserved for real product work and will never 
 
 ## Housekeeping
 
-Practice folders are yours, not the repository's: they are untracked working state, like `products/`, and a clone used by a team should add `learn/products/*/` to `.gitignore` except this README. The paths that feed this folder live one level up, starting at [the learn index](../INDEX.md).
+Practice folders are yours, not the repository's: they are untracked working state, like `products/`, and a clone used by a team should add `learn/products/*/` to `.gitignore` except this README. The paths that feed this folder live one level up, starting at [the learn index](../README.md).

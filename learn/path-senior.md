@@ -18,7 +18,7 @@ Before step 1: create `learn/products/meterly/`, copy the ledger below into `PRO
 
 ## Step 1: strategy that survives the kernel test
 
-**Read:** the strategy kernel and Playing to Win entries in the [knowledge index](../knowledge/INDEX.md); Rumelt and Lafley-Martin in full live in [the library](library.md). Grove's leverage lens from [High Output Management](../knowledge/high-output-management.md) is the senior companion, with Drucker's The Effective Executive (library) as the longer read.
+**Read:** the strategy kernel and Playing to Win entries in the [knowledge index](../knowledge/README.md); Rumelt and Lafley-Martin in full live in [the library](library.md). Grove's leverage lens from [High Output Management](../knowledge/high-output-management.md) is the senior companion, with Drucker's The Effective Executive (library) as the longer read.
 **Study:** [the roadmap](../templates/planning/roadmap.md), and reread its expectations-not-commitments preamble as a strategy artifact, not a scheduling one.
 **Do:** write Meterly's strategy in kernel form in PROGRESS.md: one diagnosis (invented: the platform's enterprise deals stall on unpredictable API bills), one guiding policy, three coherent actions. Then write the two where-to-play choices you are explicitly declining.
 **Done when:** the diagnosis names a cause and not a symptom, every action traces to the policy, and each declined choice would look attractive in a board deck, because a strategy that only declines bad options has decided nothing.
@@ -32,14 +32,14 @@ Before step 1: create `learn/products/meterly/`, copy the ledger below into `PRO
 
 ## Step 3: growth with a mechanism attached
 
-**Read:** [North star metric](../knowledge/north-star-metric.md), and the AARRR entry in the [knowledge index](../knowledge/INDEX.md) for the funnel vocabulary.
+**Read:** [North star metric](../knowledge/north-star-metric.md), and the AARRR entry in the [knowledge index](../knowledge/README.md) for the funnel vocabulary.
 **Study:** [the growth plan](../templates/planning/growth-plan.md).
 **Do:** fill the growth plan: the input-metric bet (invented: integrations installed per new customer in week one), the cheapest experiment that could move it, the loop or channel behind it, the counter-metric that catches the bet corrupting something, and the kill condition.
 **Done when:** the experiment is genuinely the cheapest version you could run, the loop is a mechanism a skeptic could trace actor by actor, and the counter-metric protects something a growth-hungry team would otherwise quietly spend.
 
 ## Step 4: the premortem you run on yourself
 
-**Read:** the premortem entry in the [knowledge index](../knowledge/INDEX.md): assume it already failed, write down why, while being right is still cheap.
+**Read:** the premortem entry in the [knowledge index](../knowledge/README.md): assume it already failed, write down why, while being right is still cheap.
 **Study:** [the risk register](../templates/execution/risk-register.md), and the runner in [skills/program-premortem](../skills/program-premortem/SKILL.md) if your runtime has it.
 **Do:** it is eighteen months out and Meterly failed. Write six failure causes in PROGRESS.md: two market, two execution, two political. Convert the four most probable into risk-register rows with likelihood, impact, mitigation, and an owner. At least one cause must implicate a decision you made in steps 1 to 3 of this path.
 **Done when:** the self-implicating row exists and its mitigation changed one of your earlier artifacts, with the change actually made; a premortem that edits nothing was theater.

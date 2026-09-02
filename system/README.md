@@ -1,0 +1,7 @@
+# System prompts: the paste-into-anything path
+
+Two files, both written for a model with no file access. [BOOT-PROMPT.md](BOOT-PROMPT.md) is the master paste: one block that installs the six-stage loop, the gate discipline, the evidence-first rules, the Conductor mode with state kept in the conversation, and a manifest of every path in this repository so the model asks for files by exact name instead of inventing one. [ROLE-PROMPTS.md](ROLE-PROMPTS.md) holds six individually copyable blocks, the Conductor plus five specialists (Discovery Researcher, PRD Writer, Architect, Red Teamer, Program Lead), each naming the repo files it drives.
+
+The method: paste the boot prompt into any capable chat model, then paste one role block if you want a deep single-role session, then work. When the model needs a template, a knowledge card, or a gate form, it asks you for that file by path and you paste the contents; when it needs to remember where the product stands, it dictates the updated STATE.md sections back for you to save. You are the file system, which is the whole trick.
+
+Do not trim the rules section to save space; the rules are the product. Nothing here has file access, so nothing here can quote a regulator: for anything under `modules/regulated/`, paste the module's own files and let the model quote them verbatim. This path is Method 2 in the root [README.md](../README.md), and it degrades honestly: a free model running this prompt still walks `os/STAGE-GATES.md` line by line, and still cannot sign it.

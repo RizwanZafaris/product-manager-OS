@@ -75,7 +75,7 @@ Lands in: `discovery/discovery-document.md` section 5, and STATE.md accepted ans
 
 Ask: Which domain pack governs this product?
 Wrong costs: Every later gatekeeper and metric question gets answered generically, and the market-specific blocker surfaces at launch instead of here.
-Evidence class: 2, artifact: the chosen card's gatekeeper list in [../../../knowledge/domains/INDEX.md](../../../knowledge/domains/INDEX.md) consulted, or "none" recorded with the table checked.
+Evidence class: 2, artifact: the chosen card's gatekeeper list in [../../../knowledge/domains/README.md](../../../knowledge/domains/README.md) consulted, or "none" recorded with the table checked.
 Cross-examine when: a domain is claimed but no gatekeeper from its card can be named. Move: open the card together; if none of its rows bite, the honest answer is "none".
 Accept when: one card from the domain index named, or "none", either way recorded.
 Lands in: STATE.md position block, `Domain:` line.

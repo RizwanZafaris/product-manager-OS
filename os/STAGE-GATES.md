@@ -23,7 +23,7 @@ Closes DISCOVER. Feeds DEFINE.
 - [ ] Personas built on fewer than five cited interviews are explicitly marked as assumptions
 - [ ] The cost of inaction is written down: what it costs, whom, per what period, with the calculation shown
 - [ ] At least one plausible reason to say no-go was seriously argued at this gate
-- [ ] A domain was selected from `../knowledge/domains/INDEX.md` or "none" was recorded, either way in STATE.md
+- [ ] A domain was selected from `../knowledge/domains/README.md` or "none" was recorded, either way in STATE.md
 - [ ] The success signal for a future Gate 6 is named now, before any solution exists
 - [ ] Go or no-go is recorded below, with the deciding rationale in one paragraph
 

@@ -63,6 +63,7 @@ product-manager-OS/
 │   ├── ARCHITECTURE.md  (this file)  The blueprint: concept, tree, cross-link conventions, lint spec
 │   └── CONDUCTOR-DESIGN.md  The v0.2.0 design: prior art, the Conductor's contract, journey map, evidence classes, STATE.md format, resume protocol, build plan
 ├── os/
+│   ├── README.md  Rendered directory face: the loop in miniature, what each of the six files holds, and a read order for a first-timer
 │   ├── OPERATING-LOOP.md  The six-stage loop, the two overlays, entry and exit definition for each stage
 │   ├── CONDUCTOR.md  The interview protocol: seven-rule contract, challenge grammar, gate procedure, escape hatch, per-method notes
 │   ├── STAGE-GATES.md  Six gate checklists, each a fill-in form with sign-off lines and a skip-risk warning drawn from field data
@@ -70,7 +71,8 @@ product-manager-OS/
 │   ├── WHICH-DOCUMENT.md  Picks the artifact weight (logged decision, ticket, one-pager, PRD, BRD+PRD+FRD stack) by stakes, audience, and reversibility
 │   └── PRODUCT-WORKSPACE.md  The products/<name>/ folder convention: where filled artifacts accumulate as the product's memory, why it is a folder and not software, and STATE.md's place in the layout
 ├── knowledge/
-│   ├── INDEX.md  All 11 cards plus 18 one-line index entries (Mom Test, ICE, WSJF, HEART, 7 Powers, SCR, and the rest), each with originator and year
+│   ├── README.md  The canonical rendered index: all 11 cards plus 18 one-line index entries (Mom Test, ICE, WSJF, HEART, 7 Powers, SCR, and the rest), each with originator and year
+│   ├── INDEX.md  Two-line pointer stub to README.md, kept so links written before v0.4.1 resolve
 │   ├── cagan-product-teams.md  Empowered teams, outcomes over output, four risks; attribution to Marty Cagan's Inspired and Empowered; trap: the label without the accountability
 │   ├── torres-continuous-discovery.md  Weekly touchpoints and the opportunity solution tree; attribution to Teresa Torres; trap: a stale tree
 │   ├── jobs-to-be-done.md  Progress-based competition framing; attribution to Ulwick, Christensen, Moesta; trap: job stories without interview evidence
@@ -83,7 +85,8 @@ product-manager-OS/
 │   ├── high-output-management.md  Managerial output is team output; attribution to Andrew Grove; trap: busyness mistaken for impact
 │   ├── crossing-the-chasm.md  Beachhead before broadcast; attribution to Geoffrey Moore; trap: the beachhead that is secretly everyone
 │   ├── roles/
-│   │   ├── INDEX.md  The roles layer map: eight-rung ladder table, the IC/management fork, directional-naming caveat
+│   │   ├── README.md  The canonical rendered index: eight-rung ladder table, the IC/management fork, directional-naming caveat
+│   │   ├── INDEX.md  Two-line pointer stub to README.md
 │   │   ├── ladder.md  APM to CPO, each rung with owns/decides/docs-out/docs-in/success/failure-mode and stage variance
 │   │   ├── specializations.md  Core, PO (with the split-is-an-anti-pattern position), TPM, Growth, Platform, Data, AI PM
 │   │   ├── pmm-boundary.md  PM vs PMM decision table, frontloaded/backloaded framing, document ownership, the unwritten-boundary warning
@@ -91,11 +94,13 @@ product-manager-OS/
 │   │   ├── triad-decision-rights.md  Who decides value, usability, feasibility; the how-might-we-never-a-veto rule; the three-step dispute path ending in the decision log; the saying-no pattern
 │   │   └── pm-hiring-and-growth.md  Structured hiring loop (screens, project, blind-vote debrief) and the manager 1:1 and career conversation, both calibrated against ladder.md
 │   └── domains/
-│       ├── INDEX.md  Pick-your-domain table, the Conductor usage note, and the card-to-template-pack graduation rule
+│       ├── README.md  The canonical rendered index: pick-your-domain table, the Conductor usage note, and the card-to-template-pack graduation rule
+│       ├── INDEX.md  Two-line pointer stub to README.md
 │       ├── ecommerce.md · streaming-ott.md · gaming.md · saas-b2b.md · consumer-social.md  Digital-market cards
 │       ├── healthtech.md · edtech.md · logistics.md · ai-products.md  Regulated-adjacent market cards
 │       └── fintech.md  Pointer card only: routes to modules/regulated and skills/reg-gap-check, duplicates nothing
 ├── templates/
+│   ├── README.md  Rendered directory face: the full catalog, one table per stage directory, all 73 templates with what each is and when to reach for it; carries the three-line header the gate demands of every file here
 │   ├── discovery/
 │   │   ├── discovery-document.md  Trigger, target user, pain, hypothesis, success signal, go or no-go
 │   │   ├── problem-framing.md  One problem statement, evidence, cost of inaction, owner
@@ -178,10 +183,12 @@ product-manager-OS/
 │       ├── red-team-review.md  Entry points, attack scenarios (injection, jailbreak, leak, tool misuse), break-fix log, re-test sign-off
 │       └── model-card.md  Intended use and out-of-scope, known limitations citing the eval spec and red-team review, performance with segment variance, data provenance, update policy and contact
 ├── system/
+│   ├── README.md  Rendered directory face: the two boot-prompt files and the paste-into-any-model method in one screen
 │   ├── BOOT-PROMPT.md  Master paste-anywhere prompt: installs the operating loop, gate discipline, evidence-first rules, the Conductor mode with state-in-conversation, a compact manifest of every file so the model asks by exact path, and the team of roles into any chat model with no file access assumed
 │   └── ROLE-PROMPTS.md  Six labeled, individually copyable blocks: the Conductor, then Discovery Researcher, PRD Writer, Architect, Red Teamer, Program Lead; each block names the repo templates it drives so a chat user can paste file contents on request
 ├── knowledge, templates cross-links: see section 3
 ├── skills/
+│   ├── README.md  Rendered directory face: what a skill is here (a procedure a model executes), the nine skills with use-when and entry point, and how they load in an agent CLI versus a pasted chat session
 │   ├── conductor/
 │   │   ├── SKILL.md  Entry skill for the stage-gated interviewer; the full protocol lives in os/CONDUCTOR.md, the triggering in CLAUDE.md and AGENTS.md
 │   │   └── questions/
@@ -201,6 +208,7 @@ product-manager-OS/
 │   ├── product-review/SKILL.md  The weekly WIP walk: 48-hour pre-read, per-team 20-minute walk across pre-build, in-progress, and post-build work, decisions landed in the decision log same day
 │   └── escalation/SKILL.md  The stuck-decision brief (Situation, Impact, Urgency, Options, Recommendation, Ask) and the routing ladder with SLAs; outcomes feed the risk register and decision log
 ├── agents/
+│   ├── README.md  Rendered directory face: identities versus procedures, the five role files, and who invokes each
 │   ├── research-agent.md  Instruction file: gathers evidence, cites sources, never asserts beyond them; feeds discovery templates
 │   ├── drafting-agent.md  Instruction file: fills one named template per run, marks every unknown as an open field, never invents numbers
 │   ├── validation-agent.md  Instruction file: checks a draft against its template's required fields and its stage gate; reports misses, does not rewrite
@@ -221,7 +229,8 @@ product-manager-OS/
 │           └── dispute-summary/
 │               └── PRD.md           (COPY, byte-exact)  The verified worked example; never reworded here
 ├── learn/
-│   ├── INDEX.md  Path picker, step anatomy (Read/Study/Do/Done when), the checkbox-ledger convention, tutor mode entry
+│   ├── README.md  The canonical rendered index: path picker, step anatomy (Read/Study/Do/Done when), the checkbox-ledger convention, tutor mode entry
+│   ├── INDEX.md  Two-line pointer stub to README.md
 │   ├── library.md  Book and podcast pointers in own words with named attribution; cards and index entries linked where they exist
 │   ├── path-foundations.md  Six steps plus a Gate 1 capstone on Streakline, a fictional habit tracker
 │   ├── path-transitioning.md  Seven steps plus a Gate 2 capstone on Restow, a fictional returns portal
@@ -240,13 +249,14 @@ product-manager-OS/
 
 1. All links are relative repo paths (`../knowledge/rice-prioritization.md`), never absolute, never external for internal content. Lint resolves every one.
 2. Every template opens with a three-line header block: `Stage:` (the loop stage and gate it feeds), `Knowledge:` (link to the card or index entry behind it), `Skill:` (link to the skill or agent that drives it, or "manual" where none applies).
-3. Every method card in `knowledge/` carries a `Skip it when` line between its uses and its trap, and ends with a `Used by:` list linking the templates that draw on it. The consolidated cards under `knowledge/roles/` and `knowledge/domains/` are a different genre and use their own field lists, stated in their INDEX files; the domain cards state their skip condition once, in `knowledge/domains/INDEX.md`.
+3. Every method card in `knowledge/` carries a `Skip it when` line between its uses and its trap, and ends with a `Used by:` list linking the templates that draw on it. The consolidated cards under `knowledge/roles/` and `knowledge/domains/` are a different genre and use their own field lists, stated in their README files; the domain cards state their skip condition once, in `knowledge/domains/README.md`.
 4. Every SKILL.md uses exactly two frontmatter fields, `name` and `description`, where the description contains an explicit "Use when" clause; triggering is external (CLAUDE.md and AGENTS.md map triggers to skills).
 5. `system/` prompts cannot assume file access, so they reference repo paths as things the human pastes on request: "ask the user to paste templates/definition/prd.md". Every path named in a system prompt must exist; lint checks this.
 6. CLAUDE.md contains no content of its own beyond the router table; AGENTS.md is the single source of truth for agent behavior, mirroring the pattern OmniRoute itself uses at its root.
 7. The regulated module is linked into the loop at Gate 2 and Gate 5 via `os/STAGE-GATES.md`, but files under `modules/regulated/` are never linked as editable; the module README states the byte-exact policy.
 8. The delete-unused-sections rule and the fill-these-fields-first guidance are stated once for the whole tree in `os/WHICH-DOCUMENT.md`, and repeated inside the guidance comment of the templates where the pull to fill every field is strongest: `templates/definition/prd.md`, `templates/definition/one-pager.md`, `templates/discovery/competitive-analysis.md`, and `templates/planning/first-90-days.md`. A superset template with no instruction to cut becomes a form nobody trims.
 9. Filled artifacts never live in this tree. `products/` is the reserved name for the per-product workspace defined in `os/PRODUCT-WORKSPACE.md`, and no directory by that name will ever ship here, so a user's work inside a clone cannot collide with an update.
+10. Every directory a visitor can open carries a `README.md`, because a code host renders a directory's README and nothing else. That file is the directory's rendered face: what the layer is, what is in it, and where to go next. Where a directory previously carried an `INDEX.md`, the content moved into `README.md` and the `INDEX.md` stayed behind as a two-line pointer, so links written against the old name still resolve. Prose links across the tree point at the README; the `Knowledge:` header field inside the 47 templates that name the knowledge index still points at `knowledge/INDEX.md`, on purpose, because that field has been copied into filled documents outside this repository and the pointer costs one line to follow. `templates/README.md` carries the three-line Stage/Knowledge/Skill header from convention 2, since the header gate applies to every file under `templates/` and a catalog page is not worth an exception in the detector.
 
 ## 4. lint.py extension spec
 

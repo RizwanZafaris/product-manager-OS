@@ -4,7 +4,7 @@ Knowledge cards are deliberately short; each one compresses a book or a body of 
 
 Rules for this list:
 
-- A book earns a row when a knowledge card or a path step draws on it, with two named exceptions in the last table. A library that catalogs everything teaches nothing, same rule as the [knowledge index](../knowledge/INDEX.md).
+- A book earns a row when a knowledge card or a path step draws on it, with two named exceptions in the last table. A library that catalogs everything teaches nothing, same rule as the [knowledge index](../knowledge/README.md).
 - Read the card first, the book second. The card tells you the trap in one minute; the book earns its hours only after the card has made you curious or skeptical.
 - Nothing here is reproduced. If you want the author's argument, buy the argument.
 
@@ -24,7 +24,7 @@ Rules for this list:
 
 ## Books behind the index entries
 
-These back one-line entries in the [knowledge index](../knowledge/INDEX.md); an entry graduates to a card only when a template starts depending on it.
+These back one-line entries in the [knowledge index](../knowledge/README.md); an entry graduates to a card only when a template starts depending on it.
 
 | Book | Author | This repo's one-line take |
 |---|---|---|
