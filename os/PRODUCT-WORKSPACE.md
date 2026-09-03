@@ -23,6 +23,7 @@ products/
     ├── STATE.md               the Conductor's running memory: position, accepted answers, evidence ledger
     ├── discovery/             filled copies of templates/discovery/
     ├── definition/            filled copies of templates/definition/
+    │   └── ai/                filled copies of templates/ai/, when the product contains a model
     ├── architecture/          filled copies of templates/architecture/
     ├── execution/             decision log, risk register, stakeholder map, dependency register
     ├── delivery/              filled copies of templates/delivery/
@@ -30,6 +31,22 @@ products/
     ├── planning/              this product's roadmap and OKR copies
     └── gates/                 one file per gate attempt, copied from os/STAGE-GATES.md
 ```
+
+## Making one
+
+Two commands, the same two the Quickstart in [the README](../README.md) runs, because a documented journey that disagrees with the working one is worse than no documentation:
+
+```bash
+python3 tools/init_product.py ledgerline
+python3 tools/init_product.py ledgerline --add templates/discovery/discovery-document.md
+python3 tools/init_product.py ledgerline --check
+```
+
+The first builds the folders above and seeds `STATE.md` from `templates/execution/state.md`. The second copies one template into its stage folder: `templates/discovery/` lands in `discovery/`, `templates/ai/` lands in `definition/ai/` because the overlay attaches at DEFINE, and `templates/execution/state.md` is the one file that lands at the workspace root under its own name. Nothing is ever overwritten without `--force`. The third re-resolves every link in the workspace and reports the ones that do not land.
+
+There is a reason the copy is a tool rather than `cp`, and it is the same reason rule 1 below exists. A template's relative links are computed from where the blank lives, two levels under the repository root. Copied by hand into `products/ledgerline/discovery/`, the discovery document's `../../knowledge/...` link now points at `products/knowledge/...`, which has never existed, and all four of that file's links break at once. `--add` recomputes each link from the real depth of where the copy lands, then re-resolves every one of them from the destination and refuses to leave a copy behind if any fails. A link to another template resolves to your own filled copy once that copy exists, and to the blank until then.
+
+The tool is a convenience, not a dependency. A workspace made with `mkdir` and `cp` is the same workspace, and the only thing you take on is fixing the links yourself. Everything below holds either way.
 
 Where the folder sits is your choice. Three arrangements work, and only the third needs a rule:
 
