@@ -27,6 +27,12 @@ Skip this layer entirely when none of the rows below describe your product. A do
 | [Edtech](edtech.md) | Your product teaches, and a school or district might pay for it | Engagement is easy to show and efficacy is not; the district buys, the teacher decides |
 | [Logistics](logistics.md) | You move physical things and promise when they arrive | The last mile eats the margin; exceptions are the product |
 | [AI products](ai-products.md) | The product itself contains a model whose output users rely on | Wrong answers are a cost of goods sold; evals are your acceptance criteria |
+| [Developer tools and APIs](devtools-api.md) | Your users write code against you, and your interface is a contract | A breaking change is paid for by people who did not choose it; the deprecation notice is the product |
+| [Marketing and advertising technology](martech-adtech.md) | You process data about people who are not your customers | Consent is a product surface; the identifier you depend on belongs to a platform vendor |
+| [Cybersecurity and GRC](cybersecurity-grc.md) | You sell a control, an evidence trail, or an incident response | You are an attack surface with privileged access; the customer's reporting clock starts before they know what happened |
+| [Marketplaces](marketplaces.md) | Two sides with opposed interests, and you take a cut of the match | Liquidity beats size; the better you match, the stronger the incentive to leave |
+| [ERP and enterprise finance](erp.md) | Your product is the financial record, or the operations that feed it | An auditor can refuse to sign because of how you store a change; the famous failures were cutovers, not defects |
+| [HR technology](hr-tech.md) | Your product decides who is hired, paid, promoted, scheduled or reviewed | Your customer carries the liability and cannot delegate it; the people it acts on are not your users |
 | [Fintech](fintech.md) | Money moves, is stored, or is decided on by your product | Pointer card only: fintech's domain pack is the regulated module |
 
 Fintech is the exception in this table on purpose. Its pack already exists as [the regulated module](../../modules/regulated/README.md), the material that seeded this repository, so its card routes there and duplicates nothing.
