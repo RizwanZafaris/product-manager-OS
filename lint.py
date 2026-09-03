@@ -31,23 +31,28 @@ repository's re-verification promise something CI enforces rather than something
 a README asserts. A fork that wants the old advisory behavior runs the gate with
 --no-stale-fail.
 
-OS tree mode (python3 lint.py --os, run from the repo root) checks the whole
-Product Manager OS tree rather than one PRD: character and banned-metric gates
-over every .md and .json outside modules/regulated/, a placeholder gate that
-accepts angle-bracket fill-in fields as the one sanctioned placeholder form, a
-link gate that resolves every relative link and rejects absolute local paths, a
-header gate for the three-line Stage/Knowledge/Skill block on every template, a
-frontmatter gate for SKILL.md files, a sha256 integrity gate over the two
-byte-exact regulated files, a path gate for repo paths named in system/ prompts,
-and a secret gate. modules/regulated/ is governed by its own verbatim lint.py
-and is exempt from tree mode except for the integrity gate, which is the point.
+OS tree mode (python3 lint.py --os, run from the repo root) runs eleven checks
+over the whole Product Manager OS tree rather than one PRD: character and
+banned-metric gates over every .md and .json outside modules/regulated/, a
+placeholder gate that accepts angle-bracket fill-in fields as the one sanctioned
+placeholder form, a link gate that resolves every relative link and rejects
+absolute local paths, a header gate for the three-line Stage/Knowledge/Skill
+block on every template, a frontmatter gate for SKILL.md files, a sha256
+integrity gate over the two byte-exact regulated files, a path gate for repo
+paths named in system/ prompts, a secret gate, a graph gate over the six-key
+declaration every file in the six declaring layers carries, and a wikilink gate
+that resolves every [[target]] to a file or a declared alias.
+modules/regulated/ is governed by its own verbatim lint.py and is exempt from
+tree mode except for the integrity gate, which is the point.
 docs/ARCHITECTURE.md and this file name the detector's own rule strings, so the
-placeholder and secret gates skip them: a detector's rules have to be legible.
+placeholder, secret, and wikilink gates skip them: a detector's rules have to be
+legible, and the wikilink spec has to be able to write [[target]] in prose.
 """
 from __future__ import annotations
 
 import argparse
 import datetime as _dt
+import posixpath
 import re
 import sys
 from pathlib import Path
@@ -351,6 +356,96 @@ REPO_PATH_RE = re.compile(
     r"\b((?:os|templates|knowledge|skills|agents|system|routing|modules|"
     r"examples|docs)/[A-Za-z0-9._/\-]*[A-Za-z0-9])")
 HEADER_KEYS = ("Stage:", "Knowledge:", "Skill:")
+HEADER_WINDOW = 8
+
+# The six layers that declare themselves to the graph, and the key set every
+# file in them carries. Written by tools/frontmatter_init.py, read by
+# tools/graph.py, and checked here.
+GRAPH_LAYERS = ("agents", "frameworks", "knowledge", "os", "skills",
+                "templates")
+GRAPH_KEYS = ("layer", "stage", "gate", "feeds", "method", "aliases")
+
+# A SKILL.md declares in a sidecar, never in its own frontmatter. The Agent
+# Skills format validates SKILL.md frontmatter against a closed attribute list
+# (name, description, license, metadata, compatibility), and a runtime that
+# enforces it rejects the file outright on an unknown key. Check 6 keeps the
+# two-key contract on the SKILL.md; check 10 reads the sidecar beside it.
+SKILL_SIDECAR = "SKILL.graph.yml"
+
+# name and description predate the graph on every agent file and are the Agent
+# Skills contract everywhere else. Any other key outside GRAPH_KEYS fails.
+GRAPH_COMPANIONS = ("name", "description")
+
+# The six stages of the loop, plus the three cross-cutting tracks the loop and
+# the graph already name. A file that serves the PLANNING track must be able to
+# say so: forcing it to claim one of the six would be a wrong answer, and a
+# wrong stage is worse than a missing one.
+STAGE_VOCABULARY = ("DISCOVER", "DEFINE", "DESIGN", "BUILD", "DELIVER",
+                    "OPERATE", "PLANNING", "AI OVERLAY", "ALL STAGES")
+
+FRONTMATTER_RE = re.compile(r"\A---\r?\n(.*?)\r?\n---[ \t]*\r?\n", re.S)
+FM_FIELD_RE = re.compile(r"^([A-Za-z0-9_-]+):\s*(.*)$")
+WIKILINK_RE = re.compile(r"\[\[([^\[\]]+)\]\]")
+
+
+def fields(block):
+    """Top-level "key: value" pairs of a YAML block, values left as text.
+
+    Not a YAML implementation: indented lines and block sequences are skipped,
+    because the declaration this gate reads uses neither.
+    """
+    out = {}
+    for line in block.split("\n"):
+        if not line.strip() or line.startswith((" ", "\t", "-", "#")):
+            continue
+        match = FM_FIELD_RE.match(line)
+        if match:
+            out[match.group(1).lower()] = match.group(2).strip()
+    return out
+
+
+def values_of(text):
+    """A declaration value as a list: an inline list, or a lone scalar."""
+    text = text.strip()
+    if text.startswith("[") and text.endswith("]"):
+        text = text[1:-1]
+    parts = [p.strip().strip("'\"") for p in text.split(",")]
+    return [p for p in parts if p]
+
+
+def declaration(path, raw):
+    """One file's graph declaration as (fields or None, where it should be)."""
+    if path.name == "SKILL.md":
+        sidecar = path.parent / SKILL_SIDECAR
+        if not sidecar.is_file():
+            return None, SKILL_SIDECAR
+        try:
+            return fields(sidecar.read_text(encoding="utf-8")), SKILL_SIDECAR
+        except (UnicodeDecodeError, OSError):
+            return None, SKILL_SIDECAR
+    match = FRONTMATTER_RE.match(raw)
+    return (fields(match.group(1)) if match else None), "frontmatter"
+
+
+def points_at(value, rp, tree):
+    """A declared path as a file in the tree, or None."""
+    target = value.split("#")[0].strip().strip("`")
+    if not target or target.startswith(("http://", "https://", "mailto:", "/")):
+        return None
+    if target in tree:
+        return target
+    joined = posixpath.normpath(posixpath.join(posixpath.dirname(rp), target))
+    return joined if joined in tree else None
+
+
+def wikilink_lands(target, tree, aliases):
+    """True when [[target]] names a file in the tree or a declared alias."""
+    if target in tree or target + ".md" in tree:
+        return True
+    if target.lower() in aliases:
+        return True
+    tail = target.split("/")[-1]
+    return any(p.split("/")[-1] in (tail, tail + ".md") for p in tree)
 
 
 def tracked_files(root):
@@ -399,6 +494,25 @@ def os_check(root, pins=None):
         elif hashlib.sha256(target.read_bytes()).hexdigest() != expected:
             fail(pinned, 1, "INTEGRITY", "content drifted from the pinned "
                  "sha256. Fix the source repo and re-copy; never edit here.")
+
+    # Checks 10 and 11 read declarations rather than one file's own text, so
+    # the declarations are gathered before the per-file pass: a wikilink in one
+    # file resolves against an alias declared in another, and an alias is
+    # claimed by exactly one file, whichever sorts first.
+    decls, aliases = {}, {}
+    for path in all_files:
+        rp = rel[path]
+        if path.suffix != ".md" or rp.startswith("modules/") \
+                or rp.split("/")[0] not in GRAPH_LAYERS:
+            continue
+        try:
+            raw = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        block, source = declaration(path, raw)
+        decls[rp] = (block, source)
+        for alias in values_of((block or {}).get("aliases", "")):
+            aliases.setdefault(alias.lower(), rp)
 
     for path in all_files:
         rp = rel[path]
@@ -470,9 +584,14 @@ def os_check(root, pins=None):
                         fail(rp, i, "LINK",
                              "relative link %s does not resolve." % target)
 
-        # Check 5, header gate: three-line Stage/Knowledge/Skill block.
+        # Check 5, header gate: three-line Stage/Knowledge/Skill block. The
+        # window starts under any frontmatter, because the graph declaration
+        # sits above the header and would otherwise push it out of range. The
+        # header is still the first thing a reader of the document sees.
         if rp.startswith("templates/"):
-            top = "\n".join(lines[:8])
+            match = FRONTMATTER_RE.match(raw)
+            start = raw[:match.end()].count("\n") if match else 0
+            top = "\n".join(lines[start:start + HEADER_WINDOW])
             for key in HEADER_KEYS:
                 if key not in top:
                     fail(rp, 1, "HEADER",
@@ -501,6 +620,56 @@ def os_check(root, pins=None):
                         fail(rp, i, "PATH",
                              "names repo path %s, which does not exist." % named)
 
+        # Check 10, graph gate: the declaration every file in the six layers
+        # carries. A missing key is a hole in the graph; a stage outside the
+        # vocabulary or a feeds path that resolves to nothing is worse, because
+        # it renders as a confident arrow pointing at the wrong place.
+        if rp in decls:
+            block, source = decls[rp]
+            if block is None:
+                fail(rp, 1, "GRAPH", "has no graph declaration. Put the keys "
+                     "%s in its %s, or run tools/frontmatter_init.py."
+                     % (", ".join(GRAPH_KEYS), source))
+            else:
+                for key in GRAPH_KEYS:
+                    if key not in block:
+                        fail(rp, 1, "GRAPH",
+                             "%s is missing the %s key." % (source, key))
+                for key in sorted(k for k in block
+                                  if k not in GRAPH_KEYS + GRAPH_COMPANIONS):
+                    fail(rp, 1, "GRAPH", '%s carries "%s", which is not one of '
+                         "%s." % (source, key,
+                                  ", ".join(GRAPH_KEYS + GRAPH_COMPANIONS)))
+                stage = block.get("stage", "").strip().strip("'\"")
+                if "stage" in block and stage not in STAGE_VOCABULARY:
+                    fail(rp, 1, "GRAPH", 'stage "%s" is not one of %s.'
+                         % (stage, ", ".join(STAGE_VOCABULARY)))
+                gate = block.get("gate", "").strip().strip("'\"")
+                if "gate" in block and not (gate.isdigit()
+                                            and 1 <= int(gate) <= 6):
+                    fail(rp, 1, "GRAPH", 'gate "%s" is not an integer 1 to 6.'
+                         % gate)
+                for value in values_of(block.get("feeds", "")):
+                    if points_at(value, rp, tree) is None:
+                        fail(rp, 1, "GRAPH", "feeds names %s, which is not a "
+                             "file in the tree." % value)
+                for value in values_of(block.get("method", "")):
+                    if points_at(value, rp, tree) is None:
+                        fail(rp, 1, "GRAPH", "method names %s, which is not a "
+                             "file in the tree." % value)
+
+        # Check 11, wikilink gate: additive Obsidian links, every layer. A
+        # relative markdown link is what GitHub renders and check 4 owns those;
+        # a wikilink is what the vault graph reads, and an unresolved one is an
+        # edge the graph silently drops.
+        if path.suffix == ".md" and rp not in RULE_BEARING:
+            for i, line in enumerate(lines, 1):
+                for m in WIKILINK_RE.finditer(line):
+                    target = m.group(1).split("|")[0].split("#")[0].strip()
+                    if target and not wikilink_lands(target, tree, aliases):
+                        fail(rp, i, "WIKILINK", "wikilink [[%s]] names neither "
+                             "a file in the tree nor a declared alias." % target)
+
     return sorted(problems)
 
 
@@ -512,7 +681,7 @@ def run_os_mode(root):
         print("\n%d problem(s). The gate failed, which is the point of having "
               "one." % len(problems), file=sys.stderr)
         return 1
-    print("%s: ok (OS tree mode, %d checks)" % (root, 9))
+    print("%s: ok (OS tree mode, %d checks)" % (root, 11))
     return 0
 
 

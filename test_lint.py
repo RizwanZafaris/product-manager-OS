@@ -281,10 +281,6 @@ class OsTreeGateTests(unittest.TestCase):
         self.assertEqual([], lint.os_check(REPO))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class WorkspaceExclusion(unittest.TestCase):
     """A user's filled draft in products/ must never fail the OS gate."""
 
@@ -299,3 +295,163 @@ class WorkspaceExclusion(unittest.TestCase):
             self.assertTrue(any(n.endswith("learn/products/README.md") for n in names))
         finally:
             shutil.rmtree(ws)
+
+
+# The graph declaration, assembled from a dict so one test can vary one key.
+# Passing None for a key drops it, which is how the missing-key case is built.
+GRAPH_DEFAULTS = [("layer", "templates"), ("stage", "DEFINE"), ("gate", "2"),
+                  ("feeds", "[]"), ("method", '""'),
+                  ("aliases", '["The Thing"]')]
+TEMPLATE_HEADER = "Stage: DEFINE, feeds Gate 2\nKnowledge: none\nSkill: manual\n"
+
+
+def graph_fm(**over):
+    """A frontmatter block carrying the six graph keys, minus any set to None."""
+    pairs = [(k, over.get(k, v)) for k, v in GRAPH_DEFAULTS]
+    return "---\n%s---\n" % "".join("%s: %s\n" % (k, v)
+                                    for k, v in pairs if v is not None)
+
+
+def template_file(**over):
+    return graph_fm(**over) + "# Thing\n\n" + TEMPLATE_HEADER
+
+
+class GraphDeclarationTests(unittest.TestCase):
+    """Check 10. One failing fixture per rule, plus a clean baseline."""
+
+    def test_a_complete_declaration_passes(self):
+        codes, messages = os_run({"templates/thing.md": template_file()})
+        self.assertEqual(set(), codes, messages)
+
+    def test_the_template_header_is_still_found_under_the_declaration(self):
+        codes, messages = os_run({"templates/thing.md": template_file()})
+        self.assertNotIn("HEADER", codes, messages)
+
+    def test_a_missing_key_is_flagged(self):
+        codes, messages = os_run({"templates/thing.md": template_file(feeds=None)})
+        self.assertIn("GRAPH", codes)
+        self.assertIn("missing the feeds key", messages)
+
+    def test_a_file_with_no_declaration_at_all_is_flagged(self):
+        codes, messages = os_run(
+            {"templates/thing.md": "# Thing\n\n" + TEMPLATE_HEADER})
+        self.assertIn("GRAPH", codes)
+        self.assertIn("no graph declaration", messages)
+
+    def test_a_stage_outside_the_vocabulary_is_flagged(self):
+        codes, messages = os_run(
+            {"templates/thing.md": template_file(stage="REFINEMENT")})
+        self.assertIn("GRAPH", codes)
+        self.assertIn('stage "REFINEMENT" is not one of', messages)
+
+    def test_every_declared_track_is_inside_the_vocabulary(self):
+        for stage in ("DISCOVER", "OPERATE", "PLANNING", "AI OVERLAY",
+                      "ALL STAGES"):
+            codes, messages = os_run(
+                {"templates/thing.md": template_file(stage=stage)})
+            self.assertEqual(set(), codes, "%s: %s" % (stage, messages))
+
+    def test_a_gate_outside_one_to_six_is_flagged(self):
+        for value in ("0", "7", "two", '""'):
+            codes, messages = os_run(
+                {"templates/thing.md": template_file(gate=value)})
+            self.assertIn("GRAPH", codes, value)
+            self.assertIn("not an integer 1 to 6", messages)
+
+    def test_an_unresolvable_feeds_path_is_flagged(self):
+        codes, messages = os_run(
+            {"templates/thing.md": template_file(feeds='["templates/gone.md"]')})
+        self.assertIn("GRAPH", codes)
+        self.assertIn("feeds names templates/gone.md", messages)
+
+    def test_a_feeds_path_that_resolves_is_not_flagged(self):
+        codes, messages = os_run({
+            "templates/thing.md": template_file(feeds='["templates/other.md"]'),
+            "templates/other.md": template_file(aliases='["The Other"]'),
+        })
+        self.assertEqual(set(), codes, messages)
+
+    def test_an_unresolvable_method_path_is_flagged(self):
+        codes, messages = os_run(
+            {"templates/thing.md": template_file(method='"knowledge/gone.md"')})
+        self.assertIn("GRAPH", codes)
+        self.assertIn("method names knowledge/gone.md", messages)
+
+    def test_a_file_outside_the_six_layers_needs_no_declaration(self):
+        codes, messages = os_run({"docs/note.md": "A plain note.\n"})
+        self.assertEqual(set(), codes, messages)
+
+
+class WikilinkTests(unittest.TestCase):
+    """Check 11. Wikilinks are additive, so they resolve or they are noise."""
+
+    def test_an_unresolvable_wikilink_is_flagged(self):
+        codes, messages = os_run({"docs/note.md": "see [[nowhere/at-all.md]]\n"})
+        self.assertIn("WIKILINK", codes)
+        self.assertIn("nor a declared alias", messages)
+
+    def test_a_wikilink_to_a_file_in_the_tree_resolves(self):
+        codes, messages = os_run({"docs/note.md": "see [[docs/other.md]]\n",
+                                  "docs/other.md": "Other.\n"})
+        self.assertNotIn("WIKILINK", codes, messages)
+
+    def test_a_wikilink_to_a_declared_alias_resolves(self):
+        codes, messages = os_run({"docs/note.md": "see [[the thing]]\n",
+                                  "templates/thing.md": template_file()})
+        self.assertEqual(set(), codes, messages)
+
+    def test_a_piped_or_anchored_wikilink_reads_only_the_target(self):
+        codes, messages = os_run(
+            {"docs/note.md": "[[docs/other.md#part|that part]]\n",
+             "docs/other.md": "Other.\n"})
+        self.assertNotIn("WIKILINK", codes, messages)
+
+    def test_a_mermaid_subroutine_shape_is_not_read_as_a_wikilink(self):
+        fenced = "```mermaid\nflowchart LR\n  svc --> q[[Async queue]]\n```\n"
+        codes, messages = os_run({"docs/note.md": fenced})
+        self.assertNotIn("WIKILINK", codes, messages)
+
+
+class SkillDeclarationTests(unittest.TestCase):
+    """The Task 2 decision: skills declare in a sidecar, not in frontmatter."""
+
+    SKILL = "---\nname: x\ndescription: Use when testing.\n---\nBody.\n"
+    SIDECAR = ("layer: skills\nstage: DEFINE\ngate: 2\nfeeds: []\n"
+               'method: ""\naliases: ["Ex"]\n')
+
+    def test_the_sanctioned_key_set_in_the_sidecar_passes(self):
+        codes, messages = os_run({"skills/x/SKILL.md": self.SKILL,
+                                  "skills/x/SKILL.graph.yml": self.SIDECAR})
+        self.assertEqual(set(), codes, messages)
+
+    def test_a_missing_sidecar_is_flagged(self):
+        codes, messages = os_run({"skills/x/SKILL.md": self.SKILL})
+        self.assertIn("GRAPH", codes)
+        self.assertIn("SKILL.graph.yml", messages)
+
+    def test_an_extra_key_in_the_sidecar_still_fails(self):
+        codes, messages = os_run(
+            {"skills/x/SKILL.md": self.SKILL,
+             "skills/x/SKILL.graph.yml": self.SIDECAR + "owner: someone\n"})
+        self.assertIn("GRAPH", codes)
+        self.assertIn('carries "owner"', messages)
+
+    def test_a_graph_key_in_the_skill_frontmatter_is_still_rejected(self):
+        smuggled = ("---\nname: x\ndescription: Use when testing.\n"
+                    "layer: skills\n---\nBody.\n")
+        codes, messages = os_run(
+            {"skills/x/SKILL.md": smuggled,
+             "skills/x/SKILL.graph.yml": self.SIDECAR})
+        self.assertIn("FRONTMATTER", codes)
+        self.assertIn("exactly name and description", messages)
+
+    def test_name_and_description_stay_legal_beside_the_graph_keys(self):
+        agent = ("---\nname: an-agent\ndescription: Use when testing.\n"
+                 "layer: agents\nstage: DESIGN\ngate: 3\nfeeds: []\n"
+                 'method: ""\naliases: ["An agent"]\n---\n# An agent\n')
+        codes, messages = os_run({"agents/an-agent.md": agent})
+        self.assertEqual(set(), codes, messages)
+
+
+if __name__ == "__main__":
+    unittest.main()
