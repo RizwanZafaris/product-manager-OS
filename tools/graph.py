@@ -45,6 +45,7 @@ claims, and a wrong claim renders as a wrong arrow.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import posixpath
 import re
 import sys
@@ -112,6 +113,21 @@ def read(path):
     try:
         return path.read_text(encoding="utf-8")
     except (UnicodeDecodeError, OSError):
+        return None
+
+
+def read_bytes(path):
+    """Raw bytes of one file, or None when it does not exist / is not a file.
+
+    Used only for the --check comparison. read() above goes through
+    read_text, which normalizes CRLF to LF as part of Python's universal
+    newlines handling, so a committed file that drifted to CRLF would read
+    back equal to the LF version this script writes and --check would call
+    it fresh when it is not. Bytes do not lie about that.
+    """
+    try:
+        return path.read_bytes()
+    except OSError:
         return None
 
 
@@ -235,8 +251,39 @@ def read_gates(root):
 
 
 def node_id(rel):
-    """A Mermaid-safe id for a path. Letters, digits, and underscores only."""
-    return "n_" + re.sub(r"[^0-9A-Za-z]", "_", rel)
+    """A Mermaid-safe id for a path. Letters, digits, and underscores only.
+
+    Sanitizing a path collapses every non-alphanumeric byte to "_", so
+    "collision-a.md" and "collision_a.md" sanitize to the same text and
+    would otherwise merge into one Mermaid node. Appending a short stable
+    hash of the untouched repo-relative path keeps such pairs apart; the
+    hash is over `rel`, not the sanitized text, so it carries the
+    distinction the sanitizing step throws away. check_unique_ids() below
+    verifies this holds across the whole node set rather than assuming it.
+    """
+    digest = hashlib.sha1(rel.encode("utf-8")).hexdigest()[:8]
+    return "n_" + re.sub(r"[^0-9A-Za-z]", "_", rel) + "_" + digest
+
+
+def check_unique_ids(rels):
+    """Fail loudly if any two files still produce the same node id.
+
+    node_id()'s hash suffix is keyed on the full path, so a real collision
+    here means two distinct paths hashed to the same 8 hex digits, not a
+    sanitizing artifact. That should not happen; if it ever does, silently
+    merging two files into one diagram node is worse than stopping the
+    build, so this raises instead of continuing.
+    """
+    seen = {}
+    for rel in rels:
+        ident = node_id(rel)
+        prior = seen.get(ident)
+        if prior is not None and prior != rel:
+            raise SystemExit(
+                "tools/graph.py: node id collision: %r and %r both produce "
+                "%s. This should not happen with distinct paths; investigate "
+                "before trusting the graph." % (prior, rel, ident))
+        seen[ident] = rel
 
 
 def label_for(rel):
@@ -282,6 +329,7 @@ def collect(root):
              and not p.relative_to(root).as_posix().startswith("modules/")]
     rels = [p.relative_to(root).as_posix() for p in files]
     tree = set(rels)
+    check_unique_ids(rels)
 
     stages, declared, unresolved = {}, {}, []
     with_fm, without_fm, with_feeds = [], [], []
@@ -490,25 +538,27 @@ def main(argv=None):
 
     data = collect(args.root)
     text = render(data)
+    payload = text.encode("utf-8")  # explicit LF: no newline translation, ever
     target = args.root / OUTPUT
 
     if args.check:
-        current = read(target)
+        current = read_bytes(target)
         if current is None:
             print("%s is missing. Run: python3 tools/graph.py" % OUTPUT,
                   file=sys.stderr)
             return 1
-        if current != text:
+        if current != payload:
             print("%s is stale: it does not match what tools/graph.py "
-                  "generates from the tree. Run: python3 tools/graph.py, then "
-                  "commit the result." % OUTPUT, file=sys.stderr)
+                  "generates from the tree (byte comparison, so a stray "
+                  "CRLF counts as stale too). Run: python3 tools/graph.py, "
+                  "then commit the result." % OUTPUT, file=sys.stderr)
             return 1
         print("%s: ok (up to date, %d files scanned)"
               % (OUTPUT, data["scanned"]))
         return 0
 
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(text, encoding="utf-8")
+    target.write_bytes(payload)
     nodes, edges = build(data)
     print("%s: written" % OUTPUT)
     print("  files scanned: %d (%d with frontmatter, %d without, %d declaring "

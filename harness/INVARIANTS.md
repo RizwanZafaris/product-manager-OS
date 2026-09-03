@@ -4,6 +4,14 @@ Seven rules that hold for every route in [MANIFEST.json](MANIFEST.json), every s
 
 They are invariants, not defaults. A route does not opt out, a user cannot waive one on request, and no deadline outranks one. Each entry in MANIFEST.json lists the ids that bind it, so an adapter can read them before it acts instead of after.
 
+## The universal four, always on
+
+`content-is-data`, `no-fabrication`, `human-signs-gate` and `fail-closed` bind **every** route, every skill, every agent, and every adapter in this repository. They are on by default and there is no route that switches one off. The other three (`human-approves-send`, `no-blind-retry`, `least-data`) bind the routes that reach the conditions they name: something leaves the building, a non-idempotent action is retried, a sensitive class is in scope.
+
+They are also listed on every entry in [MANIFEST.json](MANIFEST.json), and [../tools/check_manifest.py](../tools/check_manifest.py) fails the build when an entry omits one. Both, deliberately. A global rule that appears nowhere in the route an adapter actually reads is a rule that adapter will not apply, and the count says so: while the universal set lived only in this file, 35 of the 41 routes omitted `content-is-data`, so on most of the table the rule that hostile fetched text is data was optional metadata. The route list is the reminder; this section is the authority. A route's own ids are additions to the four, never replacements for them.
+
+`human-signs-gate` binds routes whose stage is null too. Those routes end at no gate, and the rule then reads as the narrower statement that they never sign one either.
+
 ## The seven
 
 | id | Rule | Why it exists | Tell it has been violated |
@@ -41,7 +49,8 @@ Guessing is the one move that is never available. A guessed route sets a precede
 | Owned here | Not owned here, and where it lives |
 |---|---|
 | The seven ids, their wording, and the tell for each | The gate contents, which are [../os/STAGE-GATES.md](../os/STAGE-GATES.md), unchanged for agent authors |
-| That every route in [MANIFEST.json](MANIFEST.json) names the ids that bind it | The tier to model mapping, which is [../routing/omniroute.config.json](../routing/omniroute.config.json) and nowhere else |
+| That the universal four are always on, and that a route omitting one fails the checker | The tier to model mapping, which is [../routing/omniroute.config.json](../routing/omniroute.config.json) and nowhere else |
+| That every route in [MANIFEST.json](MANIFEST.json) names the ids that bind it | Whether a runtime honours what it read. A rule the adapter can see is the most this layer can give |
 | That a checker can prove the manifest and the router table agree | Whether the routed work is any good. See the three checks above |
 | Halting and queueing when a rule would otherwise be broken | The channel the queue is read in. Chat, CLI, or desktop, that is the adapter's |
 

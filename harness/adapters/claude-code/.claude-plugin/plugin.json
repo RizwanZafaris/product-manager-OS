@@ -1,7 +1,7 @@
 {
   "name": "product-manager-os-harness",
   "description": "The router table of the Product Manager OS as slash commands. One command per route, generated from harness/MANIFEST.json, each naming the skill to follow, the templates the output lands in, the files to read first, the gate the output must pass, and the invariants that bind the run.",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "author": {
     "name": "Rizwan Zafar"
   },
