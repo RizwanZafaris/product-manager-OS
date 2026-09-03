@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "generated": "2026-09-03T18:34:35Z",
-  "commit": "f7022d3aceae14e47d94d647d189b18f0c28d0ec",
+  "generated": "2026-09-03T18:37:07Z",
+  "commit": "b78905de89436e7f28bb6b89dcd51a9ee20bdb90",
   "branch": "fix/audit-p0",
   "working_tree": "dirty",
   "python": "3.14.3",
@@ -19,7 +19,7 @@
           "points": 3,
           "verify": "python3 lint.py --os",
           "exit_code": 0,
-          "seconds": 1.74,
+          "seconds": 1.79,
           "status": "green",
           "earned": 3
         },
@@ -29,7 +29,7 @@
           "points": 2,
           "verify": "python3 tools/readiness_probe.py workspace-lifecycle",
           "exit_code": 0,
-          "seconds": 1.45,
+          "seconds": 0.6,
           "status": "green",
           "earned": 2
         },
@@ -67,7 +67,7 @@
           "points": 3,
           "verify": "python3 tools/readiness_probe.py workspace-links",
           "exit_code": 0,
-          "seconds": 1.07,
+          "seconds": 0.89,
           "status": "green",
           "earned": 3
         },
@@ -77,7 +77,7 @@
           "points": 2,
           "verify": "python3 tools/readiness_probe.py workspace-drift",
           "exit_code": 0,
-          "seconds": 0.67,
+          "seconds": 0.46,
           "status": "green",
           "earned": 2
         },
@@ -106,7 +106,7 @@
           "points": 3,
           "verify": "python3 tools/check_manifest.py --quiet",
           "exit_code": 0,
-          "seconds": 0.05,
+          "seconds": 0.07,
           "status": "green",
           "earned": 3
         },
@@ -116,7 +116,7 @@
           "points": 3,
           "verify": "python3 -m unittest discover -s harness -p test_runner.py -k AuditRegression",
           "exit_code": 0,
-          "seconds": 1.06,
+          "seconds": 1.09,
           "status": "green",
           "earned": 3
         },
@@ -126,7 +126,7 @@
           "points": 2,
           "verify": "python3 harness/adapters/claude-code/generate.py --check",
           "exit_code": 0,
-          "seconds": 0.08,
+          "seconds": 0.09,
           "status": "green",
           "earned": 2
         },
@@ -136,7 +136,7 @@
           "points": 2,
           "verify": "python3 harness/adapters/desktop/selftest.py",
           "exit_code": 0,
-          "seconds": 0.12,
+          "seconds": 0.16,
           "status": "green",
           "earned": 2
         },
@@ -174,7 +174,7 @@
           "points": 3,
           "verify": "python3 -m unittest discover -s harness -p test_runner.py -k concurrent",
           "exit_code": 0,
-          "seconds": 0.72,
+          "seconds": 0.7,
           "status": "green",
           "earned": 3
         },
@@ -184,7 +184,7 @@
           "points": 2,
           "verify": "python3 -m unittest discover -s harness -p test_runner.py -k queued",
           "exit_code": 0,
-          "seconds": 0.17,
+          "seconds": 0.12,
           "status": "green",
           "earned": 2
         },
@@ -230,7 +230,7 @@
           "points": 2,
           "verify": "python3 -m unittest test_lint -k approved_with_an_unticked",
           "exit_code": 0,
-          "seconds": 0.07,
+          "seconds": 0.06,
           "status": "green",
           "earned": 2
         },
@@ -240,7 +240,7 @@
           "points": 2,
           "verify": "python3 -m unittest test_lint -k missing_required_section",
           "exit_code": 0,
-          "seconds": 0.07,
+          "seconds": 0.06,
           "status": "green",
           "earned": 2
         },
@@ -260,7 +260,7 @@
           "points": 2,
           "verify": "python3 -m unittest test_lint -k Secret",
           "exit_code": 0,
-          "seconds": 0.17,
+          "seconds": 0.1,
           "status": "green",
           "earned": 2
         },
@@ -380,7 +380,7 @@
       "id": "ci",
       "title": "CI, packaging, migrations, releases, and maintainability",
       "points": 10,
-      "earned": 7,
+      "earned": 8,
       "criteria": [
         {
           "id": "CI-1",
@@ -388,7 +388,7 @@
           "points": 2,
           "verify": "python3 tools/readiness_probe.py compile-all",
           "exit_code": 0,
-          "seconds": 0.15,
+          "seconds": 0.16,
           "status": "green",
           "earned": 2
         },
@@ -398,7 +398,7 @@
           "points": 2,
           "verify": "python3 tools/readiness_probe.py full-suite",
           "exit_code": 0,
-          "seconds": 4.48,
+          "seconds": 3.86,
           "status": "green",
           "earned": 2
         },
@@ -417,11 +417,10 @@
           "title": "The deletability guarantee holds: the tree gate passes with harness/ removed",
           "points": 1,
           "verify": "python3 tools/readiness_probe.py deletable-harness",
-          "exit_code": 1,
-          "seconds": 2.87,
-          "status": "failing",
-          "earned": 0,
-          "output_tail": "foundations.md:7: LINK relative link products/README.md does not resolve.\nlearn/path-senior.md:7: LINK relative link products/README.md does not resolve.\nlearn/path-transitioning.md:7: LINK relative link products/README.md does not resolve.\nlearn/skills/tutor/SKILL.md:22: LINK relative link ../../products/README.md does not resolve.\n\n6 problem(s). The gate failed, which is the point of having one."
+          "exit_code": 0,
+          "seconds": 4.81,
+          "status": "green",
+          "earned": 1
         },
         {
           "id": "CI-5",
@@ -429,7 +428,7 @@
           "points": 1,
           "verify": "python3 tools/readiness_probe.py mutation-checks",
           "exit_code": 0,
-          "seconds": 0.9,
+          "seconds": 0.71,
           "status": "green",
           "earned": 1
         },
@@ -443,7 +442,7 @@
           "blocker": "Standard library only, so there is nothing to pin, but there is also no migration path for an existing workspace and no backup or restore runbook."
         }
       ],
-      "shortfall": 3
+      "shortfall": 2
     },
     {
       "id": "ux",
@@ -457,7 +456,7 @@
           "points": 2,
           "verify": "python3 tools/readiness_probe.py golden-path",
           "exit_code": 0,
-          "seconds": 0.26,
+          "seconds": 0.25,
           "status": "green",
           "earned": 2
         },
@@ -467,7 +466,7 @@
           "points": 1,
           "verify": "python3 lint.py modules/regulated/examples/dispute-summary/PRD.md",
           "exit_code": 0,
-          "seconds": 0.07,
+          "seconds": 0.06,
           "status": "green",
           "earned": 1
         },
@@ -484,10 +483,10 @@
       "shortfall": 2
     }
   ],
-  "earned": 52,
+  "earned": 53,
   "possible": 100,
-  "verified_criteria": 24,
-  "failed_criteria": 1,
+  "verified_criteria": 25,
+  "failed_criteria": 0,
   "unbuilt_criteria": 16,
   "external_blockers": [
     "IN-2",
@@ -506,7 +505,7 @@
     "T-13"
   ],
   "hard_gates": {
-    "every_verifiable_criterion_passes": false,
+    "every_verifiable_criterion_passes": true,
     "no_unbuilt_criteria": false,
     "no_external_blockers": false,
     "working_tree_clean": false
