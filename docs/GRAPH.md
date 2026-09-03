@@ -20,8 +20,8 @@ One subgraph per stage of the loop in [os/OPERATING-LOOP.md](../os/OPERATING-LOO
 
 | Measure | Count |
 |---|---|
-| Files scanned in the six declaring layers | 270 |
-| Files carrying frontmatter of any shape | 270 |
+| Files scanned in the six declaring layers | 276 |
+| Files carrying frontmatter of any shape | 276 |
 | Files with no frontmatter yet | 0 |
 | Files declaring a `feeds` key | 117 |
 | Nodes in the diagram | 226 |
