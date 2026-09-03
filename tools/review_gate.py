@@ -136,8 +136,9 @@ def tree_digest(root=REPO):
                 if stat.S_ISLNK(metadata.st_mode):
                     target = os.readlink(name, dir_fd=directory_fd)
                     current = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+                    current_target = os.readlink(name, dir_fd=directory_fd)
                     if (not stat.S_ISLNK(current.st_mode) or current.st_dev != metadata.st_dev or
-                            current.st_ino != metadata.st_ino):
+                            current.st_ino != metadata.st_ino or current_target != target):
                         raise OSError("review symlink changed")
                     add(relative, "symlink", target.encode("utf-8"))
                 elif stat.S_ISREG(metadata.st_mode):

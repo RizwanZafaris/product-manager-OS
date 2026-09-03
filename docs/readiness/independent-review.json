@@ -4,8 +4,8 @@
   "reviewer_kind": "independent-agent",
   "independent_implementation": true,
   "identity_assurance": "unauthenticated-local-claim",
-  "reviewed_at": "2026-09-03T21:43:21Z",
-  "reviewed_tree_sha256": "c0704f4a3b26a8b276231929eb3494cbafc1a7eecd1169a3506cf0084d19f309",
+  "reviewed_at": "2026-09-03T21:49:17Z",
+  "reviewed_tree_sha256": "847e2993a5d4ae49722e222415ba1ee45c6b44995b92c552aac6114528998d1d",
   "scope": [
     "product correctness and lifecycle behavior",
     "SQLite transaction, concurrency, integrity, and recovery behavior",
@@ -17,9 +17,11 @@
     {"command": "python3.11 tools/readiness_probe.py full-suite", "result": "root 313, harness 111, regulated 14; total 438 test executions; 0 skipped"},
     {"command": "python3.11 tools/readiness_probe.py golden-path", "result": "workspace, STATE.md, discovery document, resolving links, and workspace gate green"},
     {"command": "python3.11 tools/security_gate.py; python3.11 tools/docs_contract.py", "result": "security gate 0 findings; docs contract 0 errors and 0 warnings"},
+    {"command": "python3.11 -m unittest -q test_pmos_release test_pmos_review", "result": "22 targeted regression tests passed; symlink target replacement checks pass"},
     {"command": "python3.11 tools/readiness.py --category ci", "result": "CI-1, CI-2, and CI-3 passed during bounded review; remaining release checks are code-owned readiness gates"}
   ],
   "findings": [
+    {"id": "LINUX-SYMLINK-TARGET-REPLACEMENT", "severity": "P1", "status": "resolved", "summary": "A replaced symlink could reuse its inode between the first and second observations on Linux; descriptor-relative readlink comparison now detects target replacement even when inode identity is reused.", "evidence": "pmos/release.py and tools/review_gate.py perform a second descriptor-relative readlink comparison; 22 targeted Python 3.11 regression tests pass."},
     {"id": "EXT-READINESS", "severity": "P2", "status": "accepted", "summary": "Hosted CI, live providers, vendor sandboxes, non-maintainer adoption, accountable regulatory approval, and published release attestations remain external required gates.", "evidence": "docs/readiness/external-gates.json explicitly records these dependencies; this local review does not claim them."}
   ],
   "verdict": "accepted"
