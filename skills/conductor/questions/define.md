@@ -83,7 +83,7 @@ Ask: Does a model produce any user-facing output, and does a financial or data r
 Wrong costs: A deferred overlay resurfaces later with an eval gap or a regulator's reference number attached.
 Evidence class: a stated yes or no per half, each with one line of grounds.
 Cross-examine when: either half is "probably not". Move: banned openers, then: which markets, which data, which model, checked against what?
-Accept when: both halves answered with grounds. Yes to the model half attaches the AI overlay, eval rows replacing prose criteria via [../../ai-prd/SKILL.md](../../ai-prd/SKILL.md). Yes to the regulator half routes through [../../reg-gap-check/SKILL.md](../../reg-gap-check/SKILL.md) before Gate 2, because the regulated overlay's preconditions freeze here.
+Accept when: both halves answered with grounds. Yes to the model half attaches the AI overlay, eval rows replacing prose criteria via [../../ai-prd/SKILL.md](../../ai-prd/SKILL.md). Yes to the regulator half routes through [../../reg-gap-check/SKILL.md](../../reg-gap-check/SKILL.md) before Gate 2, because the regulated overlay's preconditions freeze here. Yes to both halves activates the regulated overlay itself, which is the rule in [../../../os/STAGE-GATES.md](../../../os/STAGE-GATES.md); a yes on the regulator half alone does not, and STATE.md records what the regulatory owner carries instead.
 Lands in: STATE.md position block (overlays active) and `execution/decision-log.md`, and STATE.md accepted answers.
 
 ## Forced pair

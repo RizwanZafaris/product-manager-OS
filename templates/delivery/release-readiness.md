@@ -65,7 +65,7 @@ aliases: ["Release Readiness", "release-readiness"]
 
 ## 7. Regulated overlay
 
-- [ ] Does this release touch a product under a financial or data regulator? If yes, the regulated module was run via the [reg-gap-check skill](../../skills/reg-gap-check/SKILL.md) and the [compliance impact assessment](../operate/compliance-impact-assessment.md) is signed. If no, write why: [reason]
+- [ ] Does this release touch a product that contains an AI or machine-learning feature and has a financial or data regulator applying to it? If yes, the regulated module was run via the [reg-gap-check skill](../../skills/reg-gap-check/SKILL.md) and the [compliance impact assessment](../operate/compliance-impact-assessment.md) is signed. Both halves are required by the rule in [os/STAGE-GATES.md](../../os/STAGE-GATES.md); a regulated release with no model in it records what the regulatory owner used instead. If no, write why: [reason]
 
 ## 8. Sign-offs per function
 

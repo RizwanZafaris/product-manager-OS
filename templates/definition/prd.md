@@ -48,9 +48,11 @@ Skill: [write-prd](../../skills/write-prd/SKILL.md); [ai-prd](../../skills/ai-pr
      - Product contains a model: add the AI overlay, starting with
        ../ai/eval-spec.md, because acceptance criteria for model behavior are eval
        sets, not sentences. Stop and use ../../skills/ai-prd/SKILL.md instead.
-     - Product answers to a financial or data regulator: the regulated module
-       governs; see ../../modules/regulated/README.md and use its template as
-       shipped, unmodified. -->
+     - Product contains an AI or machine-learning feature AND a financial or
+       data regulator applies to it: the regulated module governs; see
+       ../../modules/regulated/README.md and use its template as shipped,
+       unmodified. Both halves are required, and ../../os/STAGE-GATES.md holds
+       the rule and what a regulated product with no model brings instead. -->
 
 **Owner:** [name] · **Engineering lead:** [name] · **Design lead:** [name]
 **Date:** [YYYY-MM-DD] · **Status:** Draft / In review / Approved · **Version:** [n]
@@ -335,5 +337,5 @@ Full register: [nfr.md](nfr.md) · Accessibility: [accessibility-checklist.md](.
 - [ ] Every load-bearing assumption has a validate-by date
 - [ ] The companion table has been read and the triggered rows opened
 - [ ] [spec-review](../../skills/spec-review/SKILL.md) has run and no blocking finding is outstanding
-- [ ] If regulated, the regulated module template is in use as shipped
+- [ ] If the product contains an AI or machine-learning feature and a regulator applies to it, the regulated module template is in use as shipped
 - [ ] The sign-off block names real people, and the Gate 2 approver did not write this document

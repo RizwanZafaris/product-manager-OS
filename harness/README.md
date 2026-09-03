@@ -18,7 +18,9 @@ The harness must never become the product. The moment a template can only be fil
 
 ## The deletability guarantee
 
-`rm -rf harness/` leaves a working document system. Two of the four shipping gates pass on the deleted tree today, and two report the same two links. This section records the run rather than the wish, because the wish is what a reader would otherwise inherit.
+`rm -rf harness/` leaves a working document system, and all four shipping gates now pass on the deleted tree. The guarantee was earned rather than inherited: the same proof failed earlier on the same day, for a reason this section names, and both runs are kept below. A record of a property that once failed and was then fixed is worth more than a clean claim, because it tells you what breaks it.
+
+### The run that failed
 
 The repository was copied to a scratch directory, `harness/` was deleted in the copy, and all four gates were run there on 2026-09-03:
 
@@ -48,13 +50,44 @@ docs/GRAPH.md: ok (up to date, 256 files scanned)
 exit 0
 ```
 
-What that does and does not mean. The document system is untouched: every template still fills, every skill still reads as a procedure, every gate is still signed by a person, and nothing under `harness/` was ever a source of truth. What broke is the gate, and it broke in exactly the way this section has broken before: a file outside the directory started naming a harness path as a link.
+Nothing under `harness/` caused that. `AGENTS.md` named two harness paths as markdown links, at its lines 11 and 18, so deleting the directory left two dangling links and the link gate reported them. One file outside this directory was enough to break the property for the whole tree.
 
-The rule, unchanged and now unenforced by anything but attention: **a file outside this directory names a harness path in plain text, in backticks, never as a link.** `examples/ledgerline-harness-routing-run.md` follows it, and the module map in [../README.md](../README.md) follows it and says so in the row itself. A backticked path still tells a reader where to look and costs nothing on deletion. A link is a dependency, and the link gate is right to treat it as one.
+### What changed between the two runs
 
-[OPEN: `AGENTS.md` lines 11 and 18 have to become backticked paths for this proof to go green again, and the owner of `AGENTS.md` holds that edit. Nothing in this directory can fix it.]
+Those two references in `AGENTS.md` are backticked paths now instead of links, and that file says why in the same paragraph. No gate was relaxed, no check was exempted, and no file under `harness/` moved. That is the whole delta.
 
-Re-run the proof whenever a file outside this directory starts talking about the harness. It is four commands against a scratch copy, and it is the only thing standing between a stated property and a wish. The lesson from two runs of it is that the rule needs a check: attention has now failed it twice.
+### The run that passes
+
+Same procedure, same scratch directory, re-run on 2026-09-03 after that edit:
+
+```
+$ tar --exclude='.git' --exclude='__pycache__' --exclude='.pytest_cache' -cf - . | (cd /private/tmp/deltest && tar -xf -)
+$ cd /private/tmp/deltest && rm -rf harness
+
+$ python3 lint.py --os
+.: ok (OS tree mode, 11 checks)
+exit 0
+
+$ python3 tools/check_manifest.py
+harness/: absent, nothing to check. The harness is deletable, so this gate
+reports ok instead of failing. A harness/ that exists without MANIFEST.json
+or INVARIANTS.md is a broken contract and still fails.
+exit 0
+
+$ python3 test_lint.py
+Ran 108 tests in 1.944s
+OK
+
+$ python3 tools/graph.py --check
+docs/GRAPH.md: ok (up to date, 256 files scanned)
+exit 0
+```
+
+What that does and does not mean. The document system was untouched across both runs: every template still fills, every skill still reads as a procedure, every gate is still signed by a person, and nothing under `harness/` was ever a source of truth. What broke the first time was the gate, and it broke in exactly the way this section has broken before, when a file outside the directory started naming a harness path as a link.
+
+The rule, and it is the whole guarantee: **a file outside this directory names a harness path in plain text, in backticks, never as a link.** `examples/ledgerline-harness-routing-run.md` follows it, the module map in [../README.md](../README.md) follows it and says so in the row itself, and `AGENTS.md` follows it now. A backticked path still tells a reader where to look and costs nothing on deletion. A link is a dependency, and the link gate is right to treat it as one.
+
+Re-run the proof whenever a file outside this directory starts talking about the harness. It is four commands against a scratch copy, and it is the only thing standing between a stated property and a wish. Nothing enforces the backtick rule except attention, attention has now failed it twice, and that is the argument for running the proof rather than trusting the sentence above it.
 
 One wiring change was needed to earn the guarantee. `tools/check_manifest.py` used to report two missing files and exit 1 on a tree with no harness, which would have failed CI for doing the supported thing. It now reports ok when `harness/` is absent, and still fails when `harness/` exists without its contract files. Deletion and a broken contract are different events and the checker now tells them apart.
 

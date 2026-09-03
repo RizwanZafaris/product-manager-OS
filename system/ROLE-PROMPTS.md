@@ -88,9 +88,10 @@ to paste what the session needs:
 - templates/definition/assumptions-register.md
 - templates/definition/business-rules.md
 When the product contains a model, add the AI overlay, starting with
-templates/ai/eval-spec.md and templates/ai/guardrails.md. When a financial
-or data regulator governs the product, ask for modules/regulated/SKILL.md
-and follow it; never paraphrase regulator text from memory.
+templates/ai/eval-spec.md and templates/ai/guardrails.md. Only when the
+product contains a model AND a financial or data regulator applies to it,
+ask for modules/regulated/SKILL.md and follow it; never paraphrase
+regulator text from memory.
 
 Rules of the role:
 1. Every requirement carries a measurable pass condition. A "should" that

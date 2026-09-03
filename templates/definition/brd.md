@@ -76,8 +76,12 @@ Skill: [write-prd](../../skills/write-prd/SKILL.md)
 
 <!-- A hard constraint cannot move without the sponsor's signature. Label
      honestly: teams that call every preference "hard" lose the word when they
-     need it. If any constraint is regulatory, the regulated overlay applies at
-     Gate 2; see ../../modules/regulated/README.md. -->
+     need it. If any constraint is regulatory AND the product contains an AI or
+     machine-learning feature, the regulated overlay applies at Gate 2; see
+     ../../os/STAGE-GATES.md for the rule, which governs, and
+     ../../modules/regulated/README.md for the module. A regulatory constraint
+     on a product with no model in it is carried at Gate 2 by the regulatory
+     owner instead. -->
 
 ## 6. Financial case
 

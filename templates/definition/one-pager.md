@@ -78,8 +78,11 @@ Skill: [write-prd](../../skills/write-prd/SKILL.md); [ai-prd](../../skills/ai-pr
 
 <!-- If the product contains a model, the AI overlay still applies at this weight:
      an eval row from ../ai/eval-spec.md replaces any prose criterion about model
-     output. If a financial or data regulator governs the product, stop and use
-     the regulated module instead: ../../modules/regulated/README.md. -->
+     output. If the product contains an AI or machine-learning feature and a
+     financial or data regulator applies to it, stop and use the regulated
+     module instead: ../../modules/regulated/README.md, under the rule in
+     ../../os/STAGE-GATES.md. A regulated product with no model does not
+     activate that overlay. -->
 
 ---
 

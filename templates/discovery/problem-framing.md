@@ -71,7 +71,7 @@ Skill: [persona-builder](../../skills/persona-builder/SKILL.md)
 
 ## 7. Constraints on any resolution
 
-[Known boundaries a solution must respect: budget ceiling, platform, regulatory regime, team capacity, deadline. If the product operates under a financial or data regulator, note it here and raise it again at Gate 2; the regulated overlay is described in ../../modules/regulated/README.md.]
+[Known boundaries a solution must respect: budget ceiling, platform, regulatory regime, team capacity, deadline. If a financial or data regulator applies to the product, note it here and raise it again at Gate 2. The regulated overlay itself activates only when the product also contains an AI or machine-learning feature; see ../../os/STAGE-GATES.md for the rule and for what a regulated product with no model brings instead.]
 
 ## 8. Decision requested
 

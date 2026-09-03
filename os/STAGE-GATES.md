@@ -10,6 +10,8 @@ aliases: ["Stage Gates", "STAGE-GATES"]
 
 Six gates, one per stage of the loop in [OPERATING-LOOP.md](OPERATING-LOOP.md). Each gate is a fill-in form: copy the gate's section into your product workspace, complete every field, tick only the boxes that are honestly true, and collect the signatures. A gate passes when the form is complete and signed, not when the meeting ends.
 
+**What a gate is, stated at its real strength.** A gate is prose plus a human signature, and that is the whole mechanism. No hash binds a signature to the bytes of the artifact it approved, so editing an approved PRD does not stale its approval. No identity check stands behind a typed name, so nothing here distinguishes a signature from a name someone else typed. Nothing prevents the author of a document from signing it off. The value on offer is narrower and still worth having: a document that nobody reviewed is visibly unreviewed, a line nobody could evidence stays marked unknown in a file that outlives the meeting, and an advance over an open objection leaves a waiver with a name on it. This is a discipline, not a control. It will not stop a person who is willing to lie to it, and a team that treats it as though it will has swapped one unexamined trust for another.
+
 <!-- Conventions for every gate below:
      - Angle-bracket fields <like this> are the blanks you fill.
      - Boxes are ticked by the humans named on the sign-off lines, never by an agent.
@@ -23,6 +25,24 @@ Three marks, not two. **Pass** means the evidence exists and someone at the gate
 Write the evidence next to the mark as a path and a section, never as a name. "Marcus confirmed" is a recollection and will not survive the quarter; `definition/nfr.md` section 4, row NFR-04 will. This is the same discipline the Conductor's landing protocol enforces in [CONDUCTOR.md](CONDUCTOR.md), and it applies whether or not anyone is running the Conductor.
 
 Each gate below closes with two things beyond its checklist: the skip warning, which is what the field has learned about skipping that gate, and **failure precedents**, which are the specific ways this gate gets failed or falsely passed, each with the tell that reveals it on the page. Read the precedents before you chair the gate, not after.
+
+## Advancing on a waiver
+
+Sometimes a team advances past a gate that did not pass. That happens in real work and pretending otherwise just moves the decision somewhere nobody writes it down. So there is a route, it is loud, and it costs a document.
+
+To advance past a fail or an unknown, write a waiver into the gate attempt file with all seven fields: **who insisted** (name, role, and their standing to accept this risk, typed by that person), **the date**, **the gate number and attempt number**, **each unmet line quoted verbatim from that attempt with its mark**, **why the evidence is missing and what would close it**, **what it risks** (the gate's own skip warning, quoted, plus the version of it specific to this product), and **who objected** and what they argued, or the words "no objection was raised". Mirror it to the risk register. Do not tick the waived line: it stays fail or unknown, and the waiver sits beside it.
+
+The objection field is the one that makes the waiver worth writing. A record of a decision reads, a year later, as though the room agreed. A record naming an unmet line and a person who argued against it is a document a postmortem can use. The same honesty applies here as to the signatures above: nobody verifies the name, and nothing stops a chair from leaving out the objection they did not want. A waiver makes a skipped gate legible. It does not make it hard.
+
+The Conductor's runtime version of this route, including the two forced questions it asks first, is in [CONDUCTOR.md](CONDUCTOR.md).
+
+## The regulated overlay, and what it does not cover
+
+Two gate lines below hook in `../modules/regulated/`. That module covers exactly two instruments: the CBUAE Guidance Note on consumer protection and AI/ML adoption by licensed financial institutions, and EU AI Act Annex IV technical documentation fields. Both are about AI and machine learning.
+
+So the overlay lines are written to fire narrowly: **the product uses AI or machine learning and a financial or data regulator applies to it**. A conventional payments, lending, or KYC product with no model in it does not fire them, and that is deliberate. Attaching an AI-specific overlay to a non-AI regulated product produces the worst outcome available: a ticked line, a filled section 0, and no coverage at all of the licensing conditions, scheme rules, and conduct obligations that product actually lives under. A blank is a question. A wrongly ticked box is an answer nobody will re-open.
+
+**Known gap, stated rather than papered over.** This repository does not ship a jurisdiction pack for non-AI regulated products. If your product is regulated and has no model in it, these two gate lines are not your compliance coverage: bring your own licence conditions, scheme rules, and regulatory calendar to Gate 2, name the regulatory owner on the sign-off line, and record in STATE.md that the shipped overlay did not apply and what you used instead. [OPEN: a non-AI jurisdiction pack, owner is the repository maintainer.]
 
 ---
 
@@ -79,7 +99,7 @@ Closes DEFINE. Feeds DESIGN.
 - [ ] Out-of-scope is written down and the sponsor has read it
 - [ ] The sponsor named in the BRD has signed the BRD itself, not just this gate
 - [ ] **AI overlay, when the product contains a model:** acceptance criteria for model behavior are eval sets with thresholds per `../templates/ai/eval-spec.md`, not prose
-- [ ] **Regulated overlay, when a financial or data regulator applies:** section 0 of `../modules/regulated/templates/regulated-ai-prd-template.md` is answered per market, and its lint gate runs green on the filled document
+- [ ] **Regulated overlay, when the product contains an AI or machine-learning feature and a financial or data regulator applies to it:** section 0 of `../modules/regulated/templates/regulated-ai-prd-template.md` is answered per market, and its lint gate runs green on the filled document. A regulated product with no model in it does not run this overlay; see "The regulated overlay, and what it does not cover" above for what it needs instead
 
 **Decision:** SIGNED / RETURNED FOR REWORK, because: <one paragraph>
 
@@ -207,7 +227,7 @@ Closes DELIVER. Feeds OPERATE.
 - [ ] On-call knows this release is coming, and the runbook for it exists
 - [ ] Every function on the readiness checklist signed its own line: engineering, product, QA, support, and any others the readiness doc names
 - [ ] **AI overlay:** guardrails verified live in the release candidate; the kill switch was tested, not just designed
-- [ ] **Regulated overlay:** the section 0 answers from Gate 2 are still true of the artifact that ships (model version, vendor terms, data residency, disclosures); any drift is written up and re-signed by the regulatory owner
+- [ ] **Regulated overlay, where the Gate 2 line fired:** the section 0 answers from Gate 2 are still true of the artifact that ships (model version, vendor terms, data residency, disclosures); any drift is written up and re-signed by the regulatory owner. If Gate 2 recorded that the shipped overlay did not apply, this line re-checks whatever the regulatory owner used in its place instead, and says so by name
 
 **Decision:** GO / NO-GO / CONDITIONAL GO with <each condition, its owner, and its close-by date>, because: <one paragraph>
 
