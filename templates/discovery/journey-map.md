@@ -2,7 +2,7 @@
 
 Stage: DISCOVER, feeds Gate 1 (problem worth solving)
 Knowledge: [Continuous discovery](../../knowledge/torres-continuous-discovery.md)
-Skill: manual
+Skill: [persona-builder](../../skills/persona-builder/SKILL.md)
 
 <!-- One persona, one job, end to end. A journey map that tries to cover every
      user and every path becomes a mural: impressive on a wall, useless in a

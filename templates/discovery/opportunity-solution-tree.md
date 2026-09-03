@@ -2,7 +2,7 @@
 
 Stage: DISCOVER, feeds Gate 1 (problem worth solving)
 Knowledge: [Continuous discovery](../../knowledge/torres-continuous-discovery.md)
-Skill: manual
+Skill: [persona-builder](../../skills/persona-builder/SKILL.md)
 
 <!-- The structural tool of Teresa Torres's continuous discovery practice, built
      here as tables instead of a diagram so it can be diffed, cited, and kept

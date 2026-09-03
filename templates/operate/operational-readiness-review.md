@@ -2,7 +2,7 @@
 
 **Stage:** DELIVER into OPERATE (feeds [Gate 5](../../os/STAGE-GATES.md), rechecked at [Gate 6](../../os/STAGE-GATES.md))
 **Knowledge:** [knowledge index](../../knowledge/INDEX.md)
-**Skill:** [drafting agent](../../agents/drafting-agent.md)
+**Skill:** [launch-readiness](../../skills/launch-readiness/SKILL.md)
 
 <!-- Release readiness asks "can we ship it?". This review asks "can we run it at
      3 a.m. with the author on vacation?". Complete it before first production

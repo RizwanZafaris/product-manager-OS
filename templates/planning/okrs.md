@@ -2,7 +2,7 @@
 
 **Stage:** PLANNING track (feeds every stage of the [operating loop](../../os/OPERATING-LOOP.md))
 **Knowledge:** [OKRs](../../knowledge/okrs.md)
-**Skill:** [roadmap builder](../../skills/roadmap-builder/SKILL.md)
+**Skill:** [okr-critic](../../skills/okr-critic/SKILL.md); [roadmap-builder](../../skills/roadmap-builder/SKILL.md) for the quarter they sit in
 
 <!-- The method here is Andy Grove's, as popularized by John Doerr in Measure What
      Matters, encoded in this repo's own words; the knowledge card linked above

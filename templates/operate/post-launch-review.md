@@ -2,7 +2,7 @@
 
 **Stage:** OPERATE (feeds [Gate 6: outcomes verified, learn or sunset](../../os/STAGE-GATES.md)); an event review, run once per launch. The recurring instrument is [metrics-review.md](metrics-review.md)
 **Knowledge:** [knowledge index](../../knowledge/INDEX.md)
-**Skill:** [drafting agent](../../agents/drafting-agent.md)
+**Skill:** [product-review](../../skills/product-review/SKILL.md)
 
 <!-- Two review templates live in this directory and they answer different
      questions. The metrics review runs on a cadence forever and asks "is the

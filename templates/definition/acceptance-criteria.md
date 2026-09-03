@@ -2,7 +2,7 @@
 
 Stage: DEFINE, feeds Gate 2 (requirements signed off)
 Knowledge: [Knowledge index](../../knowledge/INDEX.md)
-Skill: [drafting-agent](../../agents/drafting-agent.md)
+Skill: [story-writer](../../skills/story-writer/SKILL.md)
 
 <!-- Acceptance criteria are the pass-or-fail contract between the requirement
      and the release. If a criterion cannot fail, it is a ceremony; if it cannot
@@ -37,7 +37,7 @@ Skill: [drafting-agent](../../agents/drafting-agent.md)
 <!-- Duplicate the block per criterion. Group blocks under the story or FR they
      verify. -->
 
-### AC-1 · verifies [US-n / FR-nnn]
+### AC-1 · verifies [USn / FR-nnn]
 
 ```
 GIVEN [precondition: system state, user state, data on hand]
@@ -50,7 +50,7 @@ THEN  [one observable outcome, with its measurable threshold where one applies]
 - **Test data needed:** [fixtures or accounts required]
 - **Automatable:** [yes / no; if no, who runs it manually]
 
-### AC-2 · verifies [US-n / FR-nnn]
+### AC-2 · verifies [USn / FR-nnn]
 
 ```
 GIVEN

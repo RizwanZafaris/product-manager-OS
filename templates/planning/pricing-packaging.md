@@ -2,7 +2,7 @@
 
 **Stage:** PLANNING track (feeds every stage of the [operating loop](../../os/OPERATING-LOOP.md), most directly Gate 5 readiness)
 **Knowledge:** [knowledge index](../../knowledge/INDEX.md)
-**Skill:** [drafting agent](../../agents/drafting-agent.md)
+**Skill:** [pricing-packaging](../../skills/pricing-packaging/SKILL.md)
 
 <!-- Pricing is a product decision that ships like a feature and reverses like a
      migration, so it gets a document, an owner, and a review date like everything

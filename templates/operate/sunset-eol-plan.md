@@ -2,7 +2,7 @@
 
 **Stage:** OPERATE (executes the SUNSET decision from [Gate 6: outcomes verified, learn or sunset](../../os/STAGE-GATES.md))
 **Knowledge:** [knowledge index](../../knowledge/INDEX.md)
-**Skill:** [drafting agent](../../agents/drafting-agent.md)
+**Skill:** [decision-memo](../../skills/decision-memo/SKILL.md) for the call itself; [gtm-launch-planner](../../skills/gtm-launch-planner/SKILL.md) for the customer comms sequence
 
 <!-- The loop this repository promises runs discovery to sunset, and this is the
      sunset. A shutdown is a launch in reverse and deserves the same discipline:

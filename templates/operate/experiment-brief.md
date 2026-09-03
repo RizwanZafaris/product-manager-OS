@@ -2,7 +2,7 @@
 
 **Stage:** OPERATE (this file feeds [Gate 6: outcomes verified, learn or sunset](../../os/STAGE-GATES.md))
 **Knowledge:** [Knowledge index, Lean Startup entry](../../knowledge/INDEX.md)
-**Skill:** [drafting agent](../../agents/drafting-agent.md)
+**Skill:** [experiment-designer](../../skills/experiment-designer/SKILL.md)
 
 <!-- One experiment, one page, decided before it runs. The underlying discipline is
      Eric Ries's validated learning, restated in this repository's own words: the

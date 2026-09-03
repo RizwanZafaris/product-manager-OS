@@ -2,7 +2,7 @@
 
 **Stage:** DELIVER (this file feeds [Gate 5: release readiness green](../../os/STAGE-GATES.md))
 **Knowledge:** [Crossing the Chasm](../../knowledge/crossing-the-chasm.md)
-**Skill:** [drafting agent](../../agents/drafting-agent.md)
+**Skill:** [gtm-launch-planner](../../skills/gtm-launch-planner/SKILL.md)
 
 <!-- The release checklist proves the product can ship. This file answers the question
      that checklist never asks: who meets it first, and why them.

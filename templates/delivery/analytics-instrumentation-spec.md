@@ -2,7 +2,7 @@
 
 **Stage:** DELIVER (feeds [Gate 5: release readiness green](../../os/STAGE-GATES.md)), but write it before BUILD starts
 **Knowledge:** [north star metric](../../knowledge/north-star-metric.md)
-**Skill:** [drafting agent](../../agents/drafting-agent.md)
+**Skill:** [metrics-tree](../../skills/metrics-tree/SKILL.md)
 
 <!-- The PRD names success metrics. This file is the only thing that makes them
      measurable. Every metric is computed from events, and events only exist if

@@ -2,7 +2,7 @@
 
 **Stage:** OPERATE (this file feeds [Gate 6: outcomes verified, learn or sunset](../../os/STAGE-GATES.md))
 **Knowledge:** [north star metric](../../knowledge/north-star-metric.md)
-**Skill:** [drafting agent](../../agents/drafting-agent.md)
+**Skill:** [product-review](../../skills/product-review/SKILL.md); the [analyst agent](../../agents/analyst-agent.md) prepares the numbers
 
 <!-- This is the review the loop exists for: did the outcome move, and what do we do
      about it? Run it on a fixed cadence after launch, not "when we get around to it".

@@ -2,7 +2,7 @@
 
 **Stage:** DELIVER (this file IS [Gate 5: release readiness green](../../os/STAGE-GATES.md))
 **Knowledge:** [knowledge index](../../knowledge/INDEX.md)
-**Skill:** [drafting agent](../../agents/drafting-agent.md)
+**Skill:** [launch-readiness](../../skills/launch-readiness/SKILL.md)
 
 <!-- This is the go or no-go working document and the launch checklist in one place.
      The gate passes when every box below is honestly checkable, not when the meeting

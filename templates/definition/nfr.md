@@ -2,7 +2,7 @@
 
 Stage: DEFINE, feeds Gate 2 (requirements signed off)
 Knowledge: [Knowledge index](../../knowledge/INDEX.md)
-Skill: [drafting-agent](../../agents/drafting-agent.md)
+Skill: [write-prd](../../skills/write-prd/SKILL.md)
 
 <!-- Non-functional requirements are where products quietly fail: nobody writes
      "must fall over at month three" but plenty of teams ship it by leaving this

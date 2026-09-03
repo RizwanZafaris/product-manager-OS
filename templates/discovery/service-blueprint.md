@@ -2,7 +2,7 @@
 
 Stage: DISCOVER, feeds Gate 1 (problem worth solving)
 Knowledge: [Knowledge index](../../knowledge/INDEX.md)
-Skill: manual
+Skill: [persona-builder](../../skills/persona-builder/SKILL.md)
 
 <!-- The blueprint form originates with G. Lynn Shostack's 1980s work on
      designing services; the scoping discipline here follows Nielsen Norman

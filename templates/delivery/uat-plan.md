@@ -2,7 +2,7 @@
 
 **Stage:** DELIVER (feeds [Gate 5: release readiness green](../../os/STAGE-GATES.md))
 **Knowledge:** [knowledge index](../../knowledge/INDEX.md)
-**Skill:** [drafting agent](../../agents/drafting-agent.md)
+**Skill:** [acceptance agent](../../agents/acceptance-agent.md)
 
 <!-- User acceptance testing answers one question the team cannot answer for itself:
      does this work for the people who will actually use it, doing their actual job?

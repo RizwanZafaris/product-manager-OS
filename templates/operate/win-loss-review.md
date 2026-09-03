@@ -2,7 +2,7 @@
 
 **Stage:** OPERATE (feeds [Gate 6: outcomes verified, learn or sunset](../../os/STAGE-GATES.md))
 **Knowledge:** [jobs to be done](../../knowledge/jobs-to-be-done.md)
-**Skill:** [drafting agent](../../agents/drafting-agent.md)
+**Skill:** [competitive-intel](../../skills/competitive-intel/SKILL.md)
 
 <!-- One review per meaningful win, loss, or no-decision. The CRM dropdown says
      "price" because price is the polite reason buyers give a rep on the way out;

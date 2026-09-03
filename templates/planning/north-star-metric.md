@@ -2,7 +2,7 @@
 
 **Stage:** PLANNING track (feeds every stage of the [operating loop](../../os/OPERATING-LOOP.md))
 **Knowledge:** [north star metric](../../knowledge/north-star-metric.md)
-**Skill:** [drafting agent](../../agents/drafting-agent.md)
+**Skill:** [metrics-tree](../../skills/metrics-tree/SKILL.md)
 
 <!-- The knowledge card explains the method and its trap; this sheet is where the
      choice is made and defended. One metric that expresses delivered customer value,

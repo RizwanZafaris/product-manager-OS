@@ -2,7 +2,7 @@
 
 Stage: DESIGN, feeds [Gate 3: architecture and risks reviewed](../../os/STAGE-GATES.md)
 Knowledge: [knowledge index](../../knowledge/INDEX.md)
-Skill: [drafting-agent](../../agents/drafting-agent.md)
+Skill: [architect agent](../../agents/architect-agent.md)
 
 <!-- The one-pager is the document an executive or a partner team actually reads. It
      sits above the system design document: one initiative may span several systems,

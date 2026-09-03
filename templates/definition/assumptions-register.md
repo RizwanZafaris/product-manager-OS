@@ -2,7 +2,7 @@
 
 Stage: DEFINE, feeds Gate 2 (requirements signed off)
 Knowledge: [Knowledge index](../../knowledge/INDEX.md)
-Skill: [research-agent](../../agents/research-agent.md)
+Skill: [write-prd](../../skills/write-prd/SKILL.md); [program-premortem](../../skills/program-premortem/SKILL.md) when an assumption becomes a risk
 
 <!-- Read this before deciding you are too busy for this file.
 
