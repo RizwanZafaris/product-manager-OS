@@ -27,6 +27,7 @@ This is an unreleased working-tree change set, not a tag, published package, hos
 
 - Documentation now separates the document path, the optional local runtime, and external readiness. Historical claims below describe the state at the time of those entries; where they characterize the legacy harness rather than the `pmos` runtime, they are superseded by this section and the current operator documentation.
 - SQLite backup and restore now retain no-follow directory and database descriptors across connection and copy boundaries, rejecting path replacement before accepting data.
+- Release and review inventories compare symlink target bytes as well as file identity, so immediate inode reuse cannot hide a replaced link on Linux.
 
 ### Known external requirements
 

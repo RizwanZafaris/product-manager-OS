@@ -230,10 +230,11 @@ def _safe_symlink_target_at(root_fd: int, directory_fd: int, name: str, relative
     try:
         target = os.readlink(name, dir_fd=directory_fd)
         current = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+        current_target = os.readlink(name, dir_fd=directory_fd)
     except OSError as exc:
         raise ProvenanceError("cannot read release symlink: %s" % relative) from exc
     if (not stat.S_ISLNK(current.st_mode) or current.st_dev != metadata.st_dev or
-            current.st_ino != metadata.st_ino):
+            current.st_ino != metadata.st_ino or current_target != target):
         raise ProvenanceError("release symlink changed while reading: %s" % relative)
     if not target or Path(target).is_absolute() or "\x00" in target:
         raise ProvenanceError("release symlink has an unsafe target: %s" % relative)
