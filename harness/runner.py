@@ -1845,8 +1845,11 @@ def stage(path, text):
     """Stage one file's final bytes in its destination directory.
 
     Returns (destination, temporary). Nothing is visible at the destination
-    until commit_staged runs, so a run's artifact, log and journal row are
-    either all present or all absent.
+    until commit_staged runs, and commit_staged restores what it replaced if
+    it cannot finish, so a run's artifact, log and journal row are all present
+    or all absent. The one case that claim does not cover is a rollback that
+    itself fails; commit_staged names the paths it could not restore rather
+    than reporting success.
     """
     path = Path(path)
     guard_output(path)

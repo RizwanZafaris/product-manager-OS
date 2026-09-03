@@ -1177,6 +1177,86 @@ class QueueOutcomeTests(unittest.TestCase):
         return (runner.PRODUCTS_DIR / self.slug / "STATE.md").read_text(
             encoding="utf-8")
 
+    def test_a_real_run_places_the_artifact_where_the_workspace_expects_it(self):
+        """Drives the runner's own write path, not the service it calls. The
+        placement and the link rewrite have to survive _run_task, because
+        _run_task is what used to skip the rewrite entirely."""
+        sys.path.insert(0, str(REPO / "tools"))
+        import workspace as ws
+
+        template = REPO / "templates" / "discovery" / "evidence-note.md"
+        body = template.read_text(encoding="utf-8")
+
+        def stub(cfg_, tier, messages, results, transport, log, **kwargs):
+            reply = runner.Reply(tier, "test-model-1")
+            reply.model = reply.header_model = "test-model-1"
+            reply.expected_model = "test-model-1"
+            reply.text, reply.terminal = body, True
+            reply.finish_reason = "stop"
+            return reply
+
+        runner.call_with_fallback = stub
+        self.assertEqual(_quiet_run(self._args(), self.cfg, self.tasks), 0)
+        self.assertTrue(self.artifact.is_file(),
+                        "the artifact is not at the canonical destination")
+        dangling = ws.broken_links(self.artifact)
+        self.assertEqual([], dangling,
+                         "the runner wrote %d link(s) that do not resolve "
+                         "from %s" % (len(dangling), self.artifact.parent))
+
+    def test_an_interactive_route_writes_no_document(self):
+        """conduct-product-journey used to file a filled STATE.md as its
+        artifact. Its kind now says it files nothing, and the journal row is
+        the only trace a run leaves."""
+        def stub(cfg_, tier, messages, results, transport, log, **kwargs):
+            reply = runner.Reply(tier, "pro-model-1")
+            reply.model = reply.header_model = "pro-model-1"
+            reply.expected_model = "pro-model-1"
+            reply.text = "**Question 1 of the DISCOVER bank.** Who is this for?"
+            reply.terminal = True
+            reply.finish_reason = "stop"
+            return reply
+
+        runner.call_with_fallback = stub
+        os.environ["OMNIROUTE_JUDGMENT_MODELS"] = "pro-model-1"
+        args = self._args(
+            task="conduct-product-journey",
+            probe_results={"judgment": _usable_reply("judgment",
+                                                     "pro-model-1")})
+        self.assertEqual(_quiet_run(args, self.cfg, self.tasks), 0)
+
+        workspace_dir = runner.PRODUCTS_DIR / self.slug
+        documents = sorted(path.relative_to(workspace_dir).as_posix()
+                           for path in workspace_dir.rglob("*.md"))
+        self.assertEqual(["STATE.md"], documents,
+                         "an interactive route left a document behind")
+        self.assertIn("conduct-product-journey (interactive)", self._state())
+
+    def test_a_queued_run_leaves_a_job_record_that_can_be_listed(self):
+        """Queueing used to leave a journal line and exit 0, which a caller
+        cannot tell apart from a completed run."""
+        def stub(*a, **kw):
+            raise runner.QueuedWork("the call demanded pro-1 and cheap-9 "
+                                    "answered")
+
+        runner.call_with_fallback = stub
+        self.assertEqual(_quiet_run(self._args(), self.cfg, self.tasks),
+                         runner.EXIT_QUEUED)
+        jobs = sorted(runner.queue_dir(self.slug).glob("*.json"))
+        self.assertEqual(1, len(jobs), "no durable job record was written")
+        record = json.loads(jobs[0].read_text(encoding="utf-8"))
+        self.assertEqual("gather-evidence", record["task"])
+        self.assertEqual("deferred", record["status"])
+        self.assertEqual(1, record["attempts"])
+
+        # The same work deferred again updates the record instead of piling up.
+        self.assertEqual(_quiet_run(self._args(), self.cfg, self.tasks),
+                         runner.EXIT_QUEUED)
+        jobs = sorted(runner.queue_dir(self.slug).glob("*.json"))
+        self.assertEqual(1, len(jobs), "a retry created a second job record")
+        record = json.loads(jobs[0].read_text(encoding="utf-8"))
+        self.assertEqual(2, record["attempts"])
+
     def test_a_certification_mismatch_queues_and_writes_no_artifact(self):
         def stub(*a, **kw):
             raise runner.QueuedWork("the call demanded pro-1 and cheap-9 "
@@ -1443,6 +1523,259 @@ def _remove_tree(path):
         elif child.is_dir():
             child.rmdir()
     path.rmdir()
+
+
+
+class AuditRegressionTests(unittest.TestCase):
+    """One test per defect the September audit reproduced against ce81264.
+
+    Each of these fails against the behaviour it replaced, and each names what
+    that failure looked like, because a regression test whose only content is
+    an assertion tells the next reader nothing about why the assertion is
+    there.
+    """
+
+    def setUp(self):
+        self.slug = "test-audit-%d" % os.getpid()
+        self.workspace = runner.PRODUCTS_DIR / self.slug
+
+    def tearDown(self):
+        _remove_tree(self.workspace)
+
+    # ---------------------------------------------------- P0: destinations
+
+    def test_the_runner_and_the_initializer_place_every_template_alike(self):
+        """Thirteen of sixty landed in two different places, STATE.md among
+        them, so a run could create a second state file and a later resume
+        could read the wrong one. A fourteenth the initializer refused."""
+        sys.path.insert(0, str(REPO / "tools"))
+        import init_product
+
+        manifest = json.loads(
+            (REPO / "harness" / "MANIFEST.json").read_text(encoding="utf-8"))
+        named = set()
+        for task in manifest["tasks"]:
+            named.update(task.get("templates") or [])
+        self.assertTrue(named, "the manifest named no templates at all")
+
+        disagreed, refused = [], []
+        for rel in sorted(named):
+            path = REPO / rel
+            if not path.is_file():
+                continue
+            text = path.read_text(encoding="utf-8")
+            try:
+                canonical = init_product.destination_for(rel, "p", text)
+            except init_product.InitError:
+                refused.append(rel)
+                continue
+            got = runner.artifact_path("p", path).relative_to(REPO).as_posix()
+            if got != canonical:
+                disagreed.append((rel, canonical, got))
+
+        self.assertEqual([], disagreed,
+                         "the runner and the initializer place these "
+                         "templates differently")
+        self.assertEqual([], refused,
+                         "the initializer refuses to place a template the "
+                         "manifest routes to")
+
+    def test_state_lands_at_the_workspace_root(self):
+        got = runner.artifact_path("p", REPO / "templates" / "execution"
+                                   / "state.md")
+        self.assertEqual("products/p/STATE.md",
+                         got.relative_to(REPO).as_posix())
+
+    def test_the_ai_overlay_lands_inside_the_stage_that_produced_it(self):
+        got = runner.artifact_path("p", REPO / "templates" / "ai"
+                                   / "eval-spec.md")
+        self.assertEqual("products/p/definition/ai/eval-spec.md",
+                         got.relative_to(REPO).as_posix())
+
+    # ----------------------------------------------------------- P0: links
+
+    def test_a_placed_copy_has_no_link_that_fails_to_resolve(self):
+        """The runner used to write the template's own links unchanged, and
+        those are computed from templates/. Measured before the fix: 391
+        broken links across 49 of the 60 templates the manifest names."""
+        sys.path.insert(0, str(REPO / "tools"))
+        import workspace as ws
+
+        manifest = json.loads(
+            (REPO / "harness" / "MANIFEST.json").read_text(encoding="utf-8"))
+        named = set()
+        for task in manifest["tasks"]:
+            named.update(task.get("templates") or [])
+
+        broken_files, broken_links = 0, 0
+        for rel in sorted(named):
+            source = REPO / rel
+            if not source.is_file():
+                continue
+            destination = runner.artifact_path(self.slug, source)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            text, _rewrites, _skipped = ws.relocate(
+                source.read_text(encoding="utf-8"), source, destination,
+                self.slug)
+            destination.write_text(text, encoding="utf-8")
+            dangling = ws.broken_links(destination)
+            if dangling:
+                broken_files += 1
+                broken_links += len(dangling)
+        self.assertEqual(
+            (0, 0), (broken_links, broken_files),
+            "%d link(s) across %d placed file(s) do not resolve from where "
+            "the runner puts them" % (broken_links, broken_files))
+
+    def test_the_rewriter_sees_the_links_the_gate_sees(self):
+        """An angle-bracket destination with a space in it was a link the gate
+        judged and the rewriter never saw, so a workspace could pass
+        init_product --check and fail lint --workspace on the same file."""
+        sys.path.insert(0, str(REPO / "tools"))
+        import lint
+        import workspace as ws
+        self.assertIs(ws.LINK_RE, lint.LINK_RE,
+                      "the rewriter and the gate read different patterns")
+
+        text = "a ](<../../GLOSSARY.md>) b\n"
+        out, rewrites, _skipped = ws.rewrite_links(
+            text, "templates/discovery", "products/p/discovery", "p")
+        self.assertEqual([("../../GLOSSARY.md", "../../../GLOSSARY.md")],
+                         rewrites)
+        self.assertIn("<../../../GLOSSARY.md>", out,
+                      "the angle brackets were dropped, so the rewritten "
+                      "link no longer parses")
+
+    # ------------------------------------------------------------ P0: kind
+
+    def test_every_route_declares_a_kind_the_runner_implements(self):
+        manifest = json.loads(
+            (REPO / "harness" / "MANIFEST.json").read_text(encoding="utf-8"))
+        for task in manifest["tasks"]:
+            self.assertIn(task.get("kind"), runner.KINDS,
+                          "%s declares kind %r" % (task.get("id"),
+                                                   task.get("kind")))
+
+    def test_a_route_with_no_declared_kind_is_refused(self):
+        with self.assertRaises(runner.RunnerError) as caught:
+            runner.task_kind({"id": "x"})
+        self.assertIn("declares no kind", str(caught.exception))
+
+    def test_the_conductor_is_interactive_and_files_no_document(self):
+        """The Conductor's skill says ask one question and stop; the runner
+        demanded a fully filled STATE.md or the structure check rejected the
+        answer. No reply could satisfy both contracts."""
+        manifest = json.loads(
+            (REPO / "harness" / "MANIFEST.json").read_text(encoding="utf-8"))
+        by_id = dict((t["id"], t) for t in manifest["tasks"])
+        self.assertEqual("interactive",
+                         by_id["conduct-product-journey"]["kind"])
+        self.assertNotIn("interactive", runner.WRITING_KINDS)
+
+    def test_an_interactive_route_is_never_told_to_return_a_document(self):
+        closing = runner.CLOSING_INSTRUCTION["interactive"]
+        self.assertIn("stop", closing)
+        self.assertNotIn("Return the filled markdown", closing)
+
+    # -------------------------------------------------------- P0: rollback
+
+    def _fail_on_the_second_replace(self, staged):
+        real_replace = os.replace
+        calls = {"n": 0}
+
+        def failing_replace(src, dst):
+            calls["n"] += 1
+            if calls["n"] == 2:
+                raise OSError("disk went away")
+            return real_replace(src, dst)
+
+        os.replace = failing_replace
+        try:
+            with self.assertRaises(runner.RunnerError) as caught:
+                runner.commit_staged(staged)
+        finally:
+            os.replace = real_replace
+        return caught.exception
+
+    def test_a_failed_commit_leaves_the_workspace_as_it_was(self):
+        """Injecting a failure on the second of three replaces used to commit
+        the first and leave it: an artifact with no log, which is precisely
+        what the all-present-or-all-absent claim said could not happen."""
+        self.workspace.mkdir(parents=True, exist_ok=True)
+        first = self.workspace / "first.md"
+        second = self.workspace / "second.md"
+        first.write_text("original first\n", encoding="utf-8")
+        second.write_text("original second\n", encoding="utf-8")
+
+        error = self._fail_on_the_second_replace(
+            [runner.stage(first, "new first\n"),
+             runner.stage(second, "new second\n")])
+
+        self.assertIn("rolled back", str(error))
+        self.assertEqual("original first\n",
+                         first.read_text(encoding="utf-8"),
+                         "the first file stayed committed after the second "
+                         "failed")
+        self.assertEqual("original second\n",
+                         second.read_text(encoding="utf-8"))
+        leftovers = [path.name for path in self.workspace.iterdir()
+                     if ".tmp-" in path.name or ".rollback-" in path.name]
+        self.assertEqual([], leftovers,
+                         "staging or rollback temporaries were left behind")
+
+    def test_a_failed_commit_removes_a_file_that_did_not_exist_before(self):
+        """Rolling back a create is a delete, not a restore of nothing."""
+        self.workspace.mkdir(parents=True, exist_ok=True)
+        fresh = self.workspace / "fresh.md"
+        existing = self.workspace / "existing.md"
+        existing.write_text("before\n", encoding="utf-8")
+
+        self._fail_on_the_second_replace(
+            [runner.stage(fresh, "new\n"),
+             runner.stage(existing, "after\n")])
+
+        self.assertFalse(fresh.exists(),
+                         "a file created by the failed commit survived it")
+        self.assertEqual("before\n", existing.read_text(encoding="utf-8"))
+
+    # ----------------------------------------------------- P0: concurrency
+
+    def test_concurrent_journal_writers_keep_every_row(self):
+        """Two writers read the same STATE.md and committed in turn; only the
+        second row survived. No lock, no compare-and-swap, no error."""
+        import threading
+
+        runner.ensure_state(self.slug)
+        rows = ["| row-%02d | runner.py | concurrent | none | test |" % i
+                for i in range(12)]
+        errors = []
+
+        def write(line):
+            try:
+                runner.append_journal(self.slug, line)
+            except Exception as error:                      # noqa: BLE001
+                errors.append(error)
+
+        threads = [threading.Thread(target=write, args=(row,)) for row in rows]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        self.assertEqual([], errors, "a concurrent writer raised")
+        body = (self.workspace / "STATE.md").read_text(encoding="utf-8")
+        lost = [row for row in rows if row not in body]
+        self.assertEqual([], lost,
+                         "%d of %d journal rows were overwritten by another "
+                         "writer" % (len(lost), len(rows)))
+
+    def test_the_state_lock_refuses_rather_than_overwriting(self):
+        runner.ensure_state(self.slug)
+        with runner.state_lock(self.slug):
+            with self.assertRaises(runner.RunnerError) as caught:
+                with runner.state_lock(self.slug, timeout=0.2):
+                    pass
+        self.assertIn("wrote nothing", str(caught.exception))
 
 
 if __name__ == "__main__":
