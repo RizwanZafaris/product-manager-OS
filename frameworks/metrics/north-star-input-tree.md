@@ -52,13 +52,16 @@ Rules: exactly one owner per row ("growth" is nobody on a Tuesday); at least thr
 
 ### Step 3: sanity checks
 
-| Check | Pass condition | Result |
-|---|---|---|
-| Value not vanity | The north star scored 2 on "falls within a quarter" | pass / fail |
-| Moves within a quarter | Three or more inputs answered yes | |
-| No single metric hides a leak | For every input, the way it could rise while customers get less is written down, with the guardrail that would catch it | |
-| Coverage | Breadth (how many), frequency (how often), depth (how much), efficiency (how easily) each appear in an input, or the omission is explained | |
-| Not arithmetic | Nobody has claimed the inputs sum to the north star; the tree is causal | |
+Each check names the column it reads. A check that grades a different column from the one in its name is the failure this table exists to prevent.
+
+| Check | Reads | Pass condition | Result |
+|---|---|---|---|
+| Value not vanity | Step 1, the "Value, not volume" column | The north star scored 2 there: a customer got what they came for, and a unit that counts attempts or volume does not qualify | pass / fail |
+| Responsive to value loss | Step 1, the "Falls within a quarter if value stops" column | The north star scored 2 there. A 1 is adopted only with the lag stated and a fix dated, on the same terms as an 8 or 9 total | |
+| Inputs move within a quarter | Step 2, the "Moves within a quarter?" column | Three or more inputs answered yes | |
+| No single metric hides a leak | Step 2, one input row at a time | For every input, the way it could rise while customers get less is written down, with the guardrail that would catch it | |
+| Coverage | Step 2, the input set as a whole | Breadth (how many), frequency (how often), depth (how much), efficiency (how easily) each appear in an input, or the omission is explained | |
+| Not arithmetic | Step 2, the causal claim column | Nobody has claimed the inputs sum to the north star; the tree is causal | |
 
 ### Step 4: guardrails
 
@@ -74,7 +77,12 @@ A candidate at 10 with passing inputs goes straight into the north star sheet. A
 
 Invented figures for Ledgerline's expense-report copilot, which drafts a report from receipts, checks policy, and routes it for approval.
 
-Candidates: "reports submitted per week" scored 6 (a report bounced back for rework still counts, so it fails value-not-volume). "Reports approved on first submission per week" scored 9, losing a point on computability because approval events live in the finance system and the join to copilot-drafted reports is a two-week instrumentation task, dated and owned.
+Candidates, scored across the five columns of step 1 in order (value, falls within a quarter, cannot be gamed alone, leads revenue, computable today):
+
+- "Reports submitted per week": 0 + 2 + 1 + 1 + 2 = 6. It takes 0 on value because a report bounced back for rework still counts, and 1 on gaming because one team pushing a submission drive moves it alone.
+- "Reports approved on first submission per week": 2 + 2 + 2 + 2 + 1 = 9. The lost point is computability: approval events live in the finance system, and the join to copilot-drafted reports is a two-week instrumentation task, dated and owned.
+
+The first candidate is what the sanity check is for. It scores 2 on "falls within a quarter", so a value check pointed at that column would have passed a metric that counts attempts. Pointed at the value column, it reads 0 and fails, which is the right answer.
 
 | Input | Causal claim | Lead or lag | Owner | Current | Moves in a quarter? |
 |---|---|---|---|---|---|
@@ -84,7 +92,9 @@ Candidates: "reports submitted per week" scored 6 (a report bounced back for rew
 | Median manager approval time (hours) | Reports approved inside the week count in the week | lead | workflow PM | 31 | yes |
 | Employees submitting per month | Breadth: more of the company is on the tree at all | lag | customer success lead | 2,900 | no |
 
-Leak named for row 3: the pass rate could rise because policy rules were loosened. Guardrail: post-approval corrections by accounts payable, ceiling 3%, halt called by the finance controller. Sanity checks: all pass once the instrumentation task lands.
+Leak named for row 3: the pass rate could rise because policy rules were loosened. Guardrail: post-approval corrections by accounts payable, ceiling 3%, halt called by the finance controller.
+
+Sanity checks on the adopted candidate, each against the column it names: value not vanity, 2 in the value column, pass; responsive to value loss, 2 in the falls-within-a-quarter column, pass; inputs move within a quarter, four of five rows answered yes, pass; leaks, named for every input row, pass; coverage, breadth in row 5, frequency in row 1, depth in rows 2 and 3, efficiency in row 4, pass; not arithmetic, pass, since no row claims to sum to the north star. The adoption at 9 rather than 10 is the computability point, which clears once the instrumentation task lands.
 
 ## The trap
 

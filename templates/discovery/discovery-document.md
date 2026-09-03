@@ -48,8 +48,11 @@ Skill: [feedback-synthesis](../../skills/feedback-synthesis/SKILL.md)
      the rest of the loop demands. A second market brings its own rules, its own
      payment or identity rails, and often its own regulator, and finding that out
      at Gate 5 is the expensive way. If a financial or data regulator applies to
-     any market listed, the regulated overlay activates at Gate 2: see
-     ../../modules/regulated/README.md. Full analysis lives in
+     any market listed AND the product contains an AI or machine-learning
+     feature, the regulated overlay activates at Gate 2: see
+     ../../os/STAGE-GATES.md for the rule, which governs, and
+     ../../modules/regulated/README.md for the module. A regulated product with
+     no model in it does not activate it. Full analysis lives in
      ../operate/compliance-impact-assessment.md, not here. -->
 
 

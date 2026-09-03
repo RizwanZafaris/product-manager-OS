@@ -19,7 +19,7 @@ claude        # or any agent CLI that reads AGENTS.md
 
 That word wakes the Conductor, the interviewer defined in [os/CONDUCTOR.md](os/CONDUCTOR.md). It asks before it writes. One question at a time, each with a recommended default and lettered options, so most answers cost you one word. A vague answer gets cross-examined, at most twice, then parked visibly instead of accepted quietly. Every accepted answer lands immediately in your product workspace: in the template field it belongs to, and in `products/<name>/STATE.md`, the file that lets any later session, in any runtime, pick up exactly where you stopped. Say "resume" or "where are we" and it does.
 
-The Conductor refuses to advance a stage until the stage's gate checklist passes on evidence, and it never signs; a named human does. No agent CLI at hand? The boot prompt in [system/BOOT-PROMPT.md](system/BOOT-PROMPT.md) runs the same interview in any chat model: you paste STATE.md at session start and save the updated sections it dictates back. And nothing below requires the Conductor at all; everything under it is the same template system, fillable with a pencil.
+The Conductor never advances a stage on its own judgment: it renders the stage's gate checklist, marks each line pass, fail, or unknown against the evidence, and stops. It never signs; a named human does. If you insist on going past a gate that did not pass, it does not refuse, because it has standing to record and not to veto. It asks the stage's two forced questions first, then writes a waiver naming who insisted, on what date, which checklist line is still unmet, what that risks, and who objected, and it opens the next stage saying out loud that it was waived. No agent CLI at hand? The boot prompt in [system/BOOT-PROMPT.md](system/BOOT-PROMPT.md) runs the same interview in any chat model: you paste STATE.md at session start and save the updated sections it dictates back. And nothing below requires the Conductor at all; everything under it is the same template system, fillable with a pencil.
 
 ## The problem, first
 
@@ -31,7 +31,9 @@ This repository is the whole loop in one place, and it works without any AI at a
 
 ## The operating loop
 
-One product runs through six stages. Each stage ends at a gate: a named checklist that must pass before the next stage opens. Gates are documents, not ceremonies. A gate passes when its checklist is filled in and signed.
+One product runs through six stages. Each stage ends at a gate: a named checklist to be worked before the next stage opens. Gates are documents, not ceremonies. A gate passes when its checklist is filled in and signed, and a stage opened without that leaves a waiver on the record saying so.
+
+What a gate is worth is worth stating plainly, because the overclaim is easy to write and easy to break. A gate is prose plus a human signature. Nothing binds a signature to the bytes of the artifact it approved, so editing an approved PRD does not stale its approval; nothing checks a typed name; nothing stops an author from signing their own document. What you get is that an unreviewed document is visibly unreviewed and a skipped gate carries a named waiver instead of silence. That is a discipline, not a control, and it will not stop a person willing to lie to it.
 
 ```mermaid
 flowchart LR
@@ -54,7 +56,7 @@ flowchart LR
     end
 ```
 
-Two tracks run across the loop rather than inside one stage. PLANNING (roadmap, OKRs) feeds every stage. The AI OVERLAY (eval specs, guardrails, red-team review) activates whenever the product itself contains a model. A third overlay, the regulated module, activates when the product operates under a financial or data regulator.
+Two tracks run across the loop rather than inside one stage. PLANNING (roadmap, OKRs) feeds every stage. The AI OVERLAY (eval specs, guardrails, red-team review) activates whenever the product itself contains a model. A third overlay, the regulated module, activates when the product contains an AI or machine-learning feature and a financial or data regulator applies to it, which is the scope the module's two cited instruments actually cover.
 
 The loop is defined in [os/OPERATING-LOOP.md](os/OPERATING-LOOP.md), the gate checklists in [os/STAGE-GATES.md](os/STAGE-GATES.md), and a narrative walkthrough of a full pass in [os/HOW-TO-RUN-A-PRODUCT.md](os/HOW-TO-RUN-A-PRODUCT.md). Two shorter files answer the questions that come first in practice: [os/WHICH-DOCUMENT.md](os/WHICH-DOCUMENT.md) decides how much document a given decision deserves, and [os/PRODUCT-WORKSPACE.md](os/PRODUCT-WORKSPACE.md) says where the filled artifacts live once you have them.
 
@@ -70,7 +72,7 @@ The loop is defined in [os/OPERATING-LOOP.md](os/OPERATING-LOOP.md), the gate ch
 
 ## Quickstart
 
-No tooling, no dependencies.
+Standard library Python, nothing to install.
 
 ```bash
 git clone https://github.com/RizwanZafaris/product-manager-OS.git
@@ -79,13 +81,18 @@ cd product-manager-OS
 cat os/OPERATING-LOOP.md            # the six stages and what each gate demands
 cat os/WHICH-DOCUMENT.md            # how much document this decision deserves
 
-mkdir -p products/my-product
-cp templates/discovery/discovery-document.md products/my-product/discovery-document.md
+python3 tools/init_product.py my-product
+python3 tools/init_product.py my-product --add templates/discovery/discovery-document.md
 # Fill every field with any editor. Square-bracket fields are the blanks.
 # Delete any section you do not need; an empty section is worse than no section.
 
-cat os/STAGE-GATES.md               # take the filled document to Gate 1
+python3 tools/init_product.py my-product --check   # every link still resolves
+cat os/STAGE-GATES.md                              # take the filled document to Gate 1
 ```
+
+The first command builds the workspace [os/PRODUCT-WORKSPACE.md](os/PRODUCT-WORKSPACE.md) defines, one folder per stage, and seeds `STATE.md` from its blank. The second copies one template into the stage folder it belongs in, which for a discovery document is `products/my-product/discovery/`, not the workspace root.
+
+Use the tool rather than `cp`, for one reason worth knowing. A template's links are written from where the blank lives: the discovery document reaches its knowledge card as `../../knowledge/torres-continuous-discovery.md`, which is correct from `templates/discovery/` and wrong from anywhere else. Copy that file by hand into a workspace and all four of its links point at directories that have never existed; the PRD carries thirty-five links with the same property. `--add` recomputes each link from the real depth of the destination, then re-resolves every one of them from the destination and refuses the copy if a single link fails, because a copy tool that produces broken links is the defect rather than the fix. `--check` runs that same verification over a workspace you already have. Copying by hand still works, and you then own the links.
 
 A filled example is one file away: [examples/expense-copilot-discovery.md](examples/expense-copilot-discovery.md) is that same template answered end to end, and [examples/checkout-modernization-brownfield.md](examples/checkout-modernization-brownfield.md) shows the templates attached to a product that was already live and already messy.
 
@@ -134,7 +141,7 @@ The layer sits between knowledge and templates and produces inputs, not artifact
 
 This repository does not assume a US software company. Discovery and compliance templates ask for markets, jurisdictions, and locales as first-class fields, the planning and roadmap material treats a regulator's calendar as something that outranks a RICE score, and the module below exists because a large share of the world's product work ships into a market with a supervisor in it.
 
-`modules/regulated/` is a verbatim import of the regulated AI PRD system: a section-0 regulatory overlay, eval-set acceptance criteria, guardrails with owners, and its own review gate. Its canonical source is the standalone regulated-ai-prd repository, which opens publicly at its v0.1 tag; until then the copies in this tree are the full readable reference. Five files are imported and all five are pinned by sha256 in the quality gate, so drift fails the build: the regulated PRD template, the worked dispute-summary example, and the three runnable files (`SKILL.md`, `lint.py`, `test_lint.py`) that let the module's own gate run from its directory. The sixth file in that directory, its `README.md`, is not pinned and is not a copy: it documents this repository's own import policy and is written here. Nothing imported is edited here; fixes happen in the source repo and are re-copied. Fixes happen in the source repo and are re-copied. The overlay activates at Gate 2 and Gate 5 whenever the product operates under a financial or data regulator; see [modules/regulated/README.md](modules/regulated/README.md).
+`modules/regulated/` is a verbatim import of the regulated AI PRD system: a section-0 regulatory overlay, eval-set acceptance criteria, guardrails with owners, and its own review gate. Its canonical source is the standalone regulated-ai-prd repository, which opens publicly at its v0.1 tag; until then the copies in this tree are the full readable reference. Five files are imported and all five are pinned by sha256 in the quality gate, so drift fails the build: the regulated PRD template, the worked dispute-summary example, and the three runnable files (`SKILL.md`, `lint.py`, `test_lint.py`) that let the module's own gate run from its directory. The sixth file in that directory, its `README.md`, is not pinned and is not a copy: it documents this repository's own import policy and is written here. Nothing imported is edited here; fixes happen in the source repo and are re-copied. Fixes happen in the source repo and are re-copied. The overlay activates at Gate 2 and Gate 5 when the product contains an AI or machine-learning feature and a financial or data regulator applies to it; see [modules/regulated/README.md](modules/regulated/README.md). It is scoped to two instruments, both about AI and machine learning, so a regulated product with no model in it gets no coverage here and should not tick those two gate lines. That gap is named, with what to do instead, in [os/STAGE-GATES.md](os/STAGE-GATES.md).
 
 ## Quality gate
 

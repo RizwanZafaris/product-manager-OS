@@ -40,47 +40,58 @@ A market number is either a headline copied from a report or a count you can def
 | Job or category | [one sentence, no product name] |
 | Segment | [who, precisely enough to count] |
 | Geography | [where] |
-| Period | [one year, stated] |
+| Revenue period | [one year, stated. Every currency figure below is revenue for one year, never a multi-year total] |
+| SOM horizon | [how many years of selling the SOM assumes, stated. SOM is the annual revenue run-rate reached at the end of it, so it stays comparable with TAM and SAM] |
 | Unit | [companies / seats / transactions: one, used consistently below] |
+| Price per unit per year | [the one price both methods below are built from, with its source] |
+
+The revenue period and the SOM horizon are two different things and the sheet fails quietly when they are conflated. The period keeps every currency figure annual so TAM, SAM and SOM can sit in one table. The horizon says how long you get to accumulate accounts before that annual figure is read. A one-year top-down SOM compared against a three-year capacity count is not a reconciliation; it is two different questions with one tolerance test stretched across them.
 
 ### Part 2: top-down
 
 <!-- Every value needs a source with a URL and date, or an assumptions-register ID; a filter with neither is a guess wearing a percentage. If no public source exists for the population row, say so and skip to Part 3. -->
 
-| Step | Population or filter | Value | Source (URL, date) or AS-id | Confidence |
-|---|---|---|---|---|
-| Total population, this unit | | | | |
-| TAM (population times price per unit per year) | | | | |
-| Filter: share reachable with our product, channel, geography | | | | |
-| SAM (TAM times the reachability filter) | | | | |
-| Filter: share obtainable in the stated horizon, given capacity and competition | | | | |
-| SOM (SAM times the obtainability filter) | | | | |
+| Step | Population or filter | Value | Value is | Source (URL, date) or AS-id | Confidence |
+|---|---|---|---|---|---|
+| Total population, this unit | | | a count of units | | |
+| Price per unit per year, from Part 1 | | | currency per year | | |
+| TAM (population times price) | | | currency per year | | |
+| Filter: share reachable with our product, channel, geography | | | a share, 0 to 1 | | |
+| SAM (TAM times the reachability filter) | | | currency per year | | |
+| Filter: share obtainable by the end of the SOM horizon, given capacity and competition | | | a share, 0 to 1 | | |
+| SOM (SAM times the obtainability filter) | | | currency per year, at the end of the horizon | | |
+
+The "Value is" column is not decoration. A population is a count, a filter is a share, and only the three named lines are money; a sheet that lets a count sit in the same column as a revenue figure with nothing to tell them apart is how a firm count ends up multiplied by another firm count.
 
 ### Part 3: bottom-up
 
-| Factor | Value | Source or AS-id | Confidence |
-|---|---|---|---|
-| Target accounts on a list we could build today | | | |
-| Units per account (sample size and how it was drawn) | | | |
-| Price per unit per year | | | |
-| SAM (accounts times units times price) | | | |
-| Accounts the channel can reach and the team can onboard in the horizon | | | |
-| SOM (that count times units times price) | | | |
+| Factor | Value | Value is | Source or AS-id | Confidence |
+|---|---|---|---|---|
+| Target accounts on a list we could build today | | a count of accounts | | |
+| Units per account (sample size and how it was drawn; 1 when the counting unit is the account itself) | | units per account | | |
+| Price per unit per year, from Part 1 | | currency per year | | |
+| SAM (accounts times units times price) | | currency per year | | |
+| Accounts the channel can reach and the team can onboard by the end of the SOM horizon | | a count of accounts | | |
+| SOM (that count times units times price) | | currency per year, at the end of the horizon | | |
 
 ### Part 4: reconciliation
 
-**Stated tolerance:** the two SOM figures must land within one and a half times of each other; neither may be more than one and a half times the other.
+**Stated tolerance:** the two SAM figures, and the two SOM figures, must each land within one and a half times of each other; neither may be more than one and a half times the other. Test SAM first. A SAM gap outside tolerance makes the SOM agreement meaningless, because the two SOMs are then filtered slices of two different fields.
 
-| Method | TAM | SAM | SOM |
+Every cell in this table is annual revenue for the same period, in the same currency, built from the same unit and the same price, and both SOM cells are read at the end of the same horizon. Bottom-up usually has no TAM; write "not computed by this method" rather than borrowing the top-down figure, which would make the row agree with itself.
+
+| Method | TAM (currency per year) | SAM (currency per year) | SOM (currency per year, end of horizon) |
 |---|---|---|---|
 | Top-down | | | |
-| Bottom-up | | | |
+| Bottom-up | not computed by this method | | |
 
-**Decision rule:** inside tolerance, take the lower SOM as the base case and log the gap as a sensitivity. Outside tolerance, do not split the difference. Name the one input driving the gap, usually a segment mismatch (the public figure counts a wider population) or a price mismatch (list against invoiced), fix the weaker-sourced side, and rerun that method alone.
+**Decision rule:** inside tolerance, take the lower SOM as the base case and log the gap as a sensitivity. Outside tolerance, do not split the difference. Name the one input driving the gap, usually a segment mismatch (the public figure counts a wider population) or a price mismatch (list against invoiced), fix the weaker-sourced side, and rerun that method alone. When the fix imports a number from the other method, the two are no longer independent; say so, and log the shared input as the single assumption the reconciliation now rests on.
+
+**If the business case needs a multi-year total,** build it from a ramp of accounts per year and bill each year at the annual price. Never multiply the end-of-horizon run-rate by the number of years: that charges every account for every year of the horizon, including the years before it was won. On a three-year horizon with an even ramp, that mistake lands exactly half again as large as the true total.
 
 ### Part 5: sensitivity
 
-| SOM case | Value | Driven by (the two least certain inputs) |
+| SOM case | Value (currency per year, end of horizon) | Driven by (the two least certain inputs) |
 |---|---|---|
 | Low | | |
 | Base | | |
@@ -88,20 +99,33 @@ A market number is either a headline copied from a report or a count you can def
 
 ## Reading the result
 
-- **Inside tolerance, base case set.** Carry the range, not a point, into the business case benefits line, with the assumption IDs beside it.
+- **Inside tolerance, base case set.** Carry the range, not a point, into the business case benefits line, with the assumption IDs beside it, and with the horizon and the words "annual run-rate" attached to the figure. A SOM that travels without them arrives in the next deck as this year's revenue.
 - **Outside tolerance, gap driver named.** Fix the weaker input and rerun; a business case built on an unreconciled pair is two guesses, not a number.
 - **No public source exists for a top-down anchor.** Say so and run bottom-up only, flagged as the sole method used; never invent a top-down figure just to have two numbers to compare.
 - **SOM exceeds the capacity the team actually has.** A GTM problem, not a sizing problem. The [GTM plan](../../templates/planning/gtm-plan.md)'s first cohort must be a countable subset of SOM, never the whole figure.
 
 ## ILLUSTRATIVE example
 
-Invented. Ledgerline sizes the expense copilot as a product sold to other mid-market finance teams on the same shared finance system, one year, priced per firm.
+Invented. Ledgerline sizes the expense copilot as a product sold to other mid-market finance teams on the same shared finance system.
 
-Top-down: population, 10,000 firms on that finance system (invented, no public source, logged as an assumption); reachability filter, 10 percent; SAM, 1,000 firms; obtainability filter, 15 percent, given the vendors already serving this segment; SOM, 150 firms at 24,000 per firm per year, 3,600,000.
+Part 1: unit, firms. Revenue period, one year. SOM horizon, three years. Price, 24,000 per firm per year, from the pilot invoices. Units per account is 1, because the counting unit is the account itself: one firm-wide subscription per firm.
 
-Bottom-up: 1,800 target firms on a directory built from the finance system's own marketplace listing; onboarding capacity, 160 firms reachable and activatable in three years; SOM, 160 firms at 24,000, 3,840,000.
+Top-down: population, 10,000 firms on that finance system (invented, no public source, logged as an assumption). TAM, 10,000 x 24,000 = 240,000,000 per year. Reachability filter, 10 percent, an unsourced judgement; SAM, 1,000 firms, 24,000,000 per year.
 
-Reconciliation: ratio, 160 over 150, about 1.07, inside the 1.5 tolerance. Base case: 150 firms, 3,600,000 per year, close to the 140-customer count the [business model canvas](business-model-canvas.md) example assumed independently. Sensitivity: the gap tracks the obtainability filter against the onboarding capacity estimate, the two least certain inputs, both logged as assumption rows with a validate-by date.
+Bottom-up: 1,800 target firms on a directory built from the finance system's own marketplace listing. SAM, 1,800 x 1 x 24,000 = 43,200,000 per year.
+
+First reconciliation, at SAM: 43,200,000 over 24,000,000 is 1.8, outside the 1.5 tolerance, so the sizing stops here rather than proceeding to compare SOMs. The driver is the reachability filter: 10 percent was a judgement with no source, against a directory whose listings can be counted one by one. The weaker-sourced side is the top-down, so it is rerun alone with the filter set at 18 percent (1,800 of 10,000), giving SAM 43,200,000 per year on both rows. The two methods now share the directory, so they are no longer independent at SAM; the directory count is logged as the single assumption the rest of the sheet rests on.
+
+SOM, both read as the annual run-rate at the end of year three: top-down obtainability, 8 percent of the reachable field given the vendors already serving it, so 144 firms, 3,456,000 per year. Bottom-up, onboarding capacity of 160 firms over the same three years, so 3,840,000 per year.
+
+| Method | TAM | SAM | SOM at end of year 3 |
+|---|---|---|---|
+| Top-down | 240,000,000 | 43,200,000 | 3,456,000 |
+| Bottom-up | not computed by this method | 43,200,000 | 3,840,000 |
+
+Second reconciliation: 3,840,000 over 3,456,000 is 1.11, inside the 1.5 tolerance. Base case, the lower figure: 144 firms, 3,456,000 per year, reached at the end of year three, close to the 140-customer count the [business model canvas](business-model-canvas.md) example assumed independently. The 384,000 per year gap is logged as a sensitivity tracking the obtainability filter against the onboarding capacity estimate, the two least certain inputs, both with a validate-by date.
+
+The three-year figure the business case wants is not 3,456,000 times three. On an even ramp of 48, 96 and 144 firms live at the end of years one, two and three, billed at 24,000, the total is 24,000 x (48 + 96 + 144) = 6,912,000 across the horizon, against the 10,368,000 that multiplying the run-rate would have produced: exactly half again too much. The 3,456,000 is a run-rate at one date, and the benefits line has to say which.
 
 ## The trap
 

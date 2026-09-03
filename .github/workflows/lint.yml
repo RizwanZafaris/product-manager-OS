@@ -28,6 +28,20 @@ jobs:
       - name: OS tree gate
         run: python3 lint.py --os
 
+      # Every other check reads a .json file as text, and text is what a broken
+      # JSON file still is, so a corrupt routing/omniroute.config.json or
+      # harness/MANIFEST.json used to pass this build. This step parses every
+      # tracked .json file and reports the file, line, and column of each
+      # syntax error. It is a separate step rather than a twelfth tree check,
+      # so the eleven keep their meaning.
+      - name: JSON files parse
+        run: python3 lint.py --json-syntax
+
+      # There is deliberately no workspace step. products/ is gitignored, so a
+      # CI checkout has none, and a user's half-filled draft must never fail
+      # this build. That check is opt-in and local:
+      # python3 lint.py --workspace products/my-product
+
       # The graph is generated from declarations already in the tree, so a
       # commit that changes a feeds key or a Stage header without regenerating
       # leaves a map that disagrees with the files it describes. This step is

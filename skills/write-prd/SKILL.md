@@ -33,7 +33,7 @@ Answer the three questions in [os/WHICH-DOCUMENT.md](../../os/WHICH-DOCUMENT.md)
 
 ### 2. Declare the reader
 
-Ask, before section 1: who builds this, a human engineering team or a model. If any capability in scope is an LLM, an agent, or a model making or drafting a decision, or a draft already contains "the AI should" anywhere, stop and hand the whole document to [ai-prd](../ai-prd/SKILL.md); this skill does not also draft eval sets and guardrail rows from memory. If a financial or data regulator governs the product, stop the same way and route through [reg-gap-check](../reg-gap-check/SKILL.md) and the regulated module before writing another section.
+Ask, before section 1: who builds this, a human engineering team or a model. If any capability in scope is an LLM, an agent, or a model making or drafting a decision, or a draft already contains "the AI should" anywhere, stop and hand the whole document to [ai-prd](../ai-prd/SKILL.md); this skill does not also draft eval sets and guardrail rows from memory. If a financial or data regulator governs the product, stop the same way and route through [reg-gap-check](../reg-gap-check/SKILL.md) before writing another section. The regulated module itself is entered only when the product also contains an AI or machine-learning feature, which is the rule in [os/STAGE-GATES.md](../../os/STAGE-GATES.md); for a regulated product with no model, reg-gap-check maps the gaps and the regulatory owner names what covers the rest.
 
 ### 3. Write section 0 last, place it first
 

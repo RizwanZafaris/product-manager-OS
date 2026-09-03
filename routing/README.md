@@ -101,6 +101,47 @@ Auto tiers are the default and the right choice for most users: OmniRoute picks 
 3. Record the model ID actually used in each artifact's telemetry. A fixed combo without per-call logging buys nothing at audit time.
 4. Re-run any standing eval sets when you change a combo. A model swap is an upgrade decision, not a config edit; the AI templates in `../templates/ai/` treat it as one.
 
+## Running the whole OS on free models
+
+You do not need a paid provider to run this. OpenRouter publishes a set of free models,
+several with large context windows, and three named combos are enough to cover the
+tiers. Connect the provider once, create the combos, then point the config at them:
+
+```bash
+omniroute providers add openrouter --credential "$OPENROUTER_API_KEY"
+omniroute combo create pmos-extraction --strategy priority \
+  --models "openrouter/<fast-free-model>,openrouter/<backup-free-model>"
+omniroute combo create pmos-drafting   --strategy priority --models "openrouter/<free-model>"
+omniroute combo create pmos-judgment   --strategy priority --models "openrouter/<largest-free-reasoning-model>"
+```
+
+Three things this teaches, and they are worth more than the saved money.
+
+**Free tiers are unreliable, which is why the fallback chain exists.** Two of the free
+models tested for this section answered `Provider returned error` on a plain ping while
+three answered normally. A combo with one model is a combo that fails on a bad
+afternoon. List a second.
+
+**A reasoning model spends tokens on reasoning before it writes anything.** Ask one for
+twenty tokens and you get an empty answer, because the budget went on the thinking. The
+runner reports that as an unusable reply, which is correct: an empty completion is a
+failure, not an answer. Give the judgment tier real output headroom.
+
+**A model that narrates is wrong for extraction.** One free model answered a
+"reply with exactly PONG" probe with "Here's a think...", which is harmless in chat and
+fatal in a tier whose job is copying text unchanged. Probe the tier with an exact-output
+question before you trust it, and put the quietest model first in the extraction combo.
+
+Certification is separate from availability. The runner will still queue judgment work
+until an operator names the resolved model as judgment-grade:
+
+```bash
+export OMNIROUTE_JUDGMENT_MODELS="<the concrete model id your judgment combo resolves to>"
+```
+
+That step is deliberate. A model being reachable is not a claim that anyone has decided
+it is good enough to think with, and free models change without notice.
+
 ## Note for Hermes users (litellm)
 
 Hermes-style deployments (see [../agents/hermes-agent.md](../agents/hermes-agent.md)) usually already run a litellm proxy in front of their models. Two clean options:

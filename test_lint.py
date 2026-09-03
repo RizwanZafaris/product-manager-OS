@@ -312,6 +312,32 @@ class WorkspaceExclusion(unittest.TestCase):
             any(n.endswith("learn/products/README.md") for n in names))
 
 
+class ScratchDirectoryExclusion(unittest.TestCase):
+    """Gitignored scratch is not tree content. The vault config is."""
+
+    def test_scratch_is_not_walked_and_the_vault_config_still_is(self):
+        # .pytest_cache ships its own README.md, so before this exclusion the
+        # tree the gate saw, and the wikilink gate's count of files named
+        # README.md, changed depending on whether pytest had been run on that
+        # machine. .obsidian is committed on purpose and must stay in the tree,
+        # which is what stops the fix from being "skip every dotted directory".
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".pytest_cache" / "v" / "cache").mkdir(parents=True)
+            (root / ".pytest_cache" / "README.md").write_text(
+                "Written by pytest, not by anyone in this repository.\n")
+            (root / ".pytest_cache" / "v" / "cache" / "nodeids").write_text("[]")
+            (root / ".obsidian").mkdir()
+            (root / ".obsidian" / "app.json").write_text("{}\n")
+            (root / "docs").mkdir()
+            (root / "docs" / "note.md").write_text("A tracked note.\n")
+            names = [p.relative_to(root).as_posix()
+                     for p in lint.tracked_files(root)]
+        self.assertEqual([], [n for n in names if n.startswith(".pytest_cache/")])
+        self.assertIn(".obsidian/app.json", names)
+        self.assertIn("docs/note.md", names)
+
+
 # The graph declaration, assembled from a dict so one test can vary one key.
 # Passing None for a key drops it, which is how the missing-key case is built.
 GRAPH_DEFAULTS = [("layer", "templates"), ("stage", "DEFINE"), ("gate", "2"),
@@ -731,6 +757,290 @@ class RegulatedPrdDepthTests(unittest.TestCase):
         example = (REPO / "modules" / "regulated" / "examples"
                    / "dispute-summary" / "PRD.md")
         self.assertEqual([], lint.check(example)[0])
+
+
+class LinkFormatTests(unittest.TestCase):
+    """Check 4. A link spelling the parser cannot read is not a link the gate
+    cleared, it is a link the gate never saw. One test per spelling, each with
+    the broken case and the case that must stay clean."""
+
+    OTHER = "# Real heading\n\n## Owner\n"
+
+    def link_run(self, body, extra=None):
+        files = {"docs/note.md": body, "docs/other.md": self.OTHER}
+        files.update(extra or {})
+        return os_run(files)
+
+    def test_an_anchor_into_another_file_is_resolved(self):
+        codes, messages = self.link_run("[a](other.md#no-such-heading)\n")
+        self.assertIn("LINK", codes)
+        self.assertIn("which is no heading in", messages)
+        clean, messages = self.link_run("[a](other.md#real-heading)\n")
+        self.assertNotIn("LINK", clean, messages)
+
+    def test_a_same_file_anchor_is_resolved(self):
+        codes, messages = self.link_run("# Top\n\n[a](#nowhere)\n")
+        self.assertIn("LINK", codes)
+        self.assertIn("names no heading in this file", messages)
+        clean, messages = self.link_run("# Top\n\n[a](#top)\n")
+        self.assertNotIn("LINK", clean, messages)
+
+    def test_a_reference_style_link_is_read(self):
+        codes, messages = self.link_run("[a][gone]\n\n[gone]: missing.md\n")
+        self.assertIn("LINK", codes)
+        self.assertIn("relative link missing.md does not resolve", messages)
+        undefined, messages = self.link_run("[a][nolabel]\n")
+        self.assertIn("LINK", undefined)
+        self.assertIn("has no [nolabel]: definition", messages)
+        clean, messages = self.link_run("[a][ok] and [ok][]\n\n[ok]: other.md\n")
+        self.assertNotIn("LINK", clean, messages)
+
+    def test_a_checkbox_beside_a_link_is_not_a_reference(self):
+        clean, messages = self.link_run("- [ ] [a](other.md) is done\n")
+        self.assertNotIn("LINK", clean, messages)
+
+    def test_an_angle_bracket_destination_is_unwrapped(self):
+        codes, messages = self.link_run("[a](<missing.md>)\n")
+        self.assertIn("LINK", codes)
+        self.assertIn("relative link missing.md does not resolve", messages)
+        clean, messages = self.link_run("[a](<other.md>)\n")
+        self.assertNotIn("LINK", clean, messages)
+
+    def test_a_destination_holding_a_space_is_read(self):
+        codes, messages = self.link_run("[a](<my gone.md>)\n")
+        self.assertIn("LINK", codes)
+        self.assertIn("my gone.md", messages)
+        clean, messages = self.link_run(
+            "[a](<my file.md>)\n", {"docs/my file.md": "Real.\n"})
+        self.assertNotIn("LINK", clean, messages)
+
+    def test_a_title_after_the_destination_is_read(self):
+        codes, messages = self.link_run('[a](missing.md "Title")\n')
+        self.assertIn("LINK", codes)
+        self.assertIn("relative link missing.md does not resolve", messages)
+        clean, messages = self.link_run('[a](other.md "Title")\n')
+        self.assertNotIn("LINK", clean, messages)
+
+    def test_a_percent_encoded_destination_is_decoded(self):
+        codes, messages = self.link_run("[a](my%20gone.md)\n")
+        self.assertIn("LINK", codes)
+        self.assertIn("my gone.md", messages)
+        clean, messages = self.link_run(
+            "[a](my%20file.md)\n", {"docs/my file.md": "Real.\n"})
+        self.assertNotIn("LINK", clean, messages)
+
+    def test_the_escape_case_stays_fixed(self):
+        # Fixed before this pass and re-asserted here, because the fix is one
+        # is_relative_to away from being lost to a refactor of the parser.
+        codes, messages = os_run({"docs/sub/note.md": "[o](../../../etc/hosts)\n"})
+        self.assertIn("LINK", codes)
+        self.assertIn("climbs out of the repository", messages)
+
+
+def ws_run(files, workspace="products/demo"):
+    """Run the workspace gate over a synthetic repo; return (codes, messages).
+
+    The fixture is a whole repository built in a temporary directory, with the
+    workspace inside it, because a workspace links back to the templates and
+    the gates it was filled from and the gate has to resolve those.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        for rel, text in files.items():
+            target = root / rel
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(text, encoding="utf-8")
+        problems = lint.workspace_check(root / workspace, root=root)
+    return ({code for _, _, code, _ in problems},
+            " ".join(message for _, _, _, message in problems))
+
+
+class WorkspaceModeTests(unittest.TestCase):
+    """Defect A. products/ is out of Git and out of tree mode, both correctly,
+    and the cost was that a user's work was checked by nothing at all. This is
+    the opt-in. Every fixture is built in a temporary directory, never under
+    the live repository, and never removed from it."""
+
+    DRAFT = ("# Discovery: demo\n\nStage: DISCOVER\n\n"
+             "A filled draft that violates nothing.\n")
+
+    def test_a_clean_workspace_passes(self):
+        codes, messages = ws_run({"products/demo/discovery.md": self.DRAFT})
+        self.assertEqual(set(), codes, messages)
+
+    def test_a_broken_link_is_caught(self):
+        codes, messages = ws_run(
+            {"products/demo/discovery.md": "[gate](../../os/gone.md)\n"})
+        self.assertIn("LINK", codes)
+        self.assertIn("does not resolve", messages)
+
+    def test_a_link_back_into_the_repository_resolves(self):
+        codes, messages = ws_run({
+            "products/demo/sub/discovery.md": "[gate](../../../os/GATES.md)\n",
+            "os/GATES.md": "# Gates\n"})
+        self.assertEqual(set(), codes, messages)
+
+    def test_a_link_climbing_out_of_the_repository_is_still_caught(self):
+        codes, messages = ws_run(
+            {"products/demo/discovery.md": "[o](../../../../etc/hosts)\n"})
+        self.assertIn("LINK", codes)
+        self.assertIn("climbs out of the repository", messages)
+
+    def test_a_secret_is_caught(self):
+        fake_key = "AKIA" + "B" * 16  # assembled so this file stays clean
+        codes, messages = ws_run(
+            {"products/demo/notes.md": "aws key = %s\n" % fake_key})
+        self.assertIn("SECRET", codes)
+        self.assertIn("AWS access key", messages)
+
+    def test_a_secret_in_a_non_markdown_file_is_caught(self):
+        fake_key = "AKIA" + "C" * 16
+        codes, messages = ws_run(
+            {"products/demo/export.csv": "row,%s\n" % fake_key})
+        self.assertIn("SECRET", codes)
+
+    def test_a_placeholder_is_caught_and_an_angle_field_is_not(self):
+        codes, messages = ws_run(
+            {"products/demo/discovery.md": "Owner: TBD\n"})
+        self.assertIn("TBD", codes)
+        self.assertIn("deferred decision", messages)
+        clean, messages = ws_run(
+            {"products/demo/discovery.md": "Owner: <TBD until Gate 1>\n"})
+        self.assertEqual(set(), clean, messages)
+
+    def test_a_dash_and_a_banned_metric_are_caught(self):
+        codes, messages = ws_run({"products/demo/discovery.md":
+                                  "saving %s a year %s measured\n"
+                                  % (BANNED_MONEY, EM_DASH)})
+        self.assertIn("BANNED", codes)
+        self.assertIn("DASH", codes)
+
+    def test_an_undecodable_file_fails_instead_of_being_skipped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "products" / "demo").mkdir(parents=True)
+            (root / "products" / "demo" / "draft.md").write_bytes(
+                b"head \xff\xfe tail")
+            problems = lint.workspace_check(root / "products" / "demo",
+                                            root=root)
+        self.assertIn("ENCODING", {code for _, _, code, _ in problems})
+
+    def test_the_repo_structure_checks_deliberately_do_not_run(self):
+        # One document, two locations, two verdicts. In templates/ it owes the
+        # tree a header block, a graph declaration, and a resolvable wikilink.
+        # In a workspace it owes none of that, because a filled artifact is not
+        # a template and a draft that fails the build is the defect this mode
+        # was written to avoid causing.
+        filled = ("# Discovery: demo\n\nAnswered end to end.\n"
+                  "See [[nowhere/at-all.md]] for the source.\n")
+        strict, messages = os_run({"templates/thing.md": filled})
+        self.assertIn("HEADER", strict, messages)
+        self.assertIn("GRAPH", strict, messages)
+        self.assertIn("WIKILINK", strict, messages)
+        relaxed, messages = ws_run({"products/demo/discovery.md": filled})
+        self.assertEqual(set(), relaxed, messages)
+
+    def test_a_skill_file_in_a_workspace_is_not_held_to_the_skill_contract(self):
+        smuggled = "---\nname: x\ndescription: no use-when clause\nextra: y\n---\n"
+        strict, _ = os_run({"skills/x/SKILL.md": smuggled})
+        self.assertIn("FRONTMATTER", strict)
+        relaxed, messages = ws_run({"products/demo/SKILL.md": smuggled})
+        self.assertEqual(set(), relaxed, messages)
+
+    def test_the_workspace_the_gate_checks_is_the_one_tree_mode_skips(self):
+        # The two halves of defect A in one assertion: tree mode is silent on
+        # the same file that workspace mode fails, which is why the opt-in has
+        # to exist and why it does not change what CI enforces.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "products" / "demo").mkdir(parents=True)
+            (root / "products" / "demo" / "draft.md").write_text(
+                "[broken](nowhere.md) and TBD\n")
+            tree = lint.os_check(root, pins={})
+            workspace = lint.workspace_check(root / "products" / "demo",
+                                             root=root)
+        self.assertEqual([], tree)
+        self.assertEqual({"LINK", "TBD"},
+                         {code for _, _, code, _ in workspace})
+
+    def test_the_reported_path_is_relative_to_the_repository_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "products" / "demo").mkdir(parents=True)
+            (root / "products" / "demo" / "draft.md").write_text("Owner: TBD\n")
+            problems = lint.workspace_check(root / "products" / "demo",
+                                            root=root)
+        self.assertEqual("products/demo/draft.md", problems[0][0])
+
+    def test_a_workspace_outside_the_root_checks_against_itself(self):
+        # A workspace kept outside the repository is still checkable; the
+        # boundary falls back to the workspace rather than refusing to run.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "elsewhere"
+            (root / "sub").mkdir(parents=True)
+            (root / "sub" / "draft.md").write_text("[a](../gone.md)\n")
+            problems = lint.workspace_check(root)
+        self.assertEqual({"LINK"}, {code for _, _, code, _ in problems})
+
+
+class JsonSyntaxTests(unittest.TestCase):
+    """Defect B. CI parsed no JSON, so a corrupt config passed the build: every
+    other check reads those files as text, and text is what broken JSON is."""
+
+    def json_run(self, files):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for rel, text in files.items():
+                target = root / rel
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(text, encoding="utf-8")
+            return lint.json_problems(root)
+
+    def test_malformed_json_is_caught_with_a_line_and_a_column(self):
+        problems = self.json_run(
+            {"routing/omniroute.config.json": '{\n  "model": "a",\n}\n'})
+        self.assertEqual(1, len(problems))
+        rel, line_no, code, message = problems[0]
+        self.assertEqual("routing/omniroute.config.json", rel)
+        self.assertEqual("JSON", code)
+        self.assertEqual(3, line_no)
+        self.assertIn("does not parse", message)
+        self.assertIn("column", message)
+
+    def test_a_truncated_manifest_is_caught(self):
+        problems = self.json_run(
+            {"harness/MANIFEST.json": '{"tasks": [{"id": "a"}'})
+        self.assertEqual(["JSON"], [code for _, _, code, _ in problems])
+
+    def test_valid_json_passes(self):
+        self.assertEqual([], self.json_run(
+            {"harness/MANIFEST.json": '{"tasks": []}\n',
+             "docs/note.md": "Not JSON, not read by this mode.\n"}))
+
+    def test_every_json_file_in_the_real_tree_parses(self):
+        self.assertEqual([], lint.json_problems(REPO))
+
+
+class WorkflowTests(unittest.TestCase):
+    """The workflow is the only place these modes actually run unattended."""
+
+    WORKFLOW = REPO / ".github" / "workflows" / "lint.yml"
+
+    def workflow_text(self):
+        return self.WORKFLOW.read_text(encoding="utf-8")
+
+    def test_the_json_step_is_wired_into_ci(self):
+        self.assertIn("--json-syntax", self.workflow_text())
+
+    def test_no_run_value_hides_a_colon_in_a_plain_scalar(self):
+        # A "run:" value containing a colon is not valid YAML as a plain
+        # scalar, a mistake this repository has made once. Block scalars are
+        # written as "run: |" and are exempt.
+        import re as _re
+        offenders = [line.strip() for line in self.workflow_text().split("\n")
+                     if _re.match(r"^\s*run:\s+\S", line)
+                     and ": " in line.split("run:", 1)[1]]
+        self.assertEqual([], offenders)
 
 
 class IntegrityPinCoverageTests(unittest.TestCase):

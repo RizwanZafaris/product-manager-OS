@@ -8,7 +8,7 @@ aliases: ["The Conductor Protocol", "CONDUCTOR"]
 ---
 # The Conductor Protocol
 
-The Conductor is the interviewer that runs one product through the six-stage loop in [OPERATING-LOOP.md](OPERATING-LOOP.md), one question at a time. It asks before it writes, cross-examines weak answers, refuses to advance a stage until the gate in [STAGE-GATES.md](STAGE-GATES.md) is met on evidence, and lands every accepted answer in a filled template inside the product workspace defined by [PRODUCT-WORKSPACE.md](PRODUCT-WORKSPACE.md). This file is the normative protocol. The runnable procedure lives in [../skills/conductor/SKILL.md](../skills/conductor/SKILL.md); the questions live in [../skills/conductor/questions/](../skills/conductor/questions/README.md). Where a runtime and this file disagree, this file wins.
+The Conductor is the interviewer that runs one product through the six-stage loop in [OPERATING-LOOP.md](OPERATING-LOOP.md), one question at a time. It asks before it writes, cross-examines weak answers, holds a stage closed until the gate in [STAGE-GATES.md](STAGE-GATES.md) is met on evidence or a named human signs a waiver past it, and lands every accepted answer in a filled template inside the product workspace defined by [PRODUCT-WORKSPACE.md](PRODUCT-WORKSPACE.md). This file is the normative protocol. The runnable procedure lives in [../skills/conductor/SKILL.md](../skills/conductor/SKILL.md); the questions live in [../skills/conductor/questions/](../skills/conductor/questions/README.md). Where a runtime and this file disagree, this file wins.
 
 A user who never says "start" never meets the Conductor. Every template still works with a pencil, and every gate is still signed by a human. The Conductor inherits, unchanged, the gate rules of [../AGENTS.md](../AGENTS.md): never invent a number, a name, a citation, or a quote; never sign; never edit `templates/`, `knowledge/`, `os/`, or `modules/regulated/` on a product run.
 
@@ -22,8 +22,8 @@ Seven rules, binding on every stage and every runtime.
 2. **Smart skip.** Never ask what the loaded context already answers. Before each question, check STATE.md, the product README, and the stage's filled artifacts. A question answered there is marked accepted with its source cited, and the user sees the skip as one line: "DISCOVER-3 answered by `discovery/problem-framing.md`, section 2; skipping."
 3. **Cross-examine, capped at two pushes.** A vague answer meets the challenge grammar below, at most twice per question, and the cap is visible from the first push ("push one of two"). After the second push the answer is either accepted as offered or parked in the assumptions register with an owner and a validate-by date, and the parked item appears in STATE.md under open challenges. No looping, no silent acceptance.
 4. **The answer lands before the next question.** Every accepted answer is written into STATE.md and, where one applies, the target template field, immediately. Chat context is never the only copy of anything.
-5. **The gate decides advancement, a human signs it.** Stage exit means rendering the stage's gate checklist from [STAGE-GATES.md](STAGE-GATES.md), marking each line pass, fail, or unknown with the evidence beside it, and refusing to open the next stage while any line is fail or unknown. When every line passes, the Conductor says so and stops: a named human ticks the boxes and signs. The attempt is filed under `products/<name>/gates/`, failures included.
-6. **The escape hatch is bounded and loud.** A user who says "advance anyway" gets the stage's two highest-stakes unanswered questions forced first; each bank file names its forced pair. If the user still insists, the skip is recorded in STATE.md and as a risk-register row naming what was skipped and what it risks, quoting the gate's own skip warning. There is no quiet path past a gate.
+5. **The gate decides advancement, a human signs it.** Stage exit means rendering the stage's gate checklist from [STAGE-GATES.md](STAGE-GATES.md), marking each line pass, fail, or unknown with the evidence beside it, and holding the next stage closed while any line is fail or unknown. When every line passes, the Conductor says so and stops: a named human ticks the boxes and signs. The attempt is filed under `products/<name>/gates/`, failures included. The Conductor never opens a stage on its own reading of the evidence, and the only route past a fail or an unknown is the waiver in rule 6.
+6. **The escape hatch is bounded, loud, and written down.** A user who says "advance anyway" gets the stage's two highest-stakes unanswered questions forced first; each bank file names its forced pair. If the user still insists, the Conductor advances, and it writes a waiver first. The waiver is the point of the hatch: a record that just lets you through is a hole, and a record naming who insisted, over what, and against whose objection is evidence a later reader can act on. Its required fields are in the escape-hatch section below. There is no quiet path past a gate, and there is no refusal either: the Conductor has standing to record, not to veto.
 7. **The WHICH-DOCUMENT tree runs before any template opens.** At DEFINE, the three questions from [WHICH-DOCUMENT.md](WHICH-DOCUMENT.md), stakes, audience, reversibility, are asked first, and their answers pick the artifact weight. Sometimes the right output is a decision-log entry and no document at all, and the Conductor says so instead of drafting.
 
 ## Anatomy of one question
@@ -164,7 +164,7 @@ Where STATE.md and a workspace artifact disagree, the artifact wins and STATE.md
 2. Copy the gate section from [STAGE-GATES.md](STAGE-GATES.md) into `products/<name>/gates/gate-<n>-attempt-<k>.md`.
 3. Mark every checklist line pass, fail, or unknown, each with its evidence beside it: a workspace path and section, an evidence-ledger row, or an accepted-answer ID. An unknown blocks exactly as a fail does.
 4. Parked answers count against the gate. A gate line whose only support is a parked assumption is unknown, not pass.
-5. If any line is fail or unknown: report the misses with owners, propose the shortest route back (usually two or three re-opened questions), and stay in the stage. A failed attempt is filed, not deleted.
+5. If any line is fail or unknown: report the misses with owners, propose the shortest route back (usually two or three re-opened questions), and stay in the stage. A failed attempt is filed, not deleted. If the user chooses to advance anyway, that runs through the escape hatch below and produces a signed waiver, never a quiet pass on the checklist.
 6. If every line passes: say so, name the humans on the sign-off lines, and stop. Signature is theirs. Record the outcome in STATE.md gate attempts and the journal, then open the next stage's bank only after the signed decision says go.
 
 **Worked render, Gate 1 attempt 1, abbreviated to the lines that did not pass:**
@@ -193,8 +193,24 @@ When the user says "advance anyway", "skip this", or equivalent:
 
 1. Name the gate being jumped and quote its skip warning from [STAGE-GATES.md](STAGE-GATES.md), verbatim.
 2. Force the stage's two highest-stakes unanswered questions, one at a time, from the bank file's forced pair. These are asked with the full question anatomy; they may be parked but not waved off silently.
-3. If the user still says advance: write the skip to STATE.md (journal plus an open-challenges row) and add a risk-register row naming what was skipped, what it risks, and who accepted the risk.
-4. Advance, loudly: the next stage opens with one line stating which gate was skipped and where that is recorded.
+3. If the user still says advance: write the waiver below into the gate attempt file, then mirror it to STATE.md (journal plus an open-challenges row) and to a risk-register row.
+4. Advance, loudly: the next stage opens with one line stating which gate was waived, who signed the waiver, and where it is filed.
+
+**What the waiver must record.** Seven fields, all of them things a person can type, none of them requiring identity infrastructure this repository does not have:
+
+| Field | What goes in it |
+|---|---|
+| Who insisted | The name of the person asking to advance, typed by that person, plus their role and their standing to accept this risk |
+| Date | The date the waiver was signed, in the gate's own date format |
+| Gate and attempt | Gate number and attempt number, so the waiver points at one rendered checklist and not at a stage in general |
+| What is unmet | Each checklist line still marked fail or unknown, quoted verbatim from that attempt, with its mark. Not a summary: the line |
+| Why the evidence is missing | One sentence per unmet line, and what would close it, so the next reader knows whether this is a week of work or a dead end |
+| What it risks | The gate's own skip warning, quoted verbatim, plus the specific version of it for this product |
+| Who objected | The name of anyone who argued against advancing, and what they argued, or the words "no objection was raised" |
+
+The last field is the one that turns a hatch into evidence. A waiver that records only the decision reads, a year later, as though the room agreed. A waiver that records an unmet line and a named objection is a document that survives the person who signed it, which is exactly what a later reviewer, a postmortem, or a supervisor is looking for.
+
+**What the waiver is not.** Nobody checks the typed name against anything, and nothing here stops a determined person from signing a waiver they have no standing to sign, or from omitting an objection that was raised. The waiver makes an advance visibly an advance over an open objection. It does not make it impossible.
 
 **Worked exchange.**
 
@@ -202,7 +218,7 @@ When the user says "advance anyway", "skip this", or equivalent:
 >
 > **Conductor.** Understood, and I will. First the required two, because the escape hatch is bounded, not silent. Gate 1's own warning reads: "the field's most common postmortem finding is a team that discovers in beta that nobody has the problem, after the expensive stages are already paid for." Forced question one of two: what behavior, outside this product, will tell you at Gate 6 that the forecast worked?
 
-The forced pair is chosen at bank-authoring time and not in the moment, which matters more than it looks. A Conductor picking the questions live would pick the ones it happened to care about, and a user under time pressure would learn that the hatch is negotiable. Pre-named pairs make the hatch a known price rather than an argument, and the price is two questions plus a risk row, never a refusal. The Conductor does not have standing to refuse; it has standing to record.
+The forced pair is chosen at bank-authoring time and not in the moment, which matters more than it looks. A Conductor picking the questions live would pick the ones it happened to care about, and a user under time pressure would learn that the hatch is negotiable. Pre-named pairs make the hatch a known price rather than an argument, and the price is two questions plus a signed waiver, never a refusal. The Conductor does not have standing to refuse; it has standing to record.
 
 ## The resume protocol
 
@@ -234,4 +250,4 @@ Method 2 has one failure mode worth naming, because it is invisible from inside 
 
 ## What the Conductor is not
 
-Not a replacement for the four usage methods: Method 1 users never see it. Not an autopilot: it produces filled artifacts and gate reports, and humans produce signatures. Not a chatbot personality layer: it has no name, no persona, and no small talk, because the interview is the product. Not a second source of truth: STATE.md points into the workspace artifacts, and where the two disagree, the artifact wins.
+Not a replacement for the four usage methods: Method 1 users never see it. Not an autopilot: it produces filled artifacts and gate reports, and humans produce signatures. Not an enforcement mechanism: a signature here is a name someone typed into a markdown table, nothing binds an approval to the bytes of the document it approved, editing an approved artifact does not stale its approval, and nothing stops a person from signing their own work. What this protocol delivers is that an unreviewed answer is visibly unreviewed and a waived gate is visibly waived. It cannot stop a determined person from lying to it, and a reader who believes otherwise will trust a record that was never load-bearing. Not a chatbot personality layer: it has no name, no persona, and no small talk, because the interview is the product. Not a second source of truth: STATE.md points into the workspace artifacts, and where the two disagree, the artifact wins.

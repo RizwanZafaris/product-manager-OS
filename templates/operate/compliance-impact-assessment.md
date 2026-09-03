@@ -17,9 +17,12 @@ aliases: ["Compliance Impact Assessment", "compliance-impact-assessment"]
      your legal counsel, privacy officer, or second line, and their names go in the
      sign-off table.
 
-     Products under a financial regulator activate the regulated module: run the
+     Products that contain an AI or machine-learning feature and have a financial
+     regulator applying to them activate the regulated module: run the
      reg-gap-check skill linked above, which routes into the verbatim regulated
-     material rather than paraphrasing regulator text. Never reword regulator text
+     material rather than paraphrasing regulator text. Both halves are required
+     by ../../os/STAGE-GATES.md; a regulated product with no model still runs
+     reg-gap-check for gap mapping, and its regulatory owner names what covers it. Never reword regulator text
      in this document; cite the instrument and section, and name who holds the copy. -->
 
 **Owner:** [name] · **Legal or compliance counterpart:** [name]

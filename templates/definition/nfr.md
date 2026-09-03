@@ -66,8 +66,11 @@ Skill: [write-prd](../../skills/write-prd/SKILL.md)
 | Encryption in transit and at rest | [standard, or owner] | |
 | Audit logging of sensitive actions | [what is logged, retention] | |
 
-<!-- If a regulator governs any data class here, the regulated overlay applies:
-     see ../../modules/regulated/README.md. Security architecture detail belongs
+<!-- If a regulator governs any data class here and the product contains an AI
+     or machine-learning feature, the regulated overlay applies: see
+     ../../os/STAGE-GATES.md for the rule and ../../modules/regulated/README.md
+     for the module. A regulated data class with no model in the product does
+     not activate it. Security architecture detail belongs
      in ../architecture/security-architecture.md; this table holds the
      product-level commitments. -->
 

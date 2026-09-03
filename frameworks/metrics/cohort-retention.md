@@ -51,7 +51,7 @@ Percent of the cohort active in each period after its start. Rows are cohorts, c
 | [period] | [n] | 100 | | | | | |
 | [period] | [n] | 100 | | | | | |
 
-Flattening test: the drop between consecutive periods shrinks toward zero. Record the plateau level and the period it arrives at; those two numbers are the result.
+Flattening test: the drop between consecutive periods shrinks toward zero. Record the plateau level and the period it arrives at; those two numbers are the result. Keep the period-by-period cells inside the flat region as well, and the oldest cohort age you have actually observed, because [unit economics](unit-economics.md) reads its monthly rate from those cells rather than from the plateau level.
 
 ### Step 3: what to compare
 
@@ -91,7 +91,7 @@ Reading the plateau off the tail. The right-most cells belong to the oldest coho
 
 - [Metrics review](../../templates/operate/metrics-review.md), section 2, where the input metric movement is read
 - [Growth plan](../../templates/planning/growth-plan.md), section 1 and the leak evidence in section 3
-- [Unit economics](unit-economics.md), which takes the plateau as its churn input
+- [Unit economics](unit-economics.md), which derives a monthly churn rate from consecutive periods inside the flat region and caps the lifetime at a stated horizon; it does not treat the plateau level as a rate
 - [Post-launch review](../../templates/operate/post-launch-review.md), section 2, goal versus actual
 - The [analyst agent](../../agents/analyst-agent.md) reads cohorts before it reads averages
 - OPERATE stage, reviewed at [Gate 6: outcomes verified](../../os/STAGE-GATES.md)

@@ -21,7 +21,7 @@ Launches fail at the gate in one recognizable way: the checklist is ticked from 
 - Two weeks before a target date, as the first full run, and again at the gate itself
 - After a slip, because evidence that was true a month ago may not be
 - When a function wants to sign "with reservations" and nobody has written the reservations down
-- Before any AI feature or regulated release, where the overlay items are mandatory
+- Before releasing a product that contains an AI or machine-learning feature and has a financial or data regulator applying to it, where the overlay items are mandatory. Both halves are required by the rule in [../../os/STAGE-GATES.md](../../os/STAGE-GATES.md)
 
 ## Inputs
 

@@ -37,14 +37,22 @@ Customers can rate how important an outcome is and how satisfied they are with i
 
 | Question | Scale | Aggregation |
 |---|---|---|
-| How important is it that you can [outcome]? | 1 (not important) to 10 (critical) | Mean across respondents, or the share rating 8 or above times ten; state which |
+| How important is it that you can [outcome]? | 1 (not important) to 10 (critical) | Mean across respondents, which lands in 1 to 10, or the fraction rating 8 or above multiplied by ten, which lands in 0 to 10; state which, because the two paths carry different bounds |
 | How satisfied are you with how you [outcome] today? | 1 (not at all) to 10 (fully) | Same as importance |
 
 ### 2. Scoring table
 
-**Arithmetic:** gap = max(importance minus satisfaction, 0); opportunity score = importance + gap. Range 1 to 20.
+**Arithmetic:** gap = max(importance minus satisfaction, 0); opportunity score = importance + gap.
 
-| ID | Desired outcome | Job step | n | Importance (1 to 10) | Satisfaction (1 to 10) | Gap | Score | Rank |
+**Range: 1 to 19 under the mean, 0 to 20 under the share.** The bound depends on which aggregation you chose, so the sheet states one bound per path. Both paths are kept because a share of zero is a real reading (nobody rated the outcome 8 or above) and clamping it to 1 would hide the very outcome you are looking for.
+
+Under the mean, both inputs are means of ratings that are at least 1, so both sit in 1 to 10. The ceiling is importance 10 against satisfaction 1: 10 plus a gap of 9, which is 19. The floor is importance 1, where the gap cannot exceed 0 because satisfaction is at least 1: a score of 1.
+
+Under the share, both inputs are fractions multiplied by ten, so both sit in 0 to 10. The ceiling is importance 10 against satisfaction 0: 10 plus a gap of 10, which is 20. The floor is importance 0, where the gap is 0: a score of 0.
+
+Write the aggregation at the top of the sheet and check every score against that path's bound. A score outside it is an arithmetic slip, not a finding.
+
+| ID | Desired outcome | Job step | n | Importance (1 to 10 mean, 0 to 10 share) | Satisfaction (1 to 10 mean, 0 to 10 share) | Gap | Score | Rank |
 |---|---|---|---|---|---|---|---|---|
 | O1 | | | | | | | | |
 | O2 | | | | | | | | |
@@ -55,7 +63,7 @@ Customers can rate how important an outcome is and how satisfied they are with i
 |---|---|---|---|---|
 | | | | | [yes if one segment sits in a higher band] |
 
-**Decision rule:** rank by score. Ulwick's own reading bands, adopted here as a convention rather than a benchmark: above 15, an underserved outcome worth building for; 12 to 15, solid; 10 to 12, moderate; below 10, adequately served. Satisfaction above importance marks an overserved outcome, a candidate for simplification or cost removal.
+**Decision rule:** rank by score. Ulwick's own reading bands, adopted here as a convention rather than a benchmark, and written as half-open intervals so no score falls in two bands: 15 and above (up to the ceiling of the aggregation you chose, 19 under the mean and 20 under the share), an underserved outcome worth building for; 12 up to 15, solid; 10 up to 12, moderate; below 10, adequately served. Satisfaction above importance marks an overserved outcome, a candidate for simplification or cost removal.
 
 ## Reading the result
 
@@ -72,6 +80,8 @@ Invented, for Ledgerline's expense-report copilot. An invented survey of 41 file
 | O3 | Minimize the time to learn the approval status of a report | 6.8 | 4.9 | 1.9 | 8.7 |
 | O4 | Minimize the time to categorize each line | 7.2 | 6.1 | 1.1 | 8.3 |
 | O5 | Minimize the effort to convert a foreign-currency amount | 4.0 | 7.5 | 0 | 4.0 |
+
+This sheet uses the mean, so every row is checked against 1 to 19: O1 is 9.2 plus a gap of 6.1, so 15.3, the only row in the top band and well under the 19 ceiling; O2 is 8.6 plus 3.6, so 12.2; O3 is 6.8 plus 1.9, so 8.7; O4 is 7.2 plus 1.1, so 8.3; O5's gap floors at 0 because satisfaction (7.5) exceeds importance (4.0), so its score is just its importance, 4.0. Every score sits inside 1 to 19, and the lowest, 4.0, clears the mean path's floor of 1.
 
 Reading: O1 is the release; O2 is the second slice; O5 is overserved, and the currency converter the previous tool advertised can leave the marketing page. The segment cut put O3 at 12.9 for approvers and 6.4 for filers, so status visibility is an approver feature, not a filer one.
 

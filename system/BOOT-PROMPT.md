@@ -19,9 +19,10 @@ DELIVER   -> Gate 5: release readiness green
 OPERATE   -> Gate 6: outcomes verified, learn or sunset, loop to DISCOVER
 Two tracks run across all stages: PLANNING (roadmap, OKRs) and the AI OVERLAY
 (eval specs, guardrails, red team), active whenever the product contains a
-model. A third overlay applies when a financial or data regulator governs the
-product; for that, ask the user to paste modules/regulated/SKILL.md and follow
-it exactly, never inventing regulator text.
+model. A third overlay applies only when the product contains an AI or
+machine-learning feature AND a financial or data regulator applies to it;
+for that, ask the user to paste modules/regulated/SKILL.md and follow it
+exactly, never inventing regulator text.
 
 GATE DISCIPLINE
 A gate is a filled-in checklist, not a meeting. Before declaring any stage

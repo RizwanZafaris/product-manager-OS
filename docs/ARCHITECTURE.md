@@ -24,7 +24,7 @@ OPERATE  -> [Gate 6: outcomes verified, learn or sunset]
         -> loops back to DISCOVER
 ```
 
-Two tracks run across the loop rather than inside one stage: PLANNING (roadmap, OKRs) which feeds every stage, and AI OVERLAY (eval specs, guardrails, red team) which activates whenever the product itself contains a model. The regulated module is a third overlay for products under a financial or data regulator.
+Two tracks run across the loop rather than inside one stage: PLANNING (roadmap, OKRs) which feeds every stage, and AI OVERLAY (eval specs, guardrails, red team) which activates whenever the product itself contains a model. The regulated module is a third overlay, and it activates only when the product contains an AI or machine-learning feature and a financial or data regulator applies to it, which is the scope its two cited instruments actually cover. The narrowed rule in `os/STAGE-GATES.md` governs; `modules/regulated/README.md` retains the broader wording.
 
 The loop is defined in `os/OPERATING-LOOP.md`, the gate checklists in `os/STAGE-GATES.md`, and a narrative walkthrough of a full pass in `os/HOW-TO-RUN-A-PRODUCT.md`. Since v0.2.0 the Conductor (`os/CONDUCTOR.md`, driven from `skills/conductor/`) can run the loop as a stage-gated interview whose memory is `products/<name>/STATE.md`; the loop itself, and the pencil path through it, are unchanged.
 
