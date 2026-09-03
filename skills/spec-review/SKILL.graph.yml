@@ -1,0 +1,6 @@
+layer: skills
+stage: DEFINE
+gate: 2
+feeds: ["templates/definition/prd.md", "templates/definition/brd.md", "templates/definition/frd.md"]
+method: ""
+aliases: ["Spec Review", "spec-review"]

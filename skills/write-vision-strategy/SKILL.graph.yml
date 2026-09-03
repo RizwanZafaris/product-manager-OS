@@ -1,0 +1,6 @@
+layer: skills
+stage: PLANNING
+gate: 1
+feeds: ["templates/planning/vision.md", "templates/planning/product-strategy.md", "templates/discovery/competitive-analysis.md"]
+method: "knowledge/cagan-product-teams.md"
+aliases: ["Vision and Strategy", "write-vision-strategy"]

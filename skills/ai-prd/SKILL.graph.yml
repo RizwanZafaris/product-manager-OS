@@ -1,0 +1,6 @@
+layer: skills
+stage: DEFINE
+gate: 2
+feeds: ["templates/definition/prd.md", "templates/ai/eval-spec.md", "templates/ai/guardrails.md"]
+method: ""
+aliases: ["AI PRD", "ai-prd"]

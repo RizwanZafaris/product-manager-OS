@@ -1,0 +1,6 @@
+layer: skills
+stage: PLANNING
+gate: 5
+feeds: ["templates/planning/pricing-packaging.md", "templates/operate/experiment-brief.md", "skills/experiment-designer/SKILL.md"]
+method: "knowledge/roles/pmm-boundary.md"
+aliases: ["Pricing and Packaging", "pricing-packaging"]

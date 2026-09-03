@@ -1,0 +1,6 @@
+layer: skills
+stage: OPERATE
+gate: 6
+feeds: ["templates/operate/incident-postmortem.md", "templates/operate/operational-readiness-review.md", "templates/execution/risk-register.md"]
+method: ""
+aliases: ["Postmortem Facilitator", "postmortem-facilitator"]

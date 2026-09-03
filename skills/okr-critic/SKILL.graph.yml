@@ -1,0 +1,6 @@
+layer: skills
+stage: PLANNING
+gate: 6
+feeds: ["templates/planning/okrs.md", "templates/planning/roadmap.md", "templates/operate/metrics-review.md"]
+method: "knowledge/okrs.md"
+aliases: ["OKR Critic", "okr-critic"]

@@ -1,0 +1,6 @@
+layer: skills
+stage: DISCOVER
+gate: 1
+feeds: ["templates/definition/assumptions-register.md", "templates/planning/business-case.md", "templates/discovery/evidence-note.md"]
+method: "knowledge/crossing-the-chasm.md"
+aliases: []

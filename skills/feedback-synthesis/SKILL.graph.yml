@@ -1,0 +1,6 @@
+layer: skills
+stage: DISCOVER
+gate: 1
+feeds: ["templates/discovery/user-research-plan.md", "templates/discovery/discovery-document.md", "templates/discovery/personas.md"]
+method: "knowledge/torres-continuous-discovery.md"
+aliases: ["Feedback Synthesis", "feedback-synthesis"]

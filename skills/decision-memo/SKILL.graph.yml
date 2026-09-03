@@ -1,0 +1,6 @@
+layer: skills
+stage: PLANNING
+gate: 1
+feeds: ["templates/planning/decision-memo.md", "templates/execution/decision-log.md", "templates/execution/stakeholder-map.md"]
+method: "knowledge/INDEX.md"
+aliases: ["Decision Memo", "decision-memo"]

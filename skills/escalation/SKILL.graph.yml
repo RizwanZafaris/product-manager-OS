@@ -1,0 +1,6 @@
+layer: skills
+stage: ALL STAGES
+gate: 1
+feeds: ["templates/execution/decision-log.md", "templates/execution/risk-register.md", "templates/execution/stakeholder-map.md"]
+method: ""
+aliases: ["Escalation"]
