@@ -140,7 +140,7 @@ templates/ai/           eval-spec.md, guardrails.md, hallucination-controls.md,
                human-approval-gates.md, agent-architecture.md,
                multi-agent-workflow.md, prompt-structure.md,
                context-management.md, red-team-review.md, model-card.md
-frameworks/    README.md, INDEX.md, and 46 worksheets in six folders. Each
+frameworks/    README.md, INDEX.md, and 58 worksheets in eight folders. Each
                sheet carries its scales, its arithmetic written out, the
                inputs it needs first, a worked invented example, its trap and
                its skip line. Ask for a sheet whenever a template field wants
@@ -159,12 +159,21 @@ frameworks/strategy/    playing-to-win.md, strategy-kernel.md, wardley-map.md,
                positioning-canvas.md, market-sizing.md, build-buy-partner.md
 frameworks/metrics/     north-star-input-tree.md, aarrr-funnel.md,
                growth-loops.md, heart-metrics.md, cohort-retention.md,
-               unit-economics.md
+               unit-economics.md, dora-four-keys.md, space-framework.md
 frameworks/pricing/     van-westendorp.md, gabor-granger.md,
                packaging-good-better-best.md
 frameworks/execution/   premortem-worksheet.md, risk-matrix.md, raci.md,
                stakeholder-power-interest.md, estimation-sheet.md,
-               five-whys-fishbone.md, retrospective-formats.md
+               five-whys-fishbone.md, retrospective-formats.md, fmea.md,
+               theory-of-constraints.md
+frameworks/systems/     The diagnostic group: iceberg-model.md, cynefin.md,
+               causal-loop-diagram.md, leverage-points.md. Ask for one of
+               these before any planning sheet when the problem statement is
+               itself a symptom, a recurrence, or in dispute.
+frameworks/assessment/  product-operating-model-assessment.md,
+               team-topologies-assessment.md, tech-debt-assessment.md,
+               westrum-culture-typology.md. These score the organization the
+               plan lands in rather than the plan.
 knowledge/     README.md, INDEX.md, and eleven cards: cagan-product-teams.md,
                torres-continuous-discovery.md, jobs-to-be-done.md,
                kano-model.md, rice-prioritization.md, shape-up.md,

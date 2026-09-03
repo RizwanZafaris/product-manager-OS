@@ -96,7 +96,7 @@ Beside them, not against them. The tracker owns the present, which is what is in
 
 No, and most of it. The intended first hour is [os/OPERATING-LOOP.md](../os/OPERATING-LOOP.md), [os/WHICH-DOCUMENT.md](../os/WHICH-DOCUMENT.md), and one template. Safe deletions, because nothing depends upward on them: `learn/`, `examples/`, `routing/`, `agents/`, `skills/`, `system/`, `modules/regulated/` when no supervisor governs your product, and any domain or knowledge card outside your market. Keep `os/` and the templates you actually use, because the gates reference them by path.
 
-**The one deletion that quietly costs you** is `frameworks/`, because the methods it runs are the ones people otherwise perform from memory, and a scoring argument reconstructed from memory three weeks later is unauditable. If space is the concern, keep the four worksheets your gates actually consume and delete the other forty-two.
+**The one deletion that quietly costs you** is `frameworks/`, because the methods it runs are the ones people otherwise perform from memory, and a scoring argument reconstructed from memory three weeks later is unauditable. If space is the concern, keep the four worksheets your gates actually consume and delete the other fifty-four.
 
 **Inside a document, deleting is the instruction rather than a liberty.** An empty heading reads as an unanswered question and teaches every future reader to skim, which is how the one real answer three sections below it gets missed.
 

@@ -10,9 +10,67 @@ What a version number means here, since this is a document system and not a libr
 
 The stability promise is stated in [README.md](README.md) and repeated here so it survives a fork: within a major version, template field names and file paths do not change under you.
 
-## Unreleased
+## 0.7.0, 2026-09-03
 
-Nothing yet.
+The graph, harness, and systems work. It is numbered 0.7.0 rather than 0.6.0 because
+0.6.0 below is the depth release, which was written first and says nothing new was added
+to the loop. That was true of the depth pass and is not true of this one, so these
+additions get their own number instead of being folded backward into an entry that
+already shipped a different claim. Both arrive in one merge, in that order.
+
+Nothing here renames, moves, or removes a file, and no gate changed what it demands.
+
+- **Twelve worksheets, and the frameworks layer goes from 46 in six groups to 58 in
+  eight.** Two of the groups are new. `frameworks/systems/` (iceberg-model, cynefin,
+  causal-loop-diagram, leverage-points) exists because every group before it is a
+  planning instrument that takes the problem as given, and a planning sheet aimed at a
+  symptom returns a confident quarter of work on the wrong thing with the confidence
+  coming from the sheet. `frameworks/assessment/` (product-operating-model-assessment,
+  team-topologies-assessment, tech-debt-assessment, westrum-culture-typology) scores the
+  organization a plan lands in rather than the plan. Two landed in `metrics/`
+  (dora-four-keys, space-framework) and two in `execution/` (fmea,
+  theory-of-constraints). Each of the twelve is reachable from a skill or a template, so
+  none is an orphan in the graph, and each is named in the stage map that owns it in
+  both link forms.
+- **The graph layer.** YAML declarations across the six declaring layers, with a
+  `SKILL.graph.yml` sidecar wherever frontmatter is closed to them, plus
+  `tools/frontmatter_init.py` to seed them and `tools/graph.py` to render
+  `docs/GRAPH.md`. Beside the generated file: `os/maps/`, one hub note per stage so a
+  graph view has centers instead of a hairball, and a committed core-only `.obsidian/`
+  vault config that colors the graph by layer. `lint.py` grows from nine tree checks to
+  eleven (10 graph declarations, 11 wikilinks) and `test_lint.py` from 25 tests to 47.
+- **The harness.** `harness/` makes the router table executable: `MANIFEST.json` with one
+  entry per router row in router order, `INVARIANTS.md`, `tiers.md`, `runner.py`, and
+  three adapters. `tools/check_manifest.py` proves the manifest and the table agree row
+  for row and CI runs it. The harness is deletable and is not a runtime dependency, and
+  the deletability proof in its README now passes all four gates with no exception; the
+  rule that earned that is one line long, which is that a file outside `harness/` names
+  a harness path in plain text and never as a link.
+- **Three router rows,** each where a trigger phrase already existed rather than one per
+  new sheet: "is this a symptom or a structure", "what kind of problem is this", and
+  "are we set up to ship this". Manifest entries `diagnose-symptom-or-structure`,
+  `classify-problem-domain`, and `assess-delivery-readiness` match them in router order,
+  taking the table and the manifest from 38 rows to 41.
+- **An eleventh example,** `examples/ledgerline-harness-routing-run.md`, the only file
+  under `examples/` produced by a model call rather than written by hand.
+- **The faces were swept for the counts this work invalidated,** in `README.md`,
+  `AGENTS.md`, `docs/ARCHITECTURE.md`, `docs/FAQ.md`, `frameworks/README.md`,
+  `knowledge/README.md`, `os/README.md`, `system/BOOT-PROMPT.md`, the harness READMEs,
+  and the routing-run example. `docs/ARCHITECTURE.md` also carried three counts that had
+  been stale since before this branch: 73 templates where there are 98, nine skills
+  where there are 28, and five agent role files where there are twelve.
+
+### Known gaps at this point
+
+- None of the twelve new worksheets has a filled example. The layer's own bar asks for an
+  invented worked example inside each sheet, which they carry, but the `examples/`
+  directory illustrates six worksheets out of 58.
+- The stage maps are curated by hand and no script keeps them in step with the tree, so
+  the next worksheet added is invisible in the graph view until somebody remembers. The
+  maintenance rule is written in `os/maps/README.md` and it is a rule, not a check.
+- The three new router rows name no skill, so the sheets carry the whole procedure. That
+  is correct for a worksheet and it does mean a run has no adversarial pass over it, the
+  way the skills do.
 
 ## 0.6.0, 2026-09-03
 

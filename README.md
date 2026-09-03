@@ -102,7 +102,9 @@ A filled example is one file away: [examples/expense-copilot-discovery.md](examp
 | [skills/](skills/README.md), [agents/](agents/README.md) | Skills and agents | HOW to produce it with an AI runtime: procedures, and the roles that run them |
 | [system/](system/README.md) | System prompts | WHO the model becomes |
 | [routing/](routing/README.md) | Routing | WITH WHICH model each task runs |
+| `harness/` | Harness | HOW a runtime resolves a request into a route: the manifest, the tier decision, the invariants, three adapters. Named in plain text rather than linked, because the directory is deletable and a link from here would break on the deletion |
 | [os/](os/README.md) | Operating loop | The six stages, the six gates, which document to write, and where filled artifacts live |
+| [os/maps/](os/maps/README.md), [docs/GRAPH.md](docs/GRAPH.md) | Graph | WHERE a file sits: one hub note per stage, and the link graph generated from the declarations every layer file carries |
 | [examples/](examples/README.md) | Worked examples | What a filled artifact looks like, greenfield and brownfield |
 | [modules/regulated/](modules/regulated/README.md) | Regulated overlay | What a regulated AI feature must answer before it ships |
 | [docs/](docs/ARCHITECTURE.md) | Reference | WHY the mechanisms are shaped this way, what else you could run instead, and the questions a skeptic asks first |
@@ -120,7 +122,7 @@ Two knowledge sub-layers answer the questions that arrive before any template do
 
 A knowledge card tells you why RICE exists and how its false precision misleads. It does not give you the sheet. That gap is where methods get performed from memory: reach counted in whatever unit came to mind, confidence never written down, and an argument three weeks later that nobody can audit because the arithmetic lived in one person's head.
 
-[frameworks/](frameworks/README.md) is 46 worksheets in six groups (strategy, discovery, prioritization, metrics and growth, pricing, execution) that you fill in. Each one carries its scales, its formula or decision rule written out, the inputs it needs and where they come from, an invented worked example, the trap it falls into, and a line beginning **Skip it when** that names the situation where running it costs a week and returns nothing. Attribution is named in every file, including the honest cases: TAM/SAM/SOM, RACI, and the risk matrix have no single originator, and their files say so rather than inventing a founder.
+[frameworks/](frameworks/README.md) is 58 worksheets in eight groups (strategy, discovery, prioritization, metrics and growth, pricing, execution, systems, assessment) that you fill in. Six of those groups plan; the last two diagnose, which is the split the layer was missing. A planning sheet takes the problem as given, so a planning sheet aimed at a symptom buys a confident quarter of work on the wrong thing. Systems establishes what kind of problem you are holding and what structure keeps producing it; assessment scores whether the organization can carry the plan at all. Each one carries its scales, its formula or decision rule written out, the inputs it needs and where they come from, an invented worked example, the trap it falls into, and a line beginning **Skip it when** that names the situation where running it costs a week and returns nothing. Attribution is named in every file, including the honest cases: TAM/SAM/SOM, RACI, and the risk matrix have no single originator, and their files say so rather than inventing a founder.
 
 The layer sits between knowledge and templates and produces inputs, not artifacts. The RICE sheet ranks the backlog that fills [the roadmap](templates/planning/roadmap.md); the market sizing sheet, reconciled top-down against bottom-up, produces the number [the business case](templates/planning/business-case.md) argues from; the Kano survey classifies the attributes that decide what the PRD's functional scope covers first. Where a card and a worksheet cover the same method, the card holds the reasoning and the worksheet holds the form, and each links the other.
 
@@ -140,7 +142,7 @@ This repository does not assume a US software company. Discovery and compliance 
 python3 lint.py --os
 ```
 
-Standard library only. It enforces, across the whole tree: no banned characters, no banned metric literals, no unowned placeholders outside sanctioned fill-in fields, every relative link resolves, every template carries its Stage/Knowledge/Skill header, every skill has exactly the two required frontmatter fields, the byte-exact regulated files match their pinned hashes, every path named in a system prompt exists, and no secret-shaped strings anywhere. Green means the tree is consistent, not that any document in it is true.
+Standard library only. It enforces, across the whole tree: no banned characters, no banned metric literals, no unowned placeholders outside sanctioned fill-in fields, every relative link resolves, every template carries its Stage/Knowledge/Skill header, every skill has exactly the two required frontmatter fields, the byte-exact regulated files match their pinned hashes, every path named in a system prompt exists, no secret-shaped strings anywhere, every file in the six declaring layers carries its graph declaration with a stage from the vocabulary and feeds paths that resolve, and every wikilink lands on a file or a declared alias. Green means the tree is consistent, not that any document in it is true.
 
 ## Versioning and stability
 

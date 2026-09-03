@@ -78,7 +78,7 @@ Related: [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md) for the beliefs behind these m
 
 - **Ladder rung.** One step on the eight-rung product ladder from Associate PM to CPO, each with what it owns, decides, and how it fails. Rung names are marked directional, because titles are software's least standardized vocabulary. See [knowledge/roles/ladder.md](knowledge/roles/ladder.md).
 - **Learn path.** One stepped curriculum over fictional products, ending at a real gate checklist as a capstone. Three exist: foundations, transitioning, senior. Practice work never lands in `products/`. See [learn/README.md](learn/README.md).
-- **Lint gate, tree mode.** `python3 lint.py --os`, the nine-check whole-tree gate: characters, banned metrics, placeholders, links, template headers, skill frontmatter, pinned-file integrity, system-prompt paths, secrets. Green means consistent, not true.
+- **Lint gate, tree mode.** `python3 lint.py --os`, the eleven-check whole-tree gate: characters, banned metrics, placeholders, links, template headers, skill frontmatter, pinned-file integrity, system-prompt paths, secrets, graph declarations, wikilinks. Green means consistent, not true.
 - **Loop, the operating loop.** Six stages, DISCOVER through OPERATE, each closing at a gate, with Gate 6 feeding DISCOVER again. Two tracks run across it: planning, and the AI overlay. See [os/OPERATING-LOOP.md](os/OPERATING-LOOP.md).
 
 ## M
