@@ -80,6 +80,8 @@ Required level is read off the plan, not off an ideal. Deficit = required minus 
 
 **Blocker rule:** a deficit of 2 or more on any load-bearing dimension is a blocker whatever the totals say. Those four gate the other five: an unfunded team with no product seat cannot own a problem, and cannot retire a risk before someone else commits its quarter. The rule exists instead of weights, because weights get renegotiated by whoever dislikes the answer.
 
+The deficit-of-2 blocker threshold and the pressure bands below are a local heuristic authored here, not part of Cagan, Hickman, Jones, Idiodi, and Moore's account in Transformed; the book describes the nine dimensions and the failure modes, and sets no numeric blocker rule or pressure scale. Treat both as this repository's own scoring convention.
+
 ## How to read the result
 
 Read pressure first, then blockers, then readiness.

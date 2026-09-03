@@ -32,7 +32,7 @@ aliases: ["Metrics Review", "metrics-review"]
 | Key result | Baseline | Target | Actual this window | Delta | Data confidence (high / medium / low, why) |
 |---|---|---|---|---|---|
 | | | | | | |
-| *first-submission approval rate* | *62%* | *80%* | *71%* | *+9 pts, short of target* | *high, finance system of record* |
+| *first-submission approval rate (ILLUSTRATIVE)* | *62%* | *80%* | *71%* | *+9 pts, short of target* | *high, finance system of record* |
 
 ## 2. Input metric movement
 

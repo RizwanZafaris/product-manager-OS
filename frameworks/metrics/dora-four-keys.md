@@ -51,6 +51,8 @@ The arithmetic, written out because a delivery figure whose formula lives in a d
 
 ### Step 2: score the direction of travel
 
+The 20% noise band and its floors are a local heuristic authored here, not part of Forsgren, Humble, and Kim's research; Accelerate reports the four keys and the named performance bands, but sets no noise threshold for period-to-period scoring. Treat the 20% figure as a starting rule you can retune, not a number the DORA research specified.
+
 Scale per key, against your own previous period: minus 1 worse, 0 unchanged, plus 1 better. "Unchanged" means inside the noise band, where the noise band is 20% of the previous period's value, floored at one deployment per week for frequency and at one hour for time to restore. Add the four rows for a total between minus 4 and plus 4.
 
 | Key | Previous | This period | Change | Noise band | Score (minus 1, 0, plus 1) |

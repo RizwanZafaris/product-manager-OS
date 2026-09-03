@@ -55,6 +55,8 @@ The rung numbers are an ordering, not a measurement. Rung 6 is not twice rung 12
 
 ### Step 2: the arithmetic
 
+This scoring arithmetic, L, A, and altitude, is this repository's own invention, not Meadows'. Her paper ranks the twelve rungs; it assigns no numbers to them and proposes no authority scale. Treat L, A, and altitude as a local heuristic for sorting a worksheet, not as a figure Meadows would sign.
+
 Leverage L = 13 minus r, so rung 12 gives L of 1 and rung 1 gives L of 12.
 
 Authority A, scored against this quarter and this org chart: 3 the team can do it inside its own remit, no approval outside the triad; 2 one named person's yes; 1 several functions, a board, a contract renegotiation, or a market change. An A of 1 or 2 must name the person or the event, or it is scored one point higher.

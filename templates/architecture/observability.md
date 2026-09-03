@@ -33,7 +33,7 @@ Skill: [architect agent](../../agents/architect-agent.md); [metrics-tree](../../
 
 | SLI (what is measured, from the user's view) | Target | Window | Measured where |
 |---|---|---|---|
-| requests answered successfully (non-5xx) | 99.9% | rolling 30 days | load balancer logs |
+| requests answered successfully, non-5xx (ILLUSTRATIVE) | 99.9% | rolling 30 days | load balancer logs |
 | | | | |
 
 - Error budget policy: when the budget for a window is spent, `<what the team stops or starts: feature freeze, reliability sprint, review>`. Decided by: `<name>`.

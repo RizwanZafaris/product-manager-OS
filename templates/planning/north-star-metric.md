@@ -44,7 +44,7 @@ aliases: ["North Star Sheet"]
 |---|---|---|---|---|
 | | | | | |
 | | | | | |
-| *search-to-order conversion* | *more completed searches become orders, and orders are the unit the north star counts* | *[name]* | *2.8%* | *4%* |
+| *search-to-order conversion (ILLUSTRATIVE)* | *more completed searches become orders, and orders are the unit the north star counts* | *[name]* | *2.8%* | *4%* |
 
 ## 3. Guardrails
 

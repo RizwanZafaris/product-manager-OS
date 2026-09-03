@@ -52,7 +52,7 @@ aliases: ["Experiment Brief", "experiment-brief"]
 |---|---|---|
 | Control | [current behavior] | [share] |
 | A | | [share] |
-| *B* | *checkout survey moved to post-receipt* | *25 percent* |
+| *B (ILLUSTRATIVE)* | *checkout survey moved to post-receipt* | *25 percent* |
 
 ## 4. Sample size and duration
 

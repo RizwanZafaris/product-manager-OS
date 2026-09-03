@@ -38,7 +38,7 @@ aliases: ["GTM Plan", "gtm-plan"]
 | Cohort (who, precisely) | Size | Channel that reaches them | Evidence the channel reaches them | Owner |
 |---|---|---|---|---|
 | | [count] | | [artifact, linked or filed] | |
-| *ops leads at the 9 design-partner firms* | *9 firms, ~20 people* | *direct email from the pilot thread* | *pilot agreement + active email thread, filed in discovery/* | *[name]* |
+| *ops leads at the 9 design-partner firms (ILLUSTRATIVE)* | *9 firms, ~20 people* | *direct email from the pilot thread* | *pilot agreement + active email thread, filed in discovery/* | *[name]* |
 
 ## 2. Positioning against the named alternative
 
