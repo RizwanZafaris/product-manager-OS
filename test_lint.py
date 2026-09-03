@@ -285,16 +285,25 @@ class WorkspaceExclusion(unittest.TestCase):
     """A user's filled draft in products/ must never fail the OS gate."""
 
     def test_user_workspace_draft_is_skipped(self):
-        import lint, pathlib, shutil
-        ws = pathlib.Path("products/_gate_test")
-        ws.mkdir(parents=True, exist_ok=True)
-        try:
-            (ws / "draft.md").write_text("[broken](nowhere.md) and TBD\n")
-            names = [str(p) for p in lint.tracked_files(pathlib.Path("."))]
-            self.assertFalse(any("_gate_test" in n for n in names))
-            self.assertTrue(any(n.endswith("learn/products/README.md") for n in names))
-        finally:
-            shutil.rmtree(ws)
+        # The fixture is built in a temporary root, never under the live
+        # repository. An earlier version of this test created and then removed
+        # products/_gate_test in place, which deleted a real product folder of
+        # that name. A gate that destroys a user's work to prove it protects it
+        # is the failure this whole system exists to prevent.
+        import lint, pathlib, tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            (root / "products" / "_gate_test").mkdir(parents=True)
+            (root / "products" / "_gate_test" / "draft.md").write_text(
+                "[broken](nowhere.md) and TBD\n")
+            (root / "products" / "README.md").write_text("# Workspaces\n")
+            (root / "learn" / "products").mkdir(parents=True)
+            (root / "learn" / "products" / "README.md").write_text("# Practice\n")
+            names = [str(p) for p in lint.tracked_files(root)]
+        self.assertFalse(any("_gate_test" in n for n in names))
+        self.assertTrue(any(n.endswith("products/README.md") for n in names))
+        self.assertTrue(
+            any(n.endswith("learn/products/README.md") for n in names))
 
 
 # The graph declaration, assembled from a dict so one test can vary one key.
