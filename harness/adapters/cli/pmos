@@ -1,0 +1,11 @@
+#!/bin/sh
+# Shim so the documented invocation works from the repository root with no
+# install step of any kind:
+#
+#     harness/adapters/cli/pmos list
+#
+# It runs the sibling pmos.py with the system python3 and passes every argument
+# through untouched. Nothing is installed, nothing is added to PATH, nothing is
+# written. If you would rather skip the shim, "python3
+# harness/adapters/cli/pmos.py list" is the same command.
+exec python3 "$(dirname "$0")/pmos.py" "$@"
