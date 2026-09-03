@@ -82,15 +82,19 @@ The defense is not a tighter scale, because a tighter scale only relocates the a
 
 ## What good looks like
 
+How to fill a sheet correctly, down to the scales and the arithmetic column, belongs to the [scoring worksheet](../frameworks/prioritization/rice-scoring-sheet.md). What follows is the organizational evidence that the instrument has any authority, which no worksheet can check on your behalf.
+
 | Done well | The version that looks the same and is not |
 |---|---|
-| One reach unit declared at the top of the sheet and used in every row | Each row scored in whatever unit its sponsor had data for |
-| Effort quoted by the people who would do the work, covering every discipline | Effort quoted by the sponsor, covering the engineering half |
-| Confidence cells carry a source and a date, and change only when those change | Confidence cells carry a number that rose after the review meeting |
-| Scores within about a fifth of each other treated as tied and settled in the open | Rows ordered strictly by score to one decimal place |
-| Rows at opinion-level confidence get a discovery task, however high they score | High-scoring guesses get build slots and are validated in production |
-| Mandates take capacity first, outside the ranking, with their dates | Mandates scored against the goal metric and losing to a feature |
-| The sheet is rescored when the goal metric changes | The sheet is cited for three quarters against a target that moved in the first |
+| The sheet has reversed a sequencing decision a senior person had already announced | The sheet has ratified every decision that was announced before it ran |
+| A losing sponsor can name the cell that beat them | A losing sponsor can name only the score that beat them |
+| Last quarter's effort estimates turned out wrong in both directions | Last quarter's effort estimates turned out low on every row |
+| One named person may overrule the ranking, rarely and in writing | Nobody may overrule the ranking, so whoever controls the sprint overrules it quietly |
+| Somebody's own row moved down during their walkthrough | Every walkthrough ended with the row exactly where its author submitted it |
+| The team can name a high-scoring row it chose not to build, and the reason | The ranking and the build order have matched for three quarters running |
+| Rows arrive from sponsors and leave changed | Rows arrive from sponsors and leave ranked |
+
+The right-hand column is not a column of errors. Every line in it describes a sheet that was filled correctly and decided nothing, which is why none of these failures is visible in the file itself. They share one diagnostic, and it is direction: an instrument with authority moves outcomes away from what the room already believed, so a sheet whose output never surprises anybody is measuring the room's confidence rather than the work. That is also why the checks here are historical. You cannot tell whether this quarter's sheet has authority by inspecting this quarter's sheet; you can tell by asking what the last four changed.
 
 ## Where it sits in the loop
 

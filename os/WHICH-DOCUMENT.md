@@ -91,11 +91,9 @@ Four mistakes account for most bad routings, and each has a tell you can see wit
 The weight decides how much specification. The overlays decide what extra questions get answered, and they apply at every weight above ticket-only.
 
 - **The product contains a model.** The AI overlay attaches: eval sets replace prose acceptance criteria, starting at [eval-spec.md](../templates/ai/eval-spec.md). A one-pager with a model in it still needs an eval row; "the summaries should be accurate" is not a criterion.
-- **A financial or data regulator governs the product.** The regulated module governs and its own template is used as shipped. See [modules/regulated/README.md](../modules/regulated/README.md). A regulated feature never runs at ticket weight, whatever its size.
+- **A financial or data regulator governs the product.** The regulated module governs and its own template is used as shipped. See [modules/regulated/README.md](../modules/regulated/README.md). A regulated feature never runs at ticket weight, whatever its size: this is the one place in this file where size does not decide. A three-line edit to a disclosure string is a small change and a regulated artifact at once, and the artifact is what a supervisor asks for two years later, when nobody can remember whether the wording was reviewed.
 
 The distinction is worth holding precisely, because the two are often collapsed. Weight is a volume control on specification; an overlay is a set of questions that must be answered at any volume. Case 6 above is the clean illustration: a ticket-weight change carrying the AI overlay's full evidence requirement. The reverse error is more expensive: a heavy PRD stack that never routes its model behaviors into an eval spec is a large document with a hole in the middle, and the hole is exactly where a launch fails.
-
-One exception is stated in the second bullet and worth restating as a rule, because it is the only place in this file where size does not decide: a regulated feature never runs at ticket weight. A three-line change to a disclosure string is a small change and a regulated artifact, and the artifact is what a regulator asks for.
 
 ## Documents that live around the weight ladder
 

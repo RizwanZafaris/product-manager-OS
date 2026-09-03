@@ -31,7 +31,7 @@ block, exit gate, attribution line, skip line and cross-link that was there befo
 is still there, and every addition is a new block within the same shape. So a
 document filled against 0.5.1 keeps working, and a link written into your own notes
 keeps resolving. That makes this a minor version even though it is the largest diff
-in the repository's history: 22,341 lines of markdown to 25,829, with four files
+in the repository's history: 22,341 lines of markdown to 25,961, with four files
 added and none moved, renamed, or deleted.
 
 The rule that governed the rewrite is worth stating, because it is what stops a
@@ -39,8 +39,19 @@ depth pass from becoming a padding pass. `frameworks/` files are the working
 sheets: how to run a method, fill it, and score it. `knowledge/` cards are the why
 layer: why the method exists, the mechanism that makes it work, when it fails, and
 how it lies. Every deepened card was written with its paired worksheet open, and
-nothing from the sheet was restated. The same line separates `skills/`, which hold
-procedures, from `agents/`, which hold identities.
+the rule held everywhere except one block, which a review caught: the
+What-good-looks-like table added to eleven cards. On the four cards that have a
+paired worksheet, that table had turned the sheet's own steps into virtues, so a
+declared reach unit and a class-per-action rule were being read twice. Those four
+tables were rewritten to test what a worksheet cannot check, which is the
+organizational evidence that the instrument has authority: whether the sheet ever
+reversed an announced decision, whether an input owner changed their week,
+whether a losing sponsor can name the cell rather than the score. The other seven
+cards have no paired worksheet to duplicate. The same line separates `skills/`,
+which hold procedures, from `agents/`, which hold identities; the one pre-existing
+sentence that appeared in both `agents/research-agent.md` and
+`skills/product-analyst/SKILL.md` was cut down to the standing rule and now points
+at the skill for the procedure.
 
 ### Added
 
@@ -70,7 +81,7 @@ procedures, from `agents/`, which hold identities.
   maintenance stops. Is this waterfall. Will the gates become theater. How it fits a
   tracker, an in-house PRD template, a two-person startup, and non-software work.
   Most answers carry a second paragraph that is a decision rule or a tell.
-- **[GLOSSARY.md](GLOSSARY.md)**, 128 lines, 66 terms. Every word this tree uses in
+- **[GLOSSARY.md](GLOSSARY.md)**, 141 lines, 73 terms. Every word this tree uses in
   a narrower sense than the industry does, defined once, alphabetical, each with a
   because-clause where the clause teaches and a cross-link to the file that governs
   the term. Reach unit, mandate lane, evidence class, escape hatch, forced pair,
@@ -79,17 +90,18 @@ procedures, from `agents/`, which hold identities.
 
 ### Changed
 
-- **The eleven knowledge canon cards, 443 lines to 1,496.** Each card kept its
+- **The eleven knowledge canon cards, 443 lines to 1,453.** Each card kept its
   original heading set, attribution line, skip line, trap, Used-by list and Run-it
   block verbatim, and gained seven sections inside that skeleton: where the method
   came from and how its origin explains its blind spots, what it assumes as numbered
   claims each with a because-clause, a worked illustrative micro-case on a fictional
   product with invented numbers, the other ways it fails with the tell for each, how
   it lies or gets gamed, a what-good-looks-like against anti-pattern contrast, and
-  where it sits in the loop with its upstream, downstream and gate links. No
-  worksheet mechanics were restated. Cards ran 31 to 43 lines before and 129 to 134
+  where it sits in the loop with its upstream, downstream and gate links. Worksheet
+  mechanics were kept out of the cards, with the one exception a review found and
+  the Fixed section below records. Cards ran 31 to 43 lines before and 129 to 135
   after.
-- **The six `os/` spine files, 674 lines to 1,321.** `OPERATING-LOOP.md` gained
+- **The six `os/` spine files, 674 lines to 1,319.** `OPERATING-LOOP.md` gained
   per-stage entry and exit tests, a named failure per stage with its tell, a worked
   micro-example per stage, and a backward-transition table for the moves the loop
   diagram cannot draw. `HOW-TO-RUN-A-PRODUCT.md` gained a cast table with signature
@@ -112,7 +124,7 @@ procedures, from `agents/`, which hold identities.
   the tell for each. The fictional products recur across files, so the handoffs
   chain the way the team protocol says they should. Files ran 29 to 52 lines before
   and 93 to 113 after.
-- **The learn layer, 416 lines to 772.** Each of the three paths now carries a
+- **The learn layer, 416 lines to 776.** Each of the three paths now carries a
   standing invented brief with fixed numbers that every step inherits, and each step
   carries why it comes now, a run line into the paired worksheet, pass criteria at
   two, one and zero, a named trap with its tell, and a time expectation. The library
@@ -134,6 +146,13 @@ procedures, from `agents/`, which hold identities.
 
 - `routing/README.md`: the install command is `omniroute serve` (there is no `start`); added the provider-connection commands, a tier probe that shows which concrete model answers each tier, and the request headers that stop OmniRoute's compression, semantic cache and memory injection from altering prompts that must be quoted verbatim. Found by running the config against a live OmniRoute: on a keyless install `auto/reasoning:pro` returns `404 Combo has no executable targets`, which the doctrine expects but the manual never said.
 - `routing/omniroute.config.json`: the judgment tier now states what it requires and carries an explicit, off-by-default `keylessFallback` instead of leaving a fresh install to fail silently; `endpoint.requestHeaders` and `endpoint.verify` record the headers and the probe. No tier model changed.
+- `system/BOOT-PROMPT.md`: the file manifest now carries `frameworks/` as six folders and 46 worksheets, `agents/` as twelve identities, all 98 templates (34 were missing, including every business case, decision memo, interview guide and survey design), 28 skills where nine were listed, and ten examples where four were. The manifest header no longer claims to be the whole repository, because it is not and does not need to be; it claims to be every file a pasted session can ask for, which is checkable. Step 2 of HOW TO WORK now routes a produced number to its worksheet before the template opens, since filling the template first inverts the work: the number gets chosen to fit the sentence already written.
+- The `What good looks like` tables on the four knowledge cards that have a paired worksheet (RICE, Kano, north star, jobs to be done) restated the sheet's steps as virtues. Rewritten to the card's own side of the line, with the mechanism that unites each table's failures stated underneath it. The other seven tables have no paired worksheet and were left alone.
+- `os/STAGE-GATES.md`: Gate 3's fourth failure precedent duplicated the DESIGN stage's characteristic failure in `os/OPERATING-LOOP.md`, tell included. Replaced with the gate-specific failure it was crowding out, the dependency date the other team has never seen, and a cross-link for the stale-register case.
+- `os/WHICH-DOCUMENT.md`: deleted a paragraph that announced it was restating an earlier bullet, and folded its one load-bearing example, the three-line disclosure edit, into the bullet itself.
+- `GLOSSARY.md`: added the J section, which did not exist, plus JTBD, Kano, RICE, cost of inaction, never-invent rule, question bank and skip-risk warning. All seven are load-bearing in `os/` and `docs/` and none was defined.
+- `learn/`: the two capstones in `path-transitioning.md` and `path-senior.md` had a Done-when line and no pass bar, and three earlier steps carried theirs under a second name. One label across all three paths, and the capstone bars name the score to distrust rather than only the score to reach.
+- `agents/research-agent.md`: the reconcile-before-handoff section repeated the procedure held by `skills/product-analyst/SKILL.md` pass 4, one sentence of it verbatim. Cut to the standing rule the identity owes the next reader, pointing at the skill for the mechanics.
 
 ### Known gaps
 
@@ -142,7 +161,7 @@ ones are next to them. These are the ones this version did not reach, in the ord
 the unevenness now shows.
 
 - **`knowledge/domains/` is the thinnest layer in the tree**, twelve market cards
-  averaging 35 lines against 115 for a canon card. Each names its gatekeepers and
+  averaging 35 lines against 132 for a canon card. Each names its gatekeepers and
   how its metrics lie, and none carries a worked example, a named failure mode with
   a tell, or the origin of the metric conventions it teaches. A reader coming from a
   deepened canon card will feel the drop immediately.
@@ -157,10 +176,13 @@ the unevenness now shows.
   keep the procedure and identity layers from drifting into each other while both
   were being edited. They are the next candidate, and the anti-duplication line has
   to be redrawn before that starts.
-- **`system/BOOT-PROMPT.md` still claims its manifest is the whole repository**, and
-  the manifest omits `frameworks/` entirely and lists nine skills where there are
-  now 28. A chat-model session driven from that prompt cannot ask for a worksheet by
-  path, because it does not know the layer exists.
+- **`system/BOOT-PROMPT.md`'s manifest is now complete and nothing keeps it that
+  way.** Every markdown file in the eight layers a pasted session can ask for is
+  named in it as of this release, verified once by script and not since. The next
+  file added to `frameworks/` or `templates/` will make the prompt wrong in the one
+  way that matters, because the prompt also forbids asking for a path that is not on
+  the list. A lint check comparing the manifest against the tree is a dozen lines and
+  is not written.
 - **No lint check enforces depth**, and none should on a line count. What is
   genuinely unchecked is the anti-duplication rule: nothing verifies that a
   deepened card avoided restating its worksheet, which was enforced by reading and

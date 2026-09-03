@@ -79,15 +79,19 @@ One habit converts the frame from vocabulary into practice: write the competitiv
 
 ## What good looks like
 
+Mapping the steps, scoring struggle and weighing the four forces are the [job map worksheet](../frameworks/discovery/jtbd-job-map.md)'s procedure. What follows is how you tell a job that was found from a job that was composed.
+
 | Done well | The version that looks the same and is not |
 |---|---|
-| A job statement that still makes sense if your company disappears | A job statement containing your product, your screen, or your file format |
+| A job statement a competitor's customers would recognize as theirs too | A job statement only your users would recognize, which is a usage description in job clothing |
 | A circumstance with a trigger, a moment, and a person who was already struggling | A circumstance that reads as a market segment with a verb attached |
-| Each statement carrying the number of interviews behind it | Eight parallel job stories written in one afternoon |
-| Anxieties quoted from participants, including the ones about status and blame | Anxieties written by the team, all about price and setup effort |
+| Interviews that disagree somewhere, with the disagreement left on the page | Interviews that agree completely, which usually means the questions carried the answers |
+| An anxiety somebody has priced: what removing it would cost, and who pays | An anxiety answered by a sentence in the launch copy |
 | A competitive set that includes the spreadsheet, the phone call, and doing nothing | A competitive set that includes the three vendors in the analyst quadrant |
 | In business contexts, separate jobs for the performer, the buyer, and the administrator | One job statement standing in for three people with conflicting incentives |
 | A job that has ruled out something the team wanted to build | A job that every option on the roadmap serves equally well |
+
+The last row is the cheapest test in the table and the one most often skipped. A job statement that fails to exclude anything has cost the team a fortnight and bought it a vocabulary, because the whole value of the frame is that it makes some plausible work indefensible. Run the test directly: read the roadmap against the statement and count the items it argues against. Zero means the statement was written wide enough to keep every stakeholder, which is a political achievement and a research failure. The anxiety row fails in a related way. Anxiety is the force that most often decides adoption and the only one a team can address without building anything, so leaving it unpriced is choosing to spend engineering months on pull when a review step and a visible undo would have moved more people.
 
 ## Where it sits in the loop
 

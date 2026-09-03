@@ -27,6 +27,7 @@ Related: [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md) for the beliefs behind these m
 
 - **Challenge grammar.** The named moves the Conductor uses when an answer misses its evidence class: category to name, interest to behavior, banned openers, naked numbers, then park. Naming the move makes pushback read as a standard rather than as skepticism. See [os/CONDUCTOR.md](os/CONDUCTOR.md).
 - **Conductor.** The interviewer that runs the loop one question at a time, asks before it writes, cross-examines twice at most, and refuses to advance a stage until its gate passes on evidence. It never signs. See [os/CONDUCTOR.md](os/CONDUCTOR.md).
+- **Cost of inaction.** What continuing exactly as you are costs per period, with the calculation shown. Not the value of the proposal, which is a different and friendlier number. Gate 1 refuses it as an assertion, because a problem nobody has priced cannot be compared with the other things the quarter could buy, and because the figure becomes the do-nothing row of the [business case](templates/planning/business-case.md), where it has to survive a sponsor who would rather spend the money elsewhere.
 - **Counter-metric.** The number you watch to catch your own win being paid for elsewhere, such as activation rising while support contacts rise with it. Required in the [growth plan](templates/planning/growth-plan.md).
 - **Cross-examination.** One push against a weak answer, capped at two per question with the cap announced, after which the answer is accepted as offered or parked. An uncapped interrogation is hazing, not rigor.
 
@@ -62,8 +63,13 @@ Related: [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md) for the beliefs behind these m
 - **ILLUSTRATIVE.** The literal label an invented number carries when it sits where a measured one could be mistaken for it: on the worked case in every [knowledge card](knowledge/README.md), and inside the outputs of the agents that handle thresholds, costs and estimates. An unlabeled number in one of those places is a defect, and an ILLUSTRATIVE threshold can never reach evidenced-pass at a gate, because the test then passed against a figure nobody agreed. Elsewhere the same discipline runs under different words: `os/` and `frameworks/` say invented in prose, and the [learn paths](learn/README.md) prefix invented evidence with "invented:". Three forms, one rule.
 - **Input metric.** A metric a team can move directly this week, sitting under the north star in the tree and owned by name. The north star is the outcome; input metrics are the levers. See [frameworks/metrics/north-star-input-tree.md](frameworks/metrics/north-star-input-tree.md).
 
+## J
+
+- **JTBD (jobs to be done).** The frame that treats the unit of demand as a job a person is trying to get done in a circumstance, rather than as a segment or a feature request. Used here in the narrow sense that makes it testable: a job statement is only usable if it still reads correctly when your company does not exist, and only load-bearing if it rules something off the roadmap. Sheet: [frameworks/discovery/jtbd-job-map.md](frameworks/discovery/jtbd-job-map.md). Why and how it fails: [knowledge/jobs-to-be-done.md](knowledge/jobs-to-be-done.md).
+
 ## K
 
+- **Kano model.** The classification of product attributes by how satisfaction responds to their presence and absence: must-be, one-dimensional, attractive, indifferent, reverse. The classification is a reading of one population at one time, never a property of the feature, because attractive attributes decay into must-be as competitors ship them. Sheet: [frameworks/discovery/kano-survey.md](frameworks/discovery/kano-survey.md). Why and how it lies: [knowledge/kano-model.md](knowledge/kano-model.md).
 - **Key result.** The measurable half of an OKR, with a baseline and a target. A key result that names a task rather than a movement is the field's most common OKR defect. See [knowledge/okrs.md](knowledge/okrs.md).
 - **Kill criteria.** The conditions under which the team stops or rolls back, each with a threshold, a check point, and the person allowed to call it. Section 9 of the [PRD](templates/definition/prd.md), added because every system surveyed could start work and none could stop it.
 - **Knowledge card.** One canonical method explained in this repository's words: why it exists, when to use it, its skip condition, its trap, and the templates that draw on it. The why layer. See [knowledge/README.md](knowledge/README.md).
@@ -81,6 +87,7 @@ Related: [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md) for the beliefs behind these m
 
 ## N
 
+- **Never-invent rule.** The standing prohibition in [AGENTS.md](AGENTS.md) against originating a fact, a name, a number, a date, a citation, or a quote. An unknown is written as an open field with an owner, never filled with a plausible value, because a fabricated figure reads exactly like a measured one at the same font size and survives to the gate that a thin answer would have failed. The rule binds this repository's own prose as much as anything produced inside it.
 - **North star metric.** The single metric expressing the value customers get, sitting above a tree of input metrics with owners and guardrails. One per product; a second one is a reorganization in disguise. See [knowledge/north-star-metric.md](knowledge/north-star-metric.md).
 
 ## O
@@ -96,16 +103,22 @@ Related: [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md) for the beliefs behind these m
 - **Postmortem, blameless.** The per-incident review written in systems language with no names: facts, timeline, quantified impact, corrective actions with owners and verification. See [templates/operate/incident-postmortem.md](templates/operate/incident-postmortem.md).
 - **Product workspace.** `products/<name>/`, the folder where filled artifacts, gate attempts, and STATE.md accumulate as a product's memory. Gitignored, never shipped here, so your work cannot collide with an update. See [os/PRODUCT-WORKSPACE.md](os/PRODUCT-WORKSPACE.md).
 
+## Q
+
+- **Question bank.** One file per stage at [skills/conductor/questions/](skills/conductor/questions/README.md), holding the questions that stage asks, the evidence class each one accepts, its Accept-when line, and the forced pair the escape hatch cannot skip. Banks are read-only in tutor mode, so the interview and the quiz grade against the same wording rather than against two drifting copies.
+
 ## R
 
 - **Reach unit.** The single counting unit declared before a scoring sheet is filled, for one sheet only. Filers and reports are not comparable, because one filer files many reports, and unit drift decides rankings by a bookkeeping accident.
 - **Regulated overlay.** The byte-exact imported module for products under a financial or data regulator: a section-0 regulatory register, eval-set criteria, guardrails with owners, its own review gate. Activates at Gate 2 and Gate 5. See [modules/regulated/README.md](modules/regulated/README.md).
+- **RICE.** Reach times impact times confidence, divided by effort: four beliefs written down and turned into one comparable number. Treated here as a bucketing device rather than a ranking, because two scores within about a fifth of each other sit inside the error bars of their own inputs. The number is the receipt; the argument required to produce it is the product. Sheet: [frameworks/prioritization/rice-scoring-sheet.md](frameworks/prioritization/rice-scoring-sheet.md). Why it gets gamed: [knowledge/rice-prioritization.md](knowledge/rice-prioritization.md).
 - **Routing tier.** Which class of model runs a task: extraction on a cheap tier, drafting on a coding tier, judgment on a frontier reasoning tier. Paying frontier prices to reformat a table is waste; the reverse is worse. See [routing/README.md](routing/README.md).
 
 ## S
 
 - **Skill.** Here, a procedure a model executes end to end, such as writing a PRD or running the weekly product review. Distinct from an agent, which is an identity. See [skills/README.md](skills/README.md).
 - **Skip line.** The line beginning "Skip it when" carried by every card and worksheet, naming the situation where running the method costs a week and returns nothing. Written as a test on the situation, so someone else in the room can check it; "we are busy" is a schedule, not a skip condition.
+- **Skip-risk warning.** The sentence each gate in [os/STAGE-GATES.md](os/STAGE-GATES.md) carries naming what advancing without this evidence has historically cost, quoted verbatim into the risk register when the escape hatch is used. Distinct from a skip line, which excuses a method; this one prices a decision. It exists because a gate waved through in the abstract costs nothing to wave through, and the warning makes the person doing it wave through something specific, in writing, with their name beside it.
 - **Smart skip.** The Conductor's rule against asking what the loaded context already answers: the question is marked accepted with its source cited and the skip is shown in one line. This is why a prepared user gets a short interview.
 - **Stage.** One of the six phases of the loop, each with a written entry and exit definition and exactly one gate at its end.
 - **STATE.md.** One product's per-session memory: position in the loop, accepted answers, open challenges, evidence ledger, journal. Append-mostly, and the reason any later session in any runtime can resume. Blank at [templates/execution/state.md](templates/execution/state.md).

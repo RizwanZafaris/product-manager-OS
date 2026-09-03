@@ -76,15 +76,19 @@ The organizational defense is separation: the person who reports the number is n
 
 ## What good looks like
 
+Scoring a candidate, writing the causal claims and setting the guardrails are the [input tree worksheet](../frameworks/metrics/north-star-input-tree.md)'s job. What follows is how you tell a tree that governs decisions from a tree that decorates a planning deck.
+
 | Done well | The version that looks the same and is not |
 |---|---|
-| A number that falls within a quarter if customers quietly stop benefiting | A number that has never fallen and structurally cannot |
-| Stated in the customer's unit of completed value | Stated in the company's unit of activity, such as sessions or reports created |
-| Three to five inputs, each with a mechanism a skeptic could argue with | Five inputs, one per department, each connected by the words "contributes to" |
-| One named owner per input, and none for the star itself | The star assigned as a team's key result, and the inputs unowned |
-| The written leak for each input, plus the guardrail that catches it | An unqualified claim that each input is good for customers |
-| The definition in the metrics dictionary, with a date and a query | The definition in a dashboard title |
+| The star has fallen, and the fall was explained rather than adjusted away | The star has never fallen, and the definition has been revised twice |
+| An input owner can name what they stopped doing because of their row | Every input has an owner and nobody's week has changed |
+| Inputs that move against each other, visibly, in the same quarter | Inputs that rise together, which means they are one measurement sliced |
+| The star is quoted by people who do not report to whoever chose it | The star is quoted only inside the function that authored it |
+| Somebody has argued in writing that an input is the wrong lever, and lost on evidence | Nobody has argued with the tree since the workshop that drew it |
+| Reported with the population it excludes | Reported as a total, so a shrinking core hides inside a growing base |
 | Changed rarely, and when changed, with the reason recorded | Renamed each planning cycle, so no chart spans two years |
+
+Two of those rows carry most of the weight. Inputs that never move against each other are the commonest structural defect, because a tree of correlated measures gives four teams the same job and no way to trade between them: when all five rows rise and fall together, you have one metric with five names, and the quarterly conversation reduces to encouragement. The composition row is the subtler one. A total can climb while every cohort inside it declines, provided new customers arrive faster than existing ones give up, which is exactly the shape of a product that has stopped delivering and started acquiring. Neither failure is a wrong number and neither trips a guardrail, which is why both survive review cycles that check arithmetic.
 
 ## Where it sits in the loop
 

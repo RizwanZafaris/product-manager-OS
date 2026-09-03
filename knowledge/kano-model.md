@@ -82,15 +82,19 @@ A useful closing question for any classification session: which attribute on thi
 
 ## What good looks like
 
+The question pairs, the classification grid, the tie-break order and the action per class live on the [survey worksheet](../frameworks/discovery/kano-survey.md). What follows is how you tell a classification that changed a decision from one that decorated a decision already taken.
+
 | Done well | The version that looks the same and is not |
 |---|---|
-| Attributes phrased as capabilities inside a scenario the respondent has lived | Attributes phrased as your feature names, which classify as attractive by default |
-| Results cut by segment before any class is believed | One blended table, in which two opposed segments cancel into indifferent |
-| Must-be items funded to reliably present and no further | Must-be items polished for a quarter because they are important |
-| Attractive items funded as bets, sized to what you can lose | Attractive items funded as roadmap commitments with dates |
+| The classification cut something the team had already started building | The classification confirmed the plan the team walked in with |
+| A must-be surfaced that nobody had thought to name | Every must-be it found was already in the release scope |
 | The distribution kept beside the class label | The class label alone, with a mode of forty percent presented as a finding |
-| Reclassification on a stated cadence, with a date on the last one | A classification from three years ago still cited as current |
-| Indifferent items cut, and the cut recorded | Indifferent items kept because they harm nothing |
+| A class read as this year's answer from this market | A class read as a property of the feature |
+| The attractive bet has an owner who is permitted to abandon it | The attractive bet has a date and an audience already expecting it |
+| A sample containing people who could plausibly leave you | A sample containing the people most willing to answer, who are the least likely to leave |
+| The team can name what moved an attribute out of attractive since the last reading | The last reading is cited as though expectations were a constant |
+
+The unifying error in the right-hand column is treating a class as a fact about the product rather than a measurement of one population at one time. That confusion is expensive in a specific direction: it makes must-be creep invisible. A delighter that your competitors all shipped last year has already become a basic in the customer's head, and nothing in your own instrument will report the change, because the survey you ran before they shipped is still on file and still reads attractive. So the load-bearing question is never "what did the classification say", it is "what has moved since it said it, and who noticed". A team that cannot answer the second question is running a three-year-old reading of a market that reprices expectations annually.
 
 ## Where it sits in the loop
 
