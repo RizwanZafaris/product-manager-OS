@@ -2,7 +2,7 @@
 
 Stage: DISCOVER, feeds Gate 1 (problem worth solving)
 Knowledge: [Continuous discovery](../../knowledge/torres-continuous-discovery.md)
-Skill: [research-agent](../../agents/research-agent.md)
+Skill: [feedback-synthesis](../../skills/feedback-synthesis/SKILL.md)
 
 <!-- The one-page record of why this work exists. Fill it before anyone writes a
      requirement, a design, or a line of code. If you cannot fill it, that is the

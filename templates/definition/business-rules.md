@@ -2,7 +2,7 @@
 
 Stage: DEFINE, feeds Gate 2 (requirements signed off)
 Knowledge: [Knowledge index](../../knowledge/INDEX.md)
-Skill: [drafting-agent](../../agents/drafting-agent.md)
+Skill: [write-prd](../../skills/write-prd/SKILL.md)
 
 <!-- A business rule is a decision the organization has already made, which the
      product must enforce rather than re-decide: eligibility, limits, approvals,

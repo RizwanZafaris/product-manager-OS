@@ -2,7 +2,7 @@
 
 Stage: DESIGN, feeds [Gate 3: architecture and risks reviewed](../../os/STAGE-GATES.md)
 Knowledge: [knowledge index](../../knowledge/INDEX.md)
-Skill: manual
+Skill: [architect agent](../../agents/architect-agent.md)
 
 <!-- Architecture Decision Record. Based on the format described by Michael Nygard
      (2011): short, numbered, immutable documents that capture one significant

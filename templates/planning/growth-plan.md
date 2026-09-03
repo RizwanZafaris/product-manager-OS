@@ -2,7 +2,7 @@
 
 **Stage:** OPERATE (this file feeds [Gate 6: outcomes verified](../../os/STAGE-GATES.md))
 **Knowledge:** [north star metric](../../knowledge/north-star-metric.md)
-**Skill:** [drafting agent](../../agents/drafting-agent.md)
+**Skill:** [growth agent](../../agents/growth-agent.md); [experiment-designer](../../skills/experiment-designer/SKILL.md) for each experiment it ranks
 
 <!-- A growth plan is one bet at a time, made in public, with the evidence attached.
      The frame is the north star model as popularized by Sean Ellis and codified in

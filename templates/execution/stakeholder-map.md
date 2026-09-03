@@ -2,7 +2,7 @@
 
 Stage: DISCOVER through OPERATE, first required at [Gate 2: requirements signed off](../../os/STAGE-GATES.md)
 Knowledge: [Grove on managerial output](../../knowledge/high-output-management.md)
-Skill: manual
+Skill: [stakeholder-update](../../skills/stakeholder-update/SKILL.md)
 
 <!-- Built early, revisited at every gate. The stakeholder who sinks a launch is
      rarely the loud one in the kickoff; it is the one nobody mapped, discovered in

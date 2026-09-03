@@ -2,7 +2,7 @@
 
 **Stage:** PLANNING track (feeds every stage of the [operating loop](../../os/OPERATING-LOOP.md))
 **Knowledge:** [Knowledge index, strategy kernel and Playing to Win entries](../../knowledge/INDEX.md)
-**Skill:** [drafting agent](../../agents/drafting-agent.md)
+**Skill:** [write-vision-strategy](../../skills/write-vision-strategy/SKILL.md); [strategy-critic](../../skills/strategy-critic/SKILL.md) for the attack pass
 
 <!-- Strategy is choice under constraint, not a goals slide. The spine here is Richard
      Rumelt's kernel, restated in this repository's own words: a diagnosis of the
@@ -29,6 +29,27 @@
 - **The situation:** [2 to 4 sentences, each claim linked to evidence]
 - **The crux:** [the one obstacle this strategy exists to beat]
 - **What changed recently:** [why last year's strategy is not automatically this year's]
+
+## 1b. The guiding policy
+
+**In one sentence:** [how the diagnosis gets beaten, stated as a constraint that refuses something a reasonable competitor might choose instead]
+
+| Test | Answer |
+|---|---|
+| The opposite policy, written out | [if the opposite is absurd, the policy is a platitude; if a sane rival might choose it, the policy is real] |
+| What this policy refuses | [the thing a competitor gets to do that you now do not] |
+| Who has to change what they do on Monday | [name the team and the change; a policy nobody acts on differently is a slogan] |
+
+<!-- Rumelt's kernel has three parts and most strategy documents ship two of them:
+     the diagnosis above and the actions below, with the policy left implicit. The
+     implicit policy is where strategies go to die, because everything downstream
+     can be justified against a sentence nobody wrote. It is numbered 1b rather than
+     2 so that every section number below it, and every document that cites one,
+     keeps meaning what it meant before this section existed.
+
+     "Grow the business" and "invest in innovation" both fail the opposite test:
+     nobody's strategy is to shrink the business. Keep rewriting until the sentence
+     would make a rival's product lead wince. -->
 
 ## 2. Where to play: the bets
 
@@ -87,6 +108,7 @@
 This strategy is fit to operate on when:
 
 - [ ] The diagnosis names a crux, and every situational claim links to evidence
+- [ ] The guiding policy is one sentence that refuses something, and its opposite is a choice a sane rival could make
 - [ ] There are at most three bets, and each names what it refuses
 - [ ] The differentiation names a mechanism and a real alternative, not an adjective
 - [ ] Sequencing gates later bets on evidence conditions, not calendar quarters

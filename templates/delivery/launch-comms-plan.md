@@ -2,7 +2,7 @@
 
 **Stage:** DELIVER (feeds [Gate 5: release readiness green](../../os/STAGE-GATES.md); expands section 6 of [release-readiness.md](release-readiness.md))
 **Knowledge:** [knowledge index](../../knowledge/INDEX.md)
-**Skill:** [drafting agent](../../agents/drafting-agent.md)
+**Skill:** [gtm-launch-planner](../../skills/gtm-launch-planner/SKILL.md)
 
 <!-- The release checklist has one communications table. This file is that table
      grown up, for launches where more than two audiences have to hear different

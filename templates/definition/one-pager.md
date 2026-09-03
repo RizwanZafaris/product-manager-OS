@@ -2,7 +2,7 @@
 
 Stage: DEFINE, feeds Gate 2 (requirements signed off)
 Knowledge: [Cagan on product teams](../../knowledge/cagan-product-teams.md)
-Skill: [ai-prd](../../skills/ai-prd/SKILL.md) when the product contains a model, otherwise manual
+Skill: [write-prd](../../skills/write-prd/SKILL.md); [ai-prd](../../skills/ai-prd/SKILL.md) when the product contains a model
 
 <!-- The light weight of the DEFINE stage. Use it when one squad ships a real
      user-facing change over a few sprints and one or two stakeholders must not be

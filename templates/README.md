@@ -37,7 +37,7 @@ DEFINE, feeding Gate 2: requirements signed off. Pick the weight before you pick
 
 | Template | What it is | Reach for it when |
 |---|---|---|
-| [prd.md](definition/prd.md) | Background, objectives, stories, functional scope, success metrics, out of scope, launch criteria. A superset you cut, not a form you complete | Several functions, a quarter or more of work, and a sponsor who signs at Gate 2 |
+| [prd.md](definition/prd.md) | A fourteen-section spine (the one read, background, objectives, stories, scope, metrics, exclusions, launch criteria, kill criteria, the four risks with counter-evidence, dated assumptions, capped open questions) plus a companion table that pulls in only the other templates this product actually needs | Several functions, a quarter or more of work, and a sponsor who signs at Gate 2 |
 | [design-brief.md](definition/design-brief.md) | The agreement between product and design on the problem, the users, the constraints, and what done looks like, before any pixels | Design work is starting on a signed PRD and the brief has to exist before the review where the designer hears the real constraint for the first time |
 | [one-pager.md](definition/one-pager.md) | The light DEFINE weight: problem, proposal, scope, one metric plus a guardrail, a not-doing list, up to three acceptance criteria | One squad ships a real user-facing change over a few sprints and one or two stakeholders must not be surprised |
 | [brd.md](definition/brd.md) | Business objectives, scope, stakeholders, constraints, ROI, sponsor sign-off | Money is being allocated and the reader is the sponsor, not the squad |

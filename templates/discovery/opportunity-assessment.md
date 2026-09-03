@@ -2,7 +2,7 @@
 
 Stage: DISCOVER, feeds Gate 1 (problem worth solving)
 Knowledge: [Cagan on product teams](../../knowledge/cagan-product-teams.md)
-Skill: [research-agent](../../agents/research-agent.md)
+Skill: [market-sizing](../../skills/market-sizing/SKILL.md) for the size question; [persona-builder](../../skills/persona-builder/SKILL.md) for the who and the job
 
 <!-- The ten-question opportunity assessment from Marty Cagan's Inspired, restated in
      this repository's own words: one page of answers that earns, or fails to earn,

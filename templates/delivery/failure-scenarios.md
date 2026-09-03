@@ -2,7 +2,7 @@
 
 **Stage:** DELIVER (feeds [Gate 5: release readiness green](../../os/STAGE-GATES.md))
 **Knowledge:** [knowledge index](../../knowledge/INDEX.md)
-**Skill:** [drafting agent](../../agents/drafting-agent.md)
+**Skill:** [program-premortem](../../skills/program-premortem/SKILL.md); [architect agent](../../agents/architect-agent.md) for the technical modes
 
 <!-- Edge cases are inputs the product must handle. Failure scenarios are the ways the
      system around the product breaks: a dependency goes down, a queue backs up, a

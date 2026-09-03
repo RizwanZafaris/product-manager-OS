@@ -2,7 +2,7 @@
 
 Stage: DISCOVER, feeds Gate 1 (problem worth solving)
 Knowledge: [Jobs to be done](../../knowledge/jobs-to-be-done.md)
-Skill: [research-agent](../../agents/research-agent.md)
+Skill: [competitive-intel](../../skills/competitive-intel/SKILL.md)
 
 <!-- Fill section 1 first, and stop if you cannot. A competitive analysis that does
      not name the decision it informs is a scrapbook: hours of screenshots, a

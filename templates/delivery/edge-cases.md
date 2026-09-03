@@ -2,7 +2,7 @@
 
 **Stage:** BUILD into DELIVER (feeds [Gate 4: acceptance criteria met](../../os/STAGE-GATES.md), rechecked at Gate 5)
 **Knowledge:** [knowledge index](../../knowledge/INDEX.md)
-**Skill:** [drafting agent](../../agents/drafting-agent.md)
+**Skill:** [acceptance agent](../../agents/acceptance-agent.md)
 
 <!-- The happy path is what the team builds by instinct. This register is where the
      product earns its keep. One rule governs the whole file: no case is left

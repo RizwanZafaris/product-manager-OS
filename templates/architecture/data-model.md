@@ -2,7 +2,7 @@
 
 Stage: DESIGN, feeds [Gate 3: architecture and risks reviewed](../../os/STAGE-GATES.md)
 Knowledge: [knowledge index](../../knowledge/INDEX.md)
-Skill: [drafting-agent](../../agents/drafting-agent.md)
+Skill: [architect agent](../../agents/architect-agent.md)
 
 <!-- The data model outlives the code that uses it. Migrations are the most expensive
      class of change a team ships, so this document gets reviewed harder than the

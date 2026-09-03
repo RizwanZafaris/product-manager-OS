@@ -2,7 +2,7 @@
 
 Stage: all stages, read at every gate in [STAGE-GATES](../../os/STAGE-GATES.md)
 Knowledge: [knowledge index](../../knowledge/INDEX.md)
-Skill: manual
+Skill: [decision-memo](../../skills/decision-memo/SKILL.md)
 
 <!-- The decision log answers the most expensive recurring question on any team:
      "why did we do it this way?" Asked without a log, it costs a meeting and gets a

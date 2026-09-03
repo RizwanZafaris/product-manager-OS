@@ -11,7 +11,7 @@ Feedback synthesis usually fails in one of three ways. The loudest customer beco
 
 - [../../templates/discovery/user-research-plan.md](../../templates/discovery/user-research-plan.md), section 6, where the themes land as rows
 - [../../templates/discovery/discovery-document.md](../../templates/discovery/discovery-document.md), sections 3 and 5, where the strongest theme becomes the stated pain and the success signal
-- [../../templates/discovery/personas.md](../../templates/discovery/personas.md) and [../../templates/discovery/journey-map.md](../../templates/discovery/journey-map.md), when the themes cluster by who the person is or where in the flow the pain lands
+- [../../templates/discovery/personas.md](../../templates/discovery/personas.md) and [../../templates/discovery/journey-map.md](../../templates/discovery/journey-map.md) are not filled here. When the themes cluster by who the person is or where in the flow the pain lands, hand the themes and their evidence IDs to [../persona-builder/SKILL.md](../persona-builder/SKILL.md), which owns both files and enforces the rule that every persona attribute traces to an evidence note
 - Method background: [../../knowledge/torres-continuous-discovery.md](../../knowledge/torres-continuous-discovery.md) and [../../knowledge/jobs-to-be-done.md](../../knowledge/jobs-to-be-done.md); read the trap sections before clustering
 
 ## When to use

@@ -2,7 +2,7 @@
 
 Stage: DESIGN, feeds [Gate 3: architecture and risks reviewed](../../os/STAGE-GATES.md)
 Knowledge: [knowledge index](../../knowledge/INDEX.md)
-Skill: [drafting-agent](../../agents/drafting-agent.md)
+Skill: [architect agent](../../agents/architect-agent.md)
 
 <!-- A contract is a promise to people you cannot see: consumers you will never meet
      will build against exactly what is written here. Fill one document per API

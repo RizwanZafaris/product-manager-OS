@@ -2,7 +2,7 @@
 
 **Stage:** PLANNING track (feeds every stage of the [operating loop](../../os/OPERATING-LOOP.md), most directly the [GTM plan](gtm-plan.md))
 **Knowledge:** [knowledge index](../../knowledge/INDEX.md)
-**Skill:** [drafting agent](../../agents/drafting-agent.md)
+**Skill:** [competitive-intel](../../skills/competitive-intel/SKILL.md)
 
 <!-- The method here is April Dunford's, from Obviously Awesome (2019), restated in
      this repository's own words. Her core correction to the usual practice: do not

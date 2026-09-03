@@ -2,7 +2,7 @@
 
 Stage: DISCOVER, feeds Gate 1 (problem worth solving)
 Knowledge: [Jobs to be done](../../knowledge/jobs-to-be-done.md)
-Skill: [research-agent](../../agents/research-agent.md)
+Skill: [persona-builder](../../skills/persona-builder/SKILL.md)
 
 <!-- A persona is a claim about who your user is and what drives them. Claims need
      evidence. This template's hard rule: a persona cites a minimum of FIVE

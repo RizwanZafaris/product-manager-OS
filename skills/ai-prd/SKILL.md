@@ -72,7 +72,7 @@ Generic PRD tooling writes the five sections above and stops. When the product s
 
 ## Workflow
 
-1. Classify the context. Regulated: take the regulated route above, then return here for sections the module does not cover. Unregulated: start from [../../templates/definition/prd.md](../../templates/definition/prd.md).
+1. Classify the context. Regulated: take the regulated route above, then return here for sections the module does not cover. Unregulated: start from the document at the weight already chosen, [prd.md](../../templates/definition/prd.md) or [one-pager.md](../../templates/definition/one-pager.md); the overlay sections below attach to either.
 2. Read the draft PRD, or interview the PM if starting blank.
 3. Rewrite every "should" statement into the section-1 form. List the ones that cannot be turned into evals; those are not requirements yet, flag them.
 4. Build the three edge-case tables. Push for at least 5 rows each; empty tables mean discovery is not done.

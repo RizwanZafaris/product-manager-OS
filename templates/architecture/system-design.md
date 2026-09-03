@@ -2,7 +2,7 @@
 
 Stage: DESIGN, feeds [Gate 3: architecture and risks reviewed](../../os/STAGE-GATES.md)
 Knowledge: [Cagan on the four risks](../../knowledge/cagan-product-teams.md)
-Skill: [drafting-agent](../../agents/drafting-agent.md)
+Skill: [architect agent](../../agents/architect-agent.md)
 
 <!-- One document per system or per major change to a system. Write it before code,
      revise it during review, freeze it at Gate 3. After the gate, changes to the

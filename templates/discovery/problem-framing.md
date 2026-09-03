@@ -2,7 +2,7 @@
 
 Stage: DISCOVER, feeds Gate 1 (problem worth solving)
 Knowledge: [Knowledge index, SCR entry](../../knowledge/INDEX.md)
-Skill: [research-agent](../../agents/research-agent.md)
+Skill: [persona-builder](../../skills/persona-builder/SKILL.md)
 
 <!-- One problem, one page, one owner. The discovery document records the whole
      exploration; this file distills it into a single statement a sponsor can fund

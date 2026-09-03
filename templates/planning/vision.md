@@ -2,7 +2,7 @@
 
 **Stage:** PLANNING track (feeds every stage of the [operating loop](../../os/OPERATING-LOOP.md))
 **Knowledge:** [Cagan on product teams](../../knowledge/cagan-product-teams.md)
-**Skill:** [drafting agent](../../agents/drafting-agent.md)
+**Skill:** [write-vision-strategy](../../skills/write-vision-strategy/SKILL.md)
 
 <!-- A vision is a decision tool wearing a story. Marty Cagan's argument in Inspired,
      restated in this repository's own words: empowered teams need a shared picture of

@@ -17,6 +17,86 @@ The stability promise is stated in [README.md](README.md) and repeated here so i
 - `routing/README.md`: the install command is `omniroute serve` (there is no `start`); added the provider-connection commands, a tier probe that shows which concrete model answers each tier, and the request headers that stop OmniRoute's compression, semantic cache and memory injection from altering prompts that must be quoted verbatim. Found by running the config against a live OmniRoute: on a keyless install `auto/reasoning:pro` returns `404 Combo has no executable targets`, which the doctrine expects but the manual never said.
 - `routing/omniroute.config.json`: the judgment tier now states what it requires and carries an explicit, off-by-default `keylessFallback` instead of leaving a fresh install to fail silently; `endpoint.requestHeaders` and `endpoint.verify` record the headers and the probe. No tier model changed.
 
+## 0.5.1, 2026-09-03
+
+A research release. Before writing anything, this version studied the systems doing
+adjacent work: the BMAD-METHOD, GitHub's spec-kit, BuildBetter's product-os, the
+Anthropic product-management plugin, deanpeters' Product-Manager-Skills, and the
+published PRD literature from Cagan through the current argument about what a spec
+becomes when a model reads it. Two findings drove the release. The first was
+uncomfortable and useful: nine of the twelve things none of those systems do, this
+one already did. The second was the defect: there was no procedure here for writing
+an ordinary PRD, because `ai-prd` scopes itself to features a model implements, so a
+plain PRD fell through the router to "no skill".
+
+A minor version because everything is added or rewired. No template field is
+renamed, no file is moved, no gate changes what it demands. A PRD filled against
+0.5.0 keeps working; its new sections are additions to the same document.
+
+### Added
+
+- **Four skills.** `write-prd` writes the general PRD and the requirements stack
+  around it (one-pager, BRD, FRD, NFR, business rules, PR FAQ), picking the weight
+  from `os/WHICH-DOCUMENT.md` before drafting and routing to `ai-prd` the moment the
+  implementer turns out to be a model. `spec-review` reads a written spec the way a
+  test reads code and reports where the prose is not testable, never rewriting.
+  `persona-builder` turns discovery evidence into personas, job stories, journey maps
+  and the opportunity tree, with the rule that every persona attribute traces to an
+  evidence note or is flagged as a dated assumption. `write-vision-strategy` writes
+  the two documents `strategy-critic` was already built to attack. The skill count
+  goes from twenty-four to twenty-eight.
+- **Kill criteria in the PRD.** Section 9 of `templates/definition/prd.md` names the
+  conditions under which the team stops or rolls back, each with a threshold, a check
+  point, and the person allowed to call it. No product operating system surveyed for
+  this release has this section, ours included until now. Every one of them can start
+  work; none could stop it.
+- **A one-read summary.** Section 0 of the PRD, written last and placed first, under
+  150 words, on the premise that most readers of most PRDs read exactly this much.
+- **Counter-evidence per risk.** The four risks table gains a column for the single
+  strongest fact arguing against your own answer. "None found, and here is where I
+  looked" is a legal entry; an empty cell is not.
+- **A dated assumptions index** in the PRD, pointing at row IDs in
+  `assumptions-register.md`, on the rule that an assumption with no validate-by date
+  is a belief and beliefs do not expire on their own.
+- **A companion document table** (PRD section 13). Sixteen triggers, each naming the
+  template this product type pulls in: failure scenarios, edge cases, instrumentation,
+  support runbook, migration, sunset, launch comms, pricing, privacy, the regulated
+  module, accessibility, SLOs, dependencies, the AI overlay, the business case, the
+  program charter. The pattern of a short mandatory spine plus a menu pulled in by
+  product type is borrowed from the BMAD-METHOD project's PRD template, applied to the
+  templates this repository already ships.
+- **A sign-off block** on the PRD with four named roles, and the rule stated in the
+  file: the Gate 2 approver is a person, is not the author, and is not an agent.
+- **A reader declaration** in the PRD header. A human reader resolves an ambiguous
+  sentence with judgment and asks you at standup; a model resolves it with a guess you
+  never see.
+
+### Changed
+
+- **Fifty-one templates had their `Skill:` header rewired.** v0.5.0 added fifteen
+  skills and left the templates those skills drive still naming a generic drafting or
+  research agent. Personas now name `persona-builder`, OKRs name `okr-critic`, the GTM
+  plan names `gtm-launch-planner`, release readiness names `launch-readiness`, the
+  architecture set names the architect agent rather than the drafting agent, and so on
+  through the tree. The reverse link (each skill's "files this skill drives") and the
+  forward link (each template's `Skill:` header) now agree.
+- **The router gains four rows** in `CLAUDE.md`: the general PRD, the spec review, the
+  persona and job set, and the vision and strategy pair. The document-weight row now
+  hands off to `write-prd` after `os/WHICH-DOCUMENT.md` picks the weight, rather than
+  ending at "no skill".
+- **`AGENTS.md` adds one gate rule**: run `spec-review` over any spec before its gate.
+  A filled field is not a written requirement. "The system should be fast" passes a
+  completeness check and fails a testability one, and only the second check is worth
+  running.
+- **`templates/planning/product-strategy.md` gains the missing third of the kernel.**
+  The file's own header cited Rumelt's diagnosis, guiding policy and coherent actions,
+  then shipped sections for only two of the three, so `strategy-critic` was grading a
+  policy the template had nowhere to hold. The new section is numbered 1b, not 2, so
+  that every section number below it, and the nine files across `frameworks/strategy/`
+  and `examples/` that cite those numbers, keep meaning what they meant before.
+- The three directory faces carry the new work: `skills/README.md` catalogs
+  twenty-eight skills, `templates/README.md` describes the PRD by its new spine.
+
 ## 0.5.0, 2026-09-03
 
 The running release. Four versions in, the OS could tell you why a method exists and what artifact a stage owes its gate, and it still could not hand you the sheet when someone said "let's do a Kano". This version closes that gap and the two beside it: the procedures a PM runs weekly that had no skill, and the stages of the loop that had no agent. A minor version because everything is added: no field renamed, no file moved, no gate changed, so a document filled against 0.4.1 keeps working untouched.

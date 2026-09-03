@@ -2,7 +2,7 @@
 
 Stage: DESIGN, feeds [Gate 3: architecture and risks reviewed](../../os/STAGE-GATES.md)
 Knowledge: [knowledge index](../../knowledge/INDEX.md)
-Skill: [drafting-agent](../../agents/drafting-agent.md)
+Skill: [architect agent](../../agents/architect-agent.md)
 
 <!-- Every line that crosses a system boundary gets a row here and a detail block
      below. Integrations fail differently from code: the counterparty changes

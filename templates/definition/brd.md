@@ -2,7 +2,7 @@
 
 Stage: DEFINE, feeds Gate 2 (requirements signed off)
 Knowledge: [OKRs](../../knowledge/okrs.md)
-Skill: [drafting-agent](../../agents/drafting-agent.md)
+Skill: [write-prd](../../skills/write-prd/SKILL.md)
 
 <!-- The BRD answers one question: why should the business fund this, and on what
      terms? It is written for the sponsor and the people who control money and

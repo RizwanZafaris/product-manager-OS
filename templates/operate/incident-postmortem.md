@@ -2,7 +2,7 @@
 
 **Stage:** OPERATE (feeds [Gate 6: outcomes verified, learn or sunset](../../os/STAGE-GATES.md)); an event review, run once per qualifying incident. Verified actions become section 6 checks in [operational-readiness-review.md](operational-readiness-review.md)
 **Knowledge:** [knowledge index](../../knowledge/INDEX.md)
-**Skill:** [drafting agent](../../agents/drafting-agent.md)
+**Skill:** [postmortem-facilitator](../../skills/postmortem-facilitator/SKILL.md)
 
 <!-- A postmortem exists to make the same incident impossible, not to find out who to
      be disappointed in. The blameless discipline here restates, in this repository's
