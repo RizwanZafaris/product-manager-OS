@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: PLANNING
+gate: 1
+feeds: []
+method: ""
+aliases: ["Business Case", "business-case"]
+---
 # Business Case: [initiative name]
 
 Stage: PLANNING track, feeds [Gate 1: problem worth solving](../../os/STAGE-GATES.md) and the [roadmap](roadmap.md)

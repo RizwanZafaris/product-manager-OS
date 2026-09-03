@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: DISCOVER
+gate: 1
+feeds: ["templates/discovery/discovery-document.md", "templates/definition/brd.md", "templates/definition/prd.md"]
+method: ""
+aliases: ["Amazon PR/FAQ", "amazon-pr-faq"]
+---
 # Amazon PR/FAQ
 
 Based on Amazon's working backwards practice as described by Colin Bryar and Bill Carr in Working Backwards (2021).

@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: PLANNING
+gate: 1
+feeds: ["templates/discovery/competitive-analysis.md", "templates/planning/pricing-packaging.md", "templates/planning/product-strategy.md"]
+method: "knowledge/INDEX.md"
+aliases: ["Porter's five forces", "porters-five-forces"]
+---
 # Porter's five forces
 
 Based on the ideas of Michael E. Porter, from "How Competitive Forces Shape Strategy", Harvard Business Review (1979). Explained here in this repository's own words.

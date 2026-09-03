@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: PLANNING
+gate: 1
+feeds: ["templates/planning/roadmap.md", "templates/execution/dependency-register.md", "templates/execution/decision-log.md"]
+method: "knowledge/INDEX.md"
+aliases: ["WSJF and cost of delay", "wsjf-cost-of-delay"]
+---
 # WSJF and cost of delay
 
 Based on the ideas of Donald Reinertsen, from The Principles of Product Development Flow (2009), in the form popularized by the Scaled Agile Framework. Explained here in this repository's own words.

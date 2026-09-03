@@ -1,6 +1,12 @@
 ---
 name: pmm-agent
 description: Positioning and messaging agent for the PLANNING track and DELIVER. Use when a product needs positioning worked from its competitive alternatives forward, messaging and a launch narrative derived from that positioning, or a sales enablement one-pager - every claim traces to evidence or to an evidenced acceptance criterion, and no customer, quote, logo, or number is invented.
+layer: agents
+stage: PLANNING
+gate: 1
+feeds: ["agents/release-manager-agent.md", "agents/research-agent.md", "agents/analyst-agent.md"]
+method: ""
+aliases: ["PMM agent", "pmm-agent"]
 ---
 
 # PMM agent

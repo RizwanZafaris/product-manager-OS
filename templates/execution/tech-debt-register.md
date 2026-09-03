@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: BUILD
+gate: 3
+feeds: []
+method: ""
+aliases: ["Tech Debt Register", "tech-debt-register"]
+---
 # Tech Debt Register: [product or system]
 
 Stage: BUILD, reviewed every planning cycle; feeds [Gate 3: architecture and risks reviewed](../../os/STAGE-GATES.md) and the standing-demand row of the [capacity plan](../planning/capacity-plan.md)
@@ -16,6 +24,12 @@ Skill: [architect agent](../../agents/architect-agent.md)
      debt is happening now and is paid weekly. ADRs (../architecture/adr.md) record
      the decision to take debt on; this file tracks it afterward. The capacity plan
      (../planning/capacity-plan.md) takes the section 6 total as standing demand.
+
+     See also the tech debt assessment
+     (../../frameworks/assessment/tech-debt-assessment.md), which decides what
+     belongs on this register at all and gives each item its quadrant. Cunningham's
+     original meaning sorts admissions from careless work; Fowler's quadrant says
+     whether removing the code is enough or whether something upstream produced it.
 
      Fill first: the register rows in section 2 with an interest figure each, the
      payoff plan in section 4, and the quarter's debt budget in section 3. -->

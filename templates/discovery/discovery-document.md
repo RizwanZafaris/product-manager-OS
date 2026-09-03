@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DISCOVER
+gate: 1
+feeds: []
+method: "knowledge/torres-continuous-discovery.md"
+aliases: ["Discovery Document", "discovery-document"]
+---
 # Discovery Document: [product or initiative name]
 
 Stage: DISCOVER, feeds Gate 1 (problem worth solving)

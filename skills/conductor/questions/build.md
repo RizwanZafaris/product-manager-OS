@@ -1,3 +1,11 @@
+---
+layer: skills
+stage: BUILD
+gate: 4
+feeds: []
+method: ""
+aliases: ["BUILD bank"]
+---
 # BUILD bank
 
 Stage: BUILD, feeds Gate 4 (acceptance criteria met) in [../../../os/STAGE-GATES.md](../../../os/STAGE-GATES.md).

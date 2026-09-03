@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["Triad Decision Rights", "triad-decision-rights"]
+---
 # Triad Decision Rights
 
 The product triad, PM, design lead, engineering lead, shares one team and splits four risks: the PM answers for value and viability, design for usability, engineering for feasibility, per [empowered product teams](../cagan-product-teams.md). [Specializations](specializations.md) states that accountability never narrows; what neither card supplies is a procedure for the day two seats disagree. This card supplies it. The premise, drawn from Marty Cagan's work and restated in this repository's own words: decision rights that live in speeches are not rights, they are moods.

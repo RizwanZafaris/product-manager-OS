@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: OPERATE
+gate: 6
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["QBR / Board Update", "qbr-board-update"]
+---
 # QBR / Board Update: [product name], [quarter]
 
 **Stage:** OPERATE (feeds [Gate 6: outcomes verified, learn or sunset](../../os/STAGE-GATES.md))

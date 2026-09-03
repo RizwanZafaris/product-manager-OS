@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DELIVER
+gate: 5
+feeds: []
+method: "knowledge/crossing-the-chasm.md"
+aliases: ["GTM Plan", "gtm-plan"]
+---
 # GTM Plan: [product name]
 
 **Stage:** DELIVER (this file feeds [Gate 5: release readiness green](../../os/STAGE-GATES.md))

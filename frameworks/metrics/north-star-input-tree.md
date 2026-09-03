@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: PLANNING
+gate: 6
+feeds: ["templates/planning/north-star-metric.md", "templates/planning/okrs.md", "templates/operate/metrics-review.md"]
+method: "knowledge/north-star-metric.md"
+aliases: ["North Star Input Tree", "north-star-input-tree"]
+---
 # North Star Input Tree
 
 Based on the ideas of Sean Ellis and the growth community, codified in Amplitude's North Star Playbook by John Cutler and colleagues (2019). Explained here in this repository's own words.

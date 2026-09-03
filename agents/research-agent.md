@@ -1,6 +1,12 @@
 ---
 name: research-agent
 description: Evidence-gathering agent for the DISCOVER stage. Use when a discovery template needs facts behind it - market context, user evidence, competitor behavior, prior art - and the findings must be citable rather than plausible.
+layer: agents
+stage: DISCOVER
+gate: 1
+feeds: ["agents/drafting-agent.md", "templates/definition/assumptions-register.md", "agents/analyst-agent.md"]
+method: ""
+aliases: ["Research agent", "research-agent"]
 ---
 
 # Research agent

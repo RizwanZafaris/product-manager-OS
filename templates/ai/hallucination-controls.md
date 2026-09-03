@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: AI OVERLAY
+gate: 4
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Hallucination Controls", "hallucination-controls"]
+---
 # Hallucination Controls: [feature name]
 
 Stage: AI overlay, active whenever the product contains a model; feeds Gate 4 (acceptance criteria met) and Gate 6 (outcomes verified)

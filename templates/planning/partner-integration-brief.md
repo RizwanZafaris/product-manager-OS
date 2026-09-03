@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: PLANNING
+gate: 1
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Partner Integration Brief", "partner-integration-brief"]
+---
 # Partner Integration Brief: [partner name]
 
 **Stage:** PLANNING track (a one-pager weight decision; the go or no-go lands in [decision-log.md](../execution/decision-log.md))

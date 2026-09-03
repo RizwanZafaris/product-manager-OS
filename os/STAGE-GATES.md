@@ -1,3 +1,11 @@
+---
+layer: os
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["Stage Gates", "STAGE-GATES"]
+---
 # Stage Gates
 
 Six gates, one per stage of the loop in [OPERATING-LOOP.md](OPERATING-LOOP.md). Each gate is a fill-in form: copy the gate's section into your product workspace, complete every field, tick only the boxes that are honestly true, and collect the signatures. A gate passes when the form is complete and signed, not when the meeting ends.

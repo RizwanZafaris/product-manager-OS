@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: PLANNING
+gate: 2
+feeds: []
+method: ""
+aliases: ["Capacity Plan", "capacity-plan"]
+---
 # Capacity Plan: [team, program, or product], [period]
 
 Stage: PLANNING track, feeds the [roadmap](roadmap.md) and [Gate 2: requirements signed off](../../os/STAGE-GATES.md), where a signed plan needs a team that can carry it
@@ -13,6 +21,12 @@ Skill: [estimator agent](../../agents/estimator-agent.md)
      (../execution/hiring-scorecard.md) fills the seats this plan shows are missing;
      the tech-debt register (../execution/tech-debt-register.md) supplies the debt
      interest row in section 4.
+
+     See also the team topologies assessment
+     (../../frameworks/assessment/team-topologies-assessment.md), run before this
+     plan while supply is still editable. Supply rows assume each team can ship its
+     own work; a team named a platform and operating as a queue has a waiting cost
+     that shows up here as capacity it never had.
 
      Fill first: supply (section 2), demand (section 3), the 80 percent line
      (section 5). -->

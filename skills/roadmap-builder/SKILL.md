@@ -12,6 +12,7 @@ A roadmap fails in review for one of three reasons: the scores are vibes, the se
 - [../../templates/planning/roadmap.md](../../templates/planning/roadmap.md), where the sequenced plan lands
 - [../../templates/planning/okrs.md](../../templates/planning/okrs.md), the metric the year is judged on
 - [../../templates/execution/dependency-register.md](../../templates/execution/dependency-register.md), the dependency overlay's source of truth
+- See also [../../frameworks/systems/cynefin.md](../../frameworks/systems/cynefin.md) (Kurtz and Snowden, 2003) before you accept a dated commitment on an item whose outcome nobody can predict, and [../../frameworks/execution/theory-of-constraints.md](../../frameworks/execution/theory-of-constraints.md) (Goldratt, 1984) when cycle time has climbed for a quarter and every function reports itself busy. Sequencing assumes the line can absorb the sequence; if three of four funded rows aim at stations that are not the constraint, the roadmap is scored correctly and buys nothing
 - Method background: [../../knowledge/rice-prioritization.md](../../knowledge/rice-prioritization.md) and [../../knowledge/okrs.md](../../knowledge/okrs.md); read the trap sections before scoring
 
 ## When to use

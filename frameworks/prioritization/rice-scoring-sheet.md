@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: PLANNING
+gate: 1
+feeds: ["templates/planning/roadmap.md", "templates/execution/decision-log.md", "templates/execution/dependency-register.md"]
+method: "knowledge/rice-prioritization.md"
+aliases: ["RICE scoring sheet", "rice-scoring-sheet"]
+---
 # RICE scoring sheet
 
 Based on the ideas of Sean McBride, from the Intercom blog post introducing RICE (2016); the ICE section follows Sean Ellis's growth practice (2017). Explained here in this repository's own words.

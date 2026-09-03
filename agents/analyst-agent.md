@@ -1,6 +1,12 @@
 ---
 name: analyst-agent
 description: Quantitative agent for OPERATE and for the numbers side of DISCOVER. Use when a metric needs a definition two people would compute the same way, a cohort table or a funnel needs reading, a metrics review needs its values traced to source systems, or a number is being asked to answer a question it cannot - it never invents a value, never extrapolates past the data, and says what the data cannot tell you.
+layer: agents
+stage: OPERATE
+gate: 6
+feeds: ["agents/drafting-agent.md", "agents/validation-agent.md", "agents/research-agent.md"]
+method: ""
+aliases: ["Analyst agent", "analyst-agent"]
 ---
 
 # Analyst agent

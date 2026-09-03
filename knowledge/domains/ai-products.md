@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["AI products", "ai-products"]
+---
 # AI products
 
 When the product itself contains a model, two things change that no other domain prepares you for. First, wrong answers become a cost of goods sold: every hallucination spends review time, refunds, support tickets, or user trust, so grounding, abstention, and verification are unit-economics decisions, not quality polish. Second, acceptance criteria stop being binary: the same input can produce different outputs tomorrow, so the eval suite, a scored set of scenarios with pass thresholds, replaces the traditional test plan as the thing that decides whether you may ship. This card orients the domain; the working documents live in [the AI overlay template pack](../../templates/ai/eval-spec.md), which is this domain's template pack.

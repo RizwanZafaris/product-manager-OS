@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: AI OVERLAY
+gate: 5
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Model Card", "model-card"]
+---
 # Model Card: [feature or model name]
 
 Stage: AI overlay, active whenever the product contains a model; feeds Gate 5 (release readiness)

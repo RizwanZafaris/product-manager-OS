@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: OPERATE
+gate: 6
+feeds: []
+method: "knowledge/torres-continuous-discovery.md"
+aliases: ["Feedback Program", "feedback-program"]
+---
 # Feedback Program: [program name]
 
 **Stage:** OPERATE (this file feeds [Gate 6: outcomes verified, learn or sunset](../../os/STAGE-GATES.md)); its intake feeds DISCOVER

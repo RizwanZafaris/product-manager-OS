@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DESIGN
+gate: 3
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["API Contract", "api-contract"]
+---
 # API Contract: `<API or endpoint group name>`
 
 Stage: DESIGN, feeds [Gate 3: architecture and risks reviewed](../../os/STAGE-GATES.md)

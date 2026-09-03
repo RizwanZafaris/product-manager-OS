@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["Stage Shift", "stage-shift"]
+---
 # Stage Shift: The Same Title, Three Different Jobs
 
 A Product Manager at a twelve-person startup, a two-hundred-person scale-up, and a twelve-thousand-person enterprise share a business card and almost nothing else. Stage changes the scope, the evidence bar, the document weight, and the definition of success faster than any promotion does. Read this card before hiring across stages, before taking a job across stages, and before judging a colleague who came from a different one.

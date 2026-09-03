@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: DELIVER
+gate: 5
+feeds: ["templates/planning/gtm-plan.md", "skills/conductor/questions/deliver.md", "frameworks/strategy/positioning-canvas.md"]
+method: ""
+aliases: ["Crossing the Chasm", "crossing-the-chasm"]
+---
 # Crossing the Chasm
 
 Based on the ideas in Crossing the Chasm by Geoffrey Moore (1991, revised 2014).

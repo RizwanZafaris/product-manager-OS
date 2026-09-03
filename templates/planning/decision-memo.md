@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: PLANNING
+gate: 1
+feeds: []
+method: ""
+aliases: []
+---
 # Decision Memo: [the decision, stated as a question]
 
 Stage: PLANNING track, any stage; feeds the [gate the decision unblocks](../../os/STAGE-GATES.md) through the [decision log](../execution/decision-log.md)

@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DISCOVER
+gate: 1
+feeds: []
+method: ""
+aliases: ["Survey Design", "survey-design"]
+---
 # Survey Design: [survey short name]
 
 Stage: DISCOVER, feeds [Gate 1: problem worth solving](../../os/STAGE-GATES.md); also used in OPERATE for satisfaction and fit measures

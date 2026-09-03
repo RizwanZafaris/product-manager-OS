@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["B2B SaaS", "saas-b2b"]
+---
 # B2B SaaS
 
 Selling software to companies means the person who feels the pain, the person who signs the contract, and the person who can veto the deal are usually three different people, and your product has to satisfy all of them in different documents. The economics are subscription economics: what you spend to land a customer against what that customer's revenue does after landing, which is why net revenue retention and CAC payback, not signups, are the numbers a board reads first.

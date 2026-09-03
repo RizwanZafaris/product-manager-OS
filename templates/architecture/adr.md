@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DESIGN
+gate: 3
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["ADR ``", "adr"]
+---
 # ADR `<number>`: `<decision title, stated as the decision itself>`
 
 Stage: DESIGN, feeds [Gate 3: architecture and risks reviewed](../../os/STAGE-GATES.md)

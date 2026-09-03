@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: OPERATE
+gate: 6
+feeds: ["templates/operate/incident-postmortem.md", "templates/operate/operational-readiness-review.md", "templates/execution/risk-register.md"]
+method: ""
+aliases: ["Five Whys and Fishbone", "five-whys-fishbone"]
+---
 # Five Whys and Fishbone
 
 Based on the ideas of Taiichi Ohno, from Toyota Production System (1978, English edition 1988), and of Kaoru Ishikawa, whose cause-and-effect diagram dates from the 1960s and appears in Guide to Quality Control (1968). Explained here in this repository's own words.

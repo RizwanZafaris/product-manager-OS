@@ -1,6 +1,12 @@
 ---
 name: growth-agent
 description: Funnel and loop diagnosis agent for OPERATE. Use when the mechanism behind a metric needs locating, a leak needs diagnosing from measured data, or an experiment backlog needs ranking by what each experiment would teach - it proposes experiments and hands the chosen one to the experiment-designer skill; it never invents a baseline, a lift, or a sample size.
+layer: agents
+stage: OPERATE
+gate: 6
+feeds: ["agents/analyst-agent.md", "agents/drafting-agent.md", "agents/validation-agent.md"]
+method: ""
+aliases: ["Growth agent", "growth-agent"]
 ---
 
 # Growth agent

@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DISCOVER
+gate: 1
+feeds: []
+method: "knowledge/jobs-to-be-done.md"
+aliases: ["Personas"]
+---
 # Personas: [product or problem space]
 
 Stage: DISCOVER, feeds Gate 1 (problem worth solving)

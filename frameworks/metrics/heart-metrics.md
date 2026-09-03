@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: DEFINE
+gate: 2
+feeds: ["templates/definition/prd.md", "templates/delivery/analytics-instrumentation-spec.md", "templates/operate/metrics-dictionary.md"]
+method: "knowledge/INDEX.md"
+aliases: ["HEART Metrics", "heart-metrics"]
+---
 # HEART Metrics
 
 Based on the ideas of Kerry Rodden, Hilary Hutchinson, and Xin Fu at Google, from the paper "Measuring the User Experience on a Large Scale: User-Centered Metrics for Web Applications" (CHI, 2010). Explained here in this repository's own words.

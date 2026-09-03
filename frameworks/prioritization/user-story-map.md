@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: DEFINE
+gate: 2
+feeds: ["templates/definition/acceptance-criteria.md", "templates/definition/prd.md", "templates/planning/roadmap.md"]
+method: "knowledge/INDEX.md"
+aliases: ["User story map", "user-story-map"]
+---
 # User story map
 
 Based on the ideas of Jeff Patton, from his story mapping practice (2005) and the book User Story Mapping (2014). Explained here in this repository's own words.

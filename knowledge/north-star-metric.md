@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: PLANNING
+gate: 6
+feeds: ["templates/planning/okrs.md", "templates/operate/metrics-review.md", "templates/definition/prd.md"]
+method: ""
+aliases: ["North Star Metric", "north-star-metric"]
+---
 # North Star Metric
 
 Based on the ideas of Sean Ellis and the growth community, codified in Amplitude's North Star Playbook by John Cutler and colleagues (2019).

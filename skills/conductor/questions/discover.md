@@ -1,3 +1,11 @@
+---
+layer: skills
+stage: DISCOVER
+gate: 1
+feeds: []
+method: ""
+aliases: ["DISCOVER bank"]
+---
 # DISCOVER bank
 
 Stage: DISCOVER, feeds Gate 1 (problem worth solving) in [../../../os/STAGE-GATES.md](../../../os/STAGE-GATES.md).

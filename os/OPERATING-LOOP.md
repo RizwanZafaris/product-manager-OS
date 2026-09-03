@@ -1,3 +1,11 @@
+---
+layer: os
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["The Operating Loop", "OPERATING-LOOP"]
+---
 # The Operating Loop
 
 One product, six stages, six gates. A stage opens when the previous gate is signed and closes when its own gate is signed. Gates are documents, not ceremonies: the checklists live in [STAGE-GATES.md](STAGE-GATES.md), and a full narrative pass is in [HOW-TO-RUN-A-PRODUCT.md](HOW-TO-RUN-A-PRODUCT.md).

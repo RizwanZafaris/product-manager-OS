@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: PLANNING
+gate: 1
+feeds: ["templates/planning/roadmap.md", "templates/discovery/discovery-document.md", "frameworks/prioritization/rice-scoring-sheet.md"]
+method: ""
+aliases: ["RICE Prioritization", "rice-prioritization"]
+---
 # RICE Prioritization
 
 Based on the ideas of Sean McBride, developed at Intercom and published on the Intercom blog (2016).

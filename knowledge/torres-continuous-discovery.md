@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: DISCOVER
+gate: 1
+feeds: ["templates/discovery/user-research-plan.md", "templates/discovery/discovery-document.md", "templates/discovery/journey-map.md"]
+method: ""
+aliases: ["Continuous Discovery", "torres-continuous-discovery"]
+---
 # Continuous Discovery
 
 Based on the ideas in Continuous Discovery Habits by Teresa Torres (2021).

@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: PLANNING
+gate: 6
+feeds: ["templates/planning/okrs.md", "templates/planning/roadmap.md", "templates/operate/metrics-review.md"]
+method: ""
+aliases: ["OKRs"]
+---
 # OKRs
 
 Based on the ideas of Andy Grove at Intel (High Output Management, 1983), popularized by John Doerr in Measure What Matters (2018).

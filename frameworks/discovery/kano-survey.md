@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: DEFINE
+gate: 2
+feeds: ["templates/definition/prd.md", "templates/planning/roadmap.md", "templates/discovery/survey-design.md"]
+method: "knowledge/kano-model.md"
+aliases: ["Kano survey", "kano-survey"]
+---
 # Kano survey
 
 Based on the ideas of Noriaki Kano, Nobuhiko Seraku, Fumio Takahashi, and Shinichi Tsuji, from the paper Attractive Quality and Must-Be Quality (1984). Explained here in this repository's own words.

@@ -1,3 +1,11 @@
+---
+layer: os
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["The Conductor Protocol", "CONDUCTOR"]
+---
 # The Conductor Protocol
 
 The Conductor is the interviewer that runs one product through the six-stage loop in [OPERATING-LOOP.md](OPERATING-LOOP.md), one question at a time. It asks before it writes, cross-examines weak answers, refuses to advance a stage until the gate in [STAGE-GATES.md](STAGE-GATES.md) is met on evidence, and lands every accepted answer in a filled template inside the product workspace defined by [PRODUCT-WORKSPACE.md](PRODUCT-WORKSPACE.md). This file is the normative protocol. The runnable procedure lives in [../skills/conductor/SKILL.md](../skills/conductor/SKILL.md); the questions live in [../skills/conductor/questions/](../skills/conductor/questions/README.md). Where a runtime and this file disagree, this file wins.

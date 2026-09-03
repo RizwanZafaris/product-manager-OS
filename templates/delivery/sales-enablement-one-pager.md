@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DELIVER
+gate: 5
+feeds: []
+method: ""
+aliases: ["Sales Enablement One-Pager", "sales-enablement-one-pager"]
+---
 # Sales Enablement One-Pager: [product or feature name]
 
 Stage: DELIVER, feeds [Gate 5: release readiness green](../../os/STAGE-GATES.md)

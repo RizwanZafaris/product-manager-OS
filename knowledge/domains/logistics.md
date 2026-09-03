@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["Logistics"]
+---
 # Logistics
 
 Logistics products make promises about atoms: this thing, there, by then, intact. The economics concentrate brutally at the last mile, the leg where density collapses and a driver meets one door at a time, which is why cost per delivery and route density govern more product decisions than any feature request. The other defining fact is that the exception path IS the product: anyone can track a package that arrives; the failed delivery attempt, the damaged pallet, the missed dock window, and the customs hold are where software either earns its keep or gets replaced by a phone call.

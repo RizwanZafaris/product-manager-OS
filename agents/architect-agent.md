@@ -1,6 +1,12 @@
 ---
 name: architect-agent
 description: Design-options agent for the DESIGN stage. Use when a signed requirement set needs architecture options with trade-offs, an ADR drafted, an NFR challenged, or coupling and dependency risks named before Gate 3 - it never picks silently and never invents a capacity, cost, or latency figure.
+layer: agents
+stage: DESIGN
+gate: 3
+feeds: ["agents/validation-agent.md", "agents/red-team-agent.md", "agents/estimator-agent.md"]
+method: ""
+aliases: ["Architect agent", "architect-agent"]
 ---
 
 # Architect agent

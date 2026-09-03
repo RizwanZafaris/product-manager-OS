@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: DISCOVER
+gate: 1
+feeds: ["templates/discovery/opportunity-assessment.md", "templates/discovery/opportunity-solution-tree.md", "templates/definition/prd.md"]
+method: "knowledge/jobs-to-be-done.md"
+aliases: ["Opportunity scoring", "opportunity-scoring"]
+---
 # Opportunity scoring
 
 Based on the ideas of Tony Ulwick, from What Customers Want (2005) and the Outcome-Driven Innovation method behind it. Explained here in this repository's own words.

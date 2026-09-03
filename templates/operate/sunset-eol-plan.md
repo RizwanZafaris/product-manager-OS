@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: OPERATE
+gate: 6
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Sunset / End-of-Life Plan", "sunset-eol-plan"]
+---
 # Sunset / End-of-Life Plan: [product or feature name]
 
 **Stage:** OPERATE (executes the SUNSET decision from [Gate 6: outcomes verified, learn or sunset](../../os/STAGE-GATES.md))

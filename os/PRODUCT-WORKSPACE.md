@@ -1,3 +1,11 @@
+---
+layer: os
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["The Product Workspace", "PRODUCT-WORKSPACE"]
+---
 # The Product Workspace
 
 Templates are blanks. A product is the filled copies of them, accumulated over a year, and that pile is the only memory the next PM will have. This file defines where the pile lives and what it is called, so that "what did we decide about refunds" is a file path rather than an archaeology project.

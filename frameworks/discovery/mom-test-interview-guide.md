@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: DISCOVER
+gate: 1
+feeds: ["templates/discovery/user-research-plan.md", "templates/discovery/interview-guide.md", "templates/discovery/interview-notes.md"]
+method: "knowledge/INDEX.md"
+aliases: ["Mom Test interview guide", "mom-test-interview-guide"]
+---
 # Mom Test interview guide
 
 Based on the ideas of Rob Fitzpatrick, from The Mom Test (2013). Explained here in this repository's own words.

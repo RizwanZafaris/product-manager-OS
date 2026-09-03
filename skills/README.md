@@ -1,6 +1,16 @@
+---
+layer: skills
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["Skills"]
+---
 # Skills: the procedures
 
 A skill here is a procedure a model executes, written as a file you can read. Not a plugin, not a hosted prompt, not a wrapper: one `SKILL.md` per skill, with exactly two frontmatter fields (`name` and a `description` that contains an explicit "Use when" clause), a list of the repo files the procedure drives, and the steps in order. Skills sit above [templates/](../templates/README.md), which they cite by path, and beside the role identities in [agents/](../agents/README.md): a template is the blank, a skill is the way you fill it, and an agent is who is holding the pen. Several of the skills below reach for a worksheet in [frameworks/](../frameworks/README.md) first, the sheet where a method's arithmetic happens once, before its result lands in the template.
+
+Two frontmatter fields and no more, which is a constraint rather than a preference: the Agent Skills format validates SKILL.md frontmatter against a closed attribute list, and a runtime that enforces it rejects the whole file on an unknown key. Anything this repository wants to say about a skill beyond those two fields, including where the skill sits in the graph, goes in the `SKILL.graph.yml` file beside it, which nothing loading the skill will read.
 
 Nothing in a skill triggers itself. Triggering lives outside the skill, in [CLAUDE.md](../CLAUDE.md) and [AGENTS.md](../AGENTS.md), so that the procedure and the routing can be reviewed separately.
 

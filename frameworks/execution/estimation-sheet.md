@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: PLANNING
+gate: 2
+feeds: ["templates/planning/capacity-plan.md", "templates/planning/roadmap.md", "frameworks/prioritization/rice-scoring-sheet.md"]
+method: "knowledge/shape-up.md"
+aliases: ["Estimation Sheet", "estimation-sheet"]
+---
 # Estimation Sheet
 
 Based on the ideas of several sources: three-point estimates from the PERT method of the US Navy Special Projects Office (1958), story points from Mike Cohn's Agile Estimating and Planning (2005), and reference-class forecasting from Bent Flyvbjerg (2006), building on the outside view of Daniel Kahneman and Amos Tversky (1979). Explained here in this repository's own words.

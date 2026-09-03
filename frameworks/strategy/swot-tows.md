@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: PLANNING
+gate: 1
+feeds: ["templates/planning/product-strategy.md", "templates/execution/risk-register.md", "templates/planning/roadmap.md"]
+method: "knowledge/INDEX.md"
+aliases: ["SWOT and TOWS", "swot-tows"]
+---
 # SWOT and TOWS
 
 Based on the ideas attributed to Albert Humphrey, from his Stanford Research Institute planning work (1960s; the origin of SWOT is disputed and no single source exists), and of Heinz Weihrich, from "The TOWS Matrix: A Tool for Situational Analysis", Long Range Planning (1982). Explained here in this repository's own words.

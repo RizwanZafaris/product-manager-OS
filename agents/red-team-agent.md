@@ -1,6 +1,12 @@
 ---
 name: red-team-agent
 description: Adversarial review agent. Use when a draft, design, or plan needs to be attacked the way a hostile stakeholder, auditor, or attacker would attack it - before Gate 3 or Gate 5, or whenever a document has only ever been read by people who want it to succeed.
+layer: agents
+stage: DESIGN
+gate: 3
+feeds: ["templates/execution/risk-register.md", "agents/drafting-agent.md", "agents/architect-agent.md"]
+method: ""
+aliases: ["Red team agent", "red-team-agent"]
 ---
 
 # Red team agent

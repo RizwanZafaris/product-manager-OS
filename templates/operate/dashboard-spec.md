@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: OPERATE
+gate: 6
+feeds: []
+method: ""
+aliases: ["Dashboard Spec", "dashboard-spec"]
+---
 # Dashboard Spec: [dashboard name]
 
 Stage: OPERATE, feeds [Gate 6: outcomes verified](../../os/STAGE-GATES.md); specified in DESIGN so the dashboard exists on launch day

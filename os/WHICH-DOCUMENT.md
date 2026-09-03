@@ -1,3 +1,11 @@
+---
+layer: os
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["Which Document", "WHICH-DOCUMENT"]
+---
 # Which Document
 
 Before you fill anything in, decide how much document this decision deserves. Most teams own one PRD template and use it for everything, so a two-day change gets a twelve-section spec and a two-quarter platform bet gets the same twelve sections, which means neither gets the attention it needed. The weight is a choice. This file makes it an explicit one.

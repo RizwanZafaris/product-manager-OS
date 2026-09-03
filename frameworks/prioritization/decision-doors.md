@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: DESIGN
+gate: 3
+feeds: ["templates/execution/decision-log.md", "templates/planning/decision-memo.md", "templates/architecture/adr.md"]
+method: "knowledge/roles/triad-decision-rights.md"
+aliases: ["Decision doors", "decision-doors"]
+---
 # Decision doors
 
 Based on the ideas of Jeff Bezos, from the Amazon shareholder letter for 2015: one-way doors and two-way doors. Explained here in this repository's own words.

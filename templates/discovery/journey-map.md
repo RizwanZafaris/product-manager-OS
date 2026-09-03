@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DISCOVER
+gate: 1
+feeds: []
+method: "knowledge/torres-continuous-discovery.md"
+aliases: ["Journey Map", "journey-map"]
+---
 # Journey Map: [persona] doing [job or scenario]
 
 Stage: DISCOVER, feeds Gate 1 (problem worth solving)

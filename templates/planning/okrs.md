@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: PLANNING
+gate: 1
+feeds: []
+method: "knowledge/okrs.md"
+aliases: ["OKR Sheet"]
+---
 # OKR Sheet: [product or team name], [period]
 
 **Stage:** PLANNING track (feeds every stage of the [operating loop](../../os/OPERATING-LOOP.md))

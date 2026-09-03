@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DESIGN
+gate: 3
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Observability Requirements", "observability"]
+---
 # Observability Requirements: `<system name>`
 
 Stage: DESIGN, feeds [Gate 3: architecture and risks reviewed](../../os/STAGE-GATES.md)

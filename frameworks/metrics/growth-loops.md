@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: OPERATE
+gate: 6
+feeds: ["templates/planning/growth-plan.md", "templates/operate/experiment-brief.md", "frameworks/metrics/north-star-input-tree.md"]
+method: "knowledge/INDEX.md"
+aliases: ["Growth Loops", "growth-loops"]
+---
 # Growth Loops
 
 Based on the ideas of Brian Balfour and Casey Winters, from the Reforge growth essays and programs (2018 onward). Explained here in this repository's own words.

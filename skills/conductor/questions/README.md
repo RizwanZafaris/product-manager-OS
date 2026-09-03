@@ -1,3 +1,11 @@
+---
+layer: skills
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["Question Banks"]
+---
 # Question Banks: format and rules
 
 One bank per stage, six banks. Each bank is the normative question set the Conductor runs for that stage, in ID order, under the contract in [../../../os/CONDUCTOR.md](../../../os/CONDUCTOR.md). Banks are data for the interviewer, not prose for the user: the Conductor renders each entry into the four-part question anatomy at ask time, drafting the lettered options from the product's own context unless the entry fixes them.

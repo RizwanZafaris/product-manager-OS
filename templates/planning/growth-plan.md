@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: OPERATE
+gate: 6
+feeds: []
+method: "knowledge/north-star-metric.md"
+aliases: ["Growth Plan", "growth-plan"]
+---
 # Growth Plan: [product name]
 
 **Stage:** OPERATE (this file feeds [Gate 6: outcomes verified](../../os/STAGE-GATES.md))

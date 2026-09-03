@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: PLANNING
+gate: 1
+feeds: []
+method: "knowledge/high-output-management.md"
+aliases: ["First 90 Days", "first-90-days"]
+---
 # First 90 Days: [your name], [role], [product or portfolio]
 
 **Stage:** PLANNING track (feeds every stage of the [operating loop](../../os/OPERATING-LOOP.md))

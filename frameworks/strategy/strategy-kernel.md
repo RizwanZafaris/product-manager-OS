@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: PLANNING
+gate: 1
+feeds: ["templates/planning/product-strategy.md", "templates/planning/vision.md", "templates/execution/risk-register.md"]
+method: "knowledge/INDEX.md"
+aliases: ["Strategy kernel", "strategy-kernel"]
+---
 # Strategy kernel
 
 Based on the ideas of Richard Rumelt, from Good Strategy Bad Strategy (2011). Explained here in this repository's own words.

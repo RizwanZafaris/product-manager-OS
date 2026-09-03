@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: PLANNING
+gate: 1
+feeds: ["templates/planning/roadmap.md", "templates/planning/okrs.md", "templates/execution/dependency-register.md"]
+method: "knowledge/shape-up.md"
+aliases: ["Now, Next, Later roadmap", "now-next-later"]
+---
 # Now, Next, Later roadmap
 
 Based on the ideas of Janna Bastow, from her roadmapping work at ProdPad (2012 onward). Explained here in this repository's own words.

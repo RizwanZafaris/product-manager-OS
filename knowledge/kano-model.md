@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: DISCOVER
+gate: 1
+feeds: ["templates/definition/prd.md", "templates/planning/roadmap.md", "frameworks/discovery/kano-survey.md"]
+method: ""
+aliases: ["Kano Model", "kano-model"]
+---
 # Kano Model
 
 Based on the ideas of Noriaki Kano and colleagues, from the paper on attractive quality and must-be quality (1984).

@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DISCOVER
+gate: 1
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Problem Framing", "problem-framing"]
+---
 # Problem Framing: [problem short name]
 
 Stage: DISCOVER, feeds Gate 1 (problem worth solving)

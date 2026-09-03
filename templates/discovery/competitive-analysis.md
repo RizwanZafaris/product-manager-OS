@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DISCOVER
+gate: 1
+feeds: []
+method: "knowledge/jobs-to-be-done.md"
+aliases: ["Competitive Analysis", "competitive-analysis"]
+---
 # Competitive Analysis: [market or decision short name]
 
 Stage: DISCOVER, feeds Gate 1 (problem worth solving)

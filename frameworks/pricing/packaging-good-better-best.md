@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: PLANNING
+gate: 5
+feeds: ["templates/planning/pricing-packaging.md", "templates/planning/positioning.md", "templates/delivery/launch-comms-plan.md"]
+method: "knowledge/INDEX.md"
+aliases: ["Good-better-best packaging", "packaging-good-better-best"]
+---
 # Good-better-best packaging
 
 The good-better-best pattern is common usage in pricing practice rather than one author's invention; the reference here is Rafi Mohammed's article The Good-Better-Best Approach to Pricing (Harvard Business Review, 2018). Explained here in this repository's own words.

@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: DISCOVER
+gate: 1
+feeds: ["templates/discovery/problem-framing.md", "templates/discovery/personas.md", "templates/discovery/user-research-plan.md"]
+method: ""
+aliases: ["Jobs to Be Done", "jobs-to-be-done"]
+---
 # Jobs to Be Done
 
 Based on the ideas of Clayton Christensen (The Innovator's Solution, 2003), Tony Ulwick (What Customers Want, 2005), and Bob Moesta (Demand-Side Sales 101, 2020).

@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: OPERATE
+gate: 6
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Post-Launch Review", "post-launch-review"]
+---
 # Post-Launch Review: [launch name]
 
 **Stage:** OPERATE (feeds [Gate 6: outcomes verified, learn or sunset](../../os/STAGE-GATES.md)); an event review, run once per launch. The recurring instrument is [metrics-review.md](metrics-review.md)

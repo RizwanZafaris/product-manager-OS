@@ -1,3 +1,11 @@
+---
+layer: os
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["How to Run a Product", "HOW-TO-RUN-A-PRODUCT"]
+---
 # How to Run a Product
 
 One fictional product taken through all six gates, naming every template used at each step. The product is **Ledgerline**, a cash-flow forecast feature inside a small-business bookkeeping app, with a model-generated plain-language explanation attached to each forecast. Fictional company, fictional people, invented numbers throughout. The point is the moves, not the story.

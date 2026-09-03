@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DESIGN
+gate: 3
+feeds: []
+method: "knowledge/cagan-product-teams.md"
+aliases: ["Risk Register", "risk-register"]
+---
 # Risk Register: `<initiative name>`
 
 Stage: DESIGN, feeds [Gate 3: architecture and risks reviewed](../../os/STAGE-GATES.md), reviewed weekly through DELIVER

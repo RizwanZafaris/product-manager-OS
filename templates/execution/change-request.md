@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: BUILD
+gate: 4
+feeds: []
+method: ""
+aliases: ["Change Request", "change-request"]
+---
 # Change Request: CR-[n], [short name]
 
 Stage: BUILD and DELIVER, after Gate 2 signed a baseline; feeds [Gate 4: acceptance criteria met](../../os/STAGE-GATES.md), which checks that every scope change since Gate 2 is logged with a decider

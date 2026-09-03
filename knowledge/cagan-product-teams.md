@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: DISCOVER
+gate: 1
+feeds: ["templates/discovery/discovery-document.md", "templates/definition/prd.md", "templates/definition/one-pager.md"]
+method: ""
+aliases: ["Empowered Product Teams", "cagan-product-teams"]
+---
 # Empowered Product Teams
 
 Based on the ideas in Inspired (2017) and Empowered (2020) by Marty Cagan.

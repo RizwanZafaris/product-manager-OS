@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: DISCOVER
+gate: 1
+feeds: ["templates/definition/prd.md", "templates/discovery/opportunity-solution-tree.md", "templates/definition/assumptions-register.md"]
+method: "knowledge/torres-continuous-discovery.md"
+aliases: ["Impact mapping", "impact-mapping"]
+---
 # Impact mapping
 
 Based on the ideas of Gojko Adzic, from Impact Mapping (2012). Explained here in this repository's own words.

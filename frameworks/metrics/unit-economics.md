@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: PLANNING
+gate: 1
+feeds: ["templates/planning/business-case.md", "templates/planning/pricing-packaging.md", "templates/planning/growth-plan.md"]
+method: ""
+aliases: ["Unit Economics", "unit-economics"]
+---
 # Unit Economics
 
 Based on the ideas of David Skok, from the "SaaS Metrics 2.0" essays on forEntrepreneurs (2013), with contribution margin taken from standard managerial accounting. Explained here in this repository's own words.

@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: ALL STAGES
+gate: 1
+feeds: ["skills/reg-gap-check/SKILL.md", "templates/operate/compliance-impact-assessment.md"]
+method: ""
+aliases: ["Fintech"]
+---
 # Fintech
 
 This is a pointer card, and that is deliberate. Fintech is the one domain whose full pack already exists in this repository as [the regulated module](../../modules/regulated/README.md), the material that seeded the whole OS. Duplicating its content here would create a second copy that drifts from the verified one, which is exactly the failure the module's byte-exact policy exists to prevent. So this card orients and routes; it teaches nothing the module already owns.

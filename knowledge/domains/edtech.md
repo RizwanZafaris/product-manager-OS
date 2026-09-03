@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["Edtech"]
+---
 # Edtech
 
 Edtech's founding tension is that engagement is easy to measure and learning is not, and the two part company exactly where product decisions get made. A feature that raises minutes-per-day can lower learning-per-minute, and only one of those numbers appears on the growth dashboard by default. The domain's second structural fact mirrors healthtech: the buyer is not the user. In K-12, districts purchase on procurement cycles and evidence claims; teachers decide daily whether the tool actually gets used; students experience it. A product that wins any one of the three and loses the others churns at renewal.

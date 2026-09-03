@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DELIVER
+gate: 5
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Launch Comms Plan", "launch-comms-plan"]
+---
 # Launch Comms Plan: [product or feature name]
 
 **Stage:** DELIVER (feeds [Gate 5: release readiness green](../../os/STAGE-GATES.md); expands section 6 of [release-readiness.md](release-readiness.md))

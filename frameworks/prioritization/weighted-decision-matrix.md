@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: DESIGN
+gate: 3
+feeds: ["templates/execution/decision-log.md", "templates/planning/decision-memo.md", "templates/architecture/adr.md"]
+method: ""
+aliases: ["Weighted decision matrix", "weighted-decision-matrix"]
+---
 # Weighted decision matrix
 
 Based on the ideas of Stuart Pugh, from his concept selection method (1981) and Total Design (1991), with criteria weights in the manner of multi-attribute decision analysis (Keeney and Raiffa, 1976); the impact versus effort 2x2 is a common pattern with no single originator. Explained here in this repository's own words.

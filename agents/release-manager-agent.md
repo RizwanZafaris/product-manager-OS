@@ -1,6 +1,12 @@
 ---
 name: release-manager-agent
 description: Readiness and go-decision agent for the DELIVER stage. Use when a release needs its readiness checklist walked with evidence, its rollback record and comms assembled, its release notes drafted per audience, and a go, no-go, or conditional-go packet prepared for the release owner - the agent assembles the packet and a named human makes the call.
+layer: agents
+stage: DELIVER
+gate: 5
+feeds: ["agents/pmm-agent.md", "agents/analyst-agent.md", "agents/TEAM.md"]
+method: ""
+aliases: ["Release manager agent", "release-manager-agent"]
 ---
 
 # Release manager agent

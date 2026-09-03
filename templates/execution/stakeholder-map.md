@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DISCOVER
+gate: 2
+feeds: []
+method: "knowledge/high-output-management.md"
+aliases: ["Stakeholder Map", "stakeholder-map"]
+---
 # Stakeholder Map: `<initiative name>`
 
 Stage: DISCOVER through OPERATE, first required at [Gate 2: requirements signed off](../../os/STAGE-GATES.md)

@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DELIVER
+gate: 5
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["SLA and SLO Definition", "sla-slo-definition"]
+---
 # SLA and SLO Definition: [service or feature name]
 
 Stage: DELIVER, feeds [Gate 5: release readiness green](../../os/STAGE-GATES.md); the SLOs are rechecked at Gate 6

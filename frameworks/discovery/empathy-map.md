@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: DISCOVER
+gate: 1
+feeds: ["templates/discovery/personas.md", "templates/discovery/journey-map.md", "templates/discovery/problem-framing.md"]
+method: "knowledge/jobs-to-be-done.md"
+aliases: ["Empathy map", "empathy-map"]
+---
 # Empathy map
 
 Based on the ideas of Dave Gray and XPLANE, from the empathy map (2005 onward), Gamestorming (2010), and the Empathy Map Canvas revision (2017). Explained here in this repository's own words.

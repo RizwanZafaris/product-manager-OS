@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DISCOVER
+gate: 1
+feeds: []
+method: ""
+aliases: ["Usability Test Plan", "usability-test-plan"]
+---
 # Usability Test Plan: [design or prototype name]
 
 Stage: DISCOVER, feeds [Gate 1: problem worth solving](../../os/STAGE-GATES.md); rerun against prototypes in DESIGN and BUILD, where findings feed Gates 3 and 4

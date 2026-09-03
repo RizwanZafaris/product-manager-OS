@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: BUILD
+gate: 4
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Edge-Case Register", "edge-cases"]
+---
 # Edge-Case Register: [product or feature name]
 
 **Stage:** BUILD into DELIVER (feeds [Gate 4: acceptance criteria met](../../os/STAGE-GATES.md), rechecked at Gate 5)

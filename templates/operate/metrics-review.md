@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: OPERATE
+gate: 6
+feeds: []
+method: "knowledge/north-star-metric.md"
+aliases: ["Metrics Review", "metrics-review"]
+---
 # Metrics Review: [product or feature name]
 
 **Stage:** OPERATE (this file feeds [Gate 6: outcomes verified, learn or sunset](../../os/STAGE-GATES.md))

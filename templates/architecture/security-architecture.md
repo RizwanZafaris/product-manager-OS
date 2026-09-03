@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DESIGN
+gate: 3
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Security Architecture Checklist", "security-architecture"]
+---
 # Security Architecture Checklist: `<system name>`
 
 Stage: DESIGN, feeds [Gate 3: architecture and risks reviewed](../../os/STAGE-GATES.md)

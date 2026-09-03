@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: DISCOVER
+gate: 1
+feeds: ["templates/definition/assumptions-register.md", "templates/discovery/opportunity-solution-tree.md", "templates/operate/experiment-brief.md"]
+method: "knowledge/torres-continuous-discovery.md"
+aliases: ["Assumption mapping", "assumption-mapping"]
+---
 # Assumption mapping
 
 Based on the ideas of David J. Bland and Alex Osterwalder, from Testing Business Ideas (2019). Explained here in this repository's own words.

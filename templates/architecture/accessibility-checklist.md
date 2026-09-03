@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DESIGN
+gate: 3
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Accessibility Checklist", "accessibility-checklist"]
+---
 # Accessibility Checklist: [product or feature name]
 
 Stage: DESIGN, feeds [Gate 3: architecture and risks reviewed](../../os/STAGE-GATES.md); the evidence column is completed in BUILD and checked at Gate 4

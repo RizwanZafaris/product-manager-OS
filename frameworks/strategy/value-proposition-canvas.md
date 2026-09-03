@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: DISCOVER
+gate: 1
+feeds: ["frameworks/strategy/business-model-canvas.md", "frameworks/strategy/lean-canvas.md", "frameworks/strategy/positioning-canvas.md"]
+method: "knowledge/INDEX.md"
+aliases: ["Value proposition canvas", "value-proposition-canvas"]
+---
 # Value proposition canvas
 
 Based on the ideas of Alexander Osterwalder, Yves Pigneur, Gregory Bernarda, and Alan Smith, from Value Proposition Design (2014). Explained here in this repository's own words.

@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["Streaming and OTT", "streaming-ott"]
+---
 # Streaming and OTT
 
 A streaming service is a subscription business wrapped around content it mostly does not own forever. Licensing windows decide what you can show, where, and until when; churn decides whether any of it was worth the check. Product work here splits into two loops that share one budget: the content loop (what to license or make, judged in cost per hour actually watched) and the experience loop (discovery, playback quality, and the cancel flow), and the second loop exists to protect the first loop's spend.

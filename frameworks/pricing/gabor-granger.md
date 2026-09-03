@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: PLANNING
+gate: 5
+feeds: ["templates/planning/pricing-packaging.md", "frameworks/pricing/packaging-good-better-best.md", "templates/operate/experiment-brief.md"]
+method: "knowledge/INDEX.md"
+aliases: ["Gabor-Granger price ladder", "gabor-granger"]
+---
 # Gabor-Granger price ladder
 
 Based on the ideas of André Gabor and Clive Granger, from their 1966 paper in Economica on price as an indicator of quality, the origin of the purchase-intention ladder that carries their names. Explained here in this repository's own words.

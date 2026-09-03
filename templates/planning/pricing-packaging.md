@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: PLANNING
+gate: 5
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: []
+---
 # Pricing and Packaging: [product name]
 
 **Stage:** PLANNING track (feeds every stage of the [operating loop](../../os/OPERATING-LOOP.md), most directly Gate 5 readiness)

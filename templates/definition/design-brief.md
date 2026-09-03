@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DEFINE
+gate: 2
+feeds: []
+method: "knowledge/jobs-to-be-done.md"
+aliases: ["Design Brief", "design-brief"]
+---
 # Design Brief: [feature or product name]
 
 Stage: DEFINE, feeds [Gate 2: requirements signed off](../../os/STAGE-GATES.md); written alongside the PRD, before design work starts

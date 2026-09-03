@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: DESIGN
+gate: 3
+feeds: ["templates/execution/risk-register.md", "frameworks/execution/premortem-worksheet.md", "templates/execution/status-report.md"]
+method: "knowledge/cagan-product-teams.md"
+aliases: ["Risk Matrix", "risk-matrix"]
+---
 # Risk Matrix
 
 Based on the probability and impact matrix as codified in the US military system-safety standard MIL-STD-882 (1969) and later in the risk management standard ISO 31000 (2009). Explained here in this repository's own words.

@@ -1,6 +1,12 @@
 ---
 name: validation-agent
 description: Draft-checking agent for any stage. Use when a filled template needs verification against its required fields and its stage gate before human review - reports misses precisely, never rewrites the draft.
+layer: agents
+stage: ALL STAGES
+gate: 3
+feeds: ["agents/drafting-agent.md", "agents/red-team-agent.md", "agents/analyst-agent.md"]
+method: ""
+aliases: ["Validation agent", "validation-agent"]
 ---
 
 # Validation agent

@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: AI OVERLAY
+gate: 4
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Eval Spec", "eval-spec"]
+---
 # Eval Spec: [feature name]
 
 Stage: AI overlay, active whenever the product contains a model; feeds Gate 4 (acceptance criteria met) and Gate 5 (release readiness)

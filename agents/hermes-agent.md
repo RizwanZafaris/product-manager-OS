@@ -1,6 +1,12 @@
 ---
 name: hermes-agent
 description: Integration file for a Hermes-style personal agent system. Use when a Hermes deployment (a self-hosted assistant that drafts content, prepares outreach, and maintains a knowledge base under human approval) needs to run its product-management tasks through this repository's templates and its model calls through this repository's routing tiers.
+layer: agents
+stage: ALL STAGES
+gate: 1
+feeds: ["agents/validation-agent.md", "agents/TEAM.md"]
+method: ""
+aliases: ["Hermes agent", "hermes-agent"]
 ---
 
 # Hermes agent

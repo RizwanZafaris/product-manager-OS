@@ -1,6 +1,12 @@
 ---
 name: estimator-agent
 description: Effort and capacity agent for the PLANNING track, called at DEFINE, DESIGN, and BUILD. Use when work needs sizing before a commitment, a plan needs its optimism checked against what similar work actually took, or a capacity plan needs demand set against measured supply - it returns ranges with a stated confidence and a list of the work everyone forgot, never a single number, and never a figure the evidence does not hold.
+layer: agents
+stage: PLANNING
+gate: 3
+feeds: ["agents/drafting-agent.md", "agents/validation-agent.md", "agents/architect-agent.md"]
+method: ""
+aliases: ["Estimator agent", "estimator-agent"]
 ---
 
 # Estimator agent

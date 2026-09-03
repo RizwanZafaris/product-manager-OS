@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: PLANNING
+gate: 1
+feeds: ["templates/planning/product-strategy.md", "templates/planning/growth-plan.md", "templates/planning/roadmap.md"]
+method: ""
+aliases: ["Ansoff matrix", "ansoff-matrix"]
+---
 # Ansoff matrix
 
 Based on the ideas of H. Igor Ansoff, from "Strategies for Diversification", Harvard Business Review (1957). Explained here in this repository's own words.

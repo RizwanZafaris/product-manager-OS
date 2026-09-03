@@ -1,6 +1,12 @@
 ---
 name: drafting-agent
 description: Template-filling agent for any stage. Use when one named template needs a first complete draft from supplied evidence - one template per run, every unknown left as an open field, no invented numbers.
+layer: agents
+stage: ALL STAGES
+gate: 1
+feeds: ["agents/validation-agent.md", "agents/research-agent.md", "agents/analyst-agent.md"]
+method: ""
+aliases: ["Drafting agent", "drafting-agent"]
 ---
 
 # Drafting agent

@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DELIVER
+gate: 5
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Testing Strategy", "testing-strategy"]
+---
 # Testing Strategy: [product or feature name]
 
 **Stage:** DELIVER (feeds [Gate 5: release readiness green](../../os/STAGE-GATES.md))

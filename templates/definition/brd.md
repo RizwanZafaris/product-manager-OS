@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DEFINE
+gate: 2
+feeds: []
+method: "knowledge/okrs.md"
+aliases: ["BRD", "Business Requirements Document"]
+---
 # Business Requirements Document: [initiative name]
 
 Stage: DEFINE, feeds Gate 2 (requirements signed off)

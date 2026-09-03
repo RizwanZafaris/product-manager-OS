@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Decision Log", "decision-log"]
+---
 # Decision Log: `<initiative name>`
 
 Stage: all stages, read at every gate in [STAGE-GATES](../../os/STAGE-GATES.md)

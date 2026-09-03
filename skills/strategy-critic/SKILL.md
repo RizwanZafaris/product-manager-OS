@@ -12,6 +12,7 @@ Most strategy documents are goals with adjectives: "be the leading platform", "d
 - [../../templates/planning/product-strategy.md](../../templates/planning/product-strategy.md), where the passed strategy lands section by section
 - The worksheets for checks 1, 2, and 3, in order: [../../frameworks/strategy/strategy-kernel.md](../../frameworks/strategy/strategy-kernel.md), [../../frameworks/strategy/playing-to-win.md](../../frameworks/strategy/playing-to-win.md), [../../frameworks/strategy/seven-powers-audit.md](../../frameworks/strategy/seven-powers-audit.md)
 - Reads [../../templates/planning/roadmap.md](../../templates/planning/roadmap.md) for the bets the strategy must explain; sends unevidenced conditions to [../../templates/execution/risk-register.md](../../templates/execution/risk-register.md)
+- See also [../../frameworks/systems/leverage-points.md](../../frameworks/systems/leverage-points.md) (Meadows, 1999) when the strategy passes all three checks and the last two quarters of delivered work still moved nothing. A coherent strategy whose every action is a threshold raised or a limit relaxed is coherent at the weakest end of the system, and no kernel test detects that
 - Method background: Richard Rumelt, Good Strategy Bad Strategy (2011); A.G. Lafley and Roger Martin, Playing to Win (2013); Hamilton Helmer, 7 Powers (2016). All indexed in [../../knowledge/INDEX.md](../../knowledge/INDEX.md), explained here in this repository's own words.
 
 ## When to use

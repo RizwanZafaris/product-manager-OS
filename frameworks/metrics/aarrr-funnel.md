@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: OPERATE
+gate: 6
+feeds: ["templates/planning/growth-plan.md", "templates/operate/experiment-brief.md", "templates/delivery/analytics-instrumentation-spec.md"]
+method: "knowledge/INDEX.md"
+aliases: ["AARRR Funnel", "aarrr-funnel"]
+---
 # AARRR Funnel
 
 Based on the ideas of Dave McClure, from the talk "Startup Metrics for Pirates" (2007). Explained here in this repository's own words.

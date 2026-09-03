@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["PM Hiring and Growth", "pm-hiring-and-growth"]
+---
 # PM Hiring and Growth
 
 Two people rituals, one calibration source. Hiring decides who joins the [ladder](ladder.md); the manager rituals decide how they climb it. Both fail the same way, by measuring polish instead of judgment, so they share a card. The hiring shape draws on the structured-interviewing evidence line running back to Schmidt and Hunter's selection research (work samples and structured loops predict; unstructured conversation flatters); the management rituals restate Andy Grove's leverage argument from [High Output Management](../high-output-management.md). Both in this repository's own words.

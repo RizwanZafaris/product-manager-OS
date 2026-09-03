@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: OPERATE
+gate: 6
+feeds: ["templates/execution/stakeholder-map.md", "templates/execution/decision-log.md", "templates/operate/metrics-review.md"]
+method: ""
+aliases: ["High Output Management", "high-output-management"]
+---
 # High Output Management
 
 Based on the ideas in High Output Management by Andrew Grove (1983).

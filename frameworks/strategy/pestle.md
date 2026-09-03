@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: PLANNING
+gate: 1
+feeds: ["templates/planning/product-strategy.md", "templates/planning/vision.md", "templates/execution/risk-register.md"]
+method: "knowledge/INDEX.md"
+aliases: ["PESTLE scan", "pestle"]
+---
 # PESTLE scan
 
 Based on the ideas of Francis J. Aguilar, whose ETPS scan in Scanning the Business Environment (1967) is the root of the widely used PESTLE variant (political, economic, social, technological, legal, environmental). Explained here in this repository's own words.

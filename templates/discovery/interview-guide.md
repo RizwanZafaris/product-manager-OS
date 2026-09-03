@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DISCOVER
+gate: 1
+feeds: []
+method: ""
+aliases: ["Interview Guide", "interview-guide"]
+---
 # Interview Guide: [study short name]
 
 Stage: DISCOVER, feeds [Gate 1: problem worth solving](../../os/STAGE-GATES.md)

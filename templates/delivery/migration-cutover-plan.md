@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DELIVER
+gate: 5
+feeds: []
+method: ""
+aliases: ["Migration Cutover Plan", "migration-cutover-plan"]
+---
 # Migration Cutover Plan: [migration name]
 
 Stage: DELIVER, feeds [Gate 5: release readiness green](../../os/STAGE-GATES.md)

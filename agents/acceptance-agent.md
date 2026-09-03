@@ -1,6 +1,12 @@
 ---
 name: acceptance-agent
 description: Evidence-of-done agent for the BUILD stage. Use when signed acceptance criteria need turning into test cases and evidence requests, or when someone is about to say Gate 4 is met and the evidence has to exist first - it reports gaps by criterion ID and never marks a criterion passed on anyone's say-so.
+layer: agents
+stage: BUILD
+gate: 4
+feeds: ["agents/drafting-agent.md", "agents/release-manager-agent.md", "templates/delivery/uat-plan.md"]
+method: ""
+aliases: ["Acceptance agent", "acceptance-agent"]
 ---
 
 # Acceptance agent

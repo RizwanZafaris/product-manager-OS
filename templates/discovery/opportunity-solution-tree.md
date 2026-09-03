@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DISCOVER
+gate: 1
+feeds: []
+method: "knowledge/torres-continuous-discovery.md"
+aliases: ["Opportunity Solution Tree", "opportunity-solution-tree"]
+---
 # Opportunity Solution Tree: [outcome short name]
 
 Stage: DISCOVER, feeds Gate 1 (problem worth solving)

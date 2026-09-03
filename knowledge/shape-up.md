@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: DEFINE
+gate: 2
+feeds: ["templates/planning/roadmap.md", "templates/definition/prd.md", "frameworks/execution/estimation-sheet.md"]
+method: ""
+aliases: ["Shape Up", "shape-up"]
+---
 # Shape Up
 
 Based on the ideas in Shape Up by Ryan Singer, published by Basecamp (2019).

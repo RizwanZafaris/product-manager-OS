@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: OPERATE
+gate: 6
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Incident Postmortem", "incident-postmortem"]
+---
 # Incident Postmortem: [incident short name]
 
 **Stage:** OPERATE (feeds [Gate 6: outcomes verified, learn or sunset](../../os/STAGE-GATES.md)); an event review, run once per qualifying incident. Verified actions become section 6 checks in [operational-readiness-review.md](operational-readiness-review.md)

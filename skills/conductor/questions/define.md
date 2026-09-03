@@ -1,3 +1,11 @@
+---
+layer: skills
+stage: DEFINE
+gate: 2
+feeds: []
+method: ""
+aliases: ["DEFINE bank"]
+---
 # DEFINE bank
 
 Stage: DEFINE, feeds Gate 2 (requirements signed off) in [../../../os/STAGE-GATES.md](../../../os/STAGE-GATES.md).

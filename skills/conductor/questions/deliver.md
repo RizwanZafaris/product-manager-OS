@@ -1,3 +1,11 @@
+---
+layer: skills
+stage: DELIVER
+gate: 5
+feeds: []
+method: ""
+aliases: ["DELIVER bank"]
+---
 # DELIVER bank
 
 Stage: DELIVER, feeds Gate 5 (release readiness green) in [../../../os/STAGE-GATES.md](../../../os/STAGE-GATES.md).
