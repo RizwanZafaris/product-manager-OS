@@ -26,3 +26,7 @@ The definition cuts both ways, and the trap is measuring the manager's inputs be
 - [Decision log](../templates/execution/decision-log.md)
 - [Metrics review](../templates/operate/metrics-review.md)
 - [First 90 days](../templates/planning/first-90-days.md)
+
+**Run it:** the worksheet form of this method lives in the [frameworks layer](../frameworks/README.md).
+
+- [RACI](../frameworks/execution/raci.md), puts one accountable name on each decision

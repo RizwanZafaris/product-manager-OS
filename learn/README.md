@@ -2,7 +2,9 @@
 
 The rest of this repository assumes you are running a real product. This layer assumes you are not, yet. It teaches the OS the only way a document system can be taught: by making you fill it in, on products that are safely fictional, with a tutor that critiques your work the way the Conductor would cross-examine it.
 
-Learning mode depends downward only: on [knowledge/](../knowledge/README.md), on [templates/](../templates/README.md), on the loop files in [os/](../os/OPERATING-LOOP.md), and on the Conductor's question banks, all read-only. Nothing outside `learn/` knows this layer exists. Delete the folder and the OS loses nothing but the curriculum.
+Learning mode depends downward only: on [knowledge/](../knowledge/README.md), on [frameworks/](../frameworks/README.md), on [templates/](../templates/README.md), on the loop files in [os/](../os/OPERATING-LOOP.md), and on the Conductor's question banks, all read-only. Nothing outside `learn/` knows this layer exists. Delete the folder and the OS loses nothing but the curriculum.
+
+A step that says "read the card, then fill the template" leaves the largest gap in the middle, which is running the method. Where a step names a method, run its worksheet from the [frameworks layer](../frameworks/README.md) between the reading and the filling: the [RICE sheet](../frameworks/prioritization/rice-scoring-sheet.md) before a roadmap step, the [Kano survey](../frameworks/discovery/kano-survey.md) or the [Mom Test guide](../frameworks/discovery/mom-test-interview-guide.md) before a discovery step, the [strategy kernel](../frameworks/strategy/strategy-kernel.md) before a strategy step. Each worksheet carries an invented worked example, which is the closest thing to a model answer this layer can give you before the tutor sees your own.
 
 ## Pick your path
 

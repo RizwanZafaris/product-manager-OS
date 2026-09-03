@@ -28,3 +28,7 @@ The instrument assumes the decision is still open. Write the PR/FAQ after the in
 - [BRD](../templates/definition/brd.md)
 - [PRD](../templates/definition/prd.md)
 - [PR/FAQ](../templates/definition/prfaq.md)
+
+**Run it:** the worksheet form of this method lives in the [frameworks layer](../frameworks/README.md).
+
+- [Decision doors](../frameworks/prioritization/decision-doors.md), the reversibility test that decides how much document the decision earns

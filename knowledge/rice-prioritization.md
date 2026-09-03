@@ -29,3 +29,7 @@ The output is a number, and numbers borrow authority they have not earned. A sco
 
 - [Roadmap](../templates/planning/roadmap.md)
 - [Discovery document](../templates/discovery/discovery-document.md)
+
+**Run it:** the worksheet form of this method lives in the [frameworks layer](../frameworks/README.md).
+
+- [RICE scoring sheet](../frameworks/prioritization/rice-scoring-sheet.md), the sheet that runs this method, with the arithmetic written out

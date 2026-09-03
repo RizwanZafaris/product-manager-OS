@@ -30,3 +30,7 @@ The classes are not stable, and the drift runs in one direction. Yesterday's del
 
 - [PRD](../templates/definition/prd.md)
 - [Roadmap](../templates/planning/roadmap.md)
+
+**Run it:** the worksheet form of this method lives in the [frameworks layer](../frameworks/README.md).
+
+- [Kano survey](../frameworks/discovery/kano-survey.md), the question pair, the classification table, and the tabulation

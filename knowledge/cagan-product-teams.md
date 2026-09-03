@@ -37,3 +37,7 @@ The failure mode is adopting the vocabulary and skipping the trade. Teams get re
 - [OKRs](../templates/planning/okrs.md)
 - [Vision](../templates/planning/vision.md)
 - [Opportunity assessment](../templates/discovery/opportunity-assessment.md)
+
+**Run it:** the worksheet form of this method lives in the [frameworks layer](../frameworks/README.md).
+
+- [Assumption mapping](../frameworks/discovery/assumption-mapping.md), sorts the four risks into what to test first

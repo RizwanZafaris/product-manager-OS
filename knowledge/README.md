@@ -6,6 +6,10 @@ Every card also carries one line beginning **Skip it when**, sitting between the
 
 Eleven methods earned full cards because a template in this repository leans on them directly. Eighteen more are indexed below with a one-line essence. An index entry graduates to a card when a template starts depending on it, not before: a knowledge layer that catalogs everything teaches nothing. Crossing the Chasm is the newest graduation, promoted when the GTM plan template started depending on it.
 
+## Where the running sheets live
+
+A card here explains a method and names the way it misleads. It is deliberately not the form. When you want to run the method, the worksheet with its scales, its arithmetic, and its skip line is in [frameworks/](../frameworks/README.md): RICE, Kano, JTBD, WSJF, MoSCoW, the strategy kernel, the Playing to Win cascade, market sizing, the pricing sheets, the premortem, and thirty-six more. Cards and worksheets link each other, and the split is the point: reading the trap section before filling the sheet is what stops a scoring exercise from laundering opinion into a decimal.
+
 ## Role and domain layers
 
 Two sub-layers sit beside the method cards and answer different questions. [Roles](roles/README.md) answers WHO: what each product title owns and decides, the IC and management fork, the PM and PMM boundary, the triad's decision rights and dispute path, the hiring and growth rituals, and how the same title changes meaning as a company grows. [Domains](domains/README.md) answers WHERE: what changes about the operating loop when the product lives in a specific market, in ten cards from ecommerce to a fintech pointer that routes to the regulated module. Both follow this layer's rules: named attribution, own words, and a stated reason to skip.

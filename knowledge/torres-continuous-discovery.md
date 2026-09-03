@@ -30,3 +30,8 @@ The tree is a living index of what the team currently believes, and it earns tha
 - [Discovery synthesis](../templates/discovery/discovery-synthesis.md)
 - [Opportunity solution tree](../templates/discovery/opportunity-solution-tree.md)
 - [Feedback program](../templates/operate/feedback-program.md)
+
+**Run it:** the worksheet form of this method lives in the [frameworks layer](../frameworks/README.md).
+
+- [Opportunity scoring](../frameworks/discovery/opportunity-scoring.md), ranks the outcomes the tree branches into
+- [Mom Test interview guide](../frameworks/discovery/mom-test-interview-guide.md), runs the weekly touchpoint without pitching

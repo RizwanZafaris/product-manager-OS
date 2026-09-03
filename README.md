@@ -2,7 +2,7 @@
 
 **Run a product from discovery to sunset: gated templates, PM canon cards, and AI skills that work without AI.**
 
-Six stages, six gates, a knowledge layer with named attribution, fill-in templates for every artifact a product needs, and optional AI layers stacked on top. It is a document system first and an AI system second. Every template works with a text editor and a pencil. The AI layers, boot prompts, skills, agents, and model routing, are accelerants on a format that stands without them.
+Six stages, six gates, a knowledge layer with named attribution, runnable framework worksheets, fill-in templates for every artifact a product needs, and optional AI layers stacked on top. It is a document system first and an AI system second. Every template works with a text editor and a pencil. The AI layers, boot prompts, skills, agents, and model routing, are accelerants on a format that stands without them.
 
 Every prompt here is a file you can read. There is no wrapper, no account, and no hosted prompt you cannot inspect: this is a versioned prompt library in a git repository, which means you can fork it, diff it, and see exactly what changed between one version and the next. The four ways to run it are below, and the first one uses no model at all. And one more thing you can inspect: this repository was built with Claude Code by a working payments CPO. Every commit trailer says so, and every prompt it produced is a file you can read and argue with.
 
@@ -94,7 +94,8 @@ A filled example is one file away: [examples/expense-copilot-discovery.md](examp
 | [knowledge/](knowledge/README.md) | Knowledge | WHY a method exists and when it misleads |
 | [knowledge/roles/](knowledge/roles/README.md) | Roles | WHO each product title is: what it owns, decides, and how it fails |
 | [knowledge/domains/](knowledge/domains/README.md) | Domains | WHERE the product plays: what a specific market changes about the loop |
-| [templates/](templates/README.md) | Templates | WHAT to produce at each stage, all 73 blanks cataloged by stage |
+| [frameworks/](frameworks/README.md) | Frameworks | HOW to actually run a method: the sheet, the scales, the arithmetic |
+| [templates/](templates/README.md) | Templates | WHAT to produce at each stage, all 98 blanks cataloged by stage |
 | [learn/](learn/README.md) | Learning | HOW to study the OS on fictional products before running a real one |
 | [skills/](skills/README.md), [agents/](agents/README.md) | Skills and agents | HOW to produce it with an AI runtime: procedures, and the roles that run them |
 | [system/](system/README.md) | System prompts | WHO the model becomes |
@@ -108,6 +109,14 @@ Dependencies point downward only. Templates cite knowledge cards, skills cite te
 ## Who you are and where you play
 
 Two knowledge sub-layers answer the questions that arrive before any template does. [knowledge/roles/](knowledge/roles/README.md) is the PM role map: an eight-rung ladder from Associate PM to CPO with the IC and management fork after Senior PM, the specializations, the PM and PMM boundary as a decision table, the triad's decision rights with a written dispute path, the hiring loop and growth rituals, and what the same title means at a startup versus an enterprise. Rung names are marked directional, because titles are the least standardized vocabulary in software. [knowledge/domains/](knowledge/domains/README.md) is ten market cards, ecommerce through AI products, each naming the gatekeepers who can stop a launch and the metrics practitioners are judged on, plus how each metric lies. Fintech is deliberately a pointer card: its domain pack is the regulated module below. Record your product's domain, or "none", in STATE.md at DISCOVER; the Gate 1 checklist asks for it.
+
+## Running a method, not reading about one
+
+A knowledge card tells you why RICE exists and how its false precision misleads. It does not give you the sheet. That gap is where methods get performed from memory: reach counted in whatever unit came to mind, confidence never written down, and an argument three weeks later that nobody can audit because the arithmetic lived in one person's head.
+
+[frameworks/](frameworks/README.md) is 46 worksheets in six groups (strategy, discovery, prioritization, metrics and growth, pricing, execution) that you fill in. Each one carries its scales, its formula or decision rule written out, the inputs it needs and where they come from, an invented worked example, the trap it falls into, and a line beginning **Skip it when** that names the situation where running it costs a week and returns nothing. Attribution is named in every file, including the honest cases: TAM/SAM/SOM, RACI, and the risk matrix have no single originator, and their files say so rather than inventing a founder.
+
+The layer sits between knowledge and templates and produces inputs, not artifacts. The RICE sheet ranks the backlog that fills [the roadmap](templates/planning/roadmap.md); the market sizing sheet, reconciled top-down against bottom-up, produces the number [the business case](templates/planning/business-case.md) argues from; the Kano survey classifies the attributes that decide what the PRD's functional scope covers first. Where a card and a worksheet cover the same method, the card holds the reasoning and the worksheet holds the form, and each links the other.
 
 ## Learn mode
 
@@ -142,7 +151,7 @@ This is stated because the failure is common enough to plan for: systems in this
 
 ## Scope and sunset
 
-The knowledge layer covers eleven canonical methods with named attribution and an index of eighteen more; it grows slowly and only with attribution. The roles and domains sub-layers follow the same rule, and a domain card graduates to a template pack only when the card proves insufficient in real use. The learn layer covers exactly three paths and one tutor; it is curriculum over the existing tree, adds no infrastructure, and is deleted before it is allowed to rot. The regulated overlay covers exactly what its source repository covers, no more, and inherits that repository's currency policy: citations carry verification dates, and staleness fails the gate rather than looking maintained. If maintenance of this repository stops, an ARCHIVED notice will go at the top of this README with the date, instead of the repository quietly rotting.
+The knowledge layer covers eleven canonical methods with named attribution and an index of eighteen more; it grows slowly and only with attribution. The frameworks layer holds a worksheet only where a template, a skill, or a gate needs its output: a method that nothing in the tree depends on stays a one-line entry in the knowledge index until something does. The roles and domains sub-layers follow the same rule, and a domain card graduates to a template pack only when the card proves insufficient in real use. The learn layer covers exactly three paths and one tutor; it is curriculum over the existing tree, adds no infrastructure, and is deleted before it is allowed to rot. The regulated overlay covers exactly what its source repository covers, no more, and inherits that repository's currency policy: citations carry verification dates, and staleness fails the gate rather than looking maintained. If maintenance of this repository stops, an ARCHIVED notice will go at the top of this README with the date, instead of the repository quietly rotting.
 
 ## License
 
