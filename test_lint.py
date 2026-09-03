@@ -191,12 +191,18 @@ class ReviewGateTests(unittest.TestCase):
 
 def os_run(files, pins=None):
     """Run the OS tree gate over a synthetic tree; return (codes, messages)."""
+    return os_run_bytes({rel: text.encode("utf-8")
+                         for rel, text in files.items()}, pins=pins)
+
+
+def os_run_bytes(files, pins=None):
+    """os_run, but the fixture is bytes, so a file can be invalid UTF-8."""
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
-        for rel, text in files.items():
+        for rel, blob in files.items():
             target = root / rel
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(text, encoding="utf-8")
+            target.write_bytes(blob)
         problems = lint.os_check(root, pins={} if pins is None else pins)
     return ({code for _, _, code, _ in problems},
             " ".join(message for _, _, _, message in problems))
@@ -321,8 +327,24 @@ def graph_fm(**over):
                                     for k, v in pairs if v is not None)
 
 
+def header_for(stage, gate):
+    """The three-line header a file with this declaration would carry.
+
+    Built from the declaration rather than fixed, because the gate now checks
+    that the two agree and a fixture that contradicts itself would be testing
+    the contradiction rather than the rule under test. The contradiction has
+    its own tests below, which write the header by hand.
+    """
+    clause = ", feeds Gate %s" % gate if str(gate).strip().isdigit() else ""
+    return ("Stage: %s%s\nKnowledge: none\nSkill: manual\n"
+            % (stage or "DEFINE", clause))
+
+
 def template_file(**over):
-    return graph_fm(**over) + "# Thing\n\n" + TEMPLATE_HEADER
+    stage = over.get("stage", "DEFINE")
+    gate = over.get("gate", "2")
+    return (graph_fm(**over) + "# Thing\n\n"
+            + header_for(stage, gate if gate is not None else ""))
 
 
 class GraphDeclarationTests(unittest.TestCase):
@@ -365,7 +387,7 @@ class GraphDeclarationTests(unittest.TestCase):
             codes, messages = os_run(
                 {"templates/thing.md": template_file(gate=value)})
             self.assertIn("GRAPH", codes, value)
-            self.assertIn("not an integer 1 to 6", messages)
+            self.assertIn("is not one of the gates", messages)
 
     def test_an_unresolvable_feeds_path_is_flagged(self):
         codes, messages = os_run(
@@ -460,6 +482,277 @@ class SkillDeclarationTests(unittest.TestCase):
                  'method: ""\naliases: ["An agent"]\n---\n# An agent\n')
         codes, messages = os_run({"agents/an-agent.md": agent})
         self.assertEqual(set(), codes, messages)
+
+
+class SecretGateTests(unittest.TestCase):
+    """Check 9. Every fixture key is assembled from fragments, so this file
+    never contains a credential-shaped literal, and the gate that now reads
+    this file with no exemption stays green on it."""
+
+    # Modern issuers put their own prefix in the token, which is what the gate
+    # anchors on. Split before the payload so no line here matches a pattern.
+    OPENAI_PROJECT = "sk-proj-" + "Ab3Cd4Ef5Gh6Ij7Kl8Mn9Op"
+    OPENAI_SERVICE = "sk-svcacct-" + "Qr1St2Uv3Wx4Yz5Ab6Cd7Ef"
+    GITHUB_FINE = "github_pat_" + "11ABCDEFG0abcdefghij1234"
+    JWT = ("eyJ" + "hbGciOiJIUzI1NiJ9" + "."
+           + "eyJzdWIiOiIxMjMifQ" + "." + "dBjftJeZ4CVPmB92K27u")
+    PEM = "-" * 5 + "BEGIN RSA PRIVATE KEY" + "-" * 5
+    HOT_VALUE = "aB3dE6fG9hJ2" + "kL5mN8pQ1rS4tU7v"
+
+    def test_modern_token_formats_are_caught(self):
+        for label, value in (("OpenAI project key", self.OPENAI_PROJECT),
+                             ("OpenAI service-account key",
+                              self.OPENAI_SERVICE),
+                             ("GitHub fine-grained token", self.GITHUB_FINE),
+                             ("JSON web token", self.JWT),
+                             ("private key block", self.PEM)):
+            codes, messages = os_run({"docs/note.md": "key = %s\n" % value})
+            self.assertIn("SECRET", codes, label)
+            self.assertIn(label, messages)
+
+    def test_an_aws_secret_access_key_value_is_caught(self):
+        value = "aws_secret_access_key=" + "wJalrXUtnFEMI" + "K7MDENGbPxRfiCY" \
+                + "EXAMPLEKEY12"
+        codes, messages = os_run({"docs/note.md": value + "\n"})
+        self.assertIn("SECRET", codes)
+        self.assertIn("AWS secret access key value", messages)
+
+    def test_a_high_entropy_value_under_a_credential_name_is_caught(self):
+        codes, messages = os_run(
+            {"docs/note.md": "session_token: %s\n" % self.HOT_VALUE})
+        self.assertIn("SECRET", codes)
+        self.assertIn("high-entropy value", messages)
+
+    def test_prose_under_a_credential_name_is_not_caught(self):
+        codes, messages = os_run(
+            {"docs/note.md": "password: ask the security owner for it\n"
+                             "token: the one the runbook names\n"})
+        self.assertNotIn("SECRET", codes, messages)
+
+    def test_a_base64_wrapped_token_is_caught(self):
+        import base64
+        wrapped = base64.b64encode(
+            ("ghp_" + "abcdefghij0123456789").encode()).decode()
+        codes, messages = os_run({"docs/note.md": "blob = %s\n" % wrapped})
+        self.assertIn("SECRET", codes)
+        self.assertIn("base64-encoded", messages)
+
+    def test_a_token_split_across_a_line_break_is_caught(self):
+        codes, messages = os_run({"docs/note.md": "key = AKIA\n" + "Z" * 16})
+        self.assertIn("SECRET", codes)
+        self.assertIn("line breaks are closed up", messages)
+
+    def test_a_rule_bearing_file_is_not_exempt_from_the_secret_gate(self):
+        fixture = {"docs/ARCHITECTURE.md": "example: %s\nOwner: TBD\n"
+                                           % self.OPENAI_PROJECT}
+        codes, messages = os_run(fixture)
+        self.assertIn("SECRET", codes, messages)
+        # Still exempt from the placeholder gate, which is the exemption that
+        # exists for a reason: this file names the detector's own strings.
+        self.assertNotIn("TBD", codes)
+
+    def test_an_undecodable_file_fails_instead_of_being_skipped(self):
+        codes, messages = os_run_bytes({"docs/note.md": b"head \xff\xfe tail"})
+        self.assertIn("ENCODING", codes)
+        self.assertIn("not valid UTF-8", messages)
+
+
+class PathGateFenceTests(unittest.TestCase):
+    """Check 8. The prompt body a user pastes lives inside a fenced block."""
+
+    def test_a_repo_path_inside_a_fence_is_checked(self):
+        fenced = ("Paste this:\n\n```\nRead templates/nowhere.md first.\n"
+                  "```\n")
+        codes, messages = os_run({"system/PROMPT.md": fenced})
+        self.assertIn("PATH", codes)
+        self.assertIn("templates/nowhere.md", messages)
+
+    def test_a_manifest_line_resolves_names_against_its_directory(self):
+        fenced = ("```\nlearn/         README.md, skills/tutor/SKILL.md\n"
+                  "```\n")
+        codes, messages = os_run(
+            {"system/PROMPT.md": fenced,
+             "learn/README.md": "# Learn\n",
+             "learn/skills/tutor/SKILL.md":
+                 "---\nname: tutor\ndescription: Use when learning.\n---\nX.\n"})
+        self.assertNotIn("PATH", codes, messages)
+
+
+class GraphTruthTests(unittest.TestCase):
+    """Check 10. Legal keys are not the same claim as a true graph."""
+
+    def test_a_layer_outside_the_directory_set_is_flagged(self):
+        codes, messages = os_run({"templates/thing.md":
+                                  template_file(layer="bananas")})
+        self.assertIn("GRAPH", codes)
+        self.assertIn('layer "bananas" is not a layer directory', messages)
+
+    def test_a_layer_naming_another_directory_is_flagged(self):
+        codes, messages = os_run({"templates/thing.md":
+                                  template_file(layer="agents"),
+                                  "agents/other.md": ""})
+        self.assertIn("GRAPH", codes)
+        self.assertIn("is not the directory this file lives in", messages)
+
+    def test_a_declaration_contradicting_its_own_stage_header_is_flagged(self):
+        contradicting = (graph_fm(stage="DEFINE", gate="6") + "# Thing\n\n"
+                         + "Stage: DEFINE, feeds Gate 2\n"
+                           "Knowledge: none\nSkill: manual\n")
+        codes, messages = os_run({"templates/thing.md": contradicting})
+        self.assertIn("GRAPH", codes)
+        self.assertIn("its own Stage header names gate 2", messages)
+
+    def test_a_stage_and_gate_the_gates_document_denies_are_flagged(self):
+        silent = (graph_fm(stage="DEFINE", gate="6") + "# Thing\n\n"
+                  + "Stage: DEFINE\nKnowledge: none\nSkill: manual\n")
+        codes, messages = os_run({"templates/thing.md": silent})
+        self.assertIn("GRAPH", codes)
+        self.assertIn("gate 2 closing DEFINE", messages)
+
+    def test_a_block_list_feeds_is_read_rather_than_skipped(self):
+        block = ("---\nlayer: templates\nstage: DEFINE\ngate: 2\nfeeds:\n"
+                 "  - templates/gone.md\nmethod: \"\"\naliases:\n"
+                 "  - The Thing\n---\n# Thing\n\n" + TEMPLATE_HEADER)
+        codes, messages = os_run({"templates/thing.md": block})
+        self.assertIn("GRAPH", codes)
+        self.assertIn("feeds names templates/gone.md", messages)
+
+    def test_a_block_list_that_resolves_passes_and_declares_its_alias(self):
+        block = ("---\nlayer: templates\nstage: DEFINE\ngate: 2\nfeeds:\n"
+                 "  - templates/other.md\nmethod: \"\"\naliases:\n"
+                 "  - The Thing\n---\n# Thing\n\n" + TEMPLATE_HEADER)
+        codes, messages = os_run({
+            "templates/thing.md": block,
+            "templates/other.md": template_file(aliases='["The Other"]'),
+            "docs/note.md": "see [[the thing]]\n"})
+        self.assertEqual(set(), codes, messages)
+
+    def test_a_gate_target_feeds_is_accepted(self):
+        codes, messages = os_run({"templates/thing.md":
+                                  template_file(feeds='["Gate 2"]')})
+        self.assertEqual(set(), codes, messages)
+
+    def test_a_feeds_gate_the_document_does_not_define_is_flagged(self):
+        codes, messages = os_run({"templates/thing.md":
+                                  template_file(feeds='["Gate 9"]')})
+        self.assertIn("GRAPH", codes)
+        self.assertIn("feeds names gate 9", messages)
+
+
+class LinkTruthTests(unittest.TestCase):
+    """Check 4 and check 11. Some target existing is not the target existing."""
+
+    def test_a_qualified_wikilink_must_resolve_at_that_path(self):
+        codes, messages = os_run({"docs/note.md": "see [[wrong/place/other.md]]\n",
+                                  "docs/other.md": "Other.\n"})
+        self.assertIn("WIKILINK", codes)
+        self.assertIn("names neither a file at that path", messages)
+
+    def test_an_ambiguous_bare_wikilink_is_flagged(self):
+        codes, messages = os_run({"docs/note.md": "see [[other.md]]\n",
+                                  "docs/other.md": "One.\n",
+                                  "docs/sub/other.md": "Two.\n"})
+        self.assertIn("WIKILINK", codes)
+        self.assertIn("is ambiguous", messages)
+
+    def test_a_unique_bare_wikilink_still_resolves(self):
+        codes, messages = os_run({"docs/note.md": "see [[other.md]]\n",
+                                  "docs/other.md": "One.\n"})
+        self.assertNotIn("WIKILINK", codes, messages)
+
+    def test_an_alias_holding_a_comma_stays_one_alias(self):
+        files = {"templates/thing.md":
+                 template_file(aliases='["Now, Next, Later"]'),
+                 "docs/whole.md": "see [[Now, Next, Later]]\n"}
+        codes, messages = os_run(files)
+        self.assertEqual(set(), codes, messages)
+        files["docs/part.md"] = "see [[Now]]\n"
+        codes, messages = os_run(files)
+        self.assertIn("WIKILINK", codes)
+        self.assertIn("[[Now]]", messages)
+
+    def test_a_duplicate_alias_is_reported(self):
+        codes, messages = os_run({
+            "templates/thing.md": template_file(aliases='["Shared"]'),
+            "templates/other.md": template_file(aliases='["Shared"]')})
+        self.assertIn("GRAPH", codes)
+        self.assertIn("is already declared by", messages)
+
+    def test_a_markdown_link_climbing_out_of_the_repository_is_flagged(self):
+        codes, messages = os_run(
+            {"docs/sub/note.md": "[out](../../../etc/hosts)\n"})
+        self.assertIn("LINK", codes)
+        self.assertIn("climbs out of the repository", messages)
+
+
+class RegulatedPrdDepthTests(unittest.TestCase):
+    """Check the PRD gate on a document that is shaped right and gutted."""
+
+    JUNK_TABLE = ("| Note | Detail |\n|---|---|\n| Something | Anything |")
+
+    def test_an_arbitrary_table_does_not_satisfy_section_0(self):
+        gutted = MINIMAL.replace(
+            "| Market | License condition | Regulator | Confirmed how | "
+            "Confirmed date | Owner |\n|---|---|---|---|---|---|\n"
+            "| UAE | No change to licensed activity | CBUAE | Memo REG-1 | "
+            "2026-01-02 | Reg Lead |", self.JUNK_TABLE)
+        codes, messages = run(gutted)
+        self.assertIn("OVERLAY", codes)
+        self.assertIn("section 0.1 has no table carrying the required columns",
+                      messages)
+
+    def test_a_register_with_a_header_and_no_rows_is_flagged(self):
+        emptied = MINIMAL.replace(
+            "| UAE | No change to licensed activity | CBUAE | Memo REG-1 | "
+            "2026-01-02 | Reg Lead |\n", "")
+        codes, messages = run(emptied)
+        self.assertIn("OVERLAY", codes)
+        self.assertIn("section 0.1 register has a header row and no entries",
+                      messages)
+
+    def test_an_eval_table_with_no_rows_is_flagged(self):
+        emptied = MINIMAL.replace(
+            "| 1 | Amount extracted | Exact-match accuracy | DS-A: 400 cases | "
+            + THRESHOLD + " | Block | Ops Lead |\n", "")
+        codes, messages = run(emptied)
+        self.assertIn("EVAL", codes)
+        self.assertIn("right columns and no rows", messages)
+
+    def test_an_angle_bracket_field_is_not_an_answer_in_full_mode(self):
+        unfilled = MINIMAL.replace("Reg Lead", "<owner>")
+        codes, messages = run(unfilled)
+        self.assertIn("OVERLAY", codes)
+        self.assertIn("unfilled <angle-bracket> field", messages)
+        # Template mode keeps its own bargain: an unfilled template is
+        # supposed to be unfilled.
+        self.assertEqual(set(), run(unfilled, template_mode=True)[0])
+
+    def test_the_pinned_example_survives_the_stricter_gate(self):
+        example = (REPO / "modules" / "regulated" / "examples"
+                   / "dispute-summary" / "PRD.md")
+        self.assertEqual([], lint.check(example)[0])
+
+
+class IntegrityPinCoverageTests(unittest.TestCase):
+    """Finding 20. Everything the repository calls verbatim is pinned."""
+
+    VERBATIM = ("modules/regulated/templates/regulated-ai-prd-template.md",
+                "modules/regulated/examples/dispute-summary/PRD.md",
+                "modules/regulated/SKILL.md",
+                "modules/regulated/lint.py",
+                "modules/regulated/test_lint.py")
+
+    def test_every_verbatim_regulated_file_is_pinned(self):
+        for rel in self.VERBATIM:
+            self.assertIn(rel, lint.PINNED_HASHES)
+
+    def test_each_pin_matches_the_bytes_on_disk(self):
+        import hashlib
+        for rel, expected in lint.PINNED_HASHES.items():
+            target = REPO / rel
+            self.assertTrue(target.is_file(), rel)
+            self.assertEqual(
+                expected, hashlib.sha256(target.read_bytes()).hexdigest(), rel)
 
 
 if __name__ == "__main__":
