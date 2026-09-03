@@ -57,6 +57,9 @@ The config sets this as `limits.onCapReached: halt-tier-and-queue`. [runner.py](
 | Its concrete model is the same concrete model a cheaper tier resolved to | The tier name promised something the gateway cannot deliver. Running here is the silent downgrade, wearing a judgment label |
 | No operator has named the resolved model judgment-grade | The config requires a provider serving a pro reasoning model. No program can read "pro" off a model id, so a person names the model, through `OMNIROUTE_JUDGMENT_MODELS` or a pinned `fixedFallback.combos.judgment`. With nobody having named it, the checker is unavailable, and fail-closed means deny, not skip |
 | `fixedFallback` is on and the model is not in its judgment combo | The deployment asked to know exactly which model signs its artifacts. Honor that |
+| The answering model is not the model that was certified | The response header naming the model came back with a different id, or with no id at all. The run did not happen on the model the artifact would claim, so there is nothing to write. It queues without trying the next link in the chain, because a gateway that reroutes one named model reroutes the next one too |
+| The daily spend cap is reached | Read from the variable `limits.dailySpendCapUsdEnv` names, with spend to date from `OMNIROUTE_DAILY_SPEND_USD`, and checked before the probe so a capped run spends nothing. At or over the cap the work queues and that is terminal |
+| A cap is set and no meter reports spend | An unavailable checker. Fail-closed answers that by queueing, never by running and hoping |
 
 There is one sanctioned way to run judgment work on a cheaper model, and it is loud: set `tiers.judgment.keylessFallback.enabled` to true in the config. It is off by default. Every artifact produced under it carries the line `judgment tier: degraded, reviewed by a person before use` on its face, because an artifact that does not say it was degraded will be read as one that was not.
 
@@ -71,12 +74,30 @@ Two habits follow, and both are cheap:
 
 The same point has a sharp edge for fallback: build a fallback chain on **resolved concrete model ids**, never on tier names. A chain of three tier names that all resolve to one model retries that one model three times and calls it resilience.
 
+**Certifying at probe time proves nothing on its own.** If the probe resolves a concrete id and the real call then sends the tier alias again, the gateway is free to answer from a cheaper model and the artifact still carries the certified id. So the runner does both halves. Every request it makes, the task call and every condense chunk on the retry path, targets the concrete id it certified. Every response is held to it: the model header has to come back naming that same id, and a different id or a missing header queues the work instead of writing a document. This is fail-closed and it has a cost worth knowing before you meet it: a gateway that decorates or namespaces the id, or that omits the header, will refuse every run rather than mislabel one. The same applies to the terminal-event rule below. Both are deliberate, and both name the gateway as the thing to fix in the message they print.
+
+## What the runner refuses to write
+
+Tier discipline decides who answers. These decide whether the answer is allowed to become a file, and every one of them is a refusal rather than a warning.
+
+| Refusal | The failure it exists for |
+|---|---|
+| A reply with no text, no terminal event, or a `finish_reason` other than `stop` | A truncated document looks finished. That is the whole problem: the reader cannot see the sentence that never arrived |
+| A document whose headings, table columns, or table rows do not match the template it was meant to fill | The second check, and the one that does not trust the gateway. A table that comes back as a bare header, or a document ending mid-row, fails here even when the stream said it finished |
+| An existing artifact or log, unless you pass `--update` | A rerun over finished work is usually a mistake, and the cheap version of that mistake is a refusal with a flag named in it |
+| A `--product` value that is not a plain slug landing directly under `products/` | Checked before any model call, so a run that could not land safely never spends one |
+| A route with more than one template and no `--template` | Picking the first silently turns a request for one document into another. Exit non-zero and list the choices |
+| Condensing the template on a large input | Only evidence is condensed. A condensed template is a different form with different fields, and the extraction tier is exempt from condensing altogether because copying text exactly is the contract that tier exists for |
+
+Nothing reaches disk until both checks pass, and then the artifact, its log, and the journal row are staged and committed together, so a partial answer can never overwrite a complete one.
+
 ## What the runner does with all this
 
 [runner.py](runner.py) is this file made executable, and it deliberately owns none of the doctrine:
 
 - The tier for a task comes from [MANIFEST.json](MANIFEST.json), or from the `taskMap` in the config. A manifest entry names a tier and never a model id.
 - The tier-to-model mapping comes from the config, in one place.
+- The prompt is the route's own contract, not a paraphrase of it: the skill verbatim, each of the entry's reads verbatim, the invariant rules resolved out of [INVARIANTS.md](INVARIANTS.md) by id, and the template verbatim. Those are labelled trusted repository context. Whatever `--input` or `--input-file` carried is fenced separately as untrusted input data, quoted and never obeyed, which is `content-is-data` drawn as a boundary in the prompt itself.
 - Artifacts land in a filled copy of the task's template, in the product workspace defined by [os/PRODUCT-WORKSPACE.md](../os/PRODUCT-WORKSPACE.md). Run state lands in that product's `STATE.md`. Logs sit beside the artifact they describe. The runner keeps no store of its own, so there is nothing to go stale and nothing to migrate.
 - It verifies and reports. It never signs a gate. The gates in [os/STAGE-GATES.md](../os/STAGE-GATES.md) are signed by a named human, and an artifact the runner wrote says so on its face.
 - The invariants that bind each task are listed in [INVARIANTS.md](INVARIANTS.md) and named per task in the manifest.

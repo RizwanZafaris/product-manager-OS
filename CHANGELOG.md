@@ -5,10 +5,10 @@ Every notable change to this repository is recorded here. The format follows [Ke
 What a version number means here, since this is a document system and not a library:
 
 - **MAJOR** changes rename or remove a template field, move or delete a file that other files link to, or change what a gate demands. These are the changes that break a fork or a half-filled document, so they only happen on a major version, and this file names the migration for each one.
-- **MINOR** adds a template, a knowledge card, a skill, or a section. Existing filled documents keep working untouched.
+- **MINOR** adds a template, a knowledge card, a skill, or a section. Nothing you filled is renamed, moved, or broken by it. Corrected 2026-09-03: this used to say existing filled documents keep working untouched, which read as a promise about the gate and is only a promise about the document. A section added in a minor version can become a section today's checks expect, so an older filled document keeps meaning what it meant and can fall short of the current bar. The two entries where that actually happened, 0.6.0 and 0.5.1, carry a dated note saying so.
 - **PATCH** fixes wording, links, typos, or a lint rule that was wrong.
 
-The stability promise is stated in [README.md](README.md) and repeated here so it survives a fork: within a major version, template field names and file paths do not change under you.
+The stability promise is stated in [README.md](README.md) and repeated here so it survives a fork: within a major version, template field names and file paths do not change under you. That is the whole promise, and the paragraph above says what it deliberately leaves out.
 
 ## 0.7.0, 2026-09-03
 
@@ -60,6 +60,67 @@ Nothing here renames, moves, or removes a file, and no gate changed what it dema
   been stale since before this branch: 73 templates where there are 98, nine skills
   where there are 28, and five agent role files where there are twelve.
 
+### Fixed in remediation, 2026-09-03
+
+An independent external review was run against this release before it shipped. It found
+three critical defects in `harness/runner.py`, all three of which would have produced a
+document that looked finished and was not, plus a set of smaller ones in the gates, the
+tools, and the claims these documents make. Recording what was found matters more than
+recording that it was fixed: a changelog that lists only additions is a marketing
+document, and these three are the exact class of failure this repository says it exists
+to prevent.
+
+The three critical ones:
+
+- **Truncated model output was accepted and written as a finished artifact.** A stream
+  that carried text and then stopped, a `finish_reason` of `length`, a malformed frame,
+  and an error object arriving after text were all treated as success. A reply is now
+  usable only with text, a terminal event, and a `finish_reason` of exactly `stop`, and a
+  second check that does not trust the gateway compares the produced document against its
+  template: headings present and in order, table column counts held, no table returning
+  as a bare header, no document ending mid-row. A committed artifact in this repository
+  was carrying that defect and is caught by the new check.
+- **Tier certification was a probe-time illusion.** The probe resolved a concrete model
+  id, then the real call sent the tier alias again, so the gateway could answer from any
+  model while the artifact carried the certified id. Every request now targets the
+  concrete id, and the response header is held to it; a mismatch or a missing header
+  queues the work instead of writing a document.
+- **Writes were unconfined, destructive, and not atomic.** A product slug could contain
+  path separators and walk out of `products/`, a rerun overwrote finished work, and the
+  artifact, its log, and the journal row were written independently. The slug is now
+  validated and the resolved directory has to sit directly under `products/`, an existing
+  artifact or log is refused unless `--update` is passed, and the three files are staged
+  and committed together.
+
+Also fixed in the same pass: the credential redaction guarantee was unsupported and is
+now enforced at one redactor with no length floor, with sanitized URLs and no raw gateway
+bodies persisted; the 6000-character recovery path condensed the template as well as the
+evidence, breaking the exact-input contract; the manifest checker and the desktop adapter
+would read through a symlink out of the tree; the router table's Invoke and
+Backing-templates columns were never checked against the manifest; the four universal
+invariants bound every route in prose and were missing from the routes an adapter
+actually reads, with `content-is-data` absent from 35 of the 41; the graph
+tool could produce one node id for two different files; and seven worksheets and
+templates carried invented arithmetic that was not labelled as invented, including one
+sensitivity row whose numbers could not be reproduced. `harness/test_runner.py` is new,
+with a failure-proving test per fix; `test_lint.py` goes from 47 tests to 78;
+`tools/check_manifest.py` from 6 checks to 8; `harness/MANIFEST.json` and the generated
+plugin move to 0.7.0.
+
+The public claims were swept in the same pass, which is the part worth reading if you are
+deciding whether to trust this repository. `SECURITY.md` described a tree of two Python
+files with no service and no credentials, which stopped being true when the harness
+landed; it is now a threat model with the manual path and the runtime path separated.
+The AI-layer deletability claim was too strong in `README.md`, `docs/FAQ.md`, and
+`docs/PHILOSOPHY.md`: the harness is deletable and a gate proves it, and deleting a
+content layer leaves working documents and a lint gate failing in the hundreds, which is
+now what those files say. The stability promise is corrected below. `README.md` claimed
+every commit carries a Claude trailer; two merge commits do not, so it now says every
+non-merge commit. And the deletability proof in `harness/README.md` no longer passes:
+`AGENTS.md` names two harness paths as links, which breaks the link gate on a tree with
+`harness/` deleted, and that is recorded there as an open item rather than quietly
+dropped.
+
 ### Known gaps at this point
 
 - None of the twelve new worksheets has a filled example. The layer's own bar asks for an
@@ -71,6 +132,19 @@ Nothing here renames, moves, or removes a file, and no gate changed what it dema
 - The three new router rows name no skill, so the sheets carry the whole procedure. That
   is correct for a worksheet and it does mean a run has no adversarial pass over it, the
   way the skills do.
+- The deletability proof for `harness/` is red. Two markdown links in `AGENTS.md` name
+  harness paths, so deleting the directory fails the link gate and the test that asserts
+  the tree ships clean. The documents are unaffected and the fix is to backtick two
+  paths. Nothing enforces the plain-text rule that would have prevented it, and attention
+  has now failed it twice.
+- CI runs the lint gates, the graph and manifest checks, and both `test_lint.py` copies.
+  It does not run `harness/test_runner.py`, `generate.py --check`, or the desktop
+  selftest, so a harness change is only as verified as the person who remembered to run
+  them by hand.
+- Nothing checks that a claim in `README.md`, `SECURITY.md`, or `docs/` still matches the
+  code. This release found several that did not, all of them written truthfully and then
+  outlived by the tree. The mechanism against that is a review, which is a person, which
+  is the same class of control as a gate.
 
 ## 0.6.0, 2026-09-03
 
@@ -91,6 +165,14 @@ document filled against 0.5.1 keeps working, and a link written into your own no
 keeps resolving. That makes this a minor version even though it is the largest diff
 in the repository's history: 22,341 lines of markdown to 25,961, with four files
 added and none moved, renamed, or deleted.
+
+> **Correction added 2026-09-03, entry left as it shipped.** "Keeps working" is true of
+> the document and not of the gate, the same way it is in the 0.5.1 entry below. A depth
+> pass that adds a required block to a template raises what a current check expects of a
+> document filled before it. The promise this repository actually keeps inside a major
+> version is that field names and paths do not move under you. It does not promise that
+> an older filled document still clears today's exit gate, and `README.md` now says so in
+> the versioning section rather than leaving a reader to find out at a gate.
 
 The rule that governed the rewrite is worth stating, because it is what stops a
 depth pass from becoming a padding pass. `frameworks/` files are the working
@@ -219,7 +301,9 @@ ones are next to them. These are the ones this version did not reach, in the ord
 the unevenness now shows.
 
 - **`knowledge/domains/` is the thinnest layer in the tree**, twelve market cards
-  averaging 35 lines against 132 for a canon card. Each names its gatekeepers and
+  averaging 35 lines against 132 for a canon card. (Count corrected 2026-09-03: the
+  directory holds ten cards plus its README and index stub, which is what
+  `README.md` and `docs/ARCHITECTURE.md` say. The gap itself stands.) Each names its gatekeepers and
   how its metrics lie, and none carries a worked example, a named failure mode with
   a tell, or the origin of the metric conventions it teaches. A reader coming from a
   deepened canon card will feel the drop immediately.
@@ -267,6 +351,16 @@ plain PRD fell through the router to "no skill".
 A minor version because everything is added or rewired. No template field is
 renamed, no file is moved, no gate changes what it demands. A PRD filled against
 0.5.0 keeps working; its new sections are additions to the same document.
+
+> **Correction added 2026-09-03, entry left as it shipped.** The last sentence was too
+> generous and is worth reading against what the tree does now. Nothing renamed, moved,
+> or broke, so an older PRD still opens and still means what it meant. What did change is
+> the bar: `agents/validation-agent.md` checks a draft against the current headings in
+> order, and the PRD's own exit gate treats the sections this release added as required.
+> So a 0.5.0 PRD does not keep working *untouched* in the sense of clearing today's
+> checks; it keeps working as a document and reports the new sections as missing. If you
+> hold one and it has to pass a gate again, diff it against the current template and add
+> the sections rather than refilling the file.
 
 ### Added
 

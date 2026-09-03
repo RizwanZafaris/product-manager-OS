@@ -16,9 +16,9 @@ The shortest honest description is a library plus a discipline. The library is t
 
 **2. Do I need AI to use it?**
 
-No, and this is load bearing rather than a hedge. Method one of the four in [README.md](../README.md) uses no model: clone, copy a template, fill it in any editor, work the gate checklist by hand. Nothing under `knowledge/`, `frameworks/`, `templates/`, or `os/` depends on an AI layer existing, and the direction of dependency is enforced by the [lint gate](../lint.py) rather than by good intentions.
+No, and this is load bearing rather than a hedge. Method one of the four in [README.md](../README.md) uses no model: clone, copy a template, fill it in any editor, work the gate checklist by hand. No document under `knowledge/`, `frameworks/`, `templates/`, or `os/` needs an AI layer to be readable or fillable, and the direction of dependency runs downward: a skill requires its template, a template does not require its skill.
 
-**The test that proves it:** delete `skills/`, `agents/`, `system/`, and `routing/`, and the remaining tree still runs a product from Gate 1 to Gate 6. Delete `templates/` instead and the AI layers have nothing left to produce, which tells you which half is the product.
+**What is actually proved, and what is not.** `harness/` is fully deletable and a gate proves it, which is the run recorded in `harness/README.md`. The document layers are a weaker claim than this file used to make. Delete `skills/`, `agents/`, `system/`, and `routing/` and the remaining documents still take a product from Gate 1 to Gate 6, because every template's guidance is prose and its `Skill:` header is a pointer rather than a requirement. The same deletion breaks the structural lint gate in the hundreds, because those pointers are markdown links and links are what the gate checks. So the load-bearing sentence is this one: you can run the whole loop without a model, and you cannot delete a content layer and keep a green gate. Delete `templates/` instead and the AI layers have nothing left to produce, which tells you which half is the product.
 
 **3. Why not just ask a model for a PRD?**
 
@@ -42,27 +42,27 @@ Often, yes, and the tell sits in your own gate folder: if every gate passed on a
 
 **6. Is this AI-generated?**
 
-It was written with Claude Code by a working payments CPO, every commit trailer says so, and hiding that would be the exact defect this repository claims to guard against. What it means in practice matters more than the label: the structure, the beliefs, the skip conditions, and the failure modes come from the maintainer's own product and payments work, while the model did drafting, consistency, and volume.
+It was written with Claude Code by a working payments CPO, every non-merge commit carries a trailer saying so, and hiding that would be the exact defect this repository claims to guard against. What it means in practice matters more than the label: the structure, the beliefs, the skip conditions, and the failure modes come from the maintainer's own product and payments work, while the model did drafting, consistency, and volume.
 
-**How to check the claim rather than take it:** read the commit history. The trailers name the tool, the messages show what was rewritten and when, and the [changelog](../CHANGELOG.md) records which release studied which prior art before writing. A repository hiding its authorship would have no reason to keep any of that legible.
+**How to check the claim rather than take it:** read the commit history. The trailers name the tool on every commit that is not a merge, the messages show what was rewritten and when, and the [changelog](../CHANGELOG.md) records which release studied which prior art before writing. A repository hiding its authorship would have no reason to keep any of that legible.
 
 **What to audit hardest:** anything a model is good at producing and bad at grounding. Claims about the field, numbers, and attributions. If you find a fabricated one, that is a real bug worth an issue, because the never-invent rule applies to this repository as much as to a product run inside it.
 
 **7. Why should I trust a solo maintainer?**
 
-Do not trust the maintainer, check the mechanisms, because that is the only claim one person can honestly make at this scale. Three are checkable in a minute. Every prompt is a file you read before you run it, so there is no hidden instruction. `python3 lint.py --os` fails on broken links, missing template headers, banned characters, drifted pinned files, and secret-shaped strings, so consistency is enforced by a script rather than by attention. And the versioning promise is specific: inside a major version, field names and paths do not move under you, and each breaking change is named in [CHANGELOG.md](../CHANGELOG.md) with its migration.
+Do not trust the maintainer, check the mechanisms, because that is the only claim one person can honestly make at this scale. Three are checkable in a minute. Every prompt is a file you read before you run it, so there is no hidden instruction. `python3 lint.py --os` fails on broken links, missing template headers, banned characters, drifted pinned files, and secret-shaped strings, so consistency is enforced by a script rather than by attention. And the versioning promise is specific: inside a major version, field names and paths do not move under you, and each breaking change is named in [CHANGELOG.md](../CHANGELOG.md) with its migration. That promise was overstated once and the correction is in the README's versioning section rather than buried: a minor version can add sections that today's checks then expect, so an older filled document keeps working and can still fall short of the current gate.
 
 **What one maintainer cannot give you** is a community that finds bugs faster than you do, or a support address with a person behind it. [COMPARISON.md](COMPARISON.md) names the systems that have both.
 
 **8. What happens when you stop maintaining it?**
 
-Two answers, one promised and one structural. The promise: if maintenance stops, an ARCHIVED notice with a date goes at the top of the README, rather than the repository sitting there looking alive. The structure: this is markdown under MIT with no build step, no dependencies past a standard library script, and no service to call, so an abandoned copy keeps working exactly as well as the day you cloned it.
+Two answers, one promised and one structural. The promise: if maintenance stops, an ARCHIVED notice with a date goes at the top of the README, rather than the repository sitting there looking alive. The structure: on the manual path this is markdown under MIT with no build step, no dependencies, and nothing to call, so an abandoned copy keeps working exactly as well as the day you cloned it. The scripts age no faster: the quality gate, the graph tool, and the runner are Python standard library only, and the single third-party dependency anywhere in the tree is the MCP SDK that the optional desktop adapter needs. What can rot out from under you is the runtime path, because it calls a gateway whose API is not yours to freeze. See [../SECURITY.md](../SECURITY.md) for the two paths.
 
 **The two things that decay anyway.** Regulated citations go stale, and the gate is built to fail on the date rather than hide it. And [COMPARISON.md](COMPARISON.md) ages, which is why it carries a comparison date and a re-check procedure. Forking is the intended succession plan, not a fallback.
 
 **9. How do I know anything in here is true?**
 
-You do not, and the tooling says so out loud: the gate's own output states that green means the tree is consistent, not that any document in it is true. What is checkable is provenance. Every method names an originator and a year in this repository's own words rather than in copied text, so a wrong restatement can be caught against the source. Every worked number is labeled invented and attached to a fictional product. And six literal metric strings from the maintainer's own past drafts are blocked tree-wide, so a number nobody could source cannot quietly return.
+You do not, and the tooling is documented to make exactly one claim: green means the tree is consistent, not that any document in it is true. It prints `ok` and a check count, and everywhere that green is described, in [README.md](../README.md), in `harness/README.md`, and in the gate's own header comment, it is described as structural and nothing more. What is checkable is provenance. Every method names an originator and a year in this repository's own words rather than in copied text, so a wrong restatement can be caught against the source. Every worked number is labeled invented and attached to a fictional product. And six literal metric strings from the maintainer's own past drafts are blocked tree-wide, so a number nobody could source cannot quietly return.
 
 **What to do with a claim you doubt:** treat it the way the tree treats any class-five belief. Write it into your own assumptions register with your name and a validate-by date, act on it if the cost of being wrong is small, and go and check the primary source before it reaches a gate. A sentence in a repository is an argument, not evidence, and that includes the sentences in this file.
 
@@ -94,7 +94,12 @@ Beside them, not against them. The tracker owns the present, which is what is in
 
 **14. Do I have to use all of it, and what can I delete?**
 
-No, and most of it. The intended first hour is [os/OPERATING-LOOP.md](../os/OPERATING-LOOP.md), [os/WHICH-DOCUMENT.md](../os/WHICH-DOCUMENT.md), and one template. Safe deletions, because nothing depends upward on them: `learn/`, `examples/`, `routing/`, `agents/`, `skills/`, `system/`, `modules/regulated/` when no supervisor governs your product, and any domain or knowledge card outside your market. Keep `os/` and the templates you actually use, because the gates reference them by path.
+No, and most of it. The intended first hour is [os/OPERATING-LOOP.md](../os/OPERATING-LOOP.md), [os/WHICH-DOCUMENT.md](../os/WHICH-DOCUMENT.md), and one template. Two kinds of deletion, and they are not the same:
+
+- **Deletions the gate supports.** `harness/` only. Remove it and `python3 lint.py --os`, `python3 tools/check_manifest.py`, and the graph check all still pass, which is the run recorded in `harness/README.md`.
+- **Deletions that keep the documents and cost you the gate.** `learn/`, `examples/`, `routing/`, `agents/`, `skills/`, `system/`, `modules/regulated/` when no supervisor governs your product, and any domain or knowledge card outside your market. Nothing depends upward on these, so every remaining template still fills and every gate still runs by hand. They are also link targets, so the lint gate then reports the links that no longer resolve, in the hundreds for the four AI layers. Fine if you never run the gate; a fork that wants a green gate has to remove the pointers too.
+
+Keep `os/` and the templates you actually use, because the gates reference them by path.
 
 **The one deletion that quietly costs you** is `frameworks/`, because the methods it runs are the ones people otherwise perform from memory, and a scoring argument reconstructed from memory three weeks later is unauditable. If space is the concern, keep the four worksheets your gates actually consume and delete the other fifty-four.
 
@@ -110,7 +115,7 @@ Any capable chat model runs the boot prompt, free tiers included, which is why [
 
 **16. Who owns my data and my output?**
 
-You do, on both counts. The repository sends nothing anywhere: no telemetry, no service, no network call. Whatever you paste into a model goes wherever that vendor's terms say it goes, which is between you and them, and if your product data cannot leave your environment then method one uses no model at all. Filled artifacts live in `products/<name>/`, which is gitignored and never shipped here, so your work cannot collide with an update or be committed into this tree by accident. See [../SECURITY.md](../SECURITY.md).
+You do, on both counts. There is no telemetry, no account, and no hosted service, and nothing here calls out on its own. One component makes a network call and only when you run it: `harness/runner.py` posts to the gateway URL you put in your own environment, sending the prompt it assembled plus the input you passed it, and reading its credential from an environment variable it never writes down. The desktop adapter speaks over standard input and output, listens on no port, and places no model call. Whatever you paste into a model goes wherever that vendor's terms say it goes, which is between you and them, and if your product data cannot leave your environment then method one uses no model at all. Filled artifacts live in `products/<name>/`, which is gitignored and never shipped here, so your work cannot collide with an update or be committed into this tree by accident. See [../SECURITY.md](../SECURITY.md).
 
 **The license is MIT** ([../LICENSE](../LICENSE)): fork it, rename it, put your company's field names in it, strip what you disagree with. The one thing worth preserving in a fork is the attribution line on each card and worksheet, because that is what lets the next reader check a method against its source rather than against your restatement of it.
 
