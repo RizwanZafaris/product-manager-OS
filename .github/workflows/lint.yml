@@ -48,7 +48,8 @@ jobs:
       # reports nothing to write. Anything else means a new file landed without
       # its declaration; run the script and commit the result.
       - name: Frontmatter declarations are complete
-        run: python3 tools/frontmatter_init.py --dry-run | grep -q "created: 0, extended: 0"
+        run: |
+          python3 tools/frontmatter_init.py --dry-run | grep -q "created: 0, extended: 0"
 
       - name: Unit tests (root)
         run: python3 -m unittest test_lint.py -v
