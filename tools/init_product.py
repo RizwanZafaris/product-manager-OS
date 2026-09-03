@@ -54,7 +54,8 @@ TEMPLATES_DIR = REPO / "templates"
 # where a filled artifact lands or what its links say once it lands there.
 from workspace import (                                   # noqa: E402
     BARE_PATH_RE, FOLDER_FOR_STAGE, FOLDER_FOR_TEMPLATE_DIR, HEADER_LINE_RE,
-    LEFT_ALONE, LINK_RE, PRODUCT_SLUG_RE, SPECIAL_DESTINATIONS, STAGE_FOLDERS,
+    LEFT_ALONE, LINK_RE, REF_DEF_RE, PRODUCT_SLUG_RE, SPECIAL_DESTINATIONS,
+    STAGE_FOLDERS,
     WorkspaceError, broken_links, declared_stage, destination_for, read_text,
     rewrite_links, rewrite_target, safe_product_slug,
 )
@@ -148,6 +149,9 @@ def relative_links(text):
     total = 0
     for line in text.splitlines():
         targets = [m.group(1) for m in LINK_RE.finditer(line)]
+        definition = REF_DEF_RE.match(line)
+        if definition:
+            targets.append(definition.group(2))
         if HEADER_LINE_RE.match(line):
             targets += [m.group(1) for m in BARE_PATH_RE.finditer(line)]
         for raw in targets:

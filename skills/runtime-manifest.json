@@ -1,0 +1,48 @@
+{
+  "format": "pmos.skill-manifest/v1",
+  "schema": "pmos.skills.v1",
+  "skills": {
+    "evidence-research": {
+      "SKILL.graph.yml": "1a8fa6acfda341e97775f9f0d1e70cdd9cbe3ef59678d5bc81757e15dbe59190",
+      "SKILL.md": "ec719223fb21c6f86ec686f7d0468a31889b5071cdb5e73e692d6f7d776fa1d6",
+      "contract.json": "904bd2f23b989f1385f54a6e2c570192d478497760e795ba3819ad28a0092d30",
+      "template.md": "2889daeb84e69ef390a8b66a872eb98a4409dddd6336a46db69acfafe39152dc"
+    },
+    "experiment-analysis": {
+      "SKILL.graph.yml": "ca16bc5843bcf40aa6e72406e8e9d28f31acca7bd7ec58d7fe0cd03d9c76c8a7",
+      "SKILL.md": "e06809fec3aabccb23a05f8ae4f11d818dc31375f44e14c9a772aacbbf62962f",
+      "contract.json": "b1a09063c8465e3493cdd7ae0689135c2792f55489d1cc05ff1cfbeeb881e66e",
+      "template.md": "a0a262a13e883284751f55dc2635317c42da02b6f00724780eb950843afe51e7"
+    },
+    "independent-review": {
+      "SKILL.graph.yml": "23d0e47f99605fc9a65472d787c5a0f0a87f9816505148c89f4d41a32ea237ce",
+      "SKILL.md": "c56ce484ae4fff620365703808a52aa29f1a0617e43407fb7444d8eaa1dfe7f2",
+      "contract.json": "104c5c4885ed2055b147d887d17b46d107cd1d3d043fcfd96869d4d6b6ca9a6e",
+      "template.md": "7ff56889325c56ffbf29a95e3ac8fe0490b3fab2ee65d942d0d7445175b82da2"
+    },
+    "lifecycle-conductor": {
+      "SKILL.graph.yml": "256b1bc19d6a75116cd17f867cbcacb08366492864e2748e9783a049bcab0625",
+      "SKILL.md": "15b789269df1616f203d485498aac6ca51b223a81e90f7211063662d5f674bf4",
+      "contract.json": "dc5de87665028b1754c7d511c972732c48fff4f61489b2e26295dadb7a16c58f",
+      "template.md": "6c2abafa5951663e0f21cd5c5c49e28f5f8229f20d520ae5904a3b4cecc0fa72"
+    },
+    "portfolio-planning": {
+      "SKILL.graph.yml": "7c83ca27e9f5639c3dcaf0d2b83672dff516d3ddb67d36e068b10613d50ea1af",
+      "SKILL.md": "6cd481dd4f52cef31fd0478c66ce4db776dbb8b5fc66fcad9a2215fc88770842",
+      "contract.json": "a30a04a576d6597f70b15d5f336744c89bd1028ea1630cb5b02c562f30cbcd2c",
+      "template.md": "740030fbdebe638f7b513401599bf0cfcba1f54c77b585a9f7246903bf03729b"
+    },
+    "product-definition": {
+      "SKILL.graph.yml": "13d0c5f77570f9766a314b729b0ce2fc7b1b49108082da0979088a7fb9eb85ae",
+      "SKILL.md": "297a656a949ea705ffae93c871776c9d87218bf13b259d735585c36097788327",
+      "contract.json": "5d754e00b628c1d9db6eeeef27cd09e900bd54bc83a38094d21766d54780d967",
+      "template.md": "5563a7cb865f2b6ab013d1f1f4b9ab3f765f236eed60ead35db8606e252ba77e"
+    },
+    "release-governance": {
+      "SKILL.graph.yml": "6d76b973daf21ab2971d9475b80d00f3f432b259a3213770624552dd5f755673",
+      "SKILL.md": "b8e2cb48dc09de7f3fb13244155d918db6c44573d6f218723258a8a1698f880d",
+      "contract.json": "f9ac83129d31a5e79eb0fb3dd6dcee28be18c03da0828a2a06081c4a3e51a937",
+      "template.md": "472b52a087fef37c523111fe3964e63c8e3633dccd9d40488bbd704ab19d991d"
+    }
+  }
+}

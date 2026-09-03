@@ -1,6 +1,6 @@
 # Routing: which model runs which task, and why
 
-This directory is the WITH WHICH MODEL layer of the OS. Everything above it (templates, skills, agents) names work; this layer decides how expensive a model that work deserves. The config is [omniroute.config.json](omniroute.config.json); this file is its manual.
+This directory is the optional WITH WHICH MODEL layer of the OS. Everything above it (templates, skills, agents) names work; this layer decides how expensive a model that work deserves when an operator chooses to make a provider call. The document path and the `pmos` local runtime do not require OmniRoute or any model. The config is [omniroute.config.json](omniroute.config.json); this file is its manual.
 
 ## OmniRoute setup
 
@@ -101,46 +101,33 @@ Auto tiers are the default and the right choice for most users: OmniRoute picks 
 3. Record the model ID actually used in each artifact's telemetry. A fixed combo without per-call logging buys nothing at audit time.
 4. Re-run any standing eval sets when you change a combo. A model swap is an upgrade decision, not a config edit; the AI templates in `../templates/ai/` treat it as one.
 
-## Running the whole OS on free models
+## OpenRouter and free models
 
-You do not need a paid provider to run this. OpenRouter publishes a set of free models,
-several with large context windows, and three named combos are enough to cover the
-tiers. Connect the provider once, create the combos, then point the config at them:
+OmniRoute is optional. The local runtime also supplies `pmos.openrouter.OpenRouterProvider`, a standard-library adapter that discovers the current OpenRouter catalog at runtime and sends OpenAI-compatible chat-completions requests only when the caller asks it to. It reads `OPENROUTER_API_KEY` (or a configured environment-variable name) at request time. Never put that value in a config file, shell history, artifact, or repository.
 
-```bash
-omniroute providers add openrouter --credential "$OPENROUTER_API_KEY"
-omniroute combo create pmos-extraction --strategy priority \
-  --models "openrouter/<fast-free-model>,openrouter/<backup-free-model>"
-omniroute combo create pmos-drafting   --strategy priority --models "openrouter/<free-model>"
-omniroute combo create pmos-judgment   --strategy priority --models "openrouter/<largest-free-reasoning-model>"
-```
+The adapter classifies a model as free only from the current catalog's prompt and completion pricing metadata. That is a routing input, not a promise: the free catalog, availability, rate limits, capabilities, and resolved model can change without notice. Do not hard-code a model name from this file or call a free model a permanent tier.
 
-Three things this teaches, and they are worth more than the saved money.
+Use a bounded operator workflow instead:
 
-**Free tiers are unreliable, which is why the fallback chain exists.** Two of the free
-models tested for this section answered `Provider returned error` on a plain ping while
-three answered normally. A combo with one model is a combo that fails on a bad
-afternoon. List a second.
+1. Discover the current catalog and filter for the needed context window, modalities, tools, privacy permission, budget, and latency. Discovery failures become a bounded, secret-free error rather than escaping the routing boundary. Every runtime request carries a bounded `max_output_tokens`; the router conservatively includes prompt bytes in its context/cost reservation, then checks authoritative usage when returned. Budgeted fallback reserves the worst-case capped catalog cost across every permitted attempt before the first call.
+2. Put only eligible models in a bounded fallback order. A provider response that
+   omits or reports a different resolved model is rejected: its privacy, cost,
+   capability, and certification metadata were not the metadata used to admit
+   the requested model. Reported output beyond the token cap, output beyond the
+   conservative byte backstop, reported spend beyond the request budget, or
+   actual/reported latency beyond the remaining request boundary is also
+   rejected. Reported and usage-derived spend is accumulated even for a paid
+   response later rejected by another policy check; a fallback runs only when
+   its full reservation still fits the remaining budget. The OpenRouter adapter requires authoritative usage fields, caps
+   the response body from the requested output allowance, and receives the
+   remaining timeout from the router. Generic adapters receive the same
+   remaining timeout/request contract and are checked again on return. Safe
+   provenance therefore records the exact accepted model, never an unapproved
+   substitution or an estimate presented as actual behavior.
+3. Run an approved smoke test before relying on an integration. A local unit test or a dynamic catalog response does not prove live behavior, vendor terms, or availability.
+4. Require explicit certification for high-risk work. Reachability, zero price, a friendly name, or a successful ping never makes a model judgment-grade. If no certified model is eligible, queue or block the work rather than silently downgrading it.
 
-**A reasoning model spends tokens on reasoning before it writes anything.** Ask one for
-twenty tokens and you get an empty answer, because the budget went on the thinking. The
-runner reports that as an unusable reply, which is correct: an empty completion is a
-failure, not an answer. Give the judgment tier real output headroom.
-
-**A model that narrates is wrong for extraction.** One free model answered a
-"reply with exactly PONG" probe with "Here's a think...", which is harmless in chat and
-fatal in a tier whose job is copying text unchanged. Probe the tier with an exact-output
-question before you trust it, and put the quietest model first in the extraction combo.
-
-Certification is separate from availability. The runner will still queue judgment work
-until an operator names the resolved model as judgment-grade:
-
-```bash
-export OMNIROUTE_JUDGMENT_MODELS="<the concrete model id your judgment combo resolves to>"
-```
-
-That step is deliberate. A model being reachable is not a claim that anyone has decided
-it is good enough to think with, and free models change without notice.
+The runtime's OpenRouter adapter is intentionally separate from OmniRoute: use either, both through an adapter boundary, or neither. An OmniRoute deployment may still use the same tier doctrine and fixed-fallback recipe above, but it does not become a dependency of the local runtime.
 
 ## Note for Hermes users (litellm)
 

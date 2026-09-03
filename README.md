@@ -4,7 +4,7 @@
 
 Six stages, six gates, a knowledge layer with named attribution, runnable framework worksheets, fill-in templates for every artifact a product needs, and optional AI layers stacked on top. It is a document system first and an AI system second. Every template works with a text editor and a pencil. The AI layers, boot prompts, skills, agents, and model routing, are accelerants on a format that stands without them. Stated precisely, because the strong version of that sentence does not survive contact: you can run this tree with no model at all, and you cannot delete a content layer and keep a green quality gate. The exact limit is in the quality gate section below.
 
-Every prompt here is a file you can read. There is no wrapper, no account, and no hosted prompt you cannot inspect: this is a versioned prompt library in a git repository, which means you can fork it, diff it, and see exactly what changed between one version and the next. The four ways to run it are below, and the first one uses no model at all. And one more thing you can inspect: this repository was built with Claude Code by a working payments CPO. Every non-merge commit carries a trailer saying so, and every prompt it produced is a file you can read and argue with. [docs/FAQ.md](docs/FAQ.md) answers what that means for what you should audit hardest here, since the label matters less than which parts of a tree a model is good at producing and bad at grounding.
+Every prompt here is a file you can read. The document path has no account, hosted prompt, or hidden wrapper; the optional local runtime is equally inspectable Python under `pmos/`. This remains a versioned system in a git repository: you can fork it, diff it, and see what changed. The manual document path and the local runtime need no model. And one more thing you can inspect: the document system through 0.7.1 was built with Claude Code by a working payments CPO; the 0.8.0 runtime hardening was implemented and red-teamed with OpenAI Codex agents. AI-assisted non-merge commits identify the tool in their trailers, and the prompts and policies remain files you can read and argue with. [docs/FAQ.md](docs/FAQ.md) answers what that means for what you should audit hardest here, since the label matters less than which parts of a tree a model is good at producing and bad at grounding.
 
 ## Say "start"
 
@@ -60,7 +60,7 @@ Two tracks run across the loop rather than inside one stage. PLANNING (roadmap, 
 
 The loop is defined in [os/OPERATING-LOOP.md](os/OPERATING-LOOP.md), the gate checklists in [os/STAGE-GATES.md](os/STAGE-GATES.md), and a narrative walkthrough of a full pass in [os/HOW-TO-RUN-A-PRODUCT.md](os/HOW-TO-RUN-A-PRODUCT.md). Two shorter files answer the questions that come first in practice: [os/WHICH-DOCUMENT.md](os/WHICH-DOCUMENT.md) decides how much document a given decision deserves, and [os/PRODUCT-WORKSPACE.md](os/PRODUCT-WORKSPACE.md) says where the filled artifacts live once you have them.
 
-## Four ways to run it
+## Five ways to run it
 
 **Method 1: bare templates, no model.** Clone the repository, copy the template for the artifact you need, fill it in with any editor. The gates are checklists a human works through. No document in `knowledge/`, `frameworks/`, `templates/`, or `os/` needs an AI layer to be readable or fillable: where a template names a skill, that is a pointer to a procedure, not a dependency you have to satisfy. What those pointers do cost you is the gate, and that is said plainly in the quality gate section below.
 
@@ -68,7 +68,9 @@ The loop is defined in [os/OPERATING-LOOP.md](os/OPERATING-LOOP.md), the gate ch
 
 **Method 3: agent CLIs.** Claude Code reads [CLAUDE.md](CLAUDE.md), Codex and other agent runtimes read [AGENTS.md](AGENTS.md), and both pick up the procedures in `skills/` and the instruction files in `agents/`. Say "start" for the conducted interview above, or ask for the artifact you need directly; the router maps the request to the right skill and template.
 
-**Method 4: API-driven with OmniRoute.** Point [routing/omniroute.config.json](routing/omniroute.config.json) at an OmniRoute instance and each pipeline stage calls its tier: extraction on a cheap tier, drafting on a coding tier, judgment on a frontier reasoning tier. Setup and the tier doctrine are in [routing/README.md](routing/README.md). This is the one method that makes a network call and reads a credential from your environment; what crosses that boundary, and what the runner refuses to write, is in [SECURITY.md](SECURITY.md).
+**Method 4: local PMOS runtime.** Install the dependency-free `pmos` package and use its local SQLite store, transactional commits, leased queue, scoped memory, deterministic Conductor, migrations, provenance, policy hooks, and typed integration seams. The runtime has no model or network requirement. Its golden path and recovery path are in [docs/RUNTIME-QUICKSTART.md](docs/RUNTIME-QUICKSTART.md).
+
+**Method 5: API-driven model routing.** The runtime can route through the standard-library OpenRouter adapter, or you can keep the existing [routing/omniroute.config.json](routing/omniroute.config.json) setup with OmniRoute. Both are optional provider boundaries. Setup, tier doctrine, dynamic discovery, and the free-model limits are in [routing/README.md](routing/README.md); what crosses either boundary and what local controls do not prove is in [SECURITY.md](SECURITY.md).
 
 ## Quickstart
 
@@ -96,6 +98,23 @@ Use the tool rather than `cp`, for one reason worth knowing. A template's links 
 
 A filled example is one file away: [examples/expense-copilot-discovery.md](examples/expense-copilot-discovery.md) is that same template answered end to end, and [examples/checkout-modernization-brownfield.md](examples/checkout-modernization-brownfield.md) shows the templates attached to a product that was already live and already messy.
 
+## Local runtime quick path
+
+The document workspace above is the portable record. Use the optional local runtime when you need durable local transactions, queue and memory semantics, policy checks, migration, or offline provenance:
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install --no-build-isolation .
+pmos init --path ./my-product --product-id my-product
+pmos status --path ./my-product
+pmos verify --path ./my-product
+```
+
+`pmos` creates only local state under `./my-product/.pmos/`; it does not contact a provider by default. Read [docs/RUNTIME-QUICKSTART.md](docs/RUNTIME-QUICKSTART.md) before migrating an existing workspace or producing a provenance manifest.
+
+**Local evidence is not external evidence.** A local green run proves only the executable local contract. Hosted CI, live provider behavior, vendor sandboxes, non-maintainer use, independent human review, organization-specific regulatory approval, and release publication remain separate required attestations in [docs/readiness/external-gates.json](docs/readiness/external-gates.json).
+
 ## Module map
 
 | Directory | Layer | Answers |
@@ -109,7 +128,8 @@ A filled example is one file away: [examples/expense-copilot-discovery.md](examp
 | [skills/](skills/README.md), [agents/](agents/README.md) | Skills and agents | HOW to produce it with an AI runtime: procedures, and the roles that run them |
 | [system/](system/README.md) | System prompts | WHO the model becomes |
 | [routing/](routing/README.md) | Routing | WITH WHICH model each task runs |
-| `harness/` | Harness | HOW a runtime resolves a request into a route: the manifest, the tier decision, the invariants, three adapters. This is the experimental layer, and `harness/README.md` states what it is not ready for in a table: it is not a job queue, not a team system of record, not governance evidence, and not reproducible. Everything above this row carries none of those limits. Named in plain text rather than linked, because the directory is deletable and a link from here would break on the deletion |
+| [docs/RUNTIME-QUICKSTART.md](docs/RUNTIME-QUICKSTART.md), `pmos/` | Local runtime | HOW local state is made durable: transactional snapshots, leased work, two scoped memory planes, lifecycle and portfolio policy, approvals, adapters, migration, hooks, provenance, and a deterministic CLI. It is local engineering evidence, not a hosted service or external attestation |
+| `harness/` | Legacy route harness | HOW the document-route manifest stays aligned with the router table and legacy adapters. It remains optional and deletable; its own state-free limitations do not describe the `pmos/` runtime. Named in plain text rather than linked, because the directory is deletable and a link from here would break on the deletion |
 | [os/](os/README.md) | Operating loop | The six stages, the six gates, which document to write, and where filled artifacts live |
 | [os/maps/](os/maps/README.md), [docs/GRAPH.md](docs/GRAPH.md) | Graph | WHERE a file sits: one hub note per stage, and the link graph generated from the declarations every layer file carries |
 | [examples/](examples/README.md) | Worked examples | What a filled artifact looks like, greenfield and brownfield |
@@ -141,7 +161,7 @@ The layer sits between knowledge and templates and produces inputs, not artifact
 
 This repository does not assume a US software company. Discovery and compliance templates ask for markets, jurisdictions, and locales as first-class fields, the planning and roadmap material treats a regulator's calendar as something that outranks a RICE score, and the module below exists because a large share of the world's product work ships into a market with a supervisor in it.
 
-`modules/regulated/` is a verbatim import of the regulated AI PRD system: a section-0 regulatory overlay, eval-set acceptance criteria, guardrails with owners, and its own review gate. Its canonical source is the standalone regulated-ai-prd repository, which opens publicly at its v0.1 tag; until then the copies in this tree are the full readable reference. Five files are imported and all five are pinned by sha256 in the quality gate, so drift fails the build: the regulated PRD template, the worked dispute-summary example, and the three runnable files (`SKILL.md`, `lint.py`, `test_lint.py`) that let the module's own gate run from its directory. The sixth file in that directory, its `README.md`, is not pinned and is not a copy: it documents this repository's own import policy and is written here. Nothing imported is edited here; fixes happen in the source repo and are re-copied. Fixes happen in the source repo and are re-copied. The overlay activates at Gate 2 and Gate 5 when the product contains an AI or machine-learning feature and a financial or data regulator applies to it; see [modules/regulated/README.md](modules/regulated/README.md). It is scoped to two instruments, both about AI and machine learning, so a regulated product with no model in it gets no coverage here and should not tick those two gate lines. That gap is named, with what to do instead, in [os/STAGE-GATES.md](os/STAGE-GATES.md).
+`modules/regulated/` is a verbatim import of the regulated AI PRD system: a section-0 regulatory overlay, eval-set acceptance criteria, guardrails with owners, and its own review gate. Its canonical source is the standalone regulated-ai-prd repository, which opens publicly at its v0.1 tag; until then the copies in this tree are the full readable reference. Five files are imported and all five are pinned by sha256 in the quality gate, so drift fails the build: the regulated PRD template, the worked dispute-summary example, and the three runnable files (`SKILL.md`, `lint.py`, `test_lint.py`) that let the module's own gate run from its directory. The sixth file in that directory, its `README.md`, is not pinned and is not a copy: it documents this repository's own import policy and is written here. Nothing imported is edited here; fixes happen in the source repo and are re-copied. The overlay activates at Gate 2 and Gate 5 when the product contains an AI or machine-learning feature and a financial or data regulator applies to it; see [modules/regulated/README.md](modules/regulated/README.md). It is scoped to two instruments, both about AI and machine learning, so a regulated product with no model in it gets no coverage here and should not tick those two gate lines. That gap is named, with what to do instead, in [os/STAGE-GATES.md](os/STAGE-GATES.md).
 
 ## Quality gate
 
@@ -150,6 +170,8 @@ python3 lint.py --os
 ```
 
 Standard library only. It enforces, across the whole tree: no banned characters, no banned metric literals, no unowned placeholders outside sanctioned fill-in fields, every relative link resolves inside the repository and lands on a tracked file, every template carries its Stage/Knowledge/Skill header, every skill has exactly the two required frontmatter fields, all five imported regulated files match their pinned hashes, every path named in a system prompt exists, no credential-shaped string anywhere (no file is exempt, including the file that defines the patterns), every file in the six declaring layers carries a graph declaration whose layer matches its directory and whose stage, gate, and feeds paths hold, and every wikilink lands on a tracked file or on a uniquely declared alias. Green means the tree is consistent, not that any document in it is true.
+
+The local-runtime gates are separate and executable: `python3 tools/ci_gate.py` runs the checked runtime suites, while `python3 tools/readiness.py --local` evaluates the fixed local engineering rubric on a clean commit. Neither command makes an external gate pass; the required external evidence is deliberately listed separately.
 
 **What the gate expects, and what that costs a fork.** It expects the whole tree. Delete `harness/` and every gate still passes, which is proved in `harness/README.md` and is the one deletion the gate is built to support. Delete a content layer such as `skills/`, `agents/`, `system/`, or `routing/` and two different things happen: the remaining documents keep working, because a template's link to a skill is a pointer and the guidance is readable prose, and the link gate fails in the hundreds because those pointers no longer resolve. Deleting `modules/regulated/` costs a few dozen findings the same way. So the honest version of the claim is that the document layers are usable with no model and no AI layers present, and that a fork which deletes a layer has chosen to give up the gate or to fix the links it broke. An honest limit stated once beats a guarantee that fails on first contact.
 
@@ -167,6 +189,7 @@ This is all stated because the failure is common enough to plan for: systems in 
 - **Not an autopilot.** Gates are signed by people with the standing to stop a stage. A gate nobody can fail is a ceremony.
 - **Not a claim that a model's output is evidence.** Evidence-thin input produces confident-sounding, thin output. The gates exist to catch exactly that.
 - **Not legal or regulatory advice.** The regulated module tells you which questions to answer and where the primary text sits, never what the answer is in your entity or license class.
+- **Not an external-readiness certificate.** This repository cannot self-attest a hosted run, a live provider, a vendor sandbox, a non-maintainer journey, an independent team review, a regulated deployment, or a published release.
 
 Each of those four refusals comes from a belief, and the beliefs are argued rather than asserted in [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md): nine of them, each carrying the best counter-argument against it, the mechanism that enforces it, and the failure mode that shows up when the mechanism is present but hollow.
 

@@ -1627,6 +1627,21 @@ class AuditRegressionTests(unittest.TestCase):
             "%d link(s) across %d placed file(s) do not resolve from where "
             "the runner puts them" % (broken_links, broken_files))
 
+    def test_a_link_prefers_the_workspace_copy_over_the_blank_template(self):
+        """A resolving template link is still wrong once a filled copy exists."""
+        sys.path.insert(0, str(REPO / "tools"))
+        import workspace as ws
+
+        filled = self.workspace / "discovery" / "discovery-document.md"
+        filled.parent.mkdir(parents=True, exist_ok=True)
+        filled.write_text("# Filled discovery\n", encoding="utf-8")
+        relocated, error = ws.rewrite_target(
+            "templates/discovery/discovery-document.md", "",
+            "products/%s/definition" % self.slug, self.slug,
+        )
+        self.assertIsNone(error)
+        self.assertEqual("../discovery/discovery-document.md", relocated)
+
     def test_the_rewriter_sees_the_links_the_gate_sees(self):
         """An angle-bracket destination with a space in it was a link the gate
         judged and the rewriter never saw, so a workspace could pass
@@ -1645,6 +1660,55 @@ class AuditRegressionTests(unittest.TestCase):
         self.assertIn("<../../../GLOSSARY.md>", out,
                       "the angle brackets were dropped, so the rewritten "
                       "link no longer parses")
+
+    def test_an_inline_link_title_survives_relocation(self):
+        """A title is presentation content, not disposable parser syntax."""
+        sys.path.insert(0, str(REPO / "tools"))
+        import workspace as ws
+
+        text = '[guide](../../GLOSSARY.md "Glossary title")\n'
+        out, rewrites, skipped = ws.rewrite_links(
+            text, "templates/discovery", "products/p/discovery", "p")
+
+        self.assertEqual(
+            '[guide](../../../GLOSSARY.md "Glossary title")\n', out)
+        self.assertEqual(
+            [("../../GLOSSARY.md", "../../../GLOSSARY.md")], rewrites)
+        self.assertEqual([], skipped)
+
+    def test_a_reference_definition_is_relocated_with_its_title(self):
+        """The gate follows reference definitions, so the copier must too."""
+        sys.path.insert(0, str(REPO / "tools"))
+        import workspace as ws
+
+        text = ('[read the glossary][glossary]\n\n'
+                '[glossary]: ../../GLOSSARY.md "Glossary title"\n')
+        out, rewrites, skipped = ws.rewrite_links(
+            text, "templates/discovery", "products/p/discovery", "p")
+
+        self.assertEqual(
+            ('[read the glossary][glossary]\n\n'
+             '[glossary]: ../../../GLOSSARY.md "Glossary title"\n'), out)
+        self.assertEqual(
+            [("../../GLOSSARY.md", "../../../GLOSSARY.md")], rewrites)
+        self.assertEqual([], skipped)
+
+    def test_copy_verification_rejects_broken_reference_links(self):
+        """Reference links must not bypass the post-copy filesystem check."""
+        sys.path.insert(0, str(REPO / "tools"))
+        import workspace as ws
+
+        self.workspace.mkdir(parents=True)
+        note = self.workspace / "reference.md"
+        note.write_text(
+            ('[undefined use][nowhere]\n'
+             '[missing target][missing]\n\n'
+             '[missing]: does-not-exist.md "still missing"\n'),
+            encoding="utf-8")
+
+        dangling = ws.broken_links(note)
+        self.assertEqual(2, len(dangling), dangling)
+        self.assertEqual([1, 4], [line for line, _message in dangling])
 
     # ------------------------------------------------------------ P0: kind
 
