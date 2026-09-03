@@ -15,6 +15,7 @@ GENERATED FILE. Do not hand-edit. Written by `harness/adapters/claude-code/gener
 | Stage | None. See the note below. |
 | Gate | None. See the note below. |
 | Tier | extraction. A tier name, never a model. |
+| Kind | interactive. One turn of a conversation. Files no document. |
 | Skill | None. This row names no skill; the reads below carry the procedure. |
 
 The tier to model mapping lives in `routing/omniroute.config.json` and nowhere else. Read it there rather than assuming one here.
@@ -27,7 +28,7 @@ The router names a protocol inside os/CONDUCTOR.md, not a skill, so skill is nul
 
 1. Read every file under Read first, in the order listed, before you produce anything.
 2. There is no skill for this row. The reads are the procedure. Do not substitute a skill that looks close.
-3. Land the output in the template below that fits the request. One template, not all of them.
+3. This is one turn of a conversation. Follow the skill's own stopping rule, then stop and wait for the person to answer. Do not run ahead, and do not emit a filled template. Any template named below is where an accepted answer lands later, not what this turn produces.
 4. There is no gate on this output. Do not invent one, and do not report a gate as passed.
 5. Leave any unanswered field as `[OPEN: what is missing, who owns the answer]`. That is a valid value here.
 

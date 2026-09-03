@@ -1003,7 +1003,14 @@ class JsonSyntaxTests(unittest.TestCase):
         rel, line_no, code, message = problems[0]
         self.assertEqual("routing/omniroute.config.json", rel)
         self.assertEqual("JSON", code)
-        self.assertEqual(3, line_no)
+        # Which line CPython points at for a trailing comma is CPython's
+        # business and it has changed: 3.11 names the line the parser gave up
+        # on, 3.14 names the line the comma is on. Asserting one of them made
+        # this test a statement about the interpreter rather than about this
+        # gate, and it failed on a Python a user actually had installed. What
+        # the gate owes is a line inside the file, not a particular one.
+        self.assertIn(line_no, (2, 3),
+                      "the reported line is outside the malformed document")
         self.assertIn("does not parse", message)
         self.assertIn("column", message)
 

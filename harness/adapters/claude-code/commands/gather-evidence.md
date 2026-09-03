@@ -15,6 +15,7 @@ GENERATED FILE. Do not hand-edit. Written by `harness/adapters/claude-code/gener
 | Stage | DISCOVER |
 | Gate | 1 |
 | Tier | extraction. A tier name, never a model. |
+| Kind | artifact. Fills one template and files it in the product workspace. |
 | Skill | `skills/product-analyst/SKILL.md` |
 
 The tier to model mapping lives in `routing/omniroute.config.json` and nowhere else. Read it there rather than assuming one here.

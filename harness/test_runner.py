@@ -295,7 +295,7 @@ class WriteTests(unittest.TestCase):
                 runner.commit_staged(staged)
         finally:
             os.replace = real_replace
-        self.assertIn("partway", str(caught.exception))
+        self.assertIn("rolled back", str(caught.exception))
         self.assertEqual([p.name for p in self.dir.iterdir()
                           if ".tmp-" in p.name], [],
                          "staged copies were left behind after a failure")
@@ -1183,7 +1183,7 @@ class QueueOutcomeTests(unittest.TestCase):
                                     "answered")
 
         runner.call_with_fallback = stub
-        self.assertEqual(_quiet_run(self._args(), self.cfg, self.tasks), 0)
+        self.assertEqual(_quiet_run(self._args(), self.cfg, self.tasks), runner.EXIT_QUEUED)
         self.assertFalse(self.artifact.exists(),
                          "a queued run left an artifact on disk")
         self.assertIn("QUEUED", self._state())
@@ -1199,7 +1199,7 @@ class QueueOutcomeTests(unittest.TestCase):
         runner.call_with_fallback = stub
         os.environ["OMNIROUTE_DAILY_CAP_USD"] = "5"
         os.environ[runner.SPEND_ENV] = "5.01"
-        self.assertEqual(_quiet_run(self._args(), self.cfg, self.tasks), 0)
+        self.assertEqual(_quiet_run(self._args(), self.cfg, self.tasks), runner.EXIT_QUEUED)
         self.assertEqual(called["n"], 0)
         self.assertFalse(self.artifact.exists())
         self.assertIn("QUEUED", self._state())
@@ -1211,7 +1211,7 @@ class QueueOutcomeTests(unittest.TestCase):
         runner.call_with_fallback = stub
         args = self._args(probe_results={"extraction":
                                          _failed_reply("extraction")})
-        self.assertEqual(_quiet_run(args, self.cfg, self.tasks), 0)
+        self.assertEqual(_quiet_run(args, self.cfg, self.tasks), runner.EXIT_QUEUED)
         self.assertFalse(self.artifact.exists())
         self.assertIn("no executable target", self._state())
 
@@ -1228,15 +1228,20 @@ class QueueOutcomeTests(unittest.TestCase):
             task="conduct-product-journey", transport="cli",
             probe_results={"judgment": _usable_reply("judgment",
                                                      "pro-model-1")})
-        self.assertEqual(_quiet_run(args, self.cfg, self.tasks), 0)
+        self.assertEqual(_quiet_run(args, self.cfg, self.tasks), runner.EXIT_QUEUED)
         self.assertEqual(called["n"], 0)
         self.assertIn("QUEUED", self._state())
         self.assertIn("cli transport", self._state())
 
     def test_a_degraded_run_says_so_on_the_artifact_face(self):
+        # Driven through critique-strategy rather than conduct-product-journey.
+        # Both run on the judgment tier, but only one of them files a document:
+        # the Conductor is an interactive route now, and an interactive route
+        # that left an artifact behind is the thing its kind exists to stop.
         cfg = json.loads(json.dumps(self.cfg))
         cfg["tiers"]["judgment"]["keylessFallback"]["enabled"] = True
-        state_template = (REPO / "templates" / "execution" / "state.md")
+        state_template = (REPO / "templates" / "planning"
+                          / "product-strategy.md")
         body = state_template.read_text(encoding="utf-8")
 
         def stub(cfg_, tier, messages, results, transport, log, **kwargs):
@@ -1251,14 +1256,14 @@ class QueueOutcomeTests(unittest.TestCase):
 
         runner.call_with_fallback = stub
         args = self._args(
-            task="conduct-product-journey",
+            task="critique-strategy",
             probe_results={
                 "judgment": _failed_reply("judgment"),
                 runner.target_key("auto/reasoning"):
                     _usable_reply("judgment", "free-reasoner-1")})
         self.assertEqual(_quiet_run(args, cfg, self.tasks), 0)
-        artifact = (runner.PRODUCTS_DIR / self.slug / "execution"
-                    / "state.md").read_text(encoding="utf-8")
+        artifact = (runner.PRODUCTS_DIR / self.slug / "planning"
+                    / "product-strategy.md").read_text(encoding="utf-8")
         self.assertIn("judgment tier: degraded, reviewed by a person before "
                       "use", artifact,
                       "a keyless-fallback artifact did not say it was "
@@ -1361,7 +1366,8 @@ class WholeRunTests(unittest.TestCase):
                                     "--input", "one line of evidence"])
         finally:
             runner.urllib.request.urlopen = real
-        self.assertEqual(code, 0)
+        self.assertEqual(code, runner.EXIT_QUEUED,
+                         "deferred work reported itself as a completed run")
         self.assertIn("WORK QUEUED", out.getvalue())
         self.assertFalse((runner.PRODUCTS_DIR / self.slug / "discovery"
                           / "evidence-note.md").exists(),

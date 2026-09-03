@@ -15,6 +15,7 @@ GENERATED FILE. Do not hand-edit. Written by `harness/adapters/claude-code/gener
 | Stage | None. See the note below. |
 | Gate | None. See the note below. |
 | Tier | extraction. A tier name, never a model. |
+| Kind | reference. An answer read out of the tree. Files no document. |
 | Skill | None. This row names no skill; the reads below carry the procedure. |
 
 The tier to model mapping lives in `routing/omniroute.config.json` and nowhere else. Read it there rather than assuming one here.
@@ -27,7 +28,7 @@ No skill and no artifact: these files produce none. Give the counter-argument th
 
 1. Read every file under Read first, in the order listed, before you produce anything.
 2. There is no skill for this row. The reads are the procedure. Do not substitute a skill that looks close.
-3. This route produces no template artifact. Say what you found and stop.
+3. Answer from the reads and stop. Quote the file that governs the answer and name it by repo path. If the reads do not answer it, say so and name what would.
 4. There is no gate on this output. Do not invent one, and do not report a gate as passed.
 5. Leave any unanswered field as `[OPEN: what is missing, who owns the answer]`. That is a valid value here.
 

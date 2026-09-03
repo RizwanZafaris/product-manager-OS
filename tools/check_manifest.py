@@ -77,7 +77,19 @@ GATES = (1, 2, 3, 4, 5, 6)
 
 PATH_KEYS = ("skill", "templates", "reads")
 REQUIRED_KEYS = ("id", "router_row", "trigger", "stage", "gate", "tier",
-                 "skill", "templates", "reads", "invariants")
+                 "kind", "skill", "templates", "reads", "invariants")
+
+# What running a route produces. The runner branches on this, and a route that
+# loses its kind would fall back to being treated as a document producer, which
+# is the assumption that made the Conductor's contract unsatisfiable. The list
+# is duplicated from harness/runner.py deliberately: this checker has to keep
+# passing on a tree with no harness/ in it, so it cannot import the runner.
+KINDS = ("artifact", "interactive", "reference", "report")
+
+# A route that files a document needs somewhere to put it. The other two kinds
+# must not name a template, because naming one is how a reading route gets
+# mistaken for a drafting one.
+WRITING_KINDS = ("artifact", "report")
 
 ID_RE = re.compile(r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$")
 ROUTER_HEADING = "## Router"
@@ -469,6 +481,23 @@ def check_manifest(root):
             if key not in entry:
                 fail(line_no, "SHAPE", "%s is missing the required key %s."
                      % (entry_id or "an entry", key))
+        kind = entry.get("kind")
+        if "kind" in entry and kind not in KINDS:
+            fail(line_no, "KIND", "%s: kind %r is not one of %s. The runner "
+                 "branches on this value and implements no other."
+                 % (entry_id, kind, ", ".join(KINDS)))
+        elif kind == "artifact" and not (entry.get("templates") or []):
+            fail(line_no, "KIND", "%s: kind artifact names no template, so a "
+                 "run of it has nowhere to land. Give it a template, or give "
+                 "it the kind that matches what it actually produces."
+                 % entry_id)
+
+        # A non-writing kind may still name templates. They are the documents
+        # the route works with rather than a destination for its output, which
+        # is why only kind artifact is required to have one and only kind
+        # artifact resolves the list to a path. Forbidding them here would say
+        # the Conductor has nothing to do with STATE.md, and it has everything
+        # to do with it.
         if not isinstance(entry_id, str) or not ID_RE.match(entry_id or ""):
             fail(line_no, "ID", "%r is not a kebab-case id." % (entry_id,))
         elif entry_id in seen_ids:
