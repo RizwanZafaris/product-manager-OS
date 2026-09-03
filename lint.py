@@ -70,6 +70,38 @@ and the wikilink spec has to be able to write [[target]] in prose. The secret
 gate exempts nothing. A real key inside a document about the secret gate is
 still a real key, so the patterns here are written not to match their own source
 text instead.
+
+Workspace mode:
+
+    python3 lint.py --workspace products/my-product
+
+products/ and learn/products/ are excluded from Git and from tree mode, and both
+exclusions stay: a half-filled draft must never fail the repository's build. The
+cost of that, until this mode existed, was that a user's work was checked by
+nothing at all. This is the opt-in. It runs the five content checks over one
+workspace directory and exits non-zero on failure: links, secrets, placeholders,
+dashes, and banned metric strings. Every file under the directory is read, and
+the workspace is not required to be under products/.
+
+What it deliberately does not run: the template header block, SKILL.md
+frontmatter, graph declarations, wikilink resolution, the system/ path gate, the
+integrity pins, manifest agreement, and the whole PRD gate (required sections,
+as-of date, eval table). A filled artifact is not a template and not a layer
+file, so those checks would report the document for being what it is supposed to
+be. Links may point back into the repository: the containment boundary is the
+repository root, not the workspace, so ../../os/STAGE-GATES.md resolves and
+../../../etc/hosts still fails.
+
+JSON mode:
+
+    python3 lint.py --json-syntax
+
+Parses every tracked .json file and reports the file, line, and column of each
+syntax error. CI ran no JSON parser before this, so a corrupt
+routing/omniroute.config.json or harness/MANIFEST.json passed the build: every
+other check reads those files as text, and text is what a broken JSON file still
+is. Tree mode is untouched and still runs eleven checks; this is a separate step
+so the eleven keep their meaning.
 """
 from __future__ import annotations
 
@@ -78,10 +110,12 @@ import base64
 import collections
 import datetime as _dt
 import hashlib
+import json
 import math
 import posixpath
 import re
 import sys
+import urllib.parse
 from pathlib import Path
 
 STALE_AFTER_DAYS = 180
@@ -463,7 +497,30 @@ BASE64_RUN_RE = re.compile(r"[A-Za-z0-9+/]{24,}={0,2}")
 RULE_BEARING = {"docs/ARCHITECTURE.md", "lint.py", "test_lint.py"}
 
 PLACEHOLDER_RE = re.compile(r"\b(TBD|TODO|FIXME|XXX)\b", re.I)
-LINK_RE = re.compile(r"\]\(([^)\s]+)\)")
+
+# An inline link destination in every spelling CommonMark allows: bare, wrapped
+# in angle brackets, followed by a title, and percent-encoded. The old pattern
+# read one of those and silently matched nothing for the rest, so a link with a
+# space or a title in it was not a broken link the gate reported, it was a link
+# the gate never saw. The empty destination is allowed to match, because []()
+# resolves to nothing and is handled below rather than skipped by the regex.
+LINK_RE = re.compile(
+    r"\]\(\s*(<[^<>\n]*>|[^\s()]*)"
+    r"(?:\s+(?:\"[^\"\n]*\"|'[^'\n]*'|\([^()\n]*\)))?\s*\)")
+
+# The reference spellings: [text][label] and the collapsed [label][]. The two
+# bracket groups must touch, so "- [ ] [UAT](uat-plan.md)" stays a checkbox
+# beside an inline link rather than becoming a reference to a label named " ".
+# The definition line gives a label its destination, and that destination is
+# checked exactly like an inline one.
+REF_USE_RE = re.compile(r"\[([^\[\]]*)\]\[([^\[\]]*)\](?!\()")
+REF_DEF_RE = re.compile(
+    r"^ {0,3}\[([^\[\]]+)\]:\s*(<[^<>]*>|\S+)"
+    r"(?:\s+(?:\"[^\"]*\"|'[^']*'|\([^()]*\)))?\s*$")
+
+ATX_RE = re.compile(r"^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$")
+HTML_ANCHOR_RE = re.compile(
+    r"<a\s[^>]*?\b(?:name|id)\s*=\s*[\"']([^\"']+)[\"']", re.I)
 REPO_PATH_RE = re.compile(
     r"\b((?:os|templates|knowledge|skills|agents|system|routing|modules|"
     r"examples|docs)/[A-Za-z0-9._/\-]*[A-Za-z0-9])")
@@ -715,14 +772,28 @@ def wikilink_lands(target, tree, aliases, basenames):
     return None
 
 
+# Directories the walker never enters: VCS internals, and the scratch
+# directories .gitignore already keeps out of the repository. .pytest_cache is
+# why this is a named set rather than the four it used to be: it holds its own
+# README.md, so the wikilink gate's count of files named README.md came out at
+# 23 on a machine where pytest had run and lower on one where it had not. A gate
+# whose view of the tree depends on local scratch is not a gate.
+#
+# .obsidian is deliberately NOT in this set. It is the committed vault config,
+# it ships with the repository, and it is content the gate is supposed to judge.
+# That is also why this is a list of directory names and never a rule about a
+# leading dot: the dot says nothing about whether Git tracks the directory.
+SCRATCH_DIRS = {".git", "__pycache__", ".venv", "node_modules", ".pytest_cache"}
+
+
 def tracked_files(root):
-    """Every file in the tree except VCS internals, caches, and user workspaces.
+    """Every file in the tree except VCS internals, scratch, and workspaces.
 
     products/ and learn/products/ hold a user's own filled drafts (gitignored);
     the gate judges the shipped system, never someone's work in progress. The
     two workspace README.md files stay in scope because they ship with the repo.
     """
-    skip = {".git", "__pycache__", ".venv", "node_modules"}
+    skip = SCRATCH_DIRS
     for path in sorted(root.rglob("*")):
         if path.is_file() and not (skip & set(path.parts)) \
                 and not path.name.startswith("._"):
@@ -745,6 +816,125 @@ def in_angle_field(line, start):
     return left != -1 and line.find(">", left) > start
 
 
+def slug(heading):
+    """A heading as the anchor GitHub gives it.
+
+    Lowercased, markup and punctuation dropped, inner whitespace hyphenated.
+    Not every renderer agrees on the edges, so the gate only ever uses this to
+    say that an anchor names no heading in the file it points at, which is the
+    failure worth reporting.
+    """
+    text = MD_LINK_RE.sub(r"\1", heading)
+    text = re.sub(r"<[^>]*>", "", text)
+    text = re.sub(r"[`*_~]", "", text).strip().lower()
+    text = re.sub(r"[^\w\s\-]", "", text)
+    return re.sub(r"\s+", "-", text)
+
+
+def anchors_of(lines):
+    """Every anchor a markdown file offers: heading slugs and explicit names.
+
+    Repeated headings take the -1, -2 suffixes the renderers add, so a link to
+    the second "## Owner" resolves the way the reader's browser resolves it.
+    """
+    found, counts = set(), collections.Counter()
+    for line in lines:
+        match = ATX_RE.match(line)
+        if match:
+            base = slug(match.group(2))
+            if base:
+                found.add(base if not counts[base]
+                          else "%s-%d" % (base, counts[base]))
+                counts[base] += 1
+        for explicit in HTML_ANCHOR_RE.finditer(line):
+            found.add(explicit.group(1))
+    return found
+
+
+def destination(dest):
+    """A raw link destination as (path, anchor), unwrapped and unescaped.
+
+    <angle brackets> come off, because they are the only way to write a
+    destination with a space in it, and %20 comes out, because the file on disk
+    is named with the space rather than with the escape.
+    """
+    text = dest.strip()
+    if text.startswith("<") and text.endswith(">"):
+        text = text[1:-1].strip()
+    if text.startswith(("http://", "https://", "mailto:")):
+        return None, None
+    path, _, anchor = text.partition("#")
+    return urllib.parse.unquote(path).strip(), urllib.parse.unquote(anchor).strip()
+
+
+def target_problems(path, line_no, dest, inside, lines, tree=None, cache=None):
+    """Why one link destination does not land, as (line, code, message) rows."""
+    out = []
+    target, anchor = destination(dest)
+    if target is None:
+        return out
+    if not target:
+        # A same-file anchor. The path half is this file, so only the anchor
+        # can be wrong, and an anchor nobody wrote is a link nobody can follow.
+        if anchor and anchor not in anchors_of(lines):
+            out.append((line_no, "LINK", "anchor #%s names no heading in this "
+                        "file." % anchor))
+        return out
+    if target.startswith("/"):
+        return [(line_no, "LINK", "absolute local path %s in a link." % target)]
+    landing = (path.parent / target).resolve()
+    if not landing.is_relative_to(inside):
+        return [(line_no, "LINK", "link %s climbs out of the repository, to %s."
+                 % (target, landing))]
+    if not landing.exists():
+        return [(line_no, "LINK", "relative link %s does not resolve." % target)]
+    if tree is not None and landing.is_file() and \
+            landing.relative_to(inside).as_posix() not in tree:
+        return [(line_no, "LINK", "link %s resolves to %s, which is not a file "
+                 "this gate tracks."
+                 % (target, landing.relative_to(inside).as_posix()))]
+    if anchor and landing.is_file() and landing.suffix == ".md":
+        if cache is None:
+            cache = {}
+        if landing not in cache:
+            try:
+                cache[landing] = anchors_of(mask(
+                    landing.read_text(encoding="utf-8")))
+            except (UnicodeDecodeError, OSError):
+                cache[landing] = None
+        known = cache[landing]
+        if known is not None and anchor not in known:
+            out.append((line_no, "LINK", "link %s names anchor #%s, which is no "
+                        "heading in %s." % (target, anchor, target)))
+    return out
+
+
+def link_problems(path, lines, inside, tree=None, cache=None):
+    """Every link in one markdown file that does not land, as failure rows.
+
+    Inline links, reference definitions, and reference uses, because a reader
+    follows all three and the gate used to read only the first. A definition is
+    checked once, where it is written, rather than once per use of its label.
+    """
+    out, defs = [], {}
+    for i, line in enumerate(lines, 1):
+        found = REF_DEF_RE.match(line)
+        if found:
+            defs[found.group(1).strip().lower()] = (i, found.group(2))
+    for i, line in enumerate(lines, 1):
+        for match in LINK_RE.finditer(line):
+            out.extend(target_problems(path, i, match.group(1), inside, lines,
+                                       tree, cache))
+        for match in REF_USE_RE.finditer(line):
+            label = (match.group(2).strip() or match.group(1).strip())
+            if label and label.lower() not in defs:
+                out.append((i, "LINK", "reference-style link [%s] has no [%s]: "
+                            "definition in this file." % (label, label)))
+    for _, (i, dest) in sorted(defs.items()):
+        out.extend(target_problems(path, i, dest, inside, lines, tree, cache))
+    return out
+
+
 def os_check(root, pins=None):
     """Whole-tree gate. Returns sorted (relpath, line, code, message) tuples."""
     root = Path(root)
@@ -756,6 +946,7 @@ def os_check(root, pins=None):
     rel = {p: p.relative_to(root).as_posix() for p in all_files}
     tree = set(rel.values())
     inside = root.resolve()
+    anchor_cache = {}
     basenames = collections.defaultdict(list)
     for target in tree:
         basenames[target.split("/")[-1]].append(target)
@@ -869,30 +1060,13 @@ def os_check(root, pins=None):
                         fail(rp, i, "TBD", '"%s" is a deferred decision, '
                              "not an answer." % m.group(1))
 
-        # Check 4, link gate: markdown files only.
+        # Check 4, link gate: markdown files only. The rules are unchanged and
+        # the parser under them reads the spellings it used to skip, so a link
+        # with a title, a space, or an anchor is now judged rather than missed.
         if path.suffix == ".md":
-            for i, line in enumerate(lines, 1):
-                for m in LINK_RE.finditer(line):
-                    target = m.group(1).split("#")[0]
-                    if not target or target.startswith(
-                            ("http://", "https://", "mailto:")):
-                        continue
-                    if target.startswith("/"):
-                        fail(rp, i, "LINK",
-                             "absolute local path %s in a link." % target)
-                        continue
-                    landing = (path.parent / target).resolve()
-                    if not landing.is_relative_to(inside):
-                        fail(rp, i, "LINK", "link %s climbs out of the "
-                             "repository, to %s." % (target, landing))
-                    elif not landing.exists():
-                        fail(rp, i, "LINK",
-                             "relative link %s does not resolve." % target)
-                    elif landing.is_file() and \
-                            landing.relative_to(inside).as_posix() not in tree:
-                        fail(rp, i, "LINK", "link %s resolves to %s, which is "
-                             "not a file this gate tracks."
-                             % (target, landing.relative_to(inside).as_posix()))
+            for i, code, message in link_problems(path, lines, inside, tree,
+                                                  anchor_cache):
+                fail(rp, i, code, message)
 
         # Check 5, header gate: three-line Stage/Knowledge/Skill block. The
         # window starts under any frontmatter, because the graph declaration
@@ -1043,6 +1217,167 @@ def os_check(root, pins=None):
     return sorted(problems)
 
 
+# ---------------------------------------------------------------------------
+# Workspace mode and JSON mode. Both are additive; tree mode is unchanged and
+# still runs its eleven checks.
+# ---------------------------------------------------------------------------
+
+# Named here so the mode can print what it ran, and so a reader can see the
+# list is short on purpose. The checks tree mode runs and this one does not are
+# the ones that judge a file for being a template, a layer file, or a shipped
+# part of the repository. A user's draft is none of those.
+WORKSPACE_CHECKS = ("links", "secrets", "placeholders", "dashes",
+                    "banned metric strings")
+
+
+def workspace_files(workspace):
+    """Every file under one workspace, minus VCS internals and caches."""
+    skip = {".git", "__pycache__", ".venv", "node_modules"}
+    for path in sorted(Path(workspace).rglob("*")):
+        if path.is_file() and not (skip & set(path.parts)) \
+                and not path.name.startswith("._"):
+            yield path
+
+
+def workspace_check(workspace, root=None):
+    """Content gate over one user workspace. Returns sorted 4-tuples.
+
+    The workspace is gitignored and invisible to tree mode by design, so this
+    is the only check it gets and it is opt-in. Links resolve against the
+    repository root rather than the workspace, because a filled artifact links
+    back to the templates and the gates it came from.
+    """
+    workspace = Path(workspace).resolve()
+    root = Path(root).resolve() if root is not None else Path.cwd().resolve()
+    if not workspace.is_relative_to(root):
+        root = workspace
+    problems = []
+    fail = lambda p, n, c, m: problems.append((str(p), n, c, m))  # noqa: E731
+    anchor_cache = {}
+
+    for path in workspace_files(workspace):
+        rp = path.relative_to(root).as_posix()
+        try:
+            raw = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            fail(rp, 1, "ENCODING", "is not valid UTF-8, so not one check "
+                 "below could read it.")
+            continue
+        except OSError:
+            fail(rp, 1, "ENCODING", "could not be read from disk, so no check "
+                 "below ran against it.")
+            continue
+        raw_lines = raw.split("\n")
+        lines = mask(raw) if path.suffix == ".md" else raw_lines
+
+        seen_secrets = set()
+        for i, line in enumerate(raw_lines, 1):
+            for label in secret_hits(line):
+                if (i, label) not in seen_secrets:
+                    seen_secrets.add((i, label))
+                    fail(rp, i, "SECRET", "matches the %s pattern." % label)
+        joined, origin = collapse(raw_lines)
+        for pattern, label in SECRET_PATTERNS:
+            for m in re.finditer(pattern, joined):
+                key = (origin[m.start()], label)
+                if key not in seen_secrets:
+                    seen_secrets.add(key)
+                    fail(rp, key[0], "SECRET", "matches the %s pattern once "
+                         "the line breaks are closed up." % label)
+
+        if path.suffix not in (".md", ".json"):
+            continue
+
+        for i, line in enumerate(raw_lines, 1):
+            for char, name in DASHES.items():
+                if char in line:
+                    fail(rp, i, "DASH",
+                         "contains an %s. Use a comma or a colon." % name)
+
+        seen = set()
+        for i, line in enumerate(lines, 1):
+            for pattern, label in BANNED_METRICS:
+                if re.search(pattern, line, re.I) and (i, label) not in seen:
+                    seen.add((i, label))
+                    fail(rp, i, "BANNED",
+                         "contains the banned metric string %s." % label)
+        collapsed, origin = collapse(lines)
+        for pattern, label in BANNED_METRICS:
+            for m in re.finditer(pattern, collapsed, re.I):
+                key = (origin[m.start()], label)
+                if key not in seen:
+                    seen.add(key)
+                    fail(rp, key[0], "BANNED",
+                         "contains the banned metric string %s." % label)
+
+        for i, line in enumerate(lines, 1):
+            for m in PLACEHOLDER_RE.finditer(line):
+                if not in_angle_field(line, m.start()):
+                    fail(rp, i, "TBD", '"%s" is a deferred decision, not an '
+                         "answer." % m.group(1))
+
+        if path.suffix == ".md":
+            for i, code, message in link_problems(path, lines,
+                                                  root, None, anchor_cache):
+                fail(rp, i, code, message)
+
+    return sorted(problems)
+
+
+def json_problems(root):
+    """Every tracked .json file that does not parse, as sorted 4-tuples."""
+    problems = []
+    for path in tracked_files(Path(root)):
+        if path.suffix != ".json":
+            continue
+        rp = path.relative_to(Path(root)).as_posix()
+        try:
+            json.loads(path.read_text(encoding="utf-8"))
+        except UnicodeDecodeError:
+            problems.append((rp, 1, "JSON", "is not valid UTF-8, so it is not "
+                             "JSON either."))
+        except OSError:
+            problems.append((rp, 1, "JSON", "could not be read from disk."))
+        except json.JSONDecodeError as broken:
+            problems.append((rp, broken.lineno, "JSON",
+                             "does not parse: %s at column %d."
+                             % (broken.msg, broken.colno)))
+    return sorted(problems)
+
+
+def report(problems, ok_line):
+    """Print failure rows, or the ok line. Returns the exit status."""
+    for rp, line_no, code, message in problems:
+        print("%s:%d: %s %s" % (rp, line_no, code, message))
+    if problems:
+        print("\n%d problem(s). The gate failed, which is the point of having "
+              "one." % len(problems), file=sys.stderr)
+        return 1
+    print(ok_line)
+    return 0
+
+
+def run_workspace_mode(target, root=None):
+    target = Path(target)
+    if not target.is_dir():
+        print("%s: not a directory. Workspace mode checks one workspace, for "
+              "example products/my-product." % target, file=sys.stderr)
+        return 1
+    files = list(workspace_files(target))
+    if not files:
+        print("%s: no files to check." % target)
+        return 0
+    return report(workspace_check(target, root),
+                  "%s: ok (workspace mode, %d file%s, %s)"
+                  % (target, len(files), "" if len(files) == 1 else "s",
+                     ", ".join(WORKSPACE_CHECKS)))
+
+
+def run_json_mode(root):
+    return report(json_problems(root),
+                  "%s: ok (every tracked .json file parses)" % root)
+
+
 def run_os_mode(root):
     problems = os_check(root)
     for rp, line_no, code, message in problems:
@@ -1062,6 +1397,13 @@ def main(argv=None):
                         help="structure-only mode for an unfilled template")
     parser.add_argument("--os", dest="os_mode", action="store_true",
                         help="whole-tree OS gate, run from the repo root")
+    parser.add_argument("--workspace", metavar="DIR",
+                        help="content gate over one product workspace, for "
+                             "example products/my-product. Links, secrets, "
+                             "placeholders, dashes, banned metric strings")
+    parser.add_argument("--json-syntax", dest="json_mode", action="store_true",
+                        help="parse every tracked .json file and report each "
+                             "syntax error")
     parser.add_argument("--no-stale-fail", action="store_true",
                         help="report a stale as-of date as a notice rather than a "
                              "failure. For forks that accept the staleness")
@@ -1069,8 +1411,14 @@ def main(argv=None):
 
     if args.os_mode:
         return run_os_mode(args.files[0] if args.files else Path("."))
+    if args.workspace:
+        return run_workspace_mode(args.workspace,
+                                  args.files[0] if args.files else None)
+    if args.json_mode:
+        return run_json_mode(args.files[0] if args.files else Path("."))
     if not args.files:
-        parser.error("give at least one file, or use --os")
+        parser.error("give at least one file, or use --os, --workspace, or "
+                     "--json-syntax")
 
     total = 0
     for path in args.files:
