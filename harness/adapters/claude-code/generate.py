@@ -35,6 +35,16 @@ MANIFEST = REPO_ROOT / "harness" / "MANIFEST.json"
 PLUGIN_JSON = HERE / ".claude-plugin" / "plugin.json"
 COMMANDS_DIR = HERE / "commands"
 
+# One line per kind, for the card's own table. The runner branches on the
+# same value; this is the face of that decision, so a reader of the command
+# knows what running it will and will not leave behind.
+KIND_NOTE = {
+    "artifact": "Fills one template and files it in the product workspace.",
+    "report": "Produces a findings report. It judges; it never rewrites.",
+    "interactive": "One turn of a conversation. Files no document.",
+    "reference": "An answer read out of the tree. Files no document.",
+}
+
 GENERATED_LINE = (
     "GENERATED FILE. Do not hand-edit. Written by "
     "`harness/adapters/claude-code/generate.py` from `harness/MANIFEST.json`; "
@@ -133,6 +143,8 @@ def render_command(task):
         ("Stage", stage if stage else no_stage),
         ("Gate", str(gate) if gate else no_stage),
         ("Tier", "%s. A tier name, never a model." % task.get("tier")),
+        ("Kind", "%s. %s" % (task.get("kind"),
+                             KIND_NOTE.get(task.get("kind"), ""))),
         ("Skill", "`%s`" % skill if skill else
          "None. This row names no skill; the reads below carry the procedure."),
     ]
@@ -158,12 +170,25 @@ def render_command(task):
     else:
         steps.append("There is no skill for this row. The reads are the "
                      "procedure. Do not substitute a skill that looks close.")
-    if task.get("templates"):
+    kind = task.get("kind")
+    if kind == "artifact":
         steps.append("Land the output in the template below that fits the "
                      "request. One template, not all of them.")
+    elif kind == "report":
+        steps.append("Report what you found. Never rewrite the thing you were "
+                     "asked to judge, and never fill a template that was not "
+                     "given to you. Any template named below is context for "
+                     "the judgment, not a destination for it.")
+    elif kind == "interactive":
+        steps.append("This is one turn of a conversation. Follow the skill's "
+                     "own stopping rule, then stop and wait for the person to "
+                     "answer. Do not run ahead, and do not emit a filled "
+                     "template. Any template named below is where an accepted "
+                     "answer lands later, not what this turn produces.")
     else:
-        steps.append("This route produces no template artifact. Say what you "
-                     "found and stop.")
+        steps.append("Answer from the reads and stop. Quote the file that "
+                     "governs the answer and name it by repo path. If the "
+                     "reads do not answer it, say so and name what would.")
     if stage:
         steps.append("Take the output to Gate %s in `os/STAGE-GATES.md`. Report "
                      "which boxes pass and which do not, then stop. A named "

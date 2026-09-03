@@ -41,7 +41,6 @@ which of the two a link points at. Both resolve; only one is your own work.
 
 import argparse
 import posixpath
-import re
 import sys
 from pathlib import Path
 
@@ -49,104 +48,28 @@ REPO = Path(__file__).resolve().parent.parent
 PRODUCTS_DIR = REPO / "products"
 TEMPLATES_DIR = REPO / "templates"
 
-# The slug rule, copied from harness/runner.py's safe_product_slug so that a
-# workspace this tool creates is one the runner will agree to open. A product
-# is a name, not a location.
-PRODUCT_SLUG_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
-
-# The same link pattern the repository gate reads, so this tool rewrites
-# exactly the set of links the gate later judges.
-LINK_RE = re.compile(r"\]\(([^)\s]+)\)")
-
-FRONTMATTER_RE = re.compile(r"\A---\r?\n(.*?)\r?\n---[ \t]*\r?\n", re.S)
-STAGE_FIELD_RE = re.compile(r"^stage:\s*(.+?)\s*$", re.M)
-
-# Ten templates write the Stage/Knowledge/Skill header as a bare path rather
-# than a markdown link. The repository gate does not read those, because it
-# only looks between ]( and ), but a reader follows them and a copy breaks them
-# exactly the same way. So they are rewritten and verified here too, on the
-# three header lines only, where the convention is fixed.
-HEADER_LINE_RE = re.compile(r"^(?:Stage|Knowledge|Skill):")
-BARE_PATH_RE = re.compile(r"(?<![\w`(/.])((?:\.\./)+[A-Za-z0-9._/-]+)")
-
-LEFT_ALONE = ("http://", "https://", "mailto:", "#")
-
-# The workspace layout, in the order os/PRODUCT-WORKSPACE.md lists it.
-STAGE_FOLDERS = ("planning", "discovery", "definition", "definition/ai",
-                 "architecture", "execution", "delivery", "operate", "gates")
-
-# One template folder, one workspace folder. This is the mapping
-# os/PRODUCT-WORKSPACE.md states in prose.
-FOLDER_FOR_TEMPLATE_DIR = {
-    "planning": "planning",
-    "discovery": "discovery",
-    "definition": "definition",
-    "ai": "definition/ai",
-    "architecture": "architecture",
-    "execution": "execution",
-    "delivery": "delivery",
-    "operate": "operate",
-}
-
-# The fallback, for a template that lives outside templates/ and so has no
-# folder to read. DESIGN produces architecture; BUILD and ALL STAGES produce
-# the continuously written files in execution.
-FOLDER_FOR_STAGE = {
-    "PLANNING": "planning",
-    "DISCOVER": "discovery",
-    "DEFINE": "definition",
-    "AI OVERLAY": "definition/ai",
-    "DESIGN": "architecture",
-    "BUILD": "execution",
-    "ALL STAGES": "execution",
-    "DELIVER": "delivery",
-    "OPERATE": "operate",
-}
-
-# The one template whose filled copy does not keep its template folder.
-SPECIAL_DESTINATIONS = {"templates/execution/state.md": "STATE.md"}
+# Every constant and every function below this line used to live here in a
+# second copy. They now live in tools/workspace.py, which harness/runner.py
+# imports too, so the initializer and the runner can no longer disagree about
+# where a filled artifact lands or what its links say once it lands there.
+from workspace import (                                   # noqa: E402
+    BARE_PATH_RE, FOLDER_FOR_STAGE, FOLDER_FOR_TEMPLATE_DIR, HEADER_LINE_RE,
+    LEFT_ALONE, LINK_RE, PRODUCT_SLUG_RE, SPECIAL_DESTINATIONS, STAGE_FOLDERS,
+    WorkspaceError, broken_links, declared_stage, destination_for, read_text,
+    rewrite_links, rewrite_target, safe_product_slug,
+)
 
 SEED_TEMPLATE = "templates/execution/state.md"
 
 
-class InitError(Exception):
-    """A condition the operator has to fix. Printed without a traceback."""
+# The initializer's own name for the shared error, so every raise and every
+# except in this file still reads as it did and a caller catching either one
+# catches both.
+InitError = WorkspaceError
 
 
 def say(*parts):
     print(" ".join(str(p) for p in parts))
-
-
-def safe_product_slug(value):
-    """One product slug, or a refusal.
-
-    The rule is harness/runner.py's, reused rather than restated: a slug pasted
-    straight into a path lets "../../../../private/tmp/x" resolve outside the
-    repository entirely. One segment of letters, digits, underscore and hyphen,
-    and the resolved directory has to sit directly under products/.
-    """
-    raw = str(value or "")
-    text = raw.strip()
-    if not text:
-        raise InitError("the product slug is empty. Give the name of a "
-                        "workspace under products/, for example ledgerline.")
-    if text in (".", "..") or ".." in text or text.startswith("."):
-        raise InitError("slug %r contains a dot segment. It is a name, not a "
-                        "path." % raw)
-    if "/" in text or "\\" in text or Path(text).is_absolute():
-        raise InitError("slug %r contains a path separator. Pass one slug, for "
-                        "example ledgerline, and this tool resolves it under "
-                        "products/." % raw)
-    if not PRODUCT_SLUG_RE.match(text):
-        raise InitError("slug %r is not usable. Use letters, digits, "
-                        "underscore and hyphen, starting with a letter or a "
-                        "digit, up to 64 characters." % raw)
-    root = PRODUCTS_DIR.resolve()
-    resolved = (PRODUCTS_DIR / text).resolve()
-    if resolved.parent != root:
-        raise InitError("slug %r resolves to %s, which is not directly under "
-                        "products/. Refusing." % (raw, resolved))
-    return text
 
 
 def repo_relative(path):
@@ -156,131 +79,6 @@ def repo_relative(path):
         raise InitError("%s sits outside the repository. This tool only copies "
                         "templates that ship with the tree." % path)
     return resolved.relative_to(REPO).as_posix()
-
-
-def declared_stage(text):
-    """The stage a file's frontmatter declares, uppercased, or None."""
-    match = FRONTMATTER_RE.match(text)
-    if not match:
-        return None
-    field = STAGE_FIELD_RE.search(match.group(1))
-    return field.group(1).strip().strip('"').upper() if field else None
-
-
-def destination_for(template_rel, slug, text=None):
-    """Where one template's filled copy belongs, as a repo-relative path."""
-    if template_rel in SPECIAL_DESTINATIONS:
-        return "products/%s/%s" % (slug, SPECIAL_DESTINATIONS[template_rel])
-    parts = template_rel.split("/")
-    name = parts[-1]
-    if parts[0] == "templates" and len(parts) >= 3:
-        folder = FOLDER_FOR_TEMPLATE_DIR.get(parts[1])
-        if folder:
-            return "products/%s/%s/%s" % (slug, folder, name)
-    stage = declared_stage(text or "")
-    folder = FOLDER_FOR_STAGE.get(stage or "")
-    if not folder:
-        raise InitError("%s is not under a templates/ folder this tool knows, "
-                        "and its frontmatter declares stage %r, which maps to "
-                        "no workspace folder. Copy it by hand and say where it "
-                        "belongs." % (template_rel, stage))
-    return "products/%s/%s/%s" % (slug, folder, name)
-
-
-def rewrite_target(target, source_dir, dest_dir, slug):
-    """One link target, recomputed for the destination.
-
-    The rule, in one sentence: resolve the link against the template it was
-    written in, then express that same file relative to where the copy lands,
-    and prefer the workspace's own filled copy when one already exists. The
-    depth is computed from the two real paths, never assumed, which is why a
-    file in products/x/discovery/ gets ../../../ and STATE.md at the workspace
-    root gets ../../ from the identical template text.
-    """
-    resolved = posixpath.normpath(posixpath.join(source_dir, target))
-    if resolved.startswith(".."):
-        return None, "climbs out of the repository"
-    if not (REPO / resolved).exists():
-        return None, "does not resolve from the template either"
-    if resolved.startswith("templates/"):
-        try:
-            local = destination_for(resolved, slug,
-                                    read_text(REPO / resolved))
-        except InitError:
-            local = None
-        if local and (REPO / local).exists():
-            resolved = local
-    return posixpath.relpath(resolved, dest_dir), None
-
-
-def rewrite_links(text, source_dir, dest_dir, slug):
-    """The file's text with every relative link recomputed. Returns notes."""
-    rewrites = []
-    skipped = []
-
-    def replace(match):
-        raw = match.group(1)
-        target, _, fragment = raw.partition("#")
-        if not target or raw.startswith(LEFT_ALONE):
-            return match.group(0)
-        if target.startswith("/"):
-            skipped.append((raw, "is an absolute path"))
-            return match.group(0)
-        new_target, why = rewrite_target(target, source_dir, dest_dir, slug)
-        if new_target is None:
-            skipped.append((raw, why))
-            return match.group(0)
-        rebuilt = new_target + ("#" + fragment if fragment else "")
-        if rebuilt != raw:
-            rewrites.append((raw, rebuilt))
-        return "](%s)" % rebuilt
-
-    def replace_bare(match):
-        target = match.group(1)
-        new_target, why = rewrite_target(target, source_dir, dest_dir, slug)
-        if new_target is None:
-            skipped.append((target, why))
-            return target
-        if new_target != target:
-            rewrites.append((target, new_target))
-        return new_target
-
-    out = []
-    for line in LINK_RE.sub(replace, text).splitlines(True):
-        stripped = line.rstrip("\r\n")
-        ending = line[len(stripped):]
-        if HEADER_LINE_RE.match(stripped):
-            stripped = BARE_PATH_RE.sub(replace_bare, stripped)
-        out.append(stripped + ending)
-    return "".join(out), rewrites, skipped
-
-
-def read_text(path):
-    return Path(path).read_text(encoding="utf-8")
-
-
-def broken_links(path):
-    """Every relative link in one file that does not resolve. As tuples.
-
-    This is the verification step, and it is deliberately dumb: it does not
-    trust the rewrite, it re-reads the written file and asks the filesystem
-    whether each target is there. A copy tool that produces broken links is the
-    defect rather than the fix, so nothing is reported as copied until this
-    returns empty.
-    """
-    broken = []
-    for number, line in enumerate(read_text(path).splitlines(), 1):
-        targets = [m.group(1) for m in LINK_RE.finditer(line)]
-        if HEADER_LINE_RE.match(line):
-            targets += [m.group(1) for m in BARE_PATH_RE.finditer(line)]
-        for raw in targets:
-            target = raw.split("#")[0]
-            if not target or raw.startswith(LEFT_ALONE) \
-                    or target.startswith("/"):
-                continue
-            if not (path.parent / target).exists():
-                broken.append((number, raw))
-    return broken
 
 
 def create_workspace(slug, force=False):
@@ -297,7 +95,7 @@ def create_workspace(slug, force=False):
     return workspace
 
 
-def add_template(slug, template, force=False):
+def add_template(slug, template, force=False, quiet=False):
     """Copy one template into its workspace folder with rewritten links."""
     template = Path(template)
     if not template.is_absolute():
@@ -333,13 +131,15 @@ def add_template(slug, template, force=False):
                         "tool." % (template_rel, len(failures), dest_dir,
                                    lines))
 
-    say("copied:", template_rel, "->", dest_rel)
-    say("  ", "%d link(s) rewritten, %d relative link(s) re-resolved from the "
-        "destination and found" % (len(rewrites), relative_links(rewritten)))
-    for old, new in rewrites:
-        say("    ", old, "->", new)
-    for raw, why in skipped:
-        say("    ", "left as written:", raw, "(%s)" % why)
+    if not quiet:
+        say("copied:", template_rel, "->", dest_rel)
+        say("  ", "%d link(s) rewritten, %d relative link(s) re-resolved from "
+            "the destination and found"
+            % (len(rewrites), relative_links(rewritten)))
+        for old, new in rewrites:
+            say("    ", old, "->", new)
+        for raw, why in skipped:
+            say("    ", "left as written:", raw, "(%s)" % why)
     return dest
 
 
@@ -355,6 +155,77 @@ def relative_links(text):
                     and not raw.split("#")[0].startswith("/"):
                 total += 1
     return total
+
+
+def every_shipped_template():
+    """Every template this tool can place, as repo-relative paths.
+
+    Everything under templates/, plus the byte-exact regulated import, which
+    lives outside templates/ and is routed to by check-regulatory-gaps. A
+    template the manifest can send a run to and this tool cannot place is a
+    hole in the workspace contract, so the two lists are kept the same shape.
+    """
+    found = sorted(p.relative_to(REPO).as_posix()
+                   for p in (TEMPLATES_DIR).rglob("*.md") if p.is_file())
+    for extra in sorted(SPECIAL_DESTINATIONS):
+        if extra not in found and (REPO / extra).is_file():
+            found.append(extra)
+    return found
+
+
+def relink_workspace(slug, quiet=False):
+    """Repoint every link in a workspace at the workspace's own copies.
+
+    The drift this closes. A link is rewritten when its file is copied, and at
+    that moment it can only prefer a workspace copy that already exists. Copy
+    the discovery document before the personas it links to and the link lands
+    on the blank template in templates/, which resolves, reports as fine, and
+    is the wrong file: it points a reader at the empty form instead of at the
+    work. Measured on a workspace with all templates installed: 99 links
+    across 41 files still aimed at templates/.
+
+    So placement is not the last word. This pass runs with every copy already
+    present and asks each link the same question again. It is idempotent, and
+    running it twice changes nothing the first run did not.
+    """
+    workspace = PRODUCTS_DIR / slug
+    if not workspace.is_dir():
+        raise InitError("products/%s/ does not exist. Create it first: "
+                        "python3 tools/init_product.py %s" % (slug, slug))
+    moved, touched = 0, 0
+    for path in sorted(p for p in workspace.rglob("*.md") if p.is_file()):
+        text = read_text(path)
+        here = posixpath.dirname(path.relative_to(REPO).as_posix())
+        rewritten, rewrites, _skipped = rewrite_links(text, here, here, slug)
+        if rewrites:
+            path.write_text(rewritten, encoding="utf-8")
+            moved += len(rewrites)
+            touched += 1
+            if not quiet:
+                say("  relinked %s (%d link(s) now point at this workspace)"
+                    % (path.relative_to(REPO).as_posix(), len(rewrites)))
+    say("relink: %d link(s) across %d file(s) repointed at products/%s/."
+        % (moved, touched, slug))
+    return moved
+
+
+def add_every_template(slug, force=False):
+    """Install every shipped template, then settle the links between them."""
+    installed, skipped = 0, 0
+    for template in every_shipped_template():
+        destination = REPO / destination_for(template, slug,
+                                             read_text(REPO / template))
+        if destination.exists() and not force:
+            skipped += 1
+            continue
+        add_template(slug, REPO / template, force=force, quiet=True)
+        installed += 1
+    say("installed %d template(s), left %d already-present file(s) alone."
+        % (installed, skipped))
+    # Second pass, with every copy present. Without it the links between them
+    # point at the blank templates rather than at each other.
+    relink_workspace(slug, quiet=True)
+    return installed
 
 
 def check_workspace(slug):
@@ -389,6 +260,14 @@ def main(argv=None):
     parser.add_argument("--add", metavar="TEMPLATE",
                         help="copy one template into its stage folder and "
                              "rewrite its links for the destination")
+    parser.add_argument("--add-all", action="store_true",
+                        help="copy every shipped template into the workspace, "
+                             "then repoint the links between them at this "
+                             "workspace's own copies")
+    parser.add_argument("--relink", action="store_true",
+                        help="repoint every link in an existing workspace at "
+                             "this workspace's own copies, where one exists. "
+                             "Idempotent; copies nothing")
     parser.add_argument("--check", action="store_true",
                         help="re-resolve every link in an existing workspace "
                              "and copy nothing")
@@ -404,7 +283,13 @@ def main(argv=None):
                 raise InitError("--check reads a workspace and --add writes to "
                                 "one. Run them separately.")
             return 1 if check_workspace(slug) else 0
-        if args.add:
+        if args.relink:
+            relink_workspace(slug)
+        elif args.add_all:
+            if not (PRODUCTS_DIR / slug).is_dir():
+                create_workspace(slug, force=args.force)
+            add_every_template(slug, force=args.force)
+        elif args.add:
             add_template(slug, args.add, force=args.force)
         else:
             create_workspace(slug, force=args.force)

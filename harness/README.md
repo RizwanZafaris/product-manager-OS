@@ -10,6 +10,42 @@ This directory is an adapter over a document system. It takes three things the O
 
 Nothing here decides anything on its own. An entry is an index into a file that already governs the work. [../tools/check_manifest.py](../tools/check_manifest.py) runs eight checks and proves the manifest and the router table agree, row for row and across all three of the table's columns, and fails the build when they drift. Column agreement is the half that used to be assumed: the skill a router row names has to be that entry's own skill, and a template named in a row has to be one the entry declares, so a row can no longer point somewhere the manifest does not.
 
+## Maturity, stated separately from the document system's
+
+The document layers and this directory are not at the same level of
+readiness, and a single version number across both hides that. So it is
+written here instead.
+
+The templates, the knowledge cards, the frameworks and the gates are the
+mature part. They work with a text editor, they have no runtime, and the
+failure mode of a mistake in them is a document that argues badly, which a
+reader can see and fix.
+
+This directory is the experimental part. It is a real runner with real
+tests, and as of the audit it closed in this release, it agrees with the
+initializer about where every artifact lands, rewrites the links in a copy
+it places, distinguishes the four kinds of route rather than treating all
+forty-one as document producers, rolls a failed multi-file commit back,
+and serializes journal writes under a lock. Those are the things that were
+wrong and are now right, and each one has a regression test that fails
+against the behaviour it replaced.
+
+What it is still not, stated so nobody has to discover it in production:
+
+| Not this | Why not, concretely |
+|---|---|
+| A job queue | A deferred run writes a durable record with an id and exits 75. Nothing picks it up. There is no worker, no retry schedule, no ownership, no cancellation. Rerunning it is a person typing the command the record carries. |
+| A system of record for a team | The lock serializes writers on one machine's filesystem. It says nothing about two people on two machines, and there is no merge, no compare-and-swap across a network, and no identity attached to a write beyond the journal row. |
+| Governance evidence | A gate is signed by a person editing a file. There is no immutable log, no approval identity, no hash over the evidence a gate was passed on, and no way to prove after the fact that a box was ticked before rather than after the release. |
+| A portfolio | STATE.md models one product at one stage with one next question. It cannot represent several initiatives moving through discovery, build and launch at the same time. |
+| Reproducible | Nothing is pinned to a commit, a prompt hash, or a template version, so a run is not replayable and a document cannot be traced to the exact inputs that produced it. |
+
+Use it for drafting with a person reading the output. Do not use it
+unattended, do not use it as the place your team's state lives, and do not
+use its output as evidence to a regulator. The document system underneath
+carries none of those limits, which is the reason the two are separated
+here at all.
+
 ## What the harness is not
 
 It is not a runtime dependency. The OS is a set of documents: templates you fill, skills you follow, gates a person signs. All of that works with a text editor and a pencil, and it worked that way before this directory existed.

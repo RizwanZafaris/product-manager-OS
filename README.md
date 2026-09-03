@@ -109,7 +109,7 @@ A filled example is one file away: [examples/expense-copilot-discovery.md](examp
 | [skills/](skills/README.md), [agents/](agents/README.md) | Skills and agents | HOW to produce it with an AI runtime: procedures, and the roles that run them |
 | [system/](system/README.md) | System prompts | WHO the model becomes |
 | [routing/](routing/README.md) | Routing | WITH WHICH model each task runs |
-| `harness/` | Harness | HOW a runtime resolves a request into a route: the manifest, the tier decision, the invariants, three adapters. Named in plain text rather than linked, because the directory is deletable and a link from here would break on the deletion |
+| `harness/` | Harness | HOW a runtime resolves a request into a route: the manifest, the tier decision, the invariants, three adapters. This is the experimental layer, and `harness/README.md` states what it is not ready for in a table: it is not a job queue, not a team system of record, not governance evidence, and not reproducible. Everything above this row carries none of those limits. Named in plain text rather than linked, because the directory is deletable and a link from here would break on the deletion |
 | [os/](os/README.md) | Operating loop | The six stages, the six gates, which document to write, and where filled artifacts live |
 | [os/maps/](os/maps/README.md), [docs/GRAPH.md](docs/GRAPH.md) | Graph | WHERE a file sits: one hub note per stage, and the link graph generated from the declarations every layer file carries |
 | [examples/](examples/README.md) | Worked examples | What a filled artifact looks like, greenfield and brownfield |

@@ -120,8 +120,19 @@ from pathlib import Path
 
 STALE_AFTER_DAYS = 180
 
-# Deliberately blunt: these strings must not appear in this repository in any
-# context, so the check does not try to be clever about surrounding words.
+# The numbers the worked example uses. A filled document that still carries
+# them is carrying the example's answers rather than its own, which is the
+# failure this list catches.
+#
+# Deliberately blunt inside this repository, where none of them can be true of
+# anything: the check does not try to be clever about surrounding words.
+#
+# Not blunt in a product workspace, where they can be. A real product can have
+# a churn rate equal to one of these, and rejecting a sourced one taught the
+# operator that the way to pass the gate is to round the number, which is worse
+# than the thing being prevented. In workspace mode the same literal is judged on whether it carries
+# provenance: a number with a source beside it is evidence, and a bare one is
+# still the example's answer wearing this product's clothes. See SOURCED_RE.
 BANNED_METRICS = [
     (r"\$\s?14\s?m\b", "$14M"),
     (r"\b14(\.0)?\s?(%|percent)", "14%"),
@@ -131,6 +142,33 @@ BANNED_METRICS = [
     (r"\b120\s?k\b", "120K"),
     (r"\b120,000\b", "120,000"),
 ]
+
+# What makes a number evidence rather than a leftover. Any of: a URL, an
+# explicit evidence-ledger reference like [E3], a bracketed source or citation
+# note, or the word "source" with something after it. The test is deliberately
+# generous, because the check it gates is a heuristic and the cost of a false
+# accusation here is an operator who edits a true number to get past a gate.
+SOURCED_RE = re.compile(
+    r"https?://"
+    r"|\[E\d+\]"
+    r"|\bsources?\s*[:=]"
+    r"|\bcitation\s*[:=]"
+    r"|\bper\s+[A-Z]"
+    r"|\bmeasured\s+(?:by|at|on|in|from|against)\b"
+    r"|\bbaseline\s+from\b",
+    re.I)
+
+
+def sourced_near(lines, index):
+    """Whether the number on this line carries provenance.
+
+    The line itself, and the line under it, because a markdown table puts the
+    figure in one cell and its source in another on the same row, while a
+    prose paragraph often puts the citation on the following line.
+    """
+    window = lines[max(0, index - 1):index + 2]
+    return any(SOURCED_RE.search(line) for line in window)
+
 
 # Escapes, so the file that bans these characters does not contain one. The
 # metric patterns above stay readable: a detector's rules have to be legible to
@@ -173,6 +211,12 @@ AGREED_RE = re.compile(r"\b(?:per|agreed)\b[^|]*?\bdated\s+\d{4}-\d{2}-\d{2}", r
 AS_OF_RE = re.compile(r"as of[:\s]*\**\s*(\d{4}-\d{2}-\d{2})", re.I)
 MD_LINK_RE = re.compile(r"\[([^\]]*)\]\([^)]*\)")
 CHECKBOX_RE = re.compile(r"^\s*[-*]\s*\[[ xX]\]")
+TICKED_RE = re.compile(r"^\s*[-*]\s*\[[xX]\]")
+
+# The status line the regulated template puts at the top. Matched only when it
+# names Approved on its own, so the template's own "Draft / In review /
+# Approved" menu of choices is not read as a claim of approval.
+APPROVED_RE = re.compile(r"^\*\*Status:\*\*\s*Approved\b", re.M)
 FIELD_RE = re.compile(r"^\s*[-*]\s+(.+?):\s*(.*)$")
 BARE_NA_RE = re.compile(r"^(n/?a|not applicable|none|nil|unknown)\.?$", re.I)
 SEPARATOR_RE = re.compile(r"^\|?[\s:|-]+\|?$")
@@ -351,6 +395,36 @@ def check(path, template_mode=False, stale_fatal=True):
 
     if template_mode:
         return sorted(problems), sorted(notices)
+
+    # The gate used to be satisfied by the presence of checkbox text, never by
+    # its state, so a document could carry nine unticked boxes and pass. An
+    # unticked box is not itself a defect: the worked example ships with one
+    # unticked and a paragraph saying why, which is the discipline working.
+    #
+    # What is a defect is a document that calls itself Approved while the
+    # evidence for that approval is still unticked. That is the one case where
+    # the tally can be judged rather than merely reported, so it is the one
+    # case that fails.
+    if gate:
+        boxes = [i for i in range(*gate) if CHECKBOX_RE.match(lines[i])]
+        unticked = [i for i in boxes if not TICKED_RE.match(lines[i])]
+        approved = APPROVED_RE.search("\n".join(lines))
+        if unticked and approved:
+            for i in unticked:
+                fail(i + 1, "GATE",
+                     "this document's status is Approved and this review-gate "
+                     "box is not ticked: %s. A gate nobody can fail is a "
+                     "ceremony. Either tick it with the evidence behind it, or "
+                     "set the status back to In review."
+                     % lines[i].strip()[:120])
+        elif unticked:
+            notices.append(
+                (gate[0] + 1, "GATE",
+                 "review gate: %d of %d box(es) still unticked. Not a failure "
+                 "while the status is not Approved. This gate is discipline "
+                 "rather than control: nothing here can stop a person ticking "
+                 "a box the evidence does not support."
+                 % (len(unticked), len(boxes))))
 
     overlay = span_for(spans, r"^##\s*0\.")
     if overlay:
@@ -1295,20 +1369,30 @@ def workspace_check(workspace, root=None):
                          "contains an %s. Use a comma or a colon." % name)
 
         seen = set()
+
+        def banned_here(line_no, label):
+            """One finding, unless the figure on that line carries a source."""
+            if (line_no, label) in seen:
+                return
+            seen.add((line_no, label))
+            if sourced_near(lines, line_no - 1):
+                return
+            fail(rp, line_no, "BANNED",
+                 "contains %s with no source beside it. In your own workspace "
+                 "this is only banned when it is unsourced: it is one of the "
+                 "worked example's numbers, so a bare copy of it reads as the "
+                 "example's answer rather than yours. Cite where it came from "
+                 "on the same line or the next one, or replace it with your "
+                 "own figure. Do not round it to get past this." % label)
+
         for i, line in enumerate(lines, 1):
             for pattern, label in BANNED_METRICS:
-                if re.search(pattern, line, re.I) and (i, label) not in seen:
-                    seen.add((i, label))
-                    fail(rp, i, "BANNED",
-                         "contains the banned metric string %s." % label)
+                if re.search(pattern, line, re.I):
+                    banned_here(i, label)
         collapsed, origin = collapse(lines)
         for pattern, label in BANNED_METRICS:
             for m in re.finditer(pattern, collapsed, re.I):
-                key = (origin[m.start()], label)
-                if key not in seen:
-                    seen.add(key)
-                    fail(rp, key[0], "BANNED",
-                         "contains the banned metric string %s." % label)
+                banned_here(origin[m.start()], label)
 
         for i, line in enumerate(lines, 1):
             for m in PLACEHOLDER_RE.finditer(line):

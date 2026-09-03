@@ -93,6 +93,44 @@ class ReviewGateTests(unittest.TestCase):
         codes, messages = run(MINIMAL)
         self.assertEqual(set(), codes, messages)
 
+    def test_an_unticked_box_is_a_notice_not_a_failure(self):
+        """The worked example ships with one box unticked and a paragraph
+        saying why. That is the discipline working, not a defect."""
+        failures, notices = _lint(MINIMAL.replace(
+            "- [x] Section 0 complete", "- [ ] Section 0 complete"))
+        self.assertEqual(set(), failures[0], failures[1])
+        self.assertIn("GATE", notices[0])
+        self.assertIn("still unticked", notices[1])
+
+    def test_approved_with_an_unticked_box_fails(self):
+        """The gate used to check that checkbox text existed, never that it
+        was ticked, so a document could call itself Approved with every box
+        empty and pass. A gate nobody can fail is a ceremony."""
+        codes, messages = run(
+            MINIMAL.replace("- [x] Section 0 complete",
+                            "- [ ] Section 0 complete")
+                   .replace("# PRD: Test feature",
+                            "# PRD: Test feature\n**Status:** Approved"))
+        self.assertIn("GATE", codes)
+        self.assertIn("status is Approved", messages)
+
+    def test_approved_with_every_box_ticked_passes(self):
+        codes, messages = run(
+            MINIMAL.replace("# PRD: Test feature",
+                            "# PRD: Test feature\n**Status:** Approved"))
+        self.assertEqual(set(), codes, messages)
+
+    def test_the_templates_status_menu_is_not_read_as_approval(self):
+        """The blank template's own line offers Draft / In review / Approved.
+        Reading that as a claim of approval would fail every blank."""
+        codes, _messages = run(
+            MINIMAL.replace("- [x] Section 0 complete",
+                            "- [ ] Section 0 complete")
+                   .replace("# PRD: Test feature",
+                            "# PRD: Test feature\n**Status:** Draft / In "
+                            "review / Approved"))
+        self.assertEqual(set(), codes)
+
     def test_missing_required_section_is_flagged(self):
         codes, messages = run(MINIMAL.replace("## 3. Non-determinism clause",
                                              "## 3b. Notes on variation"))
@@ -910,10 +948,32 @@ class WorkspaceModeTests(unittest.TestCase):
 
     def test_a_dash_and_a_banned_metric_are_caught(self):
         codes, messages = ws_run({"products/demo/discovery.md":
-                                  "saving %s a year %s measured\n"
+                                  "saving %s a year %s our estimate\n"
                                   % (BANNED_MONEY, EM_DASH)})
         self.assertIn("BANNED", codes)
         self.assertIn("DASH", codes)
+
+    def test_a_sourced_example_number_passes_in_a_workspace(self):
+        """A real product can have a rate equal to one of the example's.
+        Rejecting a sourced one taught the operator to round the number to get
+        past the gate, which is worse than the thing being prevented. The
+        repository tree keeps the blunt ban; only a workspace gets this."""
+        codes, messages = ws_run(
+            {"products/demo/discovery.md":
+             "| churn | 14% | source: https://example.test/2026-q1 |\n"})
+        self.assertNotIn("BANNED", codes, messages)
+
+    def test_an_unsourced_example_number_still_fails_in_a_workspace(self):
+        codes, messages = ws_run(
+            {"products/demo/discovery.md": "| churn | 14% | |\n"})
+        self.assertIn("BANNED", codes, messages)
+        self.assertIn("no source beside it", messages)
+
+    def test_the_source_may_sit_on_the_next_line(self):
+        codes, _messages = ws_run(
+            {"products/demo/discovery.md":
+             "Churn is 14% today.\nSource: https://example.test/report\n"})
+        self.assertNotIn("BANNED", codes)
 
     def test_an_undecodable_file_fails_instead_of_being_skipped(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1003,7 +1063,14 @@ class JsonSyntaxTests(unittest.TestCase):
         rel, line_no, code, message = problems[0]
         self.assertEqual("routing/omniroute.config.json", rel)
         self.assertEqual("JSON", code)
-        self.assertEqual(3, line_no)
+        # Which line CPython points at for a trailing comma is CPython's
+        # business and it has changed: 3.11 names the line the parser gave up
+        # on, 3.14 names the line the comma is on. Asserting one of them made
+        # this test a statement about the interpreter rather than about this
+        # gate, and it failed on a Python a user actually had installed. What
+        # the gate owes is a line inside the file, not a particular one.
+        self.assertIn(line_no, (2, 3),
+                      "the reported line is outside the malformed document")
         self.assertIn("does not parse", message)
         self.assertIn("column", message)
 

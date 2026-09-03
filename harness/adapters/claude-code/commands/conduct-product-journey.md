@@ -15,6 +15,7 @@ GENERATED FILE. Do not hand-edit. Written by `harness/adapters/claude-code/gener
 | Stage | DISCOVER |
 | Gate | 1 |
 | Tier | judgment. A tier name, never a model. |
+| Kind | interactive. One turn of a conversation. Files no document. |
 | Skill | `skills/conductor/SKILL.md` |
 
 The tier to model mapping lives in `routing/omniroute.config.json` and nowhere else. Read it there rather than assuming one here.
@@ -27,7 +28,7 @@ Cross-examination and gate evaluation are the load-bearing calls, so the tier is
 
 1. Read every file under Read first, in the order listed, before you produce anything.
 2. Follow `skills/conductor/SKILL.md` end to end. It owns the workflow; this file only routes to it.
-3. Land the output in the template below that fits the request. One template, not all of them.
+3. This is one turn of a conversation. Follow the skill's own stopping rule, then stop and wait for the person to answer. Do not run ahead, and do not emit a filled template. Any template named below is where an accepted answer lands later, not what this turn produces.
 4. Take the output to Gate 1 in `os/STAGE-GATES.md`. Report which boxes pass and which do not, then stop. A named human signs.
 5. Leave any unanswered field as `[OPEN: what is missing, who owns the answer]`. That is a valid value here.
 

@@ -1,0 +1,166 @@
+{
+  "schema": 1,
+  "title": "Task ledger for Complete PM OS readiness",
+  "note": "One task per unbuilt criterion group in docs/readiness/criteria.json. Status is not a claim: a task is green only when every criterion it owns is earned by a passing verify command in tools/readiness.py. The critical path is foundations first, because every feature workstream below depends on an identity and an event model that do not exist yet. Estimates are engineering weeks for one experienced engineer and are the least reliable field here.",
+  "baseline": {
+    "audited_sha": "ce8126408445ed17645fcba980eb4bd16290eca2",
+    "remediation_branch": "fix/audit-p0",
+    "score_at_baseline": "not measured; the scorecard did not exist",
+    "score_now": "see docs/readiness/scorecard.json"
+  },
+  "tasks": [
+    {
+      "id": "T-01",
+      "title": "One canonical workspace resolver shared by every writer",
+      "status": "green",
+      "owns": ["WS-1", "WS-2", "WS-4"],
+      "depends_on": [],
+      "evidence": "tools/workspace.py; tools/check_workspace_contract.py; harness/test_runner.py AuditRegressionTests; probe workspace-links, link-grammar",
+      "note": "Closed in this branch. The initializer and the runner import one resolver and one link grammar, and a standalone checker proves they still agree on all 60 manifest routes."
+    },
+    {
+      "id": "T-02",
+      "title": "Semantic relinking so no link points at a blank template when a filled copy exists",
+      "status": "green",
+      "owns": ["WS-3"],
+      "depends_on": ["T-01"],
+      "evidence": "init_product --add-all and --relink; probe workspace-drift",
+      "note": "Closed in this branch. Installing every template used to leave 181 links across 41 files aimed at templates/; the settle pass repoints them and is idempotent."
+    },
+    {
+      "id": "T-03",
+      "title": "Conductor as a persistent multi-turn state machine",
+      "status": "planned",
+      "owns": ["HR-5"],
+      "depends_on": ["T-04", "T-06"],
+      "risk": "high",
+      "estimate_weeks": 3,
+      "outcome": "A person answers one question, closes the laptop, comes back on another day or another runtime, and the interview resumes at the same cursor with every accepted answer intact.",
+      "scope": ["question cursor persisted per product and per bank", "answer validation against the bank's evidence class", "challenge counter with the two-push cap enforced in code, not prose", "transition guard: no advance while a gate line is unproven", "resume protocol executed by the runner, not only described in os/CONDUCTOR.md"],
+      "non_goals": ["a chat UI", "multi-user interviews"],
+      "acceptance": "A test drives three turns across three separate runner invocations, kills the process between turns two and three, and asserts the cursor, the accepted answers and the challenge count all survive.",
+      "note": "The kind fix removed the contradiction that made this impossible. It did not build the state machine: the runner is still one call per invocation."
+    },
+    {
+      "id": "T-04",
+      "title": "Transactional persistence with provable visibility and cross-machine concurrency",
+      "status": "planned",
+      "owns": ["CO-3"],
+      "depends_on": [],
+      "risk": "high",
+      "estimate_weeks": 4,
+      "outcome": "Two people on two machines write to the same product and neither loses work; a reader never observes a half-commit.",
+      "scope": ["immutable run directories plus one atomic pointer swap, or a transactional store with content-addressed artifacts", "optimistic compare-and-swap with an explicit conflict result", "failure injection before and after every write, rename and pointer swap", "process-level kill tests, not in-process monkeypatching"],
+      "non_goals": ["a hosted service"],
+      "acceptance": "A test kills a real subprocess at each of N injection points during commit and asserts the reader sees the complete prior or the complete new state at every one.",
+      "note": "The rollback landed in this branch is a real improvement and is not this. It is in-process, machine-local, and its own docstring says the rollback can itself fail."
+    },
+    {
+      "id": "T-05",
+      "title": "Durable queue with workers, leases, retries, cancellation and dead-letter",
+      "status": "planned",
+      "owns": ["DU-4", "DU-5"],
+      "depends_on": ["T-04"],
+      "risk": "high",
+      "estimate_weeks": 3,
+      "outcome": "Unattended automation survives a cap, a crash and a restart without losing or duplicating work.",
+      "scope": ["job states with lease and heartbeat", "owner, priority, due and retry times", "idempotency key and payload hash", "cancellation and deadline", "dead-letter transition with a reason", "a worker that dequeues, renews and recovers orphaned leases"],
+      "acceptance": "Kill a worker mid-job; a second worker takes the lease after expiry and the job runs exactly once, proven by the idempotency key.",
+      "note": "This branch added a durable, deduplicated job record and a deferred exit status. That closed the false success. Nothing picks a job up."
+    },
+    {
+      "id": "T-06",
+      "title": "Two-level durable memory: OS memory and isolated per-task memory",
+      "status": "planned",
+      "owns": ["DU-6"],
+      "depends_on": ["T-04"],
+      "risk": "high",
+      "estimate_weeks": 4,
+      "outcome": "A task's context survives compaction, a crash, and a handoff to another runtime, and one task cannot read or overwrite another's.",
+      "scope": ["append-only event log with materialized state rebuildable from it", "schema versions and forward migrations", "deterministic task ids and run UUIDs", "scoped retrieval with a test that two tasks cannot contaminate each other", "redaction, retention, export, backup and restore", "promotion of validated learnings into OS memory, not every task note"],
+      "non_goals": ["a vector database unless retrieval quality demands one"],
+      "acceptance": "Two concurrent tasks write conflicting keys; both event logs are intact, neither state is contaminated, and both rebuild from events to the same values.",
+      "note": "Nothing of this exists. STATE.md is per-product and is the only durable memory in the tree."
+    },
+    {
+      "id": "T-07",
+      "title": "Domain model: initiative, opportunity, experiment, release, decision, risk, approval, dependency",
+      "status": "planned",
+      "owns": ["OM-3"],
+      "depends_on": ["T-04", "T-06"],
+      "risk": "high",
+      "estimate_weeks": 5,
+      "outcome": "One product runs four initiatives at four different stages at once, and each keeps its own gate history.",
+      "scope": ["stable entity identity independent of file path", "per-entity lifecycle and gate state", "relationships and dependency edges", "rollups that do not destroy individual history"],
+      "acceptance": "A fixture drives four initiatives concurrently through DISCOVER, BUILD, DELIVER and OPERATE and asserts each gate history is separate and correct.",
+      "note": "This is the single biggest structural gap. STATE.md holds one stage, one gate counter and one next question, so it cannot represent a portfolio at all."
+    },
+    {
+      "id": "T-09",
+      "title": "Identity, RBAC, immutable audit trail and enforceable regulated evidence",
+      "status": "planned",
+      "owns": ["GV-6", "GV-7"],
+      "depends_on": ["T-04", "T-06", "T-07"],
+      "risk": "high",
+      "estimate_weeks": 5,
+      "outcome": "A gate decision is attributable to an actor with the authority to make it, over evidence whose hash is recorded, and the record cannot be edited after the fact.",
+      "scope": ["identity abstraction and role assignment", "least-privilege checks at the write boundary", "append-only audit log with hash chaining", "approval authority enforced at transition, not described", "evidence pack export, revocation and re-approval"],
+      "acceptance": "An actor without the role cannot pass a gate; an approved gate whose evidence file changes is detected by hash; the audit export replays to the same state.",
+      "note": "This is the difference between the regulated overlay being a good document contract, which it is, and being governance evidence, which it is not."
+    },
+    {
+      "id": "T-10",
+      "title": "Team collaboration and portfolio operations",
+      "status": "planned",
+      "owns": ["CO-1", "CO-2"],
+      "depends_on": ["T-07", "T-09"],
+      "risk": "medium",
+      "estimate_weeks": 4,
+      "outcome": "Several people work the same portfolio with assignments, comments, approvals and explicit conflicts.",
+      "acceptance": "Two users edit the same initiative concurrently; both events survive or the conflict is explicit and actionable."
+    },
+    {
+      "id": "T-11",
+      "title": "Integration adapters, metric ingestion and research operations",
+      "status": "blocked",
+      "owns": ["IN-1", "IN-2", "IN-3", "IN-4"],
+      "depends_on": ["T-07"],
+      "risk": "medium",
+      "estimate_weeks": 6,
+      "blocked_by": "IN-2 needs sandbox credentials and authorization for issue tracking, analytics, research storage and notifications. IN-1, IN-3 and IN-4 are not blocked and can be built against contract tests first.",
+      "outcome": "A metric arrives from a real source, an experiment result links to a decision, and a research quote carries consent and lineage.",
+      "acceptance": "Contract tests per adapter class, plus one sandbox-verified adapter per claimed class before any integration claim is made in the README."
+    },
+    {
+      "id": "T-12",
+      "title": "Migrations, backup, restore and release provenance",
+      "status": "planned",
+      "owns": ["CI-6"],
+      "depends_on": ["T-04", "T-06"],
+      "risk": "medium",
+      "estimate_weeks": 2,
+      "outcome": "A workspace built on an older version migrates forward, validates, and can be rolled back.",
+      "scope": ["workspace schema version stamped in STATE", "forward migration with a dry run", "backup and restore runbook proven by a test", "release provenance: commit, template versions and skill hashes recorded on an artifact"],
+      "note": "Also fixes the tag drift: repository tags stop at v0.4.0 while CHANGELOG.md describes releases through 0.7.1. Tagging needs the maintainer, not this branch."
+    },
+    {
+      "id": "T-13",
+      "title": "Accessibility review and observed adoption evidence",
+      "status": "blocked",
+      "owns": ["UX-3"],
+      "depends_on": [],
+      "risk": "low",
+      "blocked_by": "EXTERNAL: requires a real user who is not the maintainer completing the golden path under observation. No amount of local work can produce this evidence.",
+      "note": "UX-1 and UX-2 are green: the golden path is executed as a fixture on every scorecard run and the worked examples pass the full gate."
+    },
+    {
+      "id": "T-14",
+      "title": "Independent red-team review by an agent that did not write the code",
+      "status": "planned",
+      "owns": [],
+      "depends_on": ["T-03", "T-04", "T-05", "T-06", "T-07", "T-09"],
+      "risk": "high",
+      "note": "The rule that the implementer cannot be the only reviewer is not satisfied for the work on this branch: one agent wrote and verified it. The mitigation used instead was to prove each regression test fails against the behaviour it replaced, which is weaker than an independent reviewer and is recorded here as an accepted gap rather than a passed check."
+    }
+  ]
+}

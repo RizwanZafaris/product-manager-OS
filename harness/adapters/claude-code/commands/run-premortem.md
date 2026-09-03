@@ -15,6 +15,7 @@ GENERATED FILE. Do not hand-edit. Written by `harness/adapters/claude-code/gener
 | Stage | DESIGN |
 | Gate | 3 |
 | Tier | judgment. A tier name, never a model. |
+| Kind | artifact. Fills one template and files it in the product workspace. |
 | Skill | `skills/program-premortem/SKILL.md` |
 
 The tier to model mapping lives in `routing/omniroute.config.json` and nowhere else. Read it there rather than assuming one here.

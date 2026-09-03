@@ -8,6 +8,16 @@ permissions:
 jobs:
   gate:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The tree is standard library only, which is exactly the claim that
+        # made a single pinned interpreter feel sufficient. It was not: a test
+        # asserting the line number CPython reports for a malformed JSON file
+        # passed on 3.11 and failed on 3.14, because the assertion was about
+        # the interpreter rather than about this repository. A version a user
+        # actually has installed is a version this build has to cover.
+        python-version: ["3.11", "3.13"]
     steps:
       # Pinned by commit SHA, not by tag. A tag is a moving pointer, and a
       # workflow that trusts one is trusting whoever can move it. The comment
@@ -15,7 +25,48 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
+
+      # ------------------------------------------------ the shipped runtime
+      #
+      # This block exists because of a reproduced defect: a Python syntax
+      # error introduced into harness/runner.py did not fail this build. Every
+      # step below it read markdown or parsed JSON, and none of them imported
+      # the one file in the tree that makes a network call. The runtime was
+      # shipped untested by the gate that claimed to test the tree.
+      #
+      # Compilation first, because a file that does not compile makes every
+      # later result meaningless rather than merely wrong.
+
+      - name: Every tracked Python file compiles
+        run: |
+          git ls-files '*.py' | tee /dev/stderr | xargs -r python3 -m py_compile
+
+      - name: Unit tests (harness runtime)
+        run: python3 -m unittest discover -s harness -p 'test_*.py' -v
+
+      - name: The Claude Code adapter still matches the manifest
+        run: python3 harness/adapters/claude-code/generate.py --check
+
+      - name: Desktop adapter self-test
+        run: python3 harness/adapters/desktop/selftest.py
+
+      # The initializer is the other half of the workspace contract, and until
+      # this step existed nothing in CI had ever created a workspace. It walks
+      # the real path a user walks: create, install every template, verify the
+      # links resolve from where they landed, and hold the workspace to the
+      # same gate a repository file is held to.
+      - name: Initialize a workspace and lint it
+        run: |
+          python3 tools/init_product.py ci-smoke
+          python3 tools/init_product.py ci-smoke --add-all
+          python3 tools/init_product.py ci-smoke --check
+          python3 lint.py --workspace products/ci-smoke
+
+      - name: The runner and the initializer agree on every destination
+        run: python3 tools/check_workspace_contract.py
+
+      # ------------------------------------------------------- the tree gate
 
       # Structure only. An unfilled template is supposed to be unfilled, so the
       # fill checks are skipped here and exercised on the example below.
@@ -36,11 +87,6 @@ jobs:
       # so the eleven keep their meaning.
       - name: JSON files parse
         run: python3 lint.py --json-syntax
-
-      # There is deliberately no workspace step. products/ is gitignored, so a
-      # CI checkout has none, and a user's half-filled draft must never fail
-      # this build. That check is opt-in and local:
-      # python3 lint.py --workspace products/my-product
 
       # The graph is generated from declarations already in the tree, so a
       # commit that changes a feeds key or a Stage header without regenerating
@@ -71,3 +117,21 @@ jobs:
       - name: Unit tests (regulated module, in place)
         run: python3 -m unittest test_lint.py -v
         working-directory: modules/regulated
+
+  # The harness is deletable by design, and the claim is only worth as much as
+  # the last time somebody deleted it. So this job deletes it and runs the tree
+  # gate on what is left. A tree check that quietly depends on harness/ would
+  # pass in the job above and fail here.
+  deletable-harness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11"
+      - name: Delete the harness and run the tree gate on what is left
+        run: |
+          rm -rf harness
+          python3 lint.py --os
+          python3 tools/check_manifest.py --quiet
+          python3 -m unittest test_lint.py

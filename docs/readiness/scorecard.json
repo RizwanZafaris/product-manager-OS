@@ -1,0 +1,515 @@
+{
+  "schema": 1,
+  "generated": "2026-09-03T18:37:32Z",
+  "commit": "4677e4acfeac27341f258f422f5398c5c483499c",
+  "branch": "fix/audit-p0",
+  "working_tree": "clean",
+  "python": "3.14.3",
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "categories": [
+    {
+      "id": "operating-model",
+      "title": "Product operating model and lifecycle",
+      "points": 10,
+      "earned": 5,
+      "criteria": [
+        {
+          "id": "OM-1",
+          "title": "Six-stage loop, six gates, and every stage template present and internally consistent",
+          "points": 3,
+          "verify": "python3 lint.py --os",
+          "exit_code": 0,
+          "seconds": 1.8,
+          "status": "green",
+          "earned": 3
+        },
+        {
+          "id": "OM-2",
+          "title": "A workspace can be created and every shipped template installed into its canonical folder",
+          "points": 2,
+          "verify": "python3 tools/readiness_probe.py workspace-lifecycle",
+          "exit_code": 0,
+          "seconds": 0.57,
+          "status": "green",
+          "earned": 2
+        },
+        {
+          "id": "OM-3",
+          "title": "Entities with independent lifecycles: organization, product, initiative, opportunity, experiment, release, decision, risk, approval, dependency, portfolio allocation. Several initiatives progress concurrently through different stages",
+          "points": 5,
+          "status": "unbuilt",
+          "earned": 0,
+          "task": "T-07",
+          "blocker": "STATE.md models one product at one stage with one next question. There is no initiative entity, so nothing can hold two lifecycles at once."
+        }
+      ],
+      "shortfall": 5
+    },
+    {
+      "id": "workspace",
+      "title": "Canonical workspace, artifacts, and links",
+      "points": 10,
+      "earned": 10,
+      "criteria": [
+        {
+          "id": "WS-1",
+          "title": "One canonical destination resolver, shared by initializer and runner, agreeing on every manifest route",
+          "points": 3,
+          "verify": "python3 tools/check_workspace_contract.py --quiet",
+          "exit_code": 0,
+          "seconds": 0.09,
+          "status": "green",
+          "earned": 3
+        },
+        {
+          "id": "WS-2",
+          "title": "A generated workspace has zero broken links",
+          "points": 3,
+          "verify": "python3 tools/readiness_probe.py workspace-links",
+          "exit_code": 0,
+          "seconds": 0.7,
+          "status": "green",
+          "earned": 3
+        },
+        {
+          "id": "WS-3",
+          "title": "Zero links point at a blank source template when a filled workspace artifact exists (semantic drift)",
+          "points": 2,
+          "verify": "python3 tools/readiness_probe.py workspace-drift",
+          "exit_code": 0,
+          "seconds": 0.42,
+          "status": "green",
+          "earned": 2
+        },
+        {
+          "id": "WS-4",
+          "title": "The rewriter and the gate read one link grammar: inline, reference, titles, angle brackets, spaces, anchors",
+          "points": 2,
+          "verify": "python3 tools/readiness_probe.py link-grammar",
+          "exit_code": 0,
+          "seconds": 0.05,
+          "status": "green",
+          "earned": 2
+        }
+      ],
+      "shortfall": 0
+    },
+    {
+      "id": "harness",
+      "title": "Harness, route contracts, and Conductor",
+      "points": 15,
+      "earned": 10,
+      "criteria": [
+        {
+          "id": "HR-1",
+          "title": "Every route declares a typed kind the runner implements, and the manifest agrees with the router table",
+          "points": 3,
+          "verify": "python3 tools/check_manifest.py --quiet",
+          "exit_code": 0,
+          "seconds": 0.06,
+          "status": "green",
+          "earned": 3
+        },
+        {
+          "id": "HR-2",
+          "title": "The runner branches on route kind; only document-producing kinds write, and the structure check runs only where a template exists",
+          "points": 3,
+          "verify": "python3 -m unittest discover -s harness -p test_runner.py -k AuditRegression",
+          "exit_code": 0,
+          "seconds": 0.98,
+          "status": "green",
+          "earned": 3
+        },
+        {
+          "id": "HR-3",
+          "title": "The generated Claude Code adapter matches the manifest, route for route",
+          "points": 2,
+          "verify": "python3 harness/adapters/claude-code/generate.py --check",
+          "exit_code": 0,
+          "seconds": 0.09,
+          "status": "green",
+          "earned": 2
+        },
+        {
+          "id": "HR-4",
+          "title": "The desktop adapter self-test passes",
+          "points": 2,
+          "verify": "python3 harness/adapters/desktop/selftest.py",
+          "exit_code": 0,
+          "seconds": 0.13,
+          "status": "green",
+          "earned": 2
+        },
+        {
+          "id": "HR-5",
+          "title": "The Conductor is a persistent multi-turn state machine: one question, persisted answer, validated transition, resume mid-bank, and completion. Not a single stateless call",
+          "points": 5,
+          "status": "unbuilt",
+          "earned": 0,
+          "task": "T-03",
+          "blocker": "The interactive kind stops the runner demanding a filled template, which was the contradiction. It does not yet persist a question cursor, validate a transition, or resume: the runner is still one call per invocation."
+        }
+      ],
+      "shortfall": 5
+    },
+    {
+      "id": "durability",
+      "title": "Transactions, concurrency, queue, memory, and recovery",
+      "points": 15,
+      "earned": 8,
+      "criteria": [
+        {
+          "id": "DU-1",
+          "title": "A failed multi-file commit leaves the workspace as it was; failure is injected before and after each replace",
+          "points": 3,
+          "verify": "python3 -m unittest discover -s harness -p test_runner.py -k failed_commit",
+          "exit_code": 0,
+          "seconds": 0.09,
+          "status": "green",
+          "earned": 3
+        },
+        {
+          "id": "DU-2",
+          "title": "Concurrent journal writers preserve every valid event; no silent lost update",
+          "points": 3,
+          "verify": "python3 -m unittest discover -s harness -p test_runner.py -k concurrent",
+          "exit_code": 0,
+          "seconds": 0.71,
+          "status": "green",
+          "earned": 3
+        },
+        {
+          "id": "DU-3",
+          "title": "Deferred work writes a durable, deduplicated job record and exits with a deferred status, never success",
+          "points": 2,
+          "verify": "python3 -m unittest discover -s harness -p test_runner.py -k queued",
+          "exit_code": 0,
+          "seconds": 0.15,
+          "status": "green",
+          "earned": 2
+        },
+        {
+          "id": "DU-4",
+          "title": "Durable queue with lease, heartbeat, owner, priority, retry policy, cancellation and dead-letter state, plus a worker that dequeues and recovers after a crash",
+          "points": 3,
+          "status": "unbuilt",
+          "earned": 0,
+          "task": "T-05",
+          "blocker": "The job record is a record, not a queue. There is no worker, lease, retry schedule, cancellation, or dead-letter transition."
+        },
+        {
+          "id": "DU-5",
+          "title": "Process-level crash recovery: kill during commit, queue write and memory update; a reader observes the complete prior or complete new state",
+          "points": 2,
+          "status": "unbuilt",
+          "earned": 0,
+          "task": "T-05",
+          "blocker": "Rollback is covered by in-process failure injection only. No test kills a real process mid-commit."
+        },
+        {
+          "id": "DU-6",
+          "title": "Two-level durable memory: OS memory and isolated per-task memory, append-only events, rebuildable state, scoped retrieval, and a test that two tasks cannot contaminate each other",
+          "points": 2,
+          "status": "unbuilt",
+          "earned": 0,
+          "task": "T-06",
+          "blocker": "Not implemented. STATE.md is the only durable memory and it is per-product, not per-task."
+        }
+      ],
+      "shortfall": 7
+    },
+    {
+      "id": "governance",
+      "title": "Governance, security, privacy, regulatory evidence, and audit",
+      "points": 15,
+      "earned": 9,
+      "criteria": [
+        {
+          "id": "GV-1",
+          "title": "A document claiming Approved with unticked gate evidence fails the gate",
+          "points": 2,
+          "verify": "python3 -m unittest test_lint -k approved_with_an_unticked",
+          "exit_code": 0,
+          "seconds": 0.06,
+          "status": "green",
+          "earned": 2
+        },
+        {
+          "id": "GV-2",
+          "title": "Removing a mandatory gate criterion fails the suite",
+          "points": 2,
+          "verify": "python3 -m unittest test_lint -k missing_required_section",
+          "exit_code": 0,
+          "seconds": 0.06,
+          "status": "green",
+          "earned": 2
+        },
+        {
+          "id": "GV-3",
+          "title": "Provenance-aware metric checking: a sourced observed value passes, an unresolved example literal fails",
+          "points": 2,
+          "verify": "python3 -m unittest test_lint -k example_number",
+          "exit_code": 0,
+          "seconds": 0.07,
+          "status": "green",
+          "earned": 2
+        },
+        {
+          "id": "GV-4",
+          "title": "Secret scanning across the tree, and no credential written to artifact, log or journal",
+          "points": 2,
+          "verify": "python3 -m unittest test_lint -k Secret",
+          "exit_code": 0,
+          "seconds": 0.11,
+          "status": "green",
+          "earned": 2
+        },
+        {
+          "id": "GV-5",
+          "title": "Write boundary: output confined to products/, path traversal in a product slug refused",
+          "points": 1,
+          "verify": "python3 -m unittest discover -s harness -p test_runner.py -k slug",
+          "exit_code": 0,
+          "seconds": 0.06,
+          "status": "green",
+          "earned": 1
+        },
+        {
+          "id": "GV-6",
+          "title": "Identity, RBAC, least privilege, and an immutable audit trail with approval identities and evidence hashes",
+          "points": 3,
+          "status": "unbuilt",
+          "earned": 0,
+          "task": "T-09",
+          "blocker": "No identity abstraction exists. A gate is signed by a person editing a file; nothing binds a signature to an actor or hashes the evidence it was given on."
+        },
+        {
+          "id": "GV-7",
+          "title": "Regulated evidence packs: approver authority, timestamp, source hash, audit export, revocation and re-approval enforced at runtime",
+          "points": 3,
+          "status": "unbuilt",
+          "earned": 0,
+          "task": "T-09",
+          "blocker": "The regulated overlay is a document contract. Nothing enforces approver authority or produces an export."
+        }
+      ],
+      "shortfall": 6
+    },
+    {
+      "id": "collaboration",
+      "title": "Team collaboration and portfolio operations",
+      "points": 10,
+      "earned": 0,
+      "criteria": [
+        {
+          "id": "CO-1",
+          "title": "Multi-user assignments, comments, mentions, approvals, and explicit conflict handling on concurrent edits",
+          "points": 4,
+          "status": "unbuilt",
+          "earned": 0,
+          "task": "T-10",
+          "blocker": "Not implemented. The advisory lock serializes writers on one filesystem and says nothing about two people on two machines."
+        },
+        {
+          "id": "CO-2",
+          "title": "Portfolio prioritization, capacity allocation, sequencing and rollups across products, preserving individual history",
+          "points": 3,
+          "status": "unbuilt",
+          "earned": 0,
+          "task": "T-10",
+          "blocker": "Not implemented. Depends on the initiative entity in T-07."
+        },
+        {
+          "id": "CO-3",
+          "title": "Cross-machine concurrency: compare-and-swap or merge, with an explicit conflict rather than a lost update",
+          "points": 3,
+          "status": "unbuilt",
+          "earned": 0,
+          "task": "T-04",
+          "blocker": "Not implemented. flock is machine-local and advisory."
+        }
+      ],
+      "shortfall": 10
+    },
+    {
+      "id": "integrations",
+      "title": "Integrations, analytics, experiments, and research operations",
+      "points": 10,
+      "earned": 0,
+      "criteria": [
+        {
+          "id": "IN-1",
+          "title": "Versioned adapters with contract tests for issue tracking, source control, analytics, research storage and notifications",
+          "points": 3,
+          "status": "unbuilt",
+          "earned": 0,
+          "task": "T-11",
+          "blocker": "No adapter exists for any integration class."
+        },
+        {
+          "id": "IN-2",
+          "title": "At least one representative adapter per claimed class verified against an approved sandbox",
+          "points": 3,
+          "status": "external-blocker",
+          "earned": 0,
+          "task": "T-11",
+          "blocker": "EXTERNAL: requires sandbox credentials and authorization this session does not have."
+        },
+        {
+          "id": "IN-3",
+          "title": "Metric ingestion and experiment outcomes linked to a recorded decision",
+          "points": 2,
+          "status": "unbuilt",
+          "earned": 0,
+          "task": "T-11",
+          "blocker": "Templates capture these as documents. Nothing ingests a metric or links a result to a decision as data."
+        },
+        {
+          "id": "IN-4",
+          "title": "Research operations: consent, recruiting status, retention, redaction and evidence lineage enforced",
+          "points": 2,
+          "status": "unbuilt",
+          "earned": 0,
+          "task": "T-11",
+          "blocker": "Not implemented; the discovery templates describe the practice without enforcing it."
+        }
+      ],
+      "shortfall": 10
+    },
+    {
+      "id": "ci",
+      "title": "CI, packaging, migrations, releases, and maintainability",
+      "points": 10,
+      "earned": 8,
+      "criteria": [
+        {
+          "id": "CI-1",
+          "title": "Every tracked Python file compiles",
+          "points": 2,
+          "verify": "python3 tools/readiness_probe.py compile-all",
+          "exit_code": 0,
+          "seconds": 0.16,
+          "status": "green",
+          "earned": 2
+        },
+        {
+          "id": "CI-2",
+          "title": "The full shipped test suite runs: root, harness, and regulated module",
+          "points": 2,
+          "verify": "python3 tools/readiness_probe.py full-suite",
+          "exit_code": 0,
+          "seconds": 3.7,
+          "status": "green",
+          "earned": 2
+        },
+        {
+          "id": "CI-3",
+          "title": "CI executes the runtime, not only the documents: compile, harness suite, adapters, workspace lifecycle and contract",
+          "points": 2,
+          "verify": "python3 tools/readiness_probe.py ci-covers-runtime",
+          "exit_code": 0,
+          "seconds": 0.04,
+          "status": "green",
+          "earned": 2
+        },
+        {
+          "id": "CI-4",
+          "title": "The deletability guarantee holds: the tree gate passes with harness/ removed",
+          "points": 1,
+          "verify": "python3 tools/readiness_probe.py deletable-harness",
+          "exit_code": 0,
+          "seconds": 4.51,
+          "status": "green",
+          "earned": 1
+        },
+        {
+          "id": "CI-5",
+          "title": "Mutation checks prove CI catches syntax errors, path drift and semantically wrong links",
+          "points": 1,
+          "verify": "python3 tools/readiness_probe.py mutation-checks",
+          "exit_code": 0,
+          "seconds": 0.7,
+          "status": "green",
+          "earned": 1
+        },
+        {
+          "id": "CI-6",
+          "title": "Reproducible installation with pinned dependencies, forward migrations with rollback, backup and restore, and release provenance",
+          "points": 2,
+          "status": "unbuilt",
+          "earned": 0,
+          "task": "T-12",
+          "blocker": "Standard library only, so there is nothing to pin, but there is also no migration path for an existing workspace and no backup or restore runbook."
+        }
+      ],
+      "shortfall": 2
+    },
+    {
+      "id": "ux",
+      "title": "UX, accessibility, onboarding, and adoption evidence",
+      "points": 5,
+      "earned": 3,
+      "criteria": [
+        {
+          "id": "UX-1",
+          "title": "A documented golden path a new user can follow end to end, executed as a fixture",
+          "points": 2,
+          "verify": "python3 tools/readiness_probe.py golden-path",
+          "exit_code": 0,
+          "seconds": 0.26,
+          "status": "green",
+          "earned": 2
+        },
+        {
+          "id": "UX-2",
+          "title": "Worked examples exist and pass the full gate",
+          "points": 1,
+          "verify": "python3 lint.py modules/regulated/examples/dispute-summary/PRD.md",
+          "exit_code": 0,
+          "seconds": 0.06,
+          "status": "green",
+          "earned": 1
+        },
+        {
+          "id": "UX-3",
+          "title": "Accessibility review and observed adoption evidence from a user who is not the maintainer",
+          "points": 2,
+          "status": "external-blocker",
+          "earned": 0,
+          "task": "T-13",
+          "blocker": "EXTERNAL: requires a real user session. No adoption telemetry or usability observation exists."
+        }
+      ],
+      "shortfall": 2
+    }
+  ],
+  "earned": 53,
+  "possible": 100,
+  "verified_criteria": 25,
+  "failed_criteria": 0,
+  "unbuilt_criteria": 16,
+  "external_blockers": [
+    "IN-2",
+    "UX-3"
+  ],
+  "open_tasks": [
+    "T-03",
+    "T-04",
+    "T-05",
+    "T-06",
+    "T-07",
+    "T-09",
+    "T-10",
+    "T-11",
+    "T-12",
+    "T-13"
+  ],
+  "hard_gates": {
+    "every_verifiable_criterion_passes": true,
+    "no_unbuilt_criteria": false,
+    "no_external_blockers": false,
+    "working_tree_clean": true
+  },
+  "all_hard_gates_green": false,
+  "verdict": "COMPLETE PM OS READINESS: NOT 100/100 \u2014 WORK REMAINS"
+}
