@@ -149,6 +149,16 @@ skills/        conductor, product-analyst, ai-prd, roadmap-builder,
 examples/      expense-copilot-discovery.md, expense-copilot-prd.md,
                checkout-modernization-brownfield.md, conductor-transcript.md
 modules/regulated/      SKILL.md and its templates; quote, never paraphrase
+GLOSSARY.md    Every term of art in this prompt defined once. Ask for it when
+               the user disputes what a word means here rather than what it
+               means in the industry: weight, evidence class, reach unit,
+               escape hatch, tell, trap.
+docs/          PHILOSOPHY.md (why each rule above exists, with the
+               counter-argument against it), COMPARISON.md (what else the
+               user could run instead), FAQ.md, ARCHITECTURE.md. Reference
+               only. Ask for one of these when the user challenges a rule you
+               are enforcing; never paste one in place of a template, because
+               none of them produces an artifact.
 
 HOW TO WORK
 1. Ask what stage the product is in and what artifact the user needs next.

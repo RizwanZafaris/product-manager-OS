@@ -4,7 +4,7 @@
 
 Six stages, six gates, a knowledge layer with named attribution, runnable framework worksheets, fill-in templates for every artifact a product needs, and optional AI layers stacked on top. It is a document system first and an AI system second. Every template works with a text editor and a pencil. The AI layers, boot prompts, skills, agents, and model routing, are accelerants on a format that stands without them.
 
-Every prompt here is a file you can read. There is no wrapper, no account, and no hosted prompt you cannot inspect: this is a versioned prompt library in a git repository, which means you can fork it, diff it, and see exactly what changed between one version and the next. The four ways to run it are below, and the first one uses no model at all. And one more thing you can inspect: this repository was built with Claude Code by a working payments CPO. Every commit trailer says so, and every prompt it produced is a file you can read and argue with.
+Every prompt here is a file you can read. There is no wrapper, no account, and no hosted prompt you cannot inspect: this is a versioned prompt library in a git repository, which means you can fork it, diff it, and see exactly what changed between one version and the next. The four ways to run it are below, and the first one uses no model at all. And one more thing you can inspect: this repository was built with Claude Code by a working payments CPO. Every commit trailer says so, and every prompt it produced is a file you can read and argue with. [docs/FAQ.md](docs/FAQ.md) answers what that means for what you should audit hardest here, since the label matters less than which parts of a tree a model is good at producing and bad at grounding.
 
 ## Say "start"
 
@@ -24,6 +24,8 @@ The Conductor refuses to advance a stage until the stage's gate checklist passes
 ## The problem, first
 
 A PM's tools are scattered. Discovery lives in one product, specs in another, delivery in a tracker, and judgment nowhere. The strongest open systems each own one segment: [spec-kit](https://github.com/github/spec-kit) owns spec-to-code, [product-os](https://github.com/topics/product-os) owns discovery, [BMAD](https://github.com/bmad-code-org/BMAD-METHOD) owns agentic build. None that I found (as of September 2026) chains discovery through requirements, architecture, delivery, and post-launch verification in one system. None carries a regulated overlay, a canon knowledge layer with named attribution, tiered model routing, or a whole-tree consistency gate.
+
+Those four claims are written as falsifiable statements, each with what would disprove it, in [docs/COMPARISON.md](docs/COMPARISON.md), alongside a dated side-by-side of the alternatives and the rows where each of them beats this one. Read that file before adopting this one; it also names the binding constraint that should send you elsewhere, and the common configuration is running two of these systems together rather than picking one.
 
 This repository is the whole loop in one place, and it works without any AI at all. If the model is free-tier, offline, or wrong, the artifacts and gates still function. That is a design rule here, not a hope: graceful degradation is structural.
 
@@ -103,8 +105,12 @@ A filled example is one file away: [examples/expense-copilot-discovery.md](examp
 | [os/](os/README.md) | Operating loop | The six stages, the six gates, which document to write, and where filled artifacts live |
 | [examples/](examples/README.md) | Worked examples | What a filled artifact looks like, greenfield and brownfield |
 | [modules/regulated/](modules/regulated/README.md) | Regulated overlay | What a regulated AI feature must answer before it ships |
+| [docs/](docs/ARCHITECTURE.md) | Reference | WHY the mechanisms are shaped this way, what else you could run instead, and the questions a skeptic asks first |
+| [GLOSSARY.md](GLOSSARY.md) | Vocabulary | Every term of art defined once, each pointing at the file that governs it |
 
 Dependencies point downward only. Templates cite knowledge cards, skills cite templates, system prompts cite skills and templates by repo path, routing serves all of them.
+
+The last two rows are reference rather than layers, and nothing in the loop depends on them. [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md) states the nine beliefs the templates are shaped by, each with the strongest counter-argument I could build against it and the mechanism in the tree that makes the belief operational, on the rule that a belief with no mechanism behind it is a mood. [docs/COMPARISON.md](docs/COMPARISON.md) is the dated comparison against the alternatives, with a column for where each of them beats this one and every one of this repository's own losses collected in a single list, each marked fixable or structural. [docs/FAQ.md](docs/FAQ.md) answers the sixteen questions a skeptic asks first, including whether this is AI-generated, why anyone should trust a solo maintainer, and what happens when maintenance stops. [GLOSSARY.md](GLOSSARY.md) defines the vocabulary, which earns its place wherever a word has a general industry meaning and a narrower one here: weight, evidence class, reach unit, escape hatch, tell, trap.
 
 ## Who you are and where you play
 
@@ -148,6 +154,8 @@ This is stated because the failure is common enough to plan for: systems in this
 - **Not an autopilot.** Gates are signed by people with the standing to stop a stage. A gate nobody can fail is a ceremony.
 - **Not a claim that a model's output is evidence.** Evidence-thin input produces confident-sounding, thin output. The gates exist to catch exactly that.
 - **Not legal or regulatory advice.** The regulated module tells you which questions to answer and where the primary text sits, never what the answer is in your entity or license class.
+
+Each of those four refusals comes from a belief, and the beliefs are argued rather than asserted in [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md): nine of them, each carrying the best counter-argument against it, the mechanism that enforces it, and the failure mode that shows up when the mechanism is present but hollow.
 
 ## Scope and sunset
 

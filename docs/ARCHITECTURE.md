@@ -45,9 +45,13 @@ The frameworks layer arrived in v0.5.0 to close a gap the first four versions le
 
 Dependencies point downward only. Frameworks cite knowledge cards and name the templates they feed. Templates cite knowledge cards and worksheets. Skills cite templates and worksheets. System prompts cite skills and templates by repo path. Routing serves all of them. Nothing in `knowledge/`, `frameworks/`, or `templates/` depends on any AI layer existing.
 
+Four files sit outside the layer stack entirely and are reference, not machinery: `docs/PHILOSOPHY.md`, `docs/COMPARISON.md`, `docs/FAQ.md`, and `GLOSSARY.md`. They link down into every layer and nothing links up to them, which is deliberate: a gate that depended on a belief file would make the belief unfalsifiable, and the whole point of writing the beliefs down is that they can be argued with. The practical consequence for maintenance is that these four go stale in a way the layers do not, because each one makes a claim about something outside its own tree, the field, the maintainer, or the vocabulary in use. Every one of them therefore carries a date and a stated re-check procedure, and `COMPARISON.md` names the two rows most likely to flip first.
+
 ### 1.4 What the field is missing, and what this OS does about it
 
 A teardown of the strongest existing systems (BMAD-METHOD, github/spec-kit, buildbetter product-os, deanpeters Product-Manager-Skills, ChatPRD, the Anthropic PM plugin) shows each owns one segment: spec-kit owns spec-to-code, product-os owns discovery, BMAD owns agentic build. None chains discovery through requirements, architecture, delivery, and post-launch verification in one system. None carries a regulated overlay, a canon knowledge layer with named attribution, tiered model routing, or a whole-tree consistency gate. Those four gaps are this repo's reason to exist, and the file tree below closes each one with a named directory.
+
+Since v0.6.0 that teardown has a rendered face in [COMPARISON.md](COMPARISON.md), which carries the dated table, a column for where each surveyed system beats this one, and the four gap claims rewritten as falsifiable statements with what would disprove each. Keep the two files in step: this section is the design rationale, that file is the reader-facing comparison, and a gap claim that gets narrowed in one has to be narrowed in the other or the tree is asserting two different things about the same field.
 
 ## 2. Complete file tree
 
@@ -59,11 +63,15 @@ product-manager-OS/
 ├── CLAUDE.md  Thin router for Claude Code: points to AGENTS.md as single source of truth, maps triggers to skills/
 ├── AGENTS.md  Single source of truth for any agent runtime: load order, directory map, gate rules, tool expectations
 ├── CHANGELOG.md  Keep a Changelog format; what each semver level means here, the release inventory, and a stated known-gaps list
+├── GLOSSARY.md  Every term of art defined once, alphabetical, each entry pointing at the file that governs the term; the governing file wins on any disagreement
 ├── LICENSE  MIT, copyright Rizwan Zafar
 ├── lint.py  (EXTEND)  OS-wide quality gate, stdlib only; original regulated checks preserved, tree mode added (spec in section 4)
 ├── test_lint.py  (EXTEND)  Unit tests for every original and every added lint check
 ├── docs/
 │   ├── ARCHITECTURE.md  (this file)  The blueprint: concept, tree, cross-link conventions, lint spec
+│   ├── PHILOSOPHY.md  The nine beliefs the tree is shaped by, each with its steel-manned counter-argument, the mechanism that enforces it, and the failure mode that appears when the mechanism is hollow
+│   ├── COMPARISON.md  Dated honest comparison against spec-kit, BMAD, a hosted product, and template packs: where each wins, where this loses, how to run two together, and the four gap claims as falsifiable statements
+│   ├── FAQ.md  Sixteen skeptical questions with the weaknesses written as weaknesses: AI authorship, solo maintenance, gate theater, waterfall, tracker fit, and what is safe to delete
 │   └── CONDUCTOR-DESIGN.md  The v0.2.0 design: prior art, the Conductor's contract, journey map, evidence classes, STATE.md format, resume protocol, build plan
 ├── os/
 │   ├── README.md  Rendered directory face: the loop in miniature, what each of the six files holds, and a read order for a first-timer

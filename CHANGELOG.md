@@ -12,10 +12,165 @@ The stability promise is stated in [README.md](README.md) and repeated here so i
 
 ## Unreleased
 
+Nothing yet.
+
+## 0.6.0, 2026-09-03
+
+The depth release. Nothing new was added to the loop; the existing files were made
+worth reading. The trigger was a blunt review: a lot is missing to be called a
+product OS. The diagnosis behind that verdict was uneven depth rather than missing
+coverage. The frameworks layer averaged 87 lines a worksheet and carried its
+arithmetic, its scales, its trap and its skip line, while the knowledge cards next
+to it averaged 34 lines and mostly restated what the worksheet already said. A
+reader who opened a card after opening a worksheet learned nothing from the second
+file, which is the same defect as a missing file with an extra maintenance cost
+attached.
+
+Four layers were rewritten inside their existing skeletons: every heading, header
+block, exit gate, attribution line, skip line and cross-link that was there before
+is still there, and every addition is a new block within the same shape. So a
+document filled against 0.5.1 keeps working, and a link written into your own notes
+keeps resolving. That makes this a minor version even though it is the largest diff
+in the repository's history: 22,341 lines of markdown to 25,829, with four files
+added and none moved, renamed, or deleted.
+
+The rule that governed the rewrite is worth stating, because it is what stops a
+depth pass from becoming a padding pass. `frameworks/` files are the working
+sheets: how to run a method, fill it, and score it. `knowledge/` cards are the why
+layer: why the method exists, the mechanism that makes it work, when it fails, and
+how it lies. Every deepened card was written with its paired worksheet open, and
+nothing from the sheet was restated. The same line separates `skills/`, which hold
+procedures, from `agents/`, which hold identities.
+
+### Added
+
+- **[docs/PHILOSOPHY.md](docs/PHILOSOPHY.md)**, 151 lines. Nine beliefs, each with
+  the strongest counter-argument that could be built against it, the mechanism in
+  the tree that makes the belief operational, a named failure mode with the tell
+  that reveals it, and a decision rule or a worked micro-example. It closes with a
+  belief-to-enforcement table, on the rule that a belief with no mechanism behind
+  it is a mood and a mood cannot fail a gate. The counter-arguments are real: the
+  gate section concedes that stage gates are the artifact of the era product
+  management spent a decade escaping, and answers that rather than dodging it.
+- **[docs/COMPARISON.md](docs/COMPARISON.md)**, 124 lines, dated 2026-09-03. A
+  five-column table on spec-kit, BMAD-METHOD, a hosted commercial product, and
+  ordinary template packs, with one column for what each does better than this
+  repository. No scoring total, because a total lets a reader skip the only rows
+  worth reading. It adds a picker keyed to your binding constraint rather than to
+  feature lists, a per-system "pick that one when", a handoff table for running two
+  of these systems together and what to strip in each direction, all seven of this
+  repository's own losses collected in one list and each marked fixable or
+  structural, three worked choosing scenarios on fictional products, the four gap
+  claims rewritten as falsifiable statements with what would disprove each, and a
+  one-afternoon evaluation protocol that beats a week of comparison reading.
+- **[docs/FAQ.md](docs/FAQ.md)**, 121 lines. Sixteen questions in four sections,
+  answered with the weaknesses written as weaknesses. Is this AI-generated, answered
+  with how to check the claim rather than take it. Why trust a solo maintainer,
+  answered as three checkable mechanisms instead of a reassurance. What happens when
+  maintenance stops. Is this waterfall. Will the gates become theater. How it fits a
+  tracker, an in-house PRD template, a two-person startup, and non-software work.
+  Most answers carry a second paragraph that is a decision rule or a tell.
+- **[GLOSSARY.md](GLOSSARY.md)**, 128 lines, 66 terms. Every word this tree uses in
+  a narrower sense than the industry does, defined once, alphabetical, each with a
+  because-clause where the clause teaches and a cross-link to the file that governs
+  the term. Reach unit, mandate lane, evidence class, escape hatch, forced pair,
+  smart skip against the skip line, weight, pencil path, tell, trap, zombie spec.
+  Where this file and the governing file disagree, the governing file wins.
+
+### Changed
+
+- **The eleven knowledge canon cards, 443 lines to 1,496.** Each card kept its
+  original heading set, attribution line, skip line, trap, Used-by list and Run-it
+  block verbatim, and gained seven sections inside that skeleton: where the method
+  came from and how its origin explains its blind spots, what it assumes as numbered
+  claims each with a because-clause, a worked illustrative micro-case on a fictional
+  product with invented numbers, the other ways it fails with the tell for each, how
+  it lies or gets gamed, a what-good-looks-like against anti-pattern contrast, and
+  where it sits in the loop with its upstream, downstream and gate links. No
+  worksheet mechanics were restated. Cards ran 31 to 43 lines before and 129 to 134
+  after.
+- **The six `os/` spine files, 674 lines to 1,321.** `OPERATING-LOOP.md` gained
+  per-stage entry and exit tests, a named failure per stage with its tell, a worked
+  micro-example per stage, and a backward-transition table for the moves the loop
+  diagram cannot draw. `HOW-TO-RUN-A-PRODUCT.md` gained a cast table with signature
+  authority, elapsed-time calibration, two gate attempts rendered as marked
+  checklists with evidence beside each line, a latency trade-off with three logged
+  options, and one requirement traced across nine documents. `STAGE-GATES.md` gained
+  five to eight named failure precedents per gate, each with its on-page tell, plus
+  the most common false pass for each gate. `CONDUCTOR.md` gained a worked
+  four-part question, a five-answer evidence-ladder classification table, and
+  rendered exchanges for the two-push park, the smart skip, the escape hatch and a
+  failing gate. `WHICH-DOCUMENT.md` gained seven worked routing cases and four
+  misreadings of the tree with their tells. `PRODUCT-WORKSPACE.md` gained an
+  annotated month-nine directory listing and a ninety-minute new-owner reading path.
+- **The twelve agent identity files, 595 lines to 1,315.** Each gained a yours
+  against not-yours table that names the other role holding each refusal, six or
+  seven judgment rules with because-clauses covering exactly what the paired skill
+  procedure cannot settle, a voice section, a worked run from input to output on
+  fictional products, an escalation section keyed to the ladder in
+  [agents/TEAM.md](agents/TEAM.md), and failure modes of using that agent wrong with
+  the tell for each. The fictional products recur across files, so the handoffs
+  chain the way the team protocol says they should. Files ran 29 to 52 lines before
+  and 93 to 113 after.
+- **The learn layer, 416 lines to 772.** Each of the three paths now carries a
+  standing invented brief with fixed numbers that every step inherits, and each step
+  carries why it comes now, a run line into the paired worksheet, pass criteria at
+  two, one and zero, a named trap with its tell, and a time expectation. The library
+  gained per-book annotations naming what the card omits, the signal that you should
+  go to the source, and the standard misapplication, plus a rule for when buying the
+  book is worth it. The tutor skill gained two full worked critiques and a
+  calibration rule set for the one-against-two boundary, which is where a scoring
+  rubric actually breaks.
+- **Wiring for the four new files.** `README.md` gains two module-map rows and links
+  the reference files where each is the natural next question; `docs/ARCHITECTURE.md`
+  carries them in the file tree and states why nothing links up to them;
+  `AGENTS.md` and `CLAUDE.md` gain the two reference routes, with the instruction to
+  give the counter-argument alongside the belief; `system/BOOT-PROMPT.md` adds them
+  to its manifest marked reference-only, since none of them produces an artifact;
+  `CONTRIBUTING.md` states that a failure mode needs its tell and a skip condition
+  needs to be a test on the situation.
+
 ### Fixed
 
 - `routing/README.md`: the install command is `omniroute serve` (there is no `start`); added the provider-connection commands, a tier probe that shows which concrete model answers each tier, and the request headers that stop OmniRoute's compression, semantic cache and memory injection from altering prompts that must be quoted verbatim. Found by running the config against a live OmniRoute: on a keyless install `auto/reasoning:pro` returns `404 Combo has no executable targets`, which the doctrine expects but the manual never said.
 - `routing/omniroute.config.json`: the judgment tier now states what it requires and carries an explicit, off-by-default `keylessFallback` instead of leaving a fresh install to fail silently; `endpoint.requestHeaders` and `endpoint.verify` record the headers and the probe. No tier model changed.
+
+### Known gaps
+
+The point of a depth release is that the thin files become obvious once the deep
+ones are next to them. These are the ones this version did not reach, in the order
+the unevenness now shows.
+
+- **`knowledge/domains/` is the thinnest layer in the tree**, twelve market cards
+  averaging 35 lines against 115 for a canon card. Each names its gatekeepers and
+  how its metrics lie, and none carries a worked example, a named failure mode with
+  a tell, or the origin of the metric conventions it teaches. A reader coming from a
+  deepened canon card will feel the drop immediately.
+- **`knowledge/roles/` is next**, eight files averaging 46 lines. The ladder and the
+  triad decision rights are the two most-cited files in the sub-layer and neither
+  carries a worked dispute, which is the only thing that makes a decision-rights
+  table usable under pressure.
+- **`examples/` averages 67 lines** and is the layer that would benefit most from
+  the same treatment, because a worked example is depth by definition. Six of the 46
+  worksheets have a filled example; forty do not, unchanged from 0.5.0.
+- **The 28 skills average 78 lines** and were deliberately left alone this pass to
+  keep the procedure and identity layers from drifting into each other while both
+  were being edited. They are the next candidate, and the anti-duplication line has
+  to be redrawn before that starts.
+- **`system/BOOT-PROMPT.md` still claims its manifest is the whole repository**, and
+  the manifest omits `frameworks/` entirely and lists nine skills where there are
+  now 28. A chat-model session driven from that prompt cannot ask for a worksheet by
+  path, because it does not know the layer exists.
+- **No lint check enforces depth**, and none should on a line count. What is
+  genuinely unchecked is the anti-duplication rule: nothing verifies that a
+  deepened card avoided restating its worksheet, which was enforced by reading and
+  therefore by attention rather than by a script.
+- **The worked micro-cases are invented, and labeled so throughout.** They
+  demonstrate a method's shape and failure mode; they are not evidence that the
+  method works, and no release note here should imply otherwise.
+- **`docs/COMPARISON.md` starts aging the day it ships.** It carries its comparison
+  date and names the two rows most likely to flip, and it will need a re-read of the
+  four primary sources on a cadence nothing in the repository enforces.
 
 ## 0.5.1, 2026-09-03
 
