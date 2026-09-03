@@ -1,0 +1,6 @@
+layer: skills
+stage: DELIVER
+gate: 5
+feeds: ["templates/planning/gtm-plan.md", "templates/delivery/launch-comms-plan.md", "templates/delivery/release-readiness.md"]
+method: "knowledge/crossing-the-chasm.md"
+aliases: ["GTM Launch Planner", "gtm-launch-planner"]

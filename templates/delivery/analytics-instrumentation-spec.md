@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DELIVER
+gate: 5
+feeds: []
+method: "knowledge/north-star-metric.md"
+aliases: ["Analytics Instrumentation Spec", "analytics-instrumentation-spec"]
+---
 # Analytics Instrumentation Spec: [product or feature name]
 
 **Stage:** DELIVER (feeds [Gate 5: release readiness green](../../os/STAGE-GATES.md)), but write it before BUILD starts

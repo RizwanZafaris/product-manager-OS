@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: PLANNING
+gate: 1
+feeds: []
+method: "knowledge/okrs.md"
+aliases: ["OKR Sheet"]
+---
 # OKR Sheet: [product or team name], [period]
 
 **Stage:** PLANNING track (feeds every stage of the [operating loop](../../os/OPERATING-LOOP.md))
@@ -27,7 +35,7 @@
 | KR1 | | | | | | |
 | KR2 | | | | | | |
 | KR3 | | | | | | |
-| *ex* | *weekly active teams using auto-extraction* | *0* | *40* | *12* | *0.3* | *[name]* |
+| *ex* | *weekly active teams using auto-extraction (ILLUSTRATIVE)* | *0* | *40* | *12* | *0.3* | *[name]* |
 
 **Commitment type per KR:** [mark each as committed (1.0 expected) or aspirational (0.7 is success), because grading them the same punishes ambition]
 

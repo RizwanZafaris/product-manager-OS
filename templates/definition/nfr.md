@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DEFINE
+gate: 2
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["NFR", "Non-Functional Requirements"]
+---
 # Non-Functional Requirements: [feature or product name]
 
 Stage: DEFINE, feeds Gate 2 (requirements signed off)

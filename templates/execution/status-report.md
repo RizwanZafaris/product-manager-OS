@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: BUILD
+gate: 4
+feeds: []
+method: "knowledge/high-output-management.md"
+aliases: ["Status Report", "status-report"]
+---
 # Status Report: [initiative or program], week of [YYYY-MM-DD]
 
 Stage: BUILD and DELIVER, weekly from Gate 3 onward; feeds [Gate 4: acceptance criteria met](../../os/STAGE-GATES.md) and Gate 5 with the record of what slipped and what was decided

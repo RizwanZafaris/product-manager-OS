@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: PLANNING
+gate: 1
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Positioning"]
+---
 # Positioning: [product name]
 
 **Stage:** PLANNING track (feeds every stage of the [operating loop](../../os/OPERATING-LOOP.md), most directly the [GTM plan](gtm-plan.md))

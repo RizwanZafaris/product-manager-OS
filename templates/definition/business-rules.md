@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DEFINE
+gate: 2
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Business Rules Register", "business-rules"]
+---
 # Business Rules Register: [product or domain name]
 
 Stage: DEFINE, feeds Gate 2 (requirements signed off)

@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["The PM Ladder", "ladder"]
+---
 # The PM Ladder: Associate PM to CPO
 
 Eight rungs, one fork. Each rung below states what the role owns, what it alone decides, the documents it produces and consumes, what success looks like, the classic way the rung fails, and how the job bends by company stage. The shape draws on Marty Cagan's writing on product roles and product leadership, Melissa Perri's treatment of the product career path, and Lenny Rachitsky's published surveys of how companies actually level PMs; sources are listed at the end.

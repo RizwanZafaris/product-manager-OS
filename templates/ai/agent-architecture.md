@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: AI OVERLAY
+gate: 3
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Agent Architecture", "agent-architecture"]
+---
 # Agent Architecture: [system name]
 
 Stage: AI overlay, active whenever the product contains a model that takes actions; feeds Gate 3 (architecture and risks reviewed)

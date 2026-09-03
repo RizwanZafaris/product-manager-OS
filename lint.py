@@ -8,16 +8,21 @@ Both modes: required sections, a parseable, non-future and non-stale as-of date,
 review-gate checkboxes present, no banned metric strings, no em dashes, no
 TBD/TODO/FIXME. PRD mode only (--template skips these, because an unfilled
 template is supposed to be unfilled): every section 0 cell and "key: value" field
-is answered, and every section 1 eval row carries a metric, dataset, numeric
-threshold, below-threshold action, and owner, with the threshold either labeled
+is answered, in the sense that it holds neither a [placeholder] nor an unfilled
+<angle-bracket> field; sections 0.1 and 0.2 each carry a table with their
+required columns and at least one entry, so a gutted document cannot satisfy
+section 0 with any table that happens to have a row; and the section 1 eval
+table carries at least one row, each with a metric, dataset, numeric threshold,
+below-threshold action, and owner, with the threshold either labeled
 ILLUSTRATIVE or citing a dated agreement.
 
 Limits, stated rather than hidden: a section 0 bullet with no colon is not read
 as a field; gate boxes are checked for presence, never for being ticked, because
 only a human can honestly tick one; the banned-metric list is a specific set of
-literal strings, so a spelled-out variant walks straight through; and nothing
-here tells a real citation from a confident sentence. Green means the document is
-complete, not that it is true.
+literal strings, so a spelled-out variant walks straight through; a required
+column is matched by a keyword in its header, so a renamed column with the same
+word in it passes; and nothing here tells a real citation from a confident
+sentence. Green means the document is complete, not that it is true.
 
 Two scans are deliberately wider than the rest. Dashes are checked on the raw
 text, before code fences and HTML comments are blanked, because a template's
@@ -31,23 +36,50 @@ repository's re-verification promise something CI enforces rather than something
 a README asserts. A fork that wants the old advisory behavior runs the gate with
 --no-stale-fail.
 
-OS tree mode (python3 lint.py --os, run from the repo root) checks the whole
-Product Manager OS tree rather than one PRD: character and banned-metric gates
-over every .md and .json outside modules/regulated/, a placeholder gate that
-accepts angle-bracket fill-in fields as the one sanctioned placeholder form, a
-link gate that resolves every relative link and rejects absolute local paths, a
-header gate for the three-line Stage/Knowledge/Skill block on every template, a
-frontmatter gate for SKILL.md files, a sha256 integrity gate over the two
-byte-exact regulated files, a path gate for repo paths named in system/ prompts,
-and a secret gate. modules/regulated/ is governed by its own verbatim lint.py
-and is exempt from tree mode except for the integrity gate, which is the point.
+OS tree mode (python3 lint.py --os, run from the repo root) runs eleven checks
+over the whole Product Manager OS tree rather than one PRD: character and
+banned-metric gates over every .md and .json outside modules/regulated/, a
+placeholder gate that accepts angle-bracket fill-in fields as the one sanctioned
+placeholder form, a link gate that resolves every relative link against the
+tracked tree and rejects absolute local paths and any link that climbs out of
+the repository, a header gate for the three-line Stage/Knowledge/Skill block on
+every template, a frontmatter gate for SKILL.md files, a sha256 integrity gate
+over every regulated file this repository calls verbatim, a path gate for repo
+paths named in system/ prompts, a secret gate, a graph gate over the six-key
+declaration every file in the six declaring layers carries, and a wikilink gate
+that resolves every [[target]] to a file or a declared alias.
+modules/regulated/ is governed by its own verbatim lint.py and is exempt from
+tree mode except for the integrity gate, which is the point.
+
+Four of those checks are wider than they read. The secret gate runs on every
+readable file with no exemption, line by line and again over the closed-up text,
+and a file that is not valid UTF-8 fails rather than being skipped, because a
+file no check could read is a file no check has cleared. The path gate reads the
+raw lines of system/ prompts, fences included, since the prompt body a user
+pastes lives inside a fence; a name in a manifest line is resolved against the
+directory that line names as well as against the repository root. The graph gate
+checks the declaration against the truth it claims: layer is the directory the
+file lives in, gate is a gate os/STAGE-GATES.md defines, and stage and gate
+agree with the file's own Stage header and with the gate that document says
+closes that stage. The wikilink gate resolves a qualified target exactly and
+accepts a bare name only while it is unique in the tree.
+
 docs/ARCHITECTURE.md and this file name the detector's own rule strings, so the
-placeholder and secret gates skip them: a detector's rules have to be legible.
+placeholder and wikilink gates skip them: a detector's rules have to be legible,
+and the wikilink spec has to be able to write [[target]] in prose. The secret
+gate exempts nothing. A real key inside a document about the secret gate is
+still a real key, so the patterns here are written not to match their own source
+text instead.
 """
 from __future__ import annotations
 
 import argparse
+import base64
+import collections
 import datetime as _dt
+import hashlib
+import math
+import posixpath
 import re
 import sys
 from pathlib import Path
@@ -111,6 +143,24 @@ FIELD_RE = re.compile(r"^\s*[-*]\s+(.+?):\s*(.*)$")
 BARE_NA_RE = re.compile(r"^(n/?a|not applicable|none|nil|unknown)\.?$", re.I)
 SEPARATOR_RE = re.compile(r"^\|?[\s:|-]+\|?$")
 
+# An unfilled fill-in field, the template's own placeholder form. Legal in a
+# template, never in a document that claims to be finished, which is why this
+# only bites in full-document mode. The leading character class keeps "<= 5"
+# and a closing HTML tag out of it.
+ANGLE_FIELD_RE = re.compile(r"<[A-Za-z0-9][^<>]*>")
+
+# The two section 0 registers carry a fixed column set, so a document cannot
+# satisfy section 0 with any table that happens to have a row in it. Each entry
+# is (heading pattern, name, column groups); a group is satisfied when some
+# header cell contains one of its keywords.
+SECTION0_TABLES = (
+    (r"^###\s*0\.1\b", "0.1",
+     (("market",), ("license", "approval", "notification"), ("regulator",),
+      ("confirmed",), ("owner",))),
+    (r"^###\s*0\.2\b", "0.2",
+     (("rule area", "rule"), ("reference",), ("version",), ("watch",))),
+)
+
 
 def mask(text):
     """Blank HTML comments and fenced code, preserving line numbers."""
@@ -164,9 +214,19 @@ def unanswered(value):
         return "is blank"
     if BARE_NA_RE.match(text):
         return 'says "%s" with no reason. Write "N/A because <reason>"' % text
-    if re.search(r"\[[^\]]*\]", CHECKBOX_RE.sub("", text)):
+    stripped = CHECKBOX_RE.sub("", text)
+    if re.search(r"\[[^\]]*\]", stripped):
         return "still holds a [placeholder]"
+    if ANGLE_FIELD_RE.search(stripped):
+        return "still holds an unfilled <angle-bracket> field"
     return None
+
+
+def matches_schema(header, schema):
+    """True when this table header carries every required column group."""
+    lower = [h.lower() for h in header]
+    return all(any(any(word in cell for word in group) for cell in lower)
+               for group in schema)
 
 
 def headings(lines):
@@ -260,10 +320,8 @@ def check(path, template_mode=False, stale_fatal=True):
 
     overlay = span_for(spans, r"^##\s*0\.")
     if overlay:
-        rows_seen = False
         for header, rows in tables(lines, *overlay):
             for line_no, row in rows:
-                rows_seen = True
                 for idx, value in enumerate(row):
                     why = unanswered(value)
                     if why:
@@ -277,8 +335,22 @@ def check(path, template_mode=False, stale_fatal=True):
                 if why:
                     fail(i + 1, "OVERLAY",
                          'section 0 field "%s" %s.' % (fm.group(1).strip()[:58], why))
-        if not rows_seen:
-            fail(overlay[0] + 1, "OVERLAY", "section 0 has no completed table rows.")
+        # The register tables, by schema rather than by shape: a table with the
+        # right columns and no rows is an empty register, and a table with rows
+        # and the wrong columns is a different document.
+        for pattern, name, schema in SECTION0_TABLES:
+            sub = span_for(spans, pattern)
+            if sub is None:
+                continue  # the required-section check above already said so
+            matched = [rows for header, rows in tables(lines, *sub)
+                       if matches_schema(header, schema)]
+            columns = ", ".join(group[0] for group in schema)
+            if not matched:
+                fail(sub[0] + 1, "OVERLAY", "section %s has no table carrying "
+                     "the required columns (%s)." % (name, columns))
+            elif not any(matched):
+                fail(sub[0] + 1, "OVERLAY", "section %s register has a header "
+                     "row and no entries." % name)
 
     accept = span_for(spans, r"^##\s*1\.")
     if accept:
@@ -289,6 +361,11 @@ def check(path, template_mode=False, stale_fatal=True):
                                 if any(k in h for k in keys)), None)
                      for key, keys in EVAL_COLUMNS.items()}
             if any(v is None for v in index.values()):
+                continue
+            if not rows:
+                fail(accept[0] + 1, "EVAL", "section 1 eval table has the right "
+                     "columns and no rows. One eval row per requirement, or the "
+                     "table is a promise.")
                 continue
             found = True
             for line_no, row in rows:
@@ -322,27 +399,67 @@ def check(path, template_mode=False, stale_fatal=True):
 # OS tree mode. Everything below is additive; the PRD gate above is unchanged.
 # ---------------------------------------------------------------------------
 
-# sha256 of the two byte-exact regulated files, recorded at copy time from
-# the source repo, github.com/RizwanZafaris/regulated-ai-prd. Any drift fails
-# the build; fixes go to the source repo first and are re-copied here, never
-# edited here.
+# sha256 of every regulated file this repository calls a verbatim copy, taken
+# from the current bytes of the copy in this tree. The module README names five:
+# two byte-exact documents carrying verified citations, and the three runnable
+# files (SKILL.md, lint.py, test_lint.py) that let the module's own gate run
+# from its directory. Any drift fails the build; fixes go to the source repo,
+# github.com/RizwanZafaris/regulated-ai-prd, and are re-copied here, never
+# edited here. modules/regulated/README.md is deliberately absent: it describes
+# this repository's policy and is local, not a copy.
 PINNED_HASHES = {
     "modules/regulated/templates/regulated-ai-prd-template.md":
         "5bec8839d75c71800263bf8d7e3e3b9cf0014f9521beb1b2a4a8ce9da616ad5d",
     "modules/regulated/examples/dispute-summary/PRD.md":
         "7427e8995e2941e3878f20a68196ab26d29d9c19322749cf4a1d2b2771c3aa07",
+    "modules/regulated/SKILL.md":
+        "5152a98223260a98002752d0f48b3ede72931d574d0df683247d5ac6854636ad",
+    "modules/regulated/lint.py":
+        "17bb3e21c83df56651c7026633a96d3968c3a9df9c78a54c4fdcd4d591c2f854",
+    "modules/regulated/test_lint.py":
+        "e7efed32a43e69e86eebd8bd76636d648a034c591231607c05c1f93d60be405e",
 }
 
 # Anchored, not bare prefixes: a bare "sk-" would false-positive on every
-# mention of risk-register.md across the tree.
+# mention of risk-register.md across the tree. The modern issuers put their own
+# prefix in the token, which is what makes anchoring affordable. None of these
+# patterns matches its own source text, which is why this file needs no
+# exemption from the check it defines.
 SECRET_PATTERNS = [
-    (r"AKIA[0-9A-Z]{16}", "AWS access key"),
+    (r"AKIA[0-9A-Z]{16}", "AWS access key id"),
+    (r"\bASIA[0-9A-Z]{16}", "AWS temporary access key id"),
+    (r"\bsk-proj-[A-Za-z0-9_\-]{16,}", "OpenAI project key"),
+    (r"\bsk-svcacct-[A-Za-z0-9_\-]{16,}", "OpenAI service-account key"),
+    (r"\bsk-ant-[A-Za-z0-9_\-]{16,}", "Anthropic API key"),
     (r"\bsk-[A-Za-z0-9]{20,}", "API key (sk-)"),
-    (r"\bghp_[A-Za-z0-9]{20,}", "GitHub token"),
-    (r"BEGIN [A-Z ]*PRIVATE KEY", "private key block"),
+    (r"\bgithub_pat_[A-Za-z0-9_]{20,}", "GitHub fine-grained token"),
+    (r"\bgh[pousr]_[A-Za-z0-9]{20,}", "GitHub token"),
+    (r"\bxox[abprs]-[A-Za-z0-9\-]{10,}", "Slack token"),
+    (r"\bAIza[0-9A-Za-z_\-]{35}", "Google API key"),
+    (r"\beyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}",
+     "JSON web token"),
+    (r"-{5}BEGIN [A-Z ]*PRIVATE KEY-{5}", "private key block"),
+    (r"(?i)\baws[_\- ]?secret[_\- ]?access[_\- ]?key\b\W{0,4}[A-Za-z0-9/+]{40}",
+     "AWS secret access key value"),
 ]
 
-# Files that legitimately spell out the detector's own rule strings.
+# The shape that catches the key no issuer prefixed: a credential-shaped name,
+# an assignment, and a value with too much entropy to be a word. Length, three
+# character classes, and the entropy floor together are what keep this off
+# prose; a 24-character English phrase does not clear 3.6 bits per character.
+SECRET_NAME_RE = re.compile(
+    r"(?i)(?:^|[^A-Za-z0-9])[A-Za-z0-9]{0,20}[_\-]?"
+    r"(?:api[_\-]?key|secret[_\-]?key|client[_\-]?secret|secret|token|"
+    r"password|passwd|credential|access[_\-]?key|bearer)\b"
+    r"\s*(?:[:=]|=>)\s*[\"']?([A-Za-z0-9+/=_\-]{24,})")
+ENTROPY_FLOOR = 3.6
+BASE64_RUN_RE = re.compile(r"[A-Za-z0-9+/]{24,}={0,2}")
+
+# Files that legitimately spell out the detector's own rule strings. This is an
+# exemption from the placeholder and wikilink gates only: those files name
+# banned strings as detector patterns and have to write [[target]] in prose.
+# The secret gate exempts nothing, because a real key in a document about the
+# secret gate is still a real key.
 RULE_BEARING = {"docs/ARCHITECTURE.md", "lint.py", "test_lint.py"}
 
 PLACEHOLDER_RE = re.compile(r"\b(TBD|TODO|FIXME|XXX)\b", re.I)
@@ -351,6 +468,251 @@ REPO_PATH_RE = re.compile(
     r"\b((?:os|templates|knowledge|skills|agents|system|routing|modules|"
     r"examples|docs)/[A-Za-z0-9._/\-]*[A-Za-z0-9])")
 HEADER_KEYS = ("Stage:", "Knowledge:", "Skill:")
+HEADER_WINDOW = 8
+
+# A manifest line in a system prompt: a directory, whitespace, then the files
+# it holds, named relative to it.
+MANIFEST_PREFIX_RE = re.compile(
+    r"^(?:>\s*)?([A-Za-z0-9._\-]+(?:/[A-Za-z0-9._\-]+)*/)\s{2,}\S")
+
+# The six layers that declare themselves to the graph, and the key set every
+# file in them carries. Written by tools/frontmatter_init.py, read by
+# tools/graph.py, and checked here.
+GRAPH_LAYERS = ("agents", "frameworks", "knowledge", "os", "skills",
+                "templates")
+GRAPH_KEYS = ("layer", "stage", "gate", "feeds", "method", "aliases")
+
+# A SKILL.md declares in a sidecar, never in its own frontmatter. The Agent
+# Skills format validates SKILL.md frontmatter against a closed attribute list
+# (name, description, license, metadata, compatibility), and a runtime that
+# enforces it rejects the file outright on an unknown key. Check 6 keeps the
+# two-key contract on the SKILL.md; check 10 reads the sidecar beside it.
+SKILL_SIDECAR = "SKILL.graph.yml"
+
+# name and description predate the graph on every agent file and are the Agent
+# Skills contract everywhere else. Any other key outside GRAPH_KEYS fails.
+GRAPH_COMPANIONS = ("name", "description")
+
+# The six stages of the loop, plus the three cross-cutting tracks the loop and
+# the graph already name. A file that serves the PLANNING track must be able to
+# say so: forcing it to claim one of the six would be a wrong answer, and a
+# wrong stage is worse than a missing one.
+STAGE_VOCABULARY = ("DISCOVER", "DEFINE", "DESIGN", "BUILD", "DELIVER",
+                    "OPERATE", "PLANNING", "AI OVERLAY", "ALL STAGES")
+
+# Read from os/STAGE-GATES.md when it is there, so the gate set and the
+# stage-to-gate mapping come from the document that defines them rather than
+# from a constant that can drift away from it. These are the fallback for a
+# tree that has no STAGE-GATES.md, which is how the unit fixtures run.
+GATE_NUMBERS = (1, 2, 3, 4, 5, 6)
+STAGE_CLOSED_BY = {"DISCOVER": 1, "DEFINE": 2, "DESIGN": 3, "BUILD": 4,
+                   "DELIVER": 5, "OPERATE": 6}
+GATE_HEADING_RE = re.compile(r"^##\s*Gate\s+(\d+)\b", re.M)
+CLOSES_RE = re.compile(r"^Closes\s+([A-Z][A-Z ]*?)\.", re.M)
+
+FRONTMATTER_RE = re.compile(r"\A---\r?\n(.*?)\r?\n---[ \t]*\r?\n", re.S)
+FM_FIELD_RE = re.compile(r"^([A-Za-z0-9_-]+):\s*(.*)$")
+FM_ITEM_RE = re.compile(r"^\s*-\s+(.*\S)\s*$")
+WIKILINK_RE = re.compile(r"\[\[([^\[\]]+)\]\]")
+
+# The Stage line of the file's own three-line header, which is the claim a
+# reader believes. The declaration has to agree with it.
+STAGE_HEADER_RE = re.compile(r"^\s*Stage:\s*(.*)$")
+GATE_MENTION_RE = re.compile(r"\bgates?\b((?:\s*(?:and|or|to|,)?\s*\d+)+)", re.I)
+HEADER_SCAN_LINES = 12
+
+
+def fields(block):
+    """Top-level keys of a YAML block, values as text, block lists folded in.
+
+    Not a YAML implementation, but not blind to one either: a key whose value
+    sits on the following lines as a block sequence is folded into the inline
+    form, because the two spellings mean the same thing and a gate that reads
+    only one of them can be evaded by choosing the other.
+    """
+    out, key = {}, None
+    for line in block.split("\n"):
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        item = FM_ITEM_RE.match(line)
+        if item and key and not FM_FIELD_RE.match(line):
+            out[key] = flow_list(out.get(key, ""), item.group(1))
+            continue
+        match = FM_FIELD_RE.match(line)
+        if match and not line.startswith((" ", "\t")):
+            key = match.group(1).lower()
+            out[key] = match.group(2).strip()
+        elif not line.startswith((" ", "\t")):
+            key = None
+    return out
+
+
+def flow_list(current, item):
+    """Append one block-sequence item to a value, as an inline YAML list."""
+    items = values_of(current) if current.strip() else []
+    items.append(item.strip().strip("'\""))
+    return "[%s]" % ", ".join('"%s"' % v.replace('"', '\\"') for v in items)
+
+
+def values_of(text):
+    """A declaration value as a list: an inline list, or a lone scalar.
+
+    Quote-aware, because an alias is allowed to contain a comma. Splitting
+    "Now, Next, Later roadmap" on commas invents three aliases that resolve
+    nothing and, worse, collide with real ones.
+    """
+    text = text.strip()
+    if text.startswith("[") and text.endswith("]"):
+        text = text[1:-1]
+    parts, current, quote, escape = [], [], None, False
+    for char in text:
+        if escape:
+            current.append(char)
+            escape = False
+        elif char == "\\" and quote == '"':
+            escape = True
+        elif quote:
+            if char == quote:
+                quote = None
+            else:
+                current.append(char)
+        elif char in "'\"":
+            quote = char
+        elif char == ",":
+            parts.append("".join(current))
+            current = []
+        else:
+            current.append(char)
+    parts.append("".join(current))
+    return [p.strip() for p in parts if p.strip()]
+
+
+def gate_contract(root):
+    """(gate numbers, {stage: closing gate}) as os/STAGE-GATES.md states them."""
+    try:
+        raw = (Path(root) / "os" / "STAGE-GATES.md").read_text(encoding="utf-8")
+    except (UnicodeDecodeError, OSError):
+        return set(GATE_NUMBERS), dict(STAGE_CLOSED_BY)
+    numbers = [int(n) for n in GATE_HEADING_RE.findall(raw)]
+    closes = {}
+    for match in GATE_HEADING_RE.finditer(raw):
+        tail = raw[match.end():]
+        stage = CLOSES_RE.search(tail[:tail.find("\n## ") if "\n## " in tail
+                                      else len(tail)])
+        if stage:
+            closes[stage.group(1).strip()] = int(match.group(1))
+    if not numbers:
+        return set(GATE_NUMBERS), dict(STAGE_CLOSED_BY)
+    return set(numbers), closes or dict(STAGE_CLOSED_BY)
+
+
+def stage_header(raw):
+    """The Stage: line of the file's own header block, or None."""
+    match = FRONTMATTER_RE.match(raw)
+    body = raw[match.end():] if match else raw
+    for line in body.split("\n")[:HEADER_SCAN_LINES]:
+        found = STAGE_HEADER_RE.match(line)
+        if found:
+            return found.group(1)
+    return None
+
+
+def stages_named(line):
+    """Vocabulary stages the header line names, in vocabulary order."""
+    return [s for s in STAGE_VOCABULARY
+            if re.search(r"\b%s\b" % s.replace(" ", r"\s+"), line)]
+
+
+def gates_named(line):
+    """Gate numbers the header line names."""
+    found = set()
+    for match in GATE_MENTION_RE.finditer(line):
+        found.update(int(n) for n in re.findall(r"\d+", match.group(1)))
+    return found
+
+
+def entropy(text):
+    """Shannon entropy of a string, in bits per character."""
+    if not text:
+        return 0.0
+    counts = collections.Counter(text).values()
+    return -sum((n / len(text)) * math.log2(n / len(text)) for n in counts)
+
+
+def secret_hits(line):
+    """Every secret-shaped string on one line, as labels."""
+    labels = []
+    for pattern, label in SECRET_PATTERNS:
+        if re.search(pattern, line):
+            labels.append(label)
+    for match in SECRET_NAME_RE.finditer(line):
+        value = match.group(1)
+        classes = sum(bool(re.search(p, value))
+                      for p in ("[a-z]", "[A-Z]", "[0-9]"))
+        if classes >= 2 and entropy(value) >= ENTROPY_FLOOR:
+            labels.append("high-entropy value assigned to a "
+                          "credential-shaped name")
+    for match in BASE64_RUN_RE.finditer(line):
+        run = match.group(0)
+        try:
+            decoded = base64.b64decode(
+                run + "=" * (-len(run) % 4), validate=True).decode("utf-8",
+                                                                   "replace")
+        except ValueError:
+            continue
+        for pattern, label in SECRET_PATTERNS:
+            if re.search(pattern, decoded):
+                labels.append("base64-encoded " + label)
+    return labels
+
+
+def declaration(path, raw):
+    """One file's graph declaration as (fields or None, where it should be)."""
+    if path.name == "SKILL.md":
+        sidecar = path.parent / SKILL_SIDECAR
+        if not sidecar.is_file():
+            return None, SKILL_SIDECAR
+        try:
+            return fields(sidecar.read_text(encoding="utf-8")), SKILL_SIDECAR
+        except (UnicodeDecodeError, OSError):
+            return None, SKILL_SIDECAR
+    match = FRONTMATTER_RE.match(raw)
+    return (fields(match.group(1)) if match else None), "frontmatter"
+
+
+def points_at(value, rp, tree):
+    """A declared path as a file in the tree, or None."""
+    target = value.split("#")[0].strip().strip("`")
+    if not target or target.startswith(("http://", "https://", "mailto:", "/")):
+        return None
+    if target in tree:
+        return target
+    joined = posixpath.normpath(posixpath.join(posixpath.dirname(rp), target))
+    return joined if joined in tree else None
+
+
+def wikilink_lands(target, tree, aliases, basenames):
+    """Why [[target]] does not land, or None when it does.
+
+    A qualified target resolves exactly. Proving that some file of that
+    basename exists somewhere is not proving that the named one does, and it
+    is how [[wrong/place/target.md]] used to pass. A bare name is allowed
+    because a vault link is written that way, but only while it is unambiguous:
+    two files of that name and the link means whichever the reader guesses.
+    """
+    if target.lower() in aliases:
+        return None
+    if "/" in target:
+        if target in tree or target + ".md" in tree:
+            return None
+        return ("names neither a file at that path nor a declared alias")
+    hits = basenames.get(target, []) + basenames.get(target + ".md", [])
+    if not hits:
+        return "names neither a file in the tree nor a declared alias"
+    if len(set(hits)) > 1:
+        return ("is ambiguous: %s files are named that (%s). Qualify it with "
+                "its path" % (len(set(hits)), ", ".join(sorted(set(hits))[:3])))
+    return None
 
 
 def tracked_files(root):
@@ -372,6 +734,11 @@ def tracked_files(root):
             yield path
 
 
+def in_tree(target, tree):
+    """True when a named path is a tracked file or a tracked directory."""
+    return target in tree or any(t.startswith(target + "/") for t in tree)
+
+
 def in_angle_field(line, start):
     """True when position start sits inside an <angle-bracket> fill-in field."""
     left = line.rfind("<", 0, start)
@@ -388,10 +755,16 @@ def os_check(root, pins=None):
     all_files = list(tracked_files(root))
     rel = {p: p.relative_to(root).as_posix() for p in all_files}
     tree = set(rel.values())
+    inside = root.resolve()
+    basenames = collections.defaultdict(list)
+    for target in tree:
+        basenames[target.split("/")[-1]].append(target)
+    layers = {part for part in (t.split("/")[0] for t in tree)
+              if part in GRAPH_LAYERS}
+    gate_numbers, stage_closed_by = gate_contract(root)
 
     # Check 7, integrity gate: runs first and inside modules/regulated/,
     # which is otherwise exempt from tree mode.
-    import hashlib
     for pinned, expected in sorted(pins.items()):
         target = root / pinned
         if not target.is_file():
@@ -400,25 +773,66 @@ def os_check(root, pins=None):
             fail(pinned, 1, "INTEGRITY", "content drifted from the pinned "
                  "sha256. Fix the source repo and re-copy; never edit here.")
 
+    # Checks 10 and 11 read declarations rather than one file's own text, so
+    # the declarations are gathered before the per-file pass: a wikilink in one
+    # file resolves against an alias declared in another, and an alias is
+    # claimed by exactly one file, whichever sorts first.
+    decls, aliases = {}, {}
+    for path in all_files:
+        rp = rel[path]
+        if path.suffix != ".md" or rp.startswith("modules/") \
+                or rp.split("/")[0] not in GRAPH_LAYERS:
+            continue
+        try:
+            raw = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        block, source = declaration(path, raw)
+        decls[rp] = (block, source)
+        for alias in values_of((block or {}).get("aliases", "")):
+            owner = aliases.setdefault(alias.lower(), rp)
+            if owner != rp:
+                fail(rp, 1, "GRAPH", 'alias "%s" is already declared by %s. '
+                     "One alias, one file, or a wikilink resolves to whichever "
+                     "sorts first." % (alias, owner))
+
     for path in all_files:
         rp = rel[path]
         if rp.startswith("modules/regulated/"):
             continue
         try:
             raw = path.read_text(encoding="utf-8")
-        except (UnicodeDecodeError, OSError):
+        except UnicodeDecodeError:
+            fail(rp, 1, "ENCODING", "is not valid UTF-8, so not one check "
+                 "below could read it. A file the gate cannot read is a file "
+                 "the gate has not cleared, which is why this fails rather "
+                 "than skips.")
+            continue
+        except OSError:
+            fail(rp, 1, "ENCODING", "could not be read from disk, so no check "
+                 "below ran against it.")
             continue
         raw_lines = raw.split("\n")
         lines = mask(raw) if path.suffix == ".md" else raw_lines
         is_doc = path.suffix in (".md", ".json")
 
-        # Check 9, secret gate: every readable file.
-        if rp not in RULE_BEARING:
-            for i, line in enumerate(raw_lines, 1):
-                for pattern, label in SECRET_PATTERNS:
-                    if re.search(pattern, line):
-                        fail(rp, i, "SECRET",
-                             "matches the %s pattern." % label)
+        # Check 9, secret gate: every readable file, with no file-level
+        # exemption. The closed-up text is scanned as well, so a token broken
+        # across a line break is caught the way a split metric string is.
+        seen_secrets = set()
+        for i, line in enumerate(raw_lines, 1):
+            for label in secret_hits(line):
+                if (i, label) not in seen_secrets:
+                    seen_secrets.add((i, label))
+                    fail(rp, i, "SECRET", "matches the %s pattern." % label)
+        joined, origin = collapse(raw_lines)
+        for pattern, label in SECRET_PATTERNS:
+            for m in re.finditer(pattern, joined):
+                key = (origin[m.start()], label)
+                if key not in seen_secrets:
+                    seen_secrets.add(key)
+                    fail(rp, key[0], "SECRET", "matches the %s pattern once "
+                         "the line breaks are closed up." % label)
 
         if not is_doc:
             continue
@@ -466,13 +880,28 @@ def os_check(root, pins=None):
                     if target.startswith("/"):
                         fail(rp, i, "LINK",
                              "absolute local path %s in a link." % target)
-                    elif not (path.parent / target).resolve().exists():
+                        continue
+                    landing = (path.parent / target).resolve()
+                    if not landing.is_relative_to(inside):
+                        fail(rp, i, "LINK", "link %s climbs out of the "
+                             "repository, to %s." % (target, landing))
+                    elif not landing.exists():
                         fail(rp, i, "LINK",
                              "relative link %s does not resolve." % target)
+                    elif landing.is_file() and \
+                            landing.relative_to(inside).as_posix() not in tree:
+                        fail(rp, i, "LINK", "link %s resolves to %s, which is "
+                             "not a file this gate tracks."
+                             % (target, landing.relative_to(inside).as_posix()))
 
-        # Check 5, header gate: three-line Stage/Knowledge/Skill block.
+        # Check 5, header gate: three-line Stage/Knowledge/Skill block. The
+        # window starts under any frontmatter, because the graph declaration
+        # sits above the header and would otherwise push it out of range. The
+        # header is still the first thing a reader of the document sees.
         if rp.startswith("templates/"):
-            top = "\n".join(lines[:8])
+            match = FRONTMATTER_RE.match(raw)
+            start = raw[:match.end()].count("\n") if match else 0
+            top = "\n".join(lines[start:start + HEADER_WINDOW])
             for key in HEADER_KEYS:
                 if key not in top:
                     fail(rp, 1, "HEADER",
@@ -492,14 +921,124 @@ def os_check(root, pins=None):
                      'description has no explicit "Use when" clause.')
 
         # Check 8, path gate: repo paths named in system/ prompts must exist.
+        # Raw lines, not masked ones: the prompt body a user pastes lives
+        # inside a fenced block, so masking the fences hid the only text this
+        # check exists to read. The manifest inside that fence lists a
+        # directory and then its contents, so a name is resolved against the
+        # directory prefix in force as well as against the repository root.
         if rp.startswith("system/"):
-            for i, line in enumerate(lines, 1):
+            prefix = ""
+            for i, line in enumerate(raw_lines, 1):
+                head = MANIFEST_PREFIX_RE.match(line)
+                if head and in_tree(head.group(1).rstrip("/"), tree):
+                    prefix = head.group(1)
+                elif line.strip() and not line.startswith((" ", "\t")):
+                    prefix = ""
                 for m in REPO_PATH_RE.finditer(line):
                     named = m.group(1)
-                    if named not in tree and not any(
-                            t.startswith(named + "/") for t in tree):
-                        fail(rp, i, "PATH",
-                             "names repo path %s, which does not exist." % named)
+                    if in_tree(named, tree) or (prefix and
+                                                in_tree(prefix + named, tree)):
+                        continue
+                    fail(rp, i, "PATH",
+                         "names repo path %s, which does not exist." % named)
+
+        # Check 10, graph gate: the declaration every file in the six layers
+        # carries. A missing key is a hole in the graph; a stage outside the
+        # vocabulary or a feeds path that resolves to nothing is worse, because
+        # it renders as a confident arrow pointing at the wrong place.
+        if rp in decls:
+            block, source = decls[rp]
+            if block is None:
+                fail(rp, 1, "GRAPH", "has no graph declaration. Put the keys "
+                     "%s in its %s, or run tools/frontmatter_init.py."
+                     % (", ".join(GRAPH_KEYS), source))
+            else:
+                for key in GRAPH_KEYS:
+                    if key not in block:
+                        fail(rp, 1, "GRAPH",
+                             "%s is missing the %s key." % (source, key))
+                for key in sorted(k for k in block
+                                  if k not in GRAPH_KEYS + GRAPH_COMPANIONS):
+                    fail(rp, 1, "GRAPH", '%s carries "%s", which is not one of '
+                         "%s." % (source, key,
+                                  ", ".join(GRAPH_KEYS + GRAPH_COMPANIONS)))
+                layer = block.get("layer", "").strip().strip("'\"")
+                own = rp.split("/")[0]
+                if "layer" in block and layer not in layers:
+                    fail(rp, 1, "GRAPH", 'layer "%s" is not a layer directory '
+                         "in this tree (%s)."
+                         % (layer, ", ".join(sorted(layers))))
+                elif "layer" in block and layer != own:
+                    fail(rp, 1, "GRAPH", 'layer "%s" is not the directory this '
+                         'file lives in, which is "%s".' % (layer, own))
+                stage = block.get("stage", "").strip().strip("'\"")
+                if "stage" in block and stage not in STAGE_VOCABULARY:
+                    fail(rp, 1, "GRAPH", 'stage "%s" is not one of %s.'
+                         % (stage, ", ".join(STAGE_VOCABULARY)))
+                gate = block.get("gate", "").strip().strip("'\"")
+                if "gate" in block and not (gate.isdigit()
+                                            and int(gate) in gate_numbers):
+                    fail(rp, 1, "GRAPH", 'gate "%s" is not one of the gates '
+                         "os/STAGE-GATES.md defines (%s)."
+                         % (gate, ", ".join(str(n)
+                                            for n in sorted(gate_numbers))))
+                # The declaration against the file's own three-line header,
+                # and against the gate the stage closes. A declaration that
+                # contradicts the sentence under it renders a confident arrow
+                # nobody in the room agrees with.
+                header = stage_header(raw)
+                header_stages = stages_named(header) if header else []
+                header_gates = gates_named(header) if header else set()
+                if header_stages and stage and stage not in header_stages:
+                    fail(rp, 1, "GRAPH", 'declares stage "%s" while its own '
+                         "Stage header says %s."
+                         % (stage, ", ".join(header_stages)))
+                if header_gates and gate.isdigit() \
+                        and int(gate) not in header_gates:
+                    fail(rp, 1, "GRAPH", 'declares gate %s while its own Stage '
+                         "header names gate %s."
+                         % (gate, ", ".join(str(n) for n in
+                                            sorted(header_gates))))
+                elif not header_gates and gate.isdigit() \
+                        and stage in stage_closed_by \
+                        and int(gate) != stage_closed_by[stage]:
+                    fail(rp, 1, "GRAPH", "declares stage %s with gate %s, but "
+                         "os/STAGE-GATES.md has gate %d closing %s. Name the "
+                         "gate in the Stage header if the artifact really "
+                         "lands at a later one."
+                         % (stage, gate, stage_closed_by[stage], stage))
+                for key in ("feeds", "method"):
+                    for value in values_of(block.get(key, "")):
+                        targets = gates_named(value)
+                        if re.search(r"\bgates?\b", value, re.I):
+                            # tools/graph.py renders this as a gate arrow, so
+                            # the gate gate accepts it and checks the number.
+                            stray = sorted(targets - gate_numbers)
+                            if not targets:
+                                fail(rp, 1, "GRAPH", "%s names %r, which reads "
+                                     "as a gate and names no gate number."
+                                     % (key, value))
+                            elif stray:
+                                fail(rp, 1, "GRAPH", "%s names gate %s, which "
+                                     "os/STAGE-GATES.md does not define."
+                                     % (key, ", ".join(str(n) for n in stray)))
+                        elif points_at(value, rp, tree) is None:
+                            fail(rp, 1, "GRAPH", "%s names %s, which is not a "
+                                 "file in the tree." % (key, value))
+
+        # Check 11, wikilink gate: additive Obsidian links, every layer. A
+        # relative markdown link is what GitHub renders and check 4 owns those;
+        # a wikilink is what the vault graph reads, and an unresolved one is an
+        # edge the graph silently drops.
+        if path.suffix == ".md" and rp not in RULE_BEARING:
+            for i, line in enumerate(lines, 1):
+                for m in WIKILINK_RE.finditer(line):
+                    target = m.group(1).split("|")[0].split("#")[0].strip()
+                    why = wikilink_lands(target, tree, aliases,
+                                         basenames) if target else None
+                    if why:
+                        fail(rp, i, "WIKILINK",
+                             "wikilink [[%s]] %s." % (target, why))
 
     return sorted(problems)
 
@@ -512,7 +1051,7 @@ def run_os_mode(root):
         print("\n%d problem(s). The gate failed, which is the point of having "
               "one." % len(problems), file=sys.stderr)
         return 1
-    print("%s: ok (OS tree mode, %d checks)" % (root, 9))
+    print("%s: ok (OS tree mode, %d checks)" % (root, 11))
     return 0
 
 

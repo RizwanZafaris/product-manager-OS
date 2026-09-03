@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: DEFINE
+gate: 2
+feeds: ["templates/execution/stakeholder-map.md", "frameworks/execution/raci.md", "templates/execution/risk-register.md"]
+method: "knowledge/high-output-management.md"
+aliases: ["Stakeholder Power-Interest Grid", "stakeholder-power-interest"]
+---
 # Stakeholder Power-Interest Grid
 
 Based on the ideas of Aubrey Mendelow, from his stakeholder mapping matrix as commonly cited (1991). Explained here in this repository's own words.

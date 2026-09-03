@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DISCOVER
+gate: 1
+feeds: []
+method: ""
+aliases: ["Interview Notes", "interview-notes"]
+---
 # Interview Notes: [session id]
 
 Stage: DISCOVER, feeds [Gate 1: problem worth solving](../../os/STAGE-GATES.md)

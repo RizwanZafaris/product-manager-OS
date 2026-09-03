@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: PLANNING
+gate: 1
+feeds: ["templates/planning/business-case.md", "templates/planning/pricing-packaging.md", "templates/definition/assumptions-register.md"]
+method: "knowledge/INDEX.md"
+aliases: ["Business model canvas", "business-model-canvas"]
+---
 # Business model canvas
 
 Based on the ideas of Alexander Osterwalder and Yves Pigneur, from Business Model Generation (2010). Explained here in this repository's own words.

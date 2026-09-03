@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: "knowledge/README.md"
+aliases: ["Templates"]
+---
 # Templates: the full catalog
 
 Stage: every stage of the loop, plus the two tracks that run across it

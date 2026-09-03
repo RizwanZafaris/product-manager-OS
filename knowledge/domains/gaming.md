@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["Gaming"]
+---
 # Gaming
 
 A game is a retention machine: a core loop players repeat because it feels good, wrapped in a meta loop that gives the repetition a direction. Monetization only works downstream of those loops, and the fastest way to kill both is to let the monetization design reach back and bend them. This domain also carries two gates most software never meets: platform certification, where a console or store holder can fail your build for reasons in a checklist you must read, and a shifting body of law around paid randomized rewards.

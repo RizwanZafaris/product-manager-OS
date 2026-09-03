@@ -1,0 +1,6 @@
+layer: skills
+stage: DESIGN
+gate: 3
+feeds: ["templates/execution/risk-register.md", "templates/execution/dependency-register.md"]
+method: ""
+aliases: ["Program Premortem", "program-premortem"]

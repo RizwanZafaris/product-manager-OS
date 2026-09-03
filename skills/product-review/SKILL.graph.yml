@@ -1,0 +1,6 @@
+layer: skills
+stage: ALL STAGES
+gate: 1
+feeds: ["templates/execution/decision-log.md", "templates/operate/metrics-review.md", "templates/execution/state.md"]
+method: ""
+aliases: ["Product Review", "product-review"]

@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DEFINE
+gate: 2
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Compliance Impact Assessment", "compliance-impact-assessment"]
+---
 # Compliance Impact Assessment: [product or feature name]
 
 **Stage:** DEFINE and DELIVER (feeds [Gate 2 and Gate 5](../../os/STAGE-GATES.md), regulated overlay)

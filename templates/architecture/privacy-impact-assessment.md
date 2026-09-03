@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DESIGN
+gate: 3
+feeds: []
+method: ""
+aliases: ["Privacy Impact Assessment", "privacy-impact-assessment"]
+---
 # Privacy Impact Assessment: [product or feature name]
 
 Stage: DESIGN, feeds [Gate 3: architecture and risks reviewed](../../os/STAGE-GATES.md); re-confirmed at Gate 5 before the artifact ships

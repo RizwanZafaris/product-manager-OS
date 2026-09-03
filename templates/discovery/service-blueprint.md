@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DISCOVER
+gate: 1
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Service Blueprint", "service-blueprint"]
+---
 # Service Blueprint: [scenario short name]
 
 Stage: DISCOVER, feeds Gate 1 (problem worth solving)

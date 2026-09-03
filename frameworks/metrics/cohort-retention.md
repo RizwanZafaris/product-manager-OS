@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: OPERATE
+gate: 6
+feeds: ["templates/operate/metrics-review.md", "templates/planning/growth-plan.md", "frameworks/metrics/unit-economics.md"]
+method: "knowledge/INDEX.md"
+aliases: ["Cohort Retention", "cohort-retention"]
+---
 # Cohort Retention
 
 Based on cohort analysis as brought into product work by Eric Ries, from The Lean Startup (2011), with roots in demography and epidemiology. Explained here in this repository's own words.

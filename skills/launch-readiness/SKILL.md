@@ -14,6 +14,7 @@ Launches fail at the gate in one recognizable way: the checklist is ticked from 
 - Reads, as evidence: [../../templates/delivery/uat-plan.md](../../templates/delivery/uat-plan.md), [../../templates/delivery/testing-strategy.md](../../templates/delivery/testing-strategy.md), [../../templates/delivery/edge-cases.md](../../templates/delivery/edge-cases.md), [../../templates/delivery/failure-scenarios.md](../../templates/delivery/failure-scenarios.md), [../../templates/delivery/launch-comms-plan.md](../../templates/delivery/launch-comms-plan.md), [../../templates/operate/operational-readiness-review.md](../../templates/operate/operational-readiness-review.md)
 - Overlays: [../../templates/ai/guardrails.md](../../templates/ai/guardrails.md) for model features; the [reg-gap-check skill](../reg-gap-check/SKILL.md) and [../../templates/operate/compliance-impact-assessment.md](../../templates/operate/compliance-impact-assessment.md) for regulated products
 - Records: [../../templates/execution/decision-log.md](../../templates/execution/decision-log.md) for the decision, [../../templates/execution/risk-register.md](../../templates/execution/risk-register.md) for accepted known issues
+- See also [../../frameworks/metrics/dora-four-keys.md](../../frameworks/metrics/dora-four-keys.md) (Forsgren, Humble, and Kim, 2018) for the rollback and recovery items. "We can roll back" is a belief; a measured time to restore service is a number, and it is also the answer when the fix proposed after a bad launch is to release less often
 
 ## When to use
 

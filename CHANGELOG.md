@@ -5,17 +5,336 @@ Every notable change to this repository is recorded here. The format follows [Ke
 What a version number means here, since this is a document system and not a library:
 
 - **MAJOR** changes rename or remove a template field, move or delete a file that other files link to, or change what a gate demands. These are the changes that break a fork or a half-filled document, so they only happen on a major version, and this file names the migration for each one.
-- **MINOR** adds a template, a knowledge card, a skill, or a section. Existing filled documents keep working untouched.
+- **MINOR** adds a template, a knowledge card, a skill, or a section. Nothing you filled is renamed, moved, or broken by it. Corrected 2026-09-03: this used to say existing filled documents keep working untouched, which read as a promise about the gate and is only a promise about the document. A section added in a minor version can become a section today's checks expect, so an older filled document keeps meaning what it meant and can fall short of the current bar. The two entries where that actually happened, 0.6.0 and 0.5.1, carry a dated note saying so.
 - **PATCH** fixes wording, links, typos, or a lint rule that was wrong.
 
-The stability promise is stated in [README.md](README.md) and repeated here so it survives a fork: within a major version, template field names and file paths do not change under you.
+The stability promise is stated in [README.md](README.md) and repeated here so it survives a fork: within a major version, template field names and file paths do not change under you. That is the whole promise, and the paragraph above says what it deliberately leaves out.
 
-## Unreleased
+## 0.7.0, 2026-09-03
+
+The graph, harness, and systems work. It is numbered 0.7.0 rather than 0.6.0 because
+0.6.0 below is the depth release, which was written first and says nothing new was added
+to the loop. That was true of the depth pass and is not true of this one, so these
+additions get their own number instead of being folded backward into an entry that
+already shipped a different claim. Both arrive in one merge, in that order.
+
+Nothing here renames, moves, or removes a file, and no gate changed what it demands.
+
+- **Twelve worksheets, and the frameworks layer goes from 46 in six groups to 58 in
+  eight.** Two of the groups are new. `frameworks/systems/` (iceberg-model, cynefin,
+  causal-loop-diagram, leverage-points) exists because every group before it is a
+  planning instrument that takes the problem as given, and a planning sheet aimed at a
+  symptom returns a confident quarter of work on the wrong thing with the confidence
+  coming from the sheet. `frameworks/assessment/` (product-operating-model-assessment,
+  team-topologies-assessment, tech-debt-assessment, westrum-culture-typology) scores the
+  organization a plan lands in rather than the plan. Two landed in `metrics/`
+  (dora-four-keys, space-framework) and two in `execution/` (fmea,
+  theory-of-constraints). Each of the twelve is reachable from a skill or a template, so
+  none is an orphan in the graph, and each is named in the stage map that owns it in
+  both link forms.
+- **The graph layer.** YAML declarations across the six declaring layers, with a
+  `SKILL.graph.yml` sidecar wherever frontmatter is closed to them, plus
+  `tools/frontmatter_init.py` to seed them and `tools/graph.py` to render
+  `docs/GRAPH.md`. Beside the generated file: `os/maps/`, one hub note per stage so a
+  graph view has centers instead of a hairball, and a committed core-only `.obsidian/`
+  vault config that colors the graph by layer. `lint.py` grows from nine tree checks to
+  eleven (10 graph declarations, 11 wikilinks) and `test_lint.py` from 25 tests to 47.
+- **The harness.** `harness/` makes the router table executable: `MANIFEST.json` with one
+  entry per router row in router order, `INVARIANTS.md`, `tiers.md`, `runner.py`, and
+  three adapters. `tools/check_manifest.py` proves the manifest and the table agree row
+  for row and CI runs it. The harness is deletable and is not a runtime dependency, and
+  the deletability proof in its README now passes all four gates with no exception; the
+  rule that earned that is one line long, which is that a file outside `harness/` names
+  a harness path in plain text and never as a link.
+- **Three router rows,** each where a trigger phrase already existed rather than one per
+  new sheet: "is this a symptom or a structure", "what kind of problem is this", and
+  "are we set up to ship this". Manifest entries `diagnose-symptom-or-structure`,
+  `classify-problem-domain`, and `assess-delivery-readiness` match them in router order,
+  taking the table and the manifest from 38 rows to 41.
+- **An eleventh example,** `examples/ledgerline-harness-routing-run.md`, the only file
+  under `examples/` produced by a model call rather than written by hand.
+- **The faces were swept for the counts this work invalidated,** in `README.md`,
+  `AGENTS.md`, `docs/ARCHITECTURE.md`, `docs/FAQ.md`, `frameworks/README.md`,
+  `knowledge/README.md`, `os/README.md`, `system/BOOT-PROMPT.md`, the harness READMEs,
+  and the routing-run example. `docs/ARCHITECTURE.md` also carried three counts that had
+  been stale since before this branch: 73 templates where there are 98, nine skills
+  where there are 28, and five agent role files where there are twelve.
+
+### Fixed in remediation, 2026-09-03
+
+An independent external review was run against this release before it shipped. It found
+three critical defects in `harness/runner.py`, all three of which would have produced a
+document that looked finished and was not, plus a set of smaller ones in the gates, the
+tools, and the claims these documents make. Recording what was found matters more than
+recording that it was fixed: a changelog that lists only additions is a marketing
+document, and these three are the exact class of failure this repository says it exists
+to prevent.
+
+The three critical ones:
+
+- **Truncated model output was accepted and written as a finished artifact.** A stream
+  that carried text and then stopped, a `finish_reason` of `length`, a malformed frame,
+  and an error object arriving after text were all treated as success. A reply is now
+  usable only with text, a terminal event, and a `finish_reason` of exactly `stop`, and a
+  second check that does not trust the gateway compares the produced document against its
+  template: headings present and in order, table column counts held, no table returning
+  as a bare header, no document ending mid-row. A committed artifact in this repository
+  was carrying that defect and is caught by the new check.
+- **Tier certification was a probe-time illusion.** The probe resolved a concrete model
+  id, then the real call sent the tier alias again, so the gateway could answer from any
+  model while the artifact carried the certified id. Every request now targets the
+  concrete id, and the response header is held to it; a mismatch or a missing header
+  queues the work instead of writing a document.
+- **Writes were unconfined, destructive, and not atomic.** A product slug could contain
+  path separators and walk out of `products/`, a rerun overwrote finished work, and the
+  artifact, its log, and the journal row were written independently. The slug is now
+  validated and the resolved directory has to sit directly under `products/`, an existing
+  artifact or log is refused unless `--update` is passed, and the three files are staged
+  and committed together.
+
+Also fixed in the same pass: the credential redaction guarantee was unsupported and is
+now enforced at one redactor with no length floor, with sanitized URLs and no raw gateway
+bodies persisted; the 6000-character recovery path condensed the template as well as the
+evidence, breaking the exact-input contract; the manifest checker and the desktop adapter
+would read through a symlink out of the tree; the router table's Invoke and
+Backing-templates columns were never checked against the manifest; the four universal
+invariants bound every route in prose and were missing from the routes an adapter
+actually reads, with `content-is-data` absent from 35 of the 41; the graph
+tool could produce one node id for two different files; and seven worksheets and
+templates carried invented arithmetic that was not labelled as invented, including one
+sensitivity row whose numbers could not be reproduced. `harness/test_runner.py` is new,
+with a failure-proving test per fix; `test_lint.py` goes from 47 tests to 78;
+`tools/check_manifest.py` from 6 checks to 8; `harness/MANIFEST.json` and the generated
+plugin move to 0.7.0.
+
+The public claims were swept in the same pass, which is the part worth reading if you are
+deciding whether to trust this repository. `SECURITY.md` described a tree of two Python
+files with no service and no credentials, which stopped being true when the harness
+landed; it is now a threat model with the manual path and the runtime path separated.
+The AI-layer deletability claim was too strong in `README.md`, `docs/FAQ.md`, and
+`docs/PHILOSOPHY.md`: the harness is deletable and a gate proves it, and deleting a
+content layer leaves working documents and a lint gate failing in the hundreds, which is
+now what those files say. The stability promise is corrected below. `README.md` claimed
+every commit carries a Claude trailer; two merge commits do not, so it now says every
+non-merge commit. And the deletability proof in `harness/README.md` no longer passes:
+`AGENTS.md` names two harness paths as links, which breaks the link gate on a tree with
+`harness/` deleted, and that is recorded there as an open item rather than quietly
+dropped.
+
+### Known gaps at this point
+
+- None of the twelve new worksheets has a filled example. The layer's own bar asks for an
+  invented worked example inside each sheet, which they carry, but the `examples/`
+  directory illustrates six worksheets out of 58.
+- The stage maps are curated by hand and no script keeps them in step with the tree, so
+  the next worksheet added is invisible in the graph view until somebody remembers. The
+  maintenance rule is written in `os/maps/README.md` and it is a rule, not a check.
+- The three new router rows name no skill, so the sheets carry the whole procedure. That
+  is correct for a worksheet and it does mean a run has no adversarial pass over it, the
+  way the skills do.
+- The deletability proof for `harness/` is red. Two markdown links in `AGENTS.md` name
+  harness paths, so deleting the directory fails the link gate and the test that asserts
+  the tree ships clean. The documents are unaffected and the fix is to backtick two
+  paths. Nothing enforces the plain-text rule that would have prevented it, and attention
+  has now failed it twice.
+- CI runs the lint gates, the graph and manifest checks, and both `test_lint.py` copies.
+  It does not run `harness/test_runner.py`, `generate.py --check`, or the desktop
+  selftest, so a harness change is only as verified as the person who remembered to run
+  them by hand.
+- Nothing checks that a claim in `README.md`, `SECURITY.md`, or `docs/` still matches the
+  code. This release found several that did not, all of them written truthfully and then
+  outlived by the tree. The mechanism against that is a review, which is a person, which
+  is the same class of control as a gate.
+
+## 0.6.0, 2026-09-03
+
+The depth release. Nothing new was added to the loop; the existing files were made
+worth reading. The trigger was a blunt review: a lot is missing to be called a
+product OS. The diagnosis behind that verdict was uneven depth rather than missing
+coverage. The frameworks layer averaged 87 lines a worksheet and carried its
+arithmetic, its scales, its trap and its skip line, while the knowledge cards next
+to it averaged 34 lines and mostly restated what the worksheet already said. A
+reader who opened a card after opening a worksheet learned nothing from the second
+file, which is the same defect as a missing file with an extra maintenance cost
+attached.
+
+Four layers were rewritten inside their existing skeletons: every heading, header
+block, exit gate, attribution line, skip line and cross-link that was there before
+is still there, and every addition is a new block within the same shape. So a
+document filled against 0.5.1 keeps working, and a link written into your own notes
+keeps resolving. That makes this a minor version even though it is the largest diff
+in the repository's history: 22,341 lines of markdown to 25,961, with four files
+added and none moved, renamed, or deleted.
+
+> **Correction added 2026-09-03, entry left as it shipped.** "Keeps working" is true of
+> the document and not of the gate, the same way it is in the 0.5.1 entry below. A depth
+> pass that adds a required block to a template raises what a current check expects of a
+> document filled before it. The promise this repository actually keeps inside a major
+> version is that field names and paths do not move under you. It does not promise that
+> an older filled document still clears today's exit gate, and `README.md` now says so in
+> the versioning section rather than leaving a reader to find out at a gate.
+
+The rule that governed the rewrite is worth stating, because it is what stops a
+depth pass from becoming a padding pass. `frameworks/` files are the working
+sheets: how to run a method, fill it, and score it. `knowledge/` cards are the why
+layer: why the method exists, the mechanism that makes it work, when it fails, and
+how it lies. Every deepened card was written with its paired worksheet open, and
+the rule held everywhere except one block, which a review caught: the
+What-good-looks-like table added to eleven cards. On the four cards that have a
+paired worksheet, that table had turned the sheet's own steps into virtues, so a
+declared reach unit and a class-per-action rule were being read twice. Those four
+tables were rewritten to test what a worksheet cannot check, which is the
+organizational evidence that the instrument has authority: whether the sheet ever
+reversed an announced decision, whether an input owner changed their week,
+whether a losing sponsor can name the cell rather than the score. The other seven
+cards have no paired worksheet to duplicate. The same line separates `skills/`,
+which hold procedures, from `agents/`, which hold identities; the one pre-existing
+sentence that appeared in both `agents/research-agent.md` and
+`skills/product-analyst/SKILL.md` was cut down to the standing rule and now points
+at the skill for the procedure.
+
+### Added
+
+- **[docs/PHILOSOPHY.md](docs/PHILOSOPHY.md)**, 151 lines. Nine beliefs, each with
+  the strongest counter-argument that could be built against it, the mechanism in
+  the tree that makes the belief operational, a named failure mode with the tell
+  that reveals it, and a decision rule or a worked micro-example. It closes with a
+  belief-to-enforcement table, on the rule that a belief with no mechanism behind
+  it is a mood and a mood cannot fail a gate. The counter-arguments are real: the
+  gate section concedes that stage gates are the artifact of the era product
+  management spent a decade escaping, and answers that rather than dodging it.
+- **[docs/COMPARISON.md](docs/COMPARISON.md)**, 124 lines, dated 2026-09-03. A
+  five-column table on spec-kit, BMAD-METHOD, a hosted commercial product, and
+  ordinary template packs, with one column for what each does better than this
+  repository. No scoring total, because a total lets a reader skip the only rows
+  worth reading. It adds a picker keyed to your binding constraint rather than to
+  feature lists, a per-system "pick that one when", a handoff table for running two
+  of these systems together and what to strip in each direction, all seven of this
+  repository's own losses collected in one list and each marked fixable or
+  structural, three worked choosing scenarios on fictional products, the four gap
+  claims rewritten as falsifiable statements with what would disprove each, and a
+  one-afternoon evaluation protocol that beats a week of comparison reading.
+- **[docs/FAQ.md](docs/FAQ.md)**, 121 lines. Sixteen questions in four sections,
+  answered with the weaknesses written as weaknesses. Is this AI-generated, answered
+  with how to check the claim rather than take it. Why trust a solo maintainer,
+  answered as three checkable mechanisms instead of a reassurance. What happens when
+  maintenance stops. Is this waterfall. Will the gates become theater. How it fits a
+  tracker, an in-house PRD template, a two-person startup, and non-software work.
+  Most answers carry a second paragraph that is a decision rule or a tell.
+- **[GLOSSARY.md](GLOSSARY.md)**, 141 lines, 73 terms. Every word this tree uses in
+  a narrower sense than the industry does, defined once, alphabetical, each with a
+  because-clause where the clause teaches and a cross-link to the file that governs
+  the term. Reach unit, mandate lane, evidence class, escape hatch, forced pair,
+  smart skip against the skip line, weight, pencil path, tell, trap, zombie spec.
+  Where this file and the governing file disagree, the governing file wins.
+
+### Changed
+
+- **The eleven knowledge canon cards, 443 lines to 1,453.** Each card kept its
+  original heading set, attribution line, skip line, trap, Used-by list and Run-it
+  block verbatim, and gained seven sections inside that skeleton: where the method
+  came from and how its origin explains its blind spots, what it assumes as numbered
+  claims each with a because-clause, a worked illustrative micro-case on a fictional
+  product with invented numbers, the other ways it fails with the tell for each, how
+  it lies or gets gamed, a what-good-looks-like against anti-pattern contrast, and
+  where it sits in the loop with its upstream, downstream and gate links. Worksheet
+  mechanics were kept out of the cards, with the one exception a review found and
+  the Fixed section below records. Cards ran 31 to 43 lines before and 129 to 135
+  after.
+- **The six `os/` spine files, 674 lines to 1,319.** `OPERATING-LOOP.md` gained
+  per-stage entry and exit tests, a named failure per stage with its tell, a worked
+  micro-example per stage, and a backward-transition table for the moves the loop
+  diagram cannot draw. `HOW-TO-RUN-A-PRODUCT.md` gained a cast table with signature
+  authority, elapsed-time calibration, two gate attempts rendered as marked
+  checklists with evidence beside each line, a latency trade-off with three logged
+  options, and one requirement traced across nine documents. `STAGE-GATES.md` gained
+  five to eight named failure precedents per gate, each with its on-page tell, plus
+  the most common false pass for each gate. `CONDUCTOR.md` gained a worked
+  four-part question, a five-answer evidence-ladder classification table, and
+  rendered exchanges for the two-push park, the smart skip, the escape hatch and a
+  failing gate. `WHICH-DOCUMENT.md` gained seven worked routing cases and four
+  misreadings of the tree with their tells. `PRODUCT-WORKSPACE.md` gained an
+  annotated month-nine directory listing and a ninety-minute new-owner reading path.
+- **The twelve agent identity files, 595 lines to 1,315.** Each gained a yours
+  against not-yours table that names the other role holding each refusal, six or
+  seven judgment rules with because-clauses covering exactly what the paired skill
+  procedure cannot settle, a voice section, a worked run from input to output on
+  fictional products, an escalation section keyed to the ladder in
+  [agents/TEAM.md](agents/TEAM.md), and failure modes of using that agent wrong with
+  the tell for each. The fictional products recur across files, so the handoffs
+  chain the way the team protocol says they should. Files ran 29 to 52 lines before
+  and 93 to 113 after.
+- **The learn layer, 416 lines to 776.** Each of the three paths now carries a
+  standing invented brief with fixed numbers that every step inherits, and each step
+  carries why it comes now, a run line into the paired worksheet, pass criteria at
+  two, one and zero, a named trap with its tell, and a time expectation. The library
+  gained per-book annotations naming what the card omits, the signal that you should
+  go to the source, and the standard misapplication, plus a rule for when buying the
+  book is worth it. The tutor skill gained two full worked critiques and a
+  calibration rule set for the one-against-two boundary, which is where a scoring
+  rubric actually breaks.
+- **Wiring for the four new files.** `README.md` gains two module-map rows and links
+  the reference files where each is the natural next question; `docs/ARCHITECTURE.md`
+  carries them in the file tree and states why nothing links up to them;
+  `AGENTS.md` and `CLAUDE.md` gain the two reference routes, with the instruction to
+  give the counter-argument alongside the belief; `system/BOOT-PROMPT.md` adds them
+  to its manifest marked reference-only, since none of them produces an artifact;
+  `CONTRIBUTING.md` states that a failure mode needs its tell and a skip condition
+  needs to be a test on the situation.
 
 ### Fixed
 
 - `routing/README.md`: the install command is `omniroute serve` (there is no `start`); added the provider-connection commands, a tier probe that shows which concrete model answers each tier, and the request headers that stop OmniRoute's compression, semantic cache and memory injection from altering prompts that must be quoted verbatim. Found by running the config against a live OmniRoute: on a keyless install `auto/reasoning:pro` returns `404 Combo has no executable targets`, which the doctrine expects but the manual never said.
 - `routing/omniroute.config.json`: the judgment tier now states what it requires and carries an explicit, off-by-default `keylessFallback` instead of leaving a fresh install to fail silently; `endpoint.requestHeaders` and `endpoint.verify` record the headers and the probe. No tier model changed.
+- `system/BOOT-PROMPT.md`: the file manifest now carries `frameworks/` as six folders and 46 worksheets, `agents/` as twelve identities, all 98 templates (34 were missing, including every business case, decision memo, interview guide and survey design), 28 skills where nine were listed, and ten examples where four were. The manifest header no longer claims to be the whole repository, because it is not and does not need to be; it claims to be every file a pasted session can ask for, which is checkable. Step 2 of HOW TO WORK now routes a produced number to its worksheet before the template opens, since filling the template first inverts the work: the number gets chosen to fit the sentence already written.
+- The `What good looks like` tables on the four knowledge cards that have a paired worksheet (RICE, Kano, north star, jobs to be done) restated the sheet's steps as virtues. Rewritten to the card's own side of the line, with the mechanism that unites each table's failures stated underneath it. The other seven tables have no paired worksheet and were left alone.
+- `os/STAGE-GATES.md`: Gate 3's fourth failure precedent duplicated the DESIGN stage's characteristic failure in `os/OPERATING-LOOP.md`, tell included. Replaced with the gate-specific failure it was crowding out, the dependency date the other team has never seen, and a cross-link for the stale-register case.
+- `os/WHICH-DOCUMENT.md`: deleted a paragraph that announced it was restating an earlier bullet, and folded its one load-bearing example, the three-line disclosure edit, into the bullet itself.
+- `GLOSSARY.md`: added the J section, which did not exist, plus JTBD, Kano, RICE, cost of inaction, never-invent rule, question bank and skip-risk warning. All seven are load-bearing in `os/` and `docs/` and none was defined.
+- `learn/`: the two capstones in `path-transitioning.md` and `path-senior.md` had a Done-when line and no pass bar, and three earlier steps carried theirs under a second name. One label across all three paths, and the capstone bars name the score to distrust rather than only the score to reach.
+- `agents/research-agent.md`: the reconcile-before-handoff section repeated the procedure held by `skills/product-analyst/SKILL.md` pass 4, one sentence of it verbatim. Cut to the standing rule the identity owes the next reader, pointing at the skill for the mechanics.
+
+### Known gaps
+
+The point of a depth release is that the thin files become obvious once the deep
+ones are next to them. These are the ones this version did not reach, in the order
+the unevenness now shows.
+
+- **`knowledge/domains/` is the thinnest layer in the tree**, twelve market cards
+  averaging 35 lines against 132 for a canon card. (Count corrected 2026-09-03: the
+  directory holds ten cards plus its README and index stub, which is what
+  `README.md` and `docs/ARCHITECTURE.md` say. The gap itself stands.) Each names its gatekeepers and
+  how its metrics lie, and none carries a worked example, a named failure mode with
+  a tell, or the origin of the metric conventions it teaches. A reader coming from a
+  deepened canon card will feel the drop immediately.
+- **`knowledge/roles/` is next**, eight files averaging 46 lines. The ladder and the
+  triad decision rights are the two most-cited files in the sub-layer and neither
+  carries a worked dispute, which is the only thing that makes a decision-rights
+  table usable under pressure.
+- **`examples/` averages 67 lines** and is the layer that would benefit most from
+  the same treatment, because a worked example is depth by definition. Six of the 46
+  worksheets have a filled example; forty do not, unchanged from 0.5.0.
+- **The 28 skills average 78 lines** and were deliberately left alone this pass to
+  keep the procedure and identity layers from drifting into each other while both
+  were being edited. They are the next candidate, and the anti-duplication line has
+  to be redrawn before that starts.
+- **`system/BOOT-PROMPT.md`'s manifest is now complete and nothing keeps it that
+  way.** Every markdown file in the eight layers a pasted session can ask for is
+  named in it as of this release, verified once by script and not since. The next
+  file added to `frameworks/` or `templates/` will make the prompt wrong in the one
+  way that matters, because the prompt also forbids asking for a path that is not on
+  the list. A lint check comparing the manifest against the tree is a dozen lines and
+  is not written.
+- **No lint check enforces depth**, and none should on a line count. What is
+  genuinely unchecked is the anti-duplication rule: nothing verifies that a
+  deepened card avoided restating its worksheet, which was enforced by reading and
+  therefore by attention rather than by a script.
+- **The worked micro-cases are invented, and labeled so throughout.** They
+  demonstrate a method's shape and failure mode; they are not evidence that the
+  method works, and no release note here should imply otherwise.
+- **`docs/COMPARISON.md` starts aging the day it ships.** It carries its comparison
+  date and names the two rows most likely to flip, and it will need a re-read of the
+  four primary sources on a cadence nothing in the repository enforces.
 
 ## 0.5.1, 2026-09-03
 
@@ -32,6 +351,16 @@ plain PRD fell through the router to "no skill".
 A minor version because everything is added or rewired. No template field is
 renamed, no file is moved, no gate changes what it demands. A PRD filled against
 0.5.0 keeps working; its new sections are additions to the same document.
+
+> **Correction added 2026-09-03, entry left as it shipped.** The last sentence was too
+> generous and is worth reading against what the tree does now. Nothing renamed, moved,
+> or broke, so an older PRD still opens and still means what it meant. What did change is
+> the bar: `agents/validation-agent.md` checks a draft against the current headings in
+> order, and the PRD's own exit gate treats the sections this release added as required.
+> So a 0.5.0 PRD does not keep working *untouched* in the sense of clearing today's
+> checks; it keeps working as a document and reports the new sections as missing. If you
+> hold one and it has to pass a gate again, diff it against the current template and add
+> the sections rather than refilling the file.
 
 ### Added
 

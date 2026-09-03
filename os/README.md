@@ -1,6 +1,14 @@
+---
+layer: os
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["The OS"]
+---
 # The OS: the loop in miniature
 
-Six files. Together they answer the four questions that come before any template opens: what the stages are and what each gate demands, how much document this decision deserves, where the filled copies live, and how the interview runs if you want one.
+Six governing files, plus a directory of stage maps beside them. The six answer the four questions that come before any template opens: what the stages are and what each gate demands, how much document this decision deserves, where the filled copies live, and how the interview runs if you want one. The notes in [maps/](maps/README.md) answer a different question, which is where the rest of the repository sits: one hub note per stage, naming the templates that stage owns, the worksheets its methods come from, the skills and agents that run it, and the gate it ends at. They point and never explain, and nothing above depends on them.
 
 One product runs through six stages, and each stage ends at a gate that must pass before the next one opens.
 

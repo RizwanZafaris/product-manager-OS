@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: DESIGN
+gate: 3
+feeds: ["frameworks/strategy/wardley-map.md", "templates/architecture/solution-architecture.md", "templates/architecture/integrations.md"]
+method: "knowledge/INDEX.md"
+aliases: ["Build, buy, partner, or wait", "build-buy-partner"]
+---
 # Build, buy, partner, or wait
 
 Based on the ideas of Ronald Coase, from "The Nature of the Firm", Economica (1937), and of Oliver Williamson's transaction-cost economics, from Markets and Hierarchies (1975). Explained here in this repository's own words, with partner and wait added as the two options a strict make-or-buy binary leaves out.

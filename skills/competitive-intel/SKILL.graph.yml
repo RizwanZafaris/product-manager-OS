@@ -1,0 +1,6 @@
+layer: skills
+stage: DISCOVER
+gate: 1
+feeds: ["templates/discovery/competitive-analysis.md", "templates/planning/positioning.md", "templates/discovery/evidence-note.md"]
+method: "knowledge/INDEX.md"
+aliases: ["Competitive Intel", "competitive-intel"]

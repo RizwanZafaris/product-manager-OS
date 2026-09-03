@@ -1,0 +1,6 @@
+layer: skills
+stage: OPERATE
+gate: 6
+feeds: ["templates/planning/north-star-metric.md", "templates/operate/metrics-dictionary.md", "templates/operate/dashboard-spec.md"]
+method: "knowledge/north-star-metric.md"
+aliases: ["Metrics Tree", "metrics-tree"]

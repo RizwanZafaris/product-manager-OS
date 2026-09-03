@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: DEFINE
+gate: 2
+feeds: ["templates/execution/stakeholder-map.md", "templates/planning/program-charter.md", "templates/execution/decision-log.md"]
+method: "knowledge/roles/triad-decision-rights.md"
+aliases: ["RACI"]
+---
 # RACI
 
 Based on responsibility charting, a management practice from the 1970s with no single documented originator, later codified as the responsibility assignment matrix in the Project Management Institute's PMBOK Guide (1996 onward). Explained here in this repository's own words.

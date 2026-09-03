@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: PLANNING
+gate: 1
+feeds: ["frameworks/strategy/business-model-canvas.md", "frameworks/strategy/value-proposition-canvas.md", "templates/definition/assumptions-register.md"]
+method: "knowledge/INDEX.md"
+aliases: ["Lean canvas", "lean-canvas"]
+---
 # Lean canvas
 
 Based on the ideas of Ash Maurya, from Running Lean (2012), adapting Alexander Osterwalder's business model canvas for a business that does not exist yet. Explained here in this repository's own words.

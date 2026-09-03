@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: PLANNING
+gate: 2
+feeds: []
+method: ""
+aliases: ["Program Charter", "program-charter"]
+---
 # Program Charter: [program name]
 
 Stage: PLANNING track, feeds [Gate 2: requirements signed off](../../os/STAGE-GATES.md) and is re-read at every later gate

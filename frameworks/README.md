@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["Frameworks Index"]
+---
 # Frameworks Index
 
 The frameworks layer is the one you run. [Knowledge](../knowledge/INDEX.md) cards answer WHY a method exists and how it misleads; templates hold the artifact a stage owes its gate. Between them sat a gap this layer fills: the sheet you actually fill in when someone says "let's do a Kano" or "score these with RICE" or "what is the TAM". A method you can only read about is a method the team performs from memory, badly, and then argues about.
@@ -72,6 +80,8 @@ A worksheet is smaller than a template and larger than a definition. It produces
 | [Growth loops](metrics/growth-loops.md) | Draw the loop where output becomes the next input, and do its arithmetic | Balfour and Winters, Reforge (2018 onward) |
 | [Cohort retention](metrics/cohort-retention.md) | Read whether the curve flattens, and avoid the standard misreads | after Ries (2011) |
 | [Unit economics](metrics/unit-economics.md) | Work contribution margin, acquisition cost, lifetime value, and payback honestly | after David Skok (2013) |
+| [DORA four keys](metrics/dora-four-keys.md) | Measure delivery on deployment frequency, lead time, change failure rate, and time to restore | Forsgren, Humble, and Kim (2018) |
+| [SPACE framework](metrics/space-framework.md) | Build a productivity slate across five dimensions, so no single number becomes the target | Forsgren, Storey, and colleagues (2021) |
 
 ## Pricing
 
@@ -92,6 +102,30 @@ A worksheet is smaller than a template and larger than a definition. It produces
 | [Estimation sheet](execution/estimation-sheet.md) | Produce a range with a reference class instead of a single confident number | PERT (1958); Cohn; Flyvbjerg |
 | [Risk matrix](execution/risk-matrix.md) | Score likelihood against impact on defined scales, with an appetite line | MIL-STD-882 (1969); ISO 31000 |
 | [Premortem worksheet](execution/premortem-worksheet.md) | Assume the failure has happened and write down why, while it is cheap | Gary Klein (2007) |
+| [FMEA](execution/fmea.md) | Walk a system function by function and write down every way each step can fail, with what would catch it | MIL-P-1629 (1949); NASA and Ford later |
+| [Theory of constraints](execution/theory-of-constraints.md) | Find the one station that sets the pace of the delivery line, and prove work elsewhere buys nothing | Eliyahu Goldratt (1984) |
+
+## Systems
+
+Every group above is a planning instrument: it takes a problem as given and helps you decide what to do about it. None of them checks whether the problem you were handed is the real one. That was a hole with a predictable cost, because a planning sheet aimed at a symptom returns a confident quarter of work on the wrong thing, and the confidence comes from the sheet rather than from the diagnosis. This group is the diagnostic half. You run it before the planning groups, to establish what kind of problem you are holding and what structure keeps producing it.
+
+| Worksheet | What you run it for | Originator |
+|---|---|---|
+| [The Iceberg Model](systems/iceberg-model.md) | Push one symptom up four levels, to the pattern, the structure, and the belief that keep producing it | Michael Goodman, Innovation Associates (2002) |
+| [Cynefin](systems/cynefin.md) | Sort a situation by what is knowable about cause and effect, so the method fits the problem | Kurtz and Snowden (2003); Snowden and Boone (2007) |
+| [Causal loop diagram](systems/causal-loop-diagram.md) | Draw the loop where a variable feeds back on itself, mark its delays, and locate the ceiling | Jay Forrester (1961); loop notation via Senge (1990) |
+| [Leverage points](systems/leverage-points.md) | Rank a candidate intervention by how deep in the system it acts, weakest at the knobs | Donella Meadows (1999) |
+
+## Assessment
+
+The other groups score the work. This one scores the place the work has to happen in: whether the organization can execute the plan it just wrote, what shape each team actually operates as, what the accumulated compromises cost per quarter, and how bad news travels before a date slips. A plan that clears every planning sheet and lands in an organization that cannot carry it fails anyway, and it fails late.
+
+| Worksheet | What you run it for | Originator |
+|---|---|---|
+| [Product operating model assessment](assessment/product-operating-model-assessment.md) | Score, dimension by dimension, whether the company can execute the plan on the table | Cagan with Hickman, Jones, Idiodi, and Moore (2024) |
+| [Team topologies assessment](assessment/team-topologies-assessment.md) | Name the shape each team actually operates as, against the shape it is called, and price the gap | Skelton and Pais (2019) |
+| [Tech debt assessment](assessment/tech-debt-assessment.md) | Give every known compromise a carrying cost, a removal cost, and a quadrant | Ward Cunningham (1992); Fowler's quadrant (2009) |
+| [Westrum culture typology](assessment/westrum-culture-typology.md) | Score how bad news travels, so you know how far to discount what you are told | Ron Westrum (2004) |
 
 ## Adding a worksheet
 

@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: OPERATE
+gate: 6
+feeds: []
+method: "knowledge/jobs-to-be-done.md"
+aliases: ["Win-Loss Review", "win-loss-review"]
+---
 # Win-Loss Review: [deal or decision name]
 
 **Stage:** OPERATE (feeds [Gate 6: outcomes verified, learn or sunset](../../os/STAGE-GATES.md))

@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DELIVER
+gate: 5
+feeds: []
+method: "knowledge/crossing-the-chasm.md"
+aliases: ["GTM Plan", "gtm-plan"]
+---
 # GTM Plan: [product name]
 
 **Stage:** DELIVER (this file feeds [Gate 5: release readiness green](../../os/STAGE-GATES.md))
@@ -30,7 +38,7 @@
 | Cohort (who, precisely) | Size | Channel that reaches them | Evidence the channel reaches them | Owner |
 |---|---|---|---|---|
 | | [count] | | [artifact, linked or filed] | |
-| *ops leads at the 9 design-partner firms* | *9 firms, ~20 people* | *direct email from the pilot thread* | *pilot agreement + active email thread, filed in discovery/* | *[name]* |
+| *ops leads at the 9 design-partner firms (ILLUSTRATIVE)* | *9 firms, ~20 people* | *direct email from the pilot thread* | *pilot agreement + active email thread, filed in discovery/* | *[name]* |
 
 ## 2. Positioning against the named alternative
 

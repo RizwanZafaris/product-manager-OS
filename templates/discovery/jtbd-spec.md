@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DISCOVER
+gate: 1
+feeds: []
+method: "knowledge/jobs-to-be-done.md"
+aliases: ["JTBD Spec", "jtbd-spec"]
+---
 # JTBD Spec: [job short name]
 
 Stage: DISCOVER, feeds Gate 1 (problem worth solving)

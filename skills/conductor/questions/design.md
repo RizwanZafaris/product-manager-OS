@@ -1,3 +1,11 @@
+---
+layer: skills
+stage: DESIGN
+gate: 3
+feeds: []
+method: ""
+aliases: ["DESIGN bank"]
+---
 # DESIGN bank
 
 Stage: DESIGN, feeds Gate 3 (architecture and risks reviewed) in [../../../os/STAGE-GATES.md](../../../os/STAGE-GATES.md).

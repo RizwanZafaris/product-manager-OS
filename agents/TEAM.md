@@ -1,3 +1,11 @@
+---
+layer: agents
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["TEAM"]
+---
 # TEAM: how the agents work together
 
 Twelve instruction files live in `agents/`. [../AGENTS.md](../AGENTS.md) sets one role per run; this file sets the rest: which agent leads each stage, who supports, which human signs, what one agent hands the next, when an agent stops and asks a person, and how the Conductor calls agents mid-interview. The loop is [../os/OPERATING-LOOP.md](../os/OPERATING-LOOP.md), the gate forms are [../os/STAGE-GATES.md](../os/STAGE-GATES.md). The system works with no agent at all; agents are an accelerant, never a stage.

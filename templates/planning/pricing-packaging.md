@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: PLANNING
+gate: 5
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: []
+---
 # Pricing and Packaging: [product name]
 
 **Stage:** PLANNING track (feeds every stage of the [operating loop](../../os/OPERATING-LOOP.md), most directly Gate 5 readiness)
@@ -47,7 +55,7 @@
 | Tier | Price | Aimed at | What is included | What moves them to the next tier |
 |---|---|---|---|---|
 | | [amount / period] | | | |
-| *Team, $290 per month* | *$290/mo* | *ops teams of 5 to 20* | *core workflow, 3 integrations* | *audit log and SSO appear in the tier above* |
+| *Team, $290 per month (ILLUSTRATIVE)* | *$290/mo* | *ops teams of 5 to 20* | *core workflow, 3 integrations* | *audit log and SSO appear in the tier above* |
 
 ## 4. Competitive benchmark
 

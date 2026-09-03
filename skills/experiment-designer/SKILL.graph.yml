@@ -1,0 +1,6 @@
+layer: skills
+stage: OPERATE
+gate: 6
+feeds: ["templates/operate/experiment-brief.md", "templates/definition/assumptions-register.md", "templates/planning/growth-plan.md"]
+method: "knowledge/INDEX.md"
+aliases: ["Experiment Designer", "experiment-designer"]

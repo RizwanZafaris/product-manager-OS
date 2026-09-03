@@ -39,15 +39,31 @@ The loop is defined in `os/OPERATING-LOOP.md`, the gate checklists in `os/STAGE-
 | System prompts | `system/` | WHO the model becomes | Boot prompt installs the PM team persona |
 | Routing | `routing/` | WITH WHICH model each task runs | Extraction on cheap tier, judgment on frontier tier |
 
+The stack is still six deep and the order of dependency has not changed. Two things added since v0.5.0 sit over it rather than inside it, and neither one is a seventh rung.
+
+**The graph layer.** Every file in the six declaring layers (`os/`, `knowledge/`, `frameworks/`, `templates/`, `skills/`, `agents/`) carries a declaration in its frontmatter, or in a `SKILL.graph.yml` sidecar where frontmatter is closed to it, saying which layer it belongs to, which stage and gate it answers to, what it feeds, and which method governs it. `tools/frontmatter_init.py` seeds those declarations from what the tree already states, `tools/graph.py` renders them into `docs/GRAPH.md`, and lint check 10 refuses a declaration whose paths do not resolve. Beside the generated file sit two hand-curated things: `os/maps/`, one hub note per stage so a graph view has centers instead of a hairball, and `.obsidian/`, a committed core-only vault config that colors the graph by layer. The declarations are metadata about files that already govern the work; nothing in a template or a gate reads them. Convention 11 and lint check 10 hold the full contract.
+
+**The harness.** `harness/` is the executable face of the router table in `CLAUDE.md`: `MANIFEST.json` carries one entry per router row in router order, `INVARIANTS.md` states the seven rules an agent must not break and names the four that bind every route unconditionally, `tiers.md` and `runner.py` turn the tier doctrine into a call, and three adapters (`cli`, `claude-code`, `desktop`) read or are generated from the one manifest. `tools/check_manifest.py` proves the manifest and the router table agree, row for row and column by column, and fails the build when they drift.
+
+**The harness is deletable and it is not a runtime dependency.** `rm -rf harness/` leaves a working document system: every template still fills with a text editor, every skill still reads as a procedure, and every gate is still signed by a person, exactly as `AGENTS.md` describes. No manifest entry is a source of truth; each one is an index into a file that already governs the work. The harness stores no state of its own either: product state lives in the user's workspace per `os/PRODUCT-WORKSPACE.md`, credentials live in the environment, and neither is ever written under `harness/`. `tools/check_manifest.py` reports ok on a tree with no `harness/` for that reason, and still fails on a `harness/` that exists without its contract files, because a deletion and a broken contract are different events. The moment a template can only be filled through an adapter, or a gate can only be walked by a tool, the harness has become the product and the failure is structural rather than cosmetic.
+
+The gate half of that guarantee is currently broken by one file, and recording it is cheaper than restating the guarantee. `AGENTS.md` now names `harness/INVARIANTS.md` and `harness/MANIFEST.json` as markdown links, so on a tree with `harness/` deleted the link gate reports two unresolved links and the one test asserting the tree ships clean fails with them. The documents are unaffected. The rule that fixes it is one line and already written in `harness/README.md`: a file outside `harness/` names a harness path in plain text, in backticks, never as a link. [OPEN: those two links have to become backticked paths, and the owner of `AGENTS.md` holds that edit.]
+
+**Deleting a content layer is a different event again.** `skills/`, `agents/`, `system/`, `routing/`, and `modules/regulated/` are all safe to delete in the sense that nothing depends upward on them and every remaining document still fills and still passes a human gate. They are also link targets: each template's `Skill:` header points up at the procedure that drives it, so the four AI layers together carry hundreds of inbound links and the link gate fails on all of them. Usable without a layer, not lint-clean without it. The tree keeps the cross-references because they are what makes it navigable, and states the limit instead of promising the stronger property.
+
 Since v0.3.0 the knowledge layer carries two sub-layers, `knowledge/roles/` (WHO each product title is) and `knowledge/domains/` (WHERE the product plays, ten market cards with a fintech pointer to the regulated module), and a further layer sits beside the rest: `learn/` (three study paths, a library, a tutor skill, and a practice workspace). `learn/` depends downward only, on `knowledge/`, `frameworks/`, `templates/`, the `os/` loop files, and the Conductor's question banks, all read-only; nothing outside `learn/` depends on it existing.
 
 The frameworks layer arrived in v0.5.0 to close a gap the first four versions left open: the knowledge layer said why a method exists, the templates said what artifact a stage owes, and nothing in the tree was the sheet you fill in when someone says "let's do a Kano". A method available only as an essay gets performed from memory, and its arithmetic ends up unauditable. Each worksheet states its scales and its formula, names what it feeds, and carries a skip line so the layer never teaches that every method is worth its overhead. A worksheet ships only when a template, a skill, or a gate consumes its output; otherwise the method stays a one-line entry in the knowledge index.
 
 Dependencies point downward only. Frameworks cite knowledge cards and name the templates they feed. Templates cite knowledge cards and worksheets. Skills cite templates and worksheets. System prompts cite skills and templates by repo path. Routing serves all of them. Nothing in `knowledge/`, `frameworks/`, or `templates/` depends on any AI layer existing.
 
+Four files sit outside the layer stack entirely and are reference, not machinery: `docs/PHILOSOPHY.md`, `docs/COMPARISON.md`, `docs/FAQ.md`, and `GLOSSARY.md`. They link down into every layer and nothing links up to them, which is deliberate: a gate that depended on a belief file would make the belief unfalsifiable, and the whole point of writing the beliefs down is that they can be argued with. The practical consequence for maintenance is that these four go stale in a way the layers do not, because each one makes a claim about something outside its own tree, the field, the maintainer, or the vocabulary in use. Every one of them therefore carries a date and a stated re-check procedure, and `COMPARISON.md` names the two rows most likely to flip first.
+
 ### 1.4 What the field is missing, and what this OS does about it
 
 A teardown of the strongest existing systems (BMAD-METHOD, github/spec-kit, buildbetter product-os, deanpeters Product-Manager-Skills, ChatPRD, the Anthropic PM plugin) shows each owns one segment: spec-kit owns spec-to-code, product-os owns discovery, BMAD owns agentic build. None chains discovery through requirements, architecture, delivery, and post-launch verification in one system. None carries a regulated overlay, a canon knowledge layer with named attribution, tiered model routing, or a whole-tree consistency gate. Those four gaps are this repo's reason to exist, and the file tree below closes each one with a named directory.
+
+Since v0.6.0 that teardown has a rendered face in [COMPARISON.md](COMPARISON.md), which carries the dated table, a column for where each surveyed system beats this one, and the four gap claims rewritten as falsifiable statements with what would disprove each. Keep the two files in step: this section is the design rationale, that file is the reader-facing comparison, and a gap claim that gets narrowed in one has to be narrowed in the other or the tree is asserting two different things about the same field.
 
 ## 2. Complete file tree
 
@@ -59,20 +75,36 @@ product-manager-OS/
 ├── CLAUDE.md  Thin router for Claude Code: points to AGENTS.md as single source of truth, maps triggers to skills/
 ├── AGENTS.md  Single source of truth for any agent runtime: load order, directory map, gate rules, tool expectations
 ├── CHANGELOG.md  Keep a Changelog format; what each semver level means here, the release inventory, and a stated known-gaps list
+├── GLOSSARY.md  Every term of art defined once, alphabetical, each entry pointing at the file that governs the term; the governing file wins on any disagreement
 ├── LICENSE  MIT, copyright Rizwan Zafar
+├── SECURITY.md  The threat model, split into the manual path (markdown, no network, no credentials) and the runtime path (one outbound call, one credential read from the environment, writes confined to products/), plus how to report a problem
+├── CONTRIBUTING.md  What gets accepted and what does not: sourced claims, failure modes with their tells, skip conditions that test the situation, and the gates to run before pushing
+├── .github/workflows/lint.yml  The CI gate: both PRD-mode lint runs, the OS tree gate, graph freshness, manifest agreement, frontmatter completeness, and the unit tests in both test_lint.py copies
 ├── lint.py  (EXTEND)  OS-wide quality gate, stdlib only; original regulated checks preserved, tree mode added (spec in section 4)
 ├── test_lint.py  (EXTEND)  Unit tests for every original and every added lint check
+├── tools/
+│   ├── graph.py  Reads the declarations in the six declaring layers and renders docs/GRAPH.md; --check fails on drift
+│   ├── frontmatter_init.py  Seeds a declaration from what a file already states; never overwrites a value a human edited
+│   └── check_manifest.py  Proves harness/MANIFEST.json and the router table in CLAUDE.md agree row for row
+├── .obsidian/  Committed core-only vault config: editor and link defaults, appearance, and the eight graph color groups, one per layer. Nothing in the tree depends on it
 ├── docs/
 │   ├── ARCHITECTURE.md  (this file)  The blueprint: concept, tree, cross-link conventions, lint spec
+│   ├── GRAPH.md  Generated by tools/graph.py: the layer and stage census, the edges the declarations produce, and the orphan and unresolved lists. Never hand-edited
+│   ├── PHILOSOPHY.md  The nine beliefs the tree is shaped by, each with its steel-manned counter-argument, the mechanism that enforces it, and the failure mode that appears when the mechanism is hollow
+│   ├── COMPARISON.md  Dated honest comparison against spec-kit, BMAD, a hosted product, and template packs: where each wins, where this loses, how to run two together, and the four gap claims as falsifiable statements
+│   ├── FAQ.md  Sixteen skeptical questions with the weaknesses written as weaknesses: AI authorship, solo maintenance, gate theater, waterfall, tracker fit, and what is safe to delete
 │   └── CONDUCTOR-DESIGN.md  The v0.2.0 design: prior art, the Conductor's contract, journey map, evidence classes, STATE.md format, resume protocol, build plan
 ├── os/
-│   ├── README.md  Rendered directory face: the loop in miniature, what each of the six files holds, and a read order for a first-timer
+│   ├── README.md  Rendered directory face: the loop in miniature, what each of the six governing files holds, the stage maps beside them, and a read order for a first-timer
 │   ├── OPERATING-LOOP.md  The six-stage loop, the two overlays, entry and exit definition for each stage
 │   ├── CONDUCTOR.md  The interview protocol: seven-rule contract, challenge grammar, gate procedure, escape hatch, per-method notes
 │   ├── STAGE-GATES.md  Six gate checklists, each a fill-in form with sign-off lines and a skip-risk warning drawn from field data
 │   ├── HOW-TO-RUN-A-PRODUCT.md  Narrative walkthrough: one fictional product taken through all six gates, naming every template used, plus the interview-to-backlog chain hop by hop
 │   ├── WHICH-DOCUMENT.md  Picks the artifact weight (logged decision, ticket, one-pager, PRD, BRD+PRD+FRD stack) by stakes, audience, and reversibility
-│   └── PRODUCT-WORKSPACE.md  The products/<name>/ folder convention: where filled artifacts accumulate as the product's memory, why it is a folder and not software, and STATE.md's place in the layout
+│   ├── PRODUCT-WORKSPACE.md  The products/<name>/ folder convention: where filled artifacts accumulate as the product's memory, why it is a folder and not software, and STATE.md's place in the layout
+│   └── maps/
+│       ├── README.md  What a map of content is for, the two link forms (relative markdown load-bearing, wikilinks additive), and the curation rules
+│       └── discover.md · define.md · design.md · build.md · deliver.md · operate.md  One hub note per stage: the templates it owns, the worksheets its methods come from, the skills and agents that run it, and the gate it ends at
 ├── knowledge/
 │   ├── README.md  The canonical rendered index: all 11 cards plus 18 one-line index entries (Mom Test, ICE, WSJF, HEART, 7 Powers, SCR, and the rest), each with originator and year
 │   ├── INDEX.md  Two-line pointer stub to README.md, kept so links written before v0.4.1 resolve
@@ -102,17 +134,19 @@ product-manager-OS/
 │       ├── ecommerce.md · streaming-ott.md · gaming.md · saas-b2b.md · consumer-social.md  Digital-market cards
 │       ├── healthtech.md · edtech.md · logistics.md · ai-products.md  Regulated-adjacent market cards
 │       └── fintech.md  Pointer card only: routes to modules/regulated and skills/reg-gap-check, duplicates nothing
-├── frameworks/  46 runnable worksheets: scales, arithmetic, invented example, trap, skip line, and what each feeds
-│   ├── README.md  Rendered directory face and layer index: how frameworks differ from knowledge and templates, all 46 by group with originator and year
+├── frameworks/  58 runnable worksheets: scales, arithmetic, invented example, trap, skip line, and what each feeds
+│   ├── README.md  Rendered directory face and layer index: how frameworks differ from knowledge and templates, all 58 by group with originator and year
 │   ├── INDEX.md  Two-line pointer to README.md, kept so older links resolve
 │   ├── strategy/  strategy-kernel, playing-to-win, seven-powers-audit, wardley-map, swot-tows, porters-five-forces, pestle, ansoff-matrix, business-model-canvas, lean-canvas, value-proposition-canvas, market-sizing, build-buy-partner, positioning-canvas
 │   ├── discovery/  mom-test-interview-guide, jtbd-job-map, opportunity-scoring, assumption-mapping, empathy-map, kano-survey, pmf-survey, design-sprint-runbook
 │   ├── prioritization/  rice-scoring-sheet, wsjf-cost-of-delay, moscow, weighted-decision-matrix, now-next-later, user-story-map, impact-mapping, decision-doors
-│   ├── metrics/  north-star-input-tree, aarrr-funnel, heart-metrics, growth-loops, cohort-retention, unit-economics
+│   ├── metrics/  north-star-input-tree, aarrr-funnel, heart-metrics, growth-loops, cohort-retention, unit-economics, dora-four-keys, space-framework
 │   ├── pricing/  van-westendorp, gabor-granger, packaging-good-better-best
-│   └── execution/  raci, stakeholder-power-interest, five-whys-fishbone, retrospective-formats, estimation-sheet, risk-matrix, premortem-worksheet
+│   ├── execution/  raci, stakeholder-power-interest, five-whys-fishbone, retrospective-formats, estimation-sheet, risk-matrix, premortem-worksheet, fmea, theory-of-constraints
+│   ├── systems/  The diagnostic group, added in v0.6.0 because the other six groups all take the problem as given: iceberg-model, cynefin, causal-loop-diagram, leverage-points
+│   └── assessment/  Scores the organization the plan lands in rather than the plan: product-operating-model-assessment, team-topologies-assessment, tech-debt-assessment, westrum-culture-typology
 ├── templates/
-│   ├── README.md  Rendered directory face: the full catalog, one table per stage directory, all 73 templates with what each is and when to reach for it; carries the three-line header the gate demands of every file here
+│   ├── README.md  Rendered directory face: the full catalog, one table per stage directory, all 98 templates with what each is and when to reach for it; carries the three-line header the gate demands of every file here
 │   ├── discovery/
 │   │   ├── discovery-document.md  Trigger, target user, pain, hypothesis, success signal, go or no-go
 │   │   ├── problem-framing.md  One problem statement, evidence, cost of inaction, owner
@@ -225,7 +259,7 @@ product-manager-OS/
 │   └── ROLE-PROMPTS.md  Six labeled, individually copyable blocks: the Conductor, then Discovery Researcher, PRD Writer, Architect, Red Teamer, Program Lead; each block names the repo templates it drives so a chat user can paste file contents on request
 ├── knowledge, templates cross-links: see section 3
 ├── skills/
-│   ├── README.md  Rendered directory face: what a skill is here (a procedure a model executes), the nine skills with use-when and entry point, and how they load in an agent CLI versus a pasted chat session
+│   ├── README.md  Rendered directory face: what a skill is here (a procedure a model executes), all 28 skills with use-when and entry point, and how they load in an agent CLI versus a pasted chat session
 │   ├── conductor/
 │   │   ├── SKILL.md  Entry skill for the stage-gated interviewer; the full protocol lives in os/CONDUCTOR.md, the triggering in CLAUDE.md and AGENTS.md
 │   │   └── questions/
@@ -260,7 +294,7 @@ product-manager-OS/
 │   ├── launch-readiness/SKILL.md  Walks the Gate 5 checklist and returns go, no-go, or conditional-go with named conditions
 │   ├── pm-hiring/SKILL.md  Role scorecard, interview loop design, calibration, and the decision
 ├── agents/
-│   ├── README.md  Rendered directory face: identities versus procedures, the five role files, and who invokes each
+│   ├── README.md  Rendered directory face: identities versus procedures, all twelve role files plus the team protocol, and who invokes each
 │   ├── research-agent.md  Instruction file: gathers evidence, cites sources, never asserts beyond them; feeds discovery templates
 │   ├── drafting-agent.md  Instruction file: fills one named template per run, marks every unknown as an open field, never invents numbers
 │   ├── validation-agent.md  Instruction file: checks a draft against its template's required fields and its stage gate; reports misses, does not rewrite
@@ -276,6 +310,17 @@ product-manager-OS/
 ├── routing/
 │   ├── omniroute.config.json  Tiered config: extraction -> auto/cheap, drafting -> auto/coding, judgment -> auto/reasoning:pro; baseUrl from OMNIROUTE_BASE_URL, key from OMNIROUTE_API_KEY
 │   └── README.md  OmniRoute setup (npm install -g omniroute, dashboard at localhost:20128), the OpenAI-compatible endpoint contract, tier doctrine (which pipeline work goes to which tier and why), the Conductor's per-stage tier table, fixed-fallback combo recipe, and the litellm note for Hermes users
+├── harness/  The executable face of the router table. Deletable, stores no state, and never a runtime dependency
+│   ├── README.md  What the harness is and is not, the deletability guarantee with the run that proves it, the three checks a green gate does not replace, and how to add a task type
+│   ├── MANIFEST.json  One entry per router row, in router order, addressed by a stable kebab-case id; each names the skill, templates, reads, tier, stage, gate, and binding invariants
+│   ├── INVARIANTS.md  The seven rules an agent must not break, each with an id a manifest entry cites; four of them bind every route always, and the checker fails an entry that omits one
+│   ├── tiers.md  The tier decision as something you can run: extraction, drafting, or judgment, with the test for each
+│   ├── runner.py  The call that honors the tier: assembles the route's contract, holds the answering model to the id it certified, refuses truncated or structurally wrong output, writes only under products/ and only atomically; credentials from the environment, never from the tree
+│   ├── test_runner.py  The runner's own suite, no network and no leftover workspace: each refusal has a test that proves it fires
+│   └── adapters/
+│       ├── cli/  Reads MANIFEST.json on every invocation, so it cannot drift
+│       ├── claude-code/  Generated by generate.py, one command per entry; --check exits 1 on a hand-edit
+│       └── desktop/  An MCP server over stdio (the one third-party dependency in the tree, the MCP SDK); builds its tool list from the manifest at server start, one tool per entry, in router order
 ├── modules/
 │   └── regulated/
 │       ├── README.md  Names the standalone regulated-ai-prd repository as the canonical source, states the byte-exact policy, explains when this overlay activates
@@ -313,15 +358,16 @@ product-manager-OS/
 ## 3. Cross-link conventions
 
 1. All links are relative repo paths (`../knowledge/rice-prioritization.md`), never absolute, never external for internal content. Lint resolves every one.
-2. Every template opens with a three-line header block: `Stage:` (the loop stage and gate it feeds), `Knowledge:` (link to the card or index entry behind it), `Skill:` (link to the skill or agent that drives it, or "manual" where none applies).
+2. Every template opens with a three-line header block: `Stage:` (the loop stage and gate it feeds), `Knowledge:` (link to the card or index entry behind it), `Skill:` (link to the skill or agent that drives it, or "manual" where none applies). The header is the first thing a reader sees; the graph declaration in convention 11 sits above it, and both the header gate and the graph generator start their eight-line window under that block.
 3. Every method card in `knowledge/` carries a `Skip it when` line between its uses and its trap, and ends with a `Used by:` list linking the templates that draw on it. The consolidated cards under `knowledge/roles/` and `knowledge/domains/` are a different genre and use their own field lists, stated in their README files; the domain cards state their skip condition once, in `knowledge/domains/README.md`.
-4. Every SKILL.md uses exactly two frontmatter fields, `name` and `description`, where the description contains an explicit "Use when" clause; triggering is external (CLAUDE.md and AGENTS.md map triggers to skills).
+4. Every SKILL.md uses exactly two frontmatter fields, `name` and `description`, where the description contains an explicit "Use when" clause; triggering is external (CLAUDE.md and AGENTS.md map triggers to skills). The two-field rule is not a house preference: the Agent Skills format validates SKILL.md frontmatter against a closed attribute list, and a runtime that enforces it rejects the file on an unknown key, so a skill's graph declaration lives in a `SKILL.graph.yml` sidecar beside the SKILL.md rather than inside it.
 5. `system/` prompts cannot assume file access, so they reference repo paths as things the human pastes on request: "ask the user to paste templates/definition/prd.md". Every path named in a system prompt must exist; lint checks this.
 6. CLAUDE.md contains no content of its own beyond the router table; AGENTS.md is the single source of truth for agent behavior, mirroring the pattern OmniRoute itself uses at its root.
 7. The regulated module is linked into the loop at Gate 2 and Gate 5 via `os/STAGE-GATES.md`, but files under `modules/regulated/` are never linked as editable; the module README states the byte-exact policy.
 8. The delete-unused-sections rule and the fill-these-fields-first guidance are stated once for the whole tree in `os/WHICH-DOCUMENT.md`, and repeated inside the guidance comment of the templates where the pull to fill every field is strongest: `templates/definition/prd.md`, `templates/definition/one-pager.md`, `templates/discovery/competitive-analysis.md`, and `templates/planning/first-90-days.md`. A superset template with no instruction to cut becomes a form nobody trims.
 9. Filled artifacts never live in this tree. `products/` is the reserved name for the per-product workspace defined in `os/PRODUCT-WORKSPACE.md`, and no directory by that name will ever ship here, so a user's work inside a clone cannot collide with an update.
-10. Every directory a visitor can open carries a `README.md`, because a code host renders a directory's README and nothing else. That file is the directory's rendered face: what the layer is, what is in it, and where to go next. Where a directory previously carried an `INDEX.md`, the content moved into `README.md` and the `INDEX.md` stayed behind as a two-line pointer, so links written against the old name still resolve. Prose links across the tree point at the README; the `Knowledge:` header field inside the 47 templates that name the knowledge index still points at `knowledge/INDEX.md`, on purpose, because that field has been copied into filled documents outside this repository and the pointer costs one line to follow. `templates/README.md` carries the three-line Stage/Knowledge/Skill header from convention 2, since the header gate applies to every file under `templates/` and a catalog page is not worth an exception in the detector.
+10. Every directory a visitor can open carries a `README.md`, because a code host renders a directory's README and nothing else. That file is the directory's rendered face: what the layer is, what is in it, and where to go next. Where a directory previously carried an `INDEX.md`, the content moved into `README.md` and the `INDEX.md` stayed behind as a two-line pointer, so links written against the old name still resolve. Prose links across the tree point at the README; the `Knowledge:` header field inside the 53 templates that name the knowledge index still points at `knowledge/INDEX.md`, on purpose, because that field has been copied into filled documents outside this repository and the pointer costs one line to follow. `templates/README.md` carries the three-line Stage/Knowledge/Skill header from convention 2, since the header gate applies to every file under `templates/` and a catalog page is not worth an exception in the detector.
+11. Every file under the six declaring layers (`os/`, `knowledge/`, `frameworks/`, `templates/`, `skills/`, `agents/`) carries a graph declaration of exactly six keys: `layer` (its top directory), `stage` (one of the six stages or the three cross-cutting tracks), `gate` (an integer 1 to 6, the gate it answers to), `feeds` (up to three downstream artifacts as repo-root-relative paths, or `[]`), `method` (the knowledge card that governs it, or `""`), and `aliases` (the names a wikilink is likely to use). `name` and `description` may sit beside them where a file already carried those; nothing else may. The declaration lives in the file's YAML frontmatter, except on a `SKILL.md`, where it lives in a `SKILL.graph.yml` sidecar for the reason in convention 4. `tools/frontmatter_init.py` derives it from what the tree already declares and never overwrites a value a human has edited; `tools/graph.py` reads it into `docs/GRAPH.md`; lint check 10 enforces it. An empty `feeds` or `method` is a legitimate answer and a wrong one is not: a path that resolves to the wrong file renders as a confident arrow.
 
 ## 4. lint.py extension spec
 
@@ -330,11 +376,15 @@ Root `lint.py` keeps every original check (heading structure, dash bans, banned 
 1. Character gate: no em dash, en dash, horizontal bar, or minus sign codepoints anywhere.
 2. Metric gate: none of the six banned metric literals in any file; the authoritative list lives inside lint.py's BANNED_METRICS constant, inherited unchanged from the source repo's lint, and is never written out in prose anywhere in this repo.
 3. Placeholder gate: no TBD, TODO, FIXME, XXX outside a template's explicitly marked fill-in fields (angle-bracket fields are the sanctioned placeholder form).
-4. Link gate: every relative link resolves to a file that exists; no absolute local paths anywhere.
+4. Link gate: every relative link resolves to a file that exists and is tracked by this gate; no absolute local paths anywhere, and no link that climbs out of the repository.
 5. Header gate: every file under `templates/` carries the three-line Stage/Knowledge/Skill header from section 3.
 6. Frontmatter gate: every SKILL.md has exactly `name` and `description` and nothing else.
-7. Integrity gate: sha256 of the two byte-exact files matches the pinned hashes recorded at copy time; any drift fails the build.
-8. Path gate: every repo path named inside `system/` prompt files exists in the tree.
-9. Secret gate: no strings matching common key patterns (AKIA, sk-, ghp_, BEGIN PRIVATE KEY).
+7. Integrity gate: sha256 of every imported regulated file matches the hash pinned at copy time; any drift fails the build. Five files are pinned, which is every file the module README calls a copy: the regulated PRD template, the dispute-summary example, and the three runnable files (`SKILL.md`, `lint.py`, `test_lint.py`). `modules/regulated/README.md` is deliberately not pinned, because it states this repository's import policy and is written here rather than copied.
+8. Path gate: every repo path named inside `system/` prompt files exists in the tree. The check reads the raw lines, fenced blocks included, because a prompt inside a fence is still a prompt a session will follow, and a bare filename inside a manifest block is resolved against the directory prefix that block declares.
+9. Secret gate: no credential-shaped string anywhere. Anchored issuer prefixes (AWS access key ids including the temporary form, OpenAI project and service-account keys, Anthropic keys, the generic `sk` form, GitHub classic and fine-grained tokens, Slack tokens, Google API keys), JSON web tokens, a PEM private-key header, and an AWS secret value beside its own variable name. Beyond the known shapes, a credential-shaped name assigned a value of 24 characters or more fails when the value clears an entropy floor of 3.6 bits per character, which is above English prose and below a random key. Base64 runs are decoded and rescanned, the text is rescanned with whitespace closed up so a token split across a line break is still caught, and a file whose bytes will not decode is a fatal finding rather than a silent skip. This check exempts no file, including the two that write the patterns out.
+10. Graph gate: every file under the six declaring layers carries the declaration from convention 11, with every key present, no key outside the sanctioned set, a `layer` that is a real layer directory and the one the file actually sits in, a stage from the vocabulary, a `gate` that `os/STAGE-GATES.md` actually defines, and every `feeds` and `method` path resolving to a file in the tree. Block-sequence YAML is folded into the inline form so a `feeds` item cannot hide from the resolver, and a feeds value naming a gate target is accepted with its number validated. Where the file's own Stage header names a gate, that header is the contract and it must agree with the declaration; where the header names no gate, the stage-to-gate map in `os/STAGE-GATES.md` is enforced. The looser rule is deliberate: an artifact can be first required at a later gate than its stage, which two shipped templates do and say so in their own headers. A `SKILL.md` is read from its sidecar, never from its own frontmatter, per convention 4.
+11. Wikilink gate: every `[[target]]` in any markdown file resolves. A qualified target resolves exactly; a bare name resolves only while it is unique in the tree, and an ambiguous one fails with the colliding paths named. Aliases are parsed as YAML rather than split on commas, and a duplicate alias fails naming the file that claimed it first. Wikilinks are additive: a code host renders relative markdown links and ignores these, so check 4 and check 11 govern two link systems that both have to hold and neither of which replaces the other.
 
-`modules/regulated/` is exempt from tree mode (its own verbatim lint.py governs it) except for check 7, which is the whole point. `test_lint.py` gains a unit test per added check, including one fixture that must fail per gate. CI or a pre-push hook runs `python3 -m unittest test_lint` then `python3 lint.py --os`; both must pass before the repo is pushed.
+`modules/regulated/` is exempt from tree mode (its own verbatim lint.py governs it) except for check 7, which is the whole point. Check 9 is exempt from nothing, and the placeholder and wikilink gates carry the only exemption in the file, for the three files that have to write banned strings and bracket forms out as detector patterns. `test_lint.py` carries a unit test per check, each asserting the check fires on a bad fixture as well as passing a clean one.
+
+Three gates sit beside `lint.py` and are not part of it, because each one answers a question about a generated or paired file rather than about a document's contents. `python3 tools/graph.py --check` fails when `docs/GRAPH.md` no longer matches the declarations it was rendered from, comparing raw bytes so a newline convention cannot paper over drift, which is what keeps the graph a reading of the tree instead of a second copy of it. `python3 tools/check_manifest.py` runs eight checks and fails when `harness/MANIFEST.json` and the router table in `CLAUDE.md` disagree: not only row for row and in order, but column by column, so the skill named in a router row has to be the entry's own skill and a template named in a row has to be one the entry declares. It refuses any path that is absolute, climbs, or passes through a symlink, and it fails an entry that omits one of the four universal invariants. On a tree with no `harness/` it reports ok, because deletion is supported and a broken contract is not. `python3 tools/frontmatter_init.py --dry-run` reports nothing to write on a complete tree, so anything else means a file landed without its declaration. CI runs all three along with the two PRD-mode lint runs, `python3 lint.py --os`, and the unit tests in both `test_lint.py` copies; every one must pass before the repo is pushed. Three checks exist and are not in CI, so they are run by hand: `python3 harness/test_runner.py` (the runner's own suite), `python3 harness/adapters/claude-code/generate.py --check` (generated commands match the manifest), and `python3 harness/adapters/desktop/selftest.py` (the tool list matches the manifest). [OPEN: whether the workflow should add those three is a maintainer decision; until it does, a harness change is only as verified as the person who ran them.]

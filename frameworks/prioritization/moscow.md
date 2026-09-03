@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: DEFINE
+gate: 2
+feeds: ["templates/definition/one-pager.md", "templates/definition/prd.md", "templates/execution/decision-log.md"]
+method: "knowledge/INDEX.md"
+aliases: ["MoSCoW prioritization", "moscow"]
+---
 # MoSCoW prioritization
 
 Based on the ideas of Dai Clegg, from his rapid application development work at Oracle, published in Case Method Fast-Track (1994) and later adopted by the DSDM method. Explained here in this repository's own words.

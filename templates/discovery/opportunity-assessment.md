@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DISCOVER
+gate: 1
+feeds: []
+method: "knowledge/cagan-product-teams.md"
+aliases: ["Opportunity Assessment", "opportunity-assessment"]
+---
 # Opportunity Assessment: [opportunity short name]
 
 Stage: DISCOVER, feeds Gate 1 (problem worth solving)

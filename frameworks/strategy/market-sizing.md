@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: PLANNING
+gate: 1
+feeds: ["templates/planning/business-case.md", "templates/planning/product-strategy.md", "templates/planning/gtm-plan.md"]
+method: "knowledge/crossing-the-chasm.md"
+aliases: ["Market sizing", "market-sizing"]
+---
 # Market sizing
 
 Based on the TAM, SAM, SOM breakdown standard in venture capital and corporate strategic planning since the 1980s; no single originator or founding text is recorded, unlike most worksheets in this file. Explained here in this repository's own words.

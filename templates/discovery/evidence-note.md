@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DISCOVER
+gate: 1
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Evidence Note", "evidence-note"]
+---
 # Evidence Note: [source short name]
 
 Stage: DISCOVER and OPERATE, feeds Gate 1 and Gate 6

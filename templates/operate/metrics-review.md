@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: OPERATE
+gate: 6
+feeds: []
+method: "knowledge/north-star-metric.md"
+aliases: ["Metrics Review", "metrics-review"]
+---
 # Metrics Review: [product or feature name]
 
 **Stage:** OPERATE (this file feeds [Gate 6: outcomes verified, learn or sunset](../../os/STAGE-GATES.md))
@@ -24,7 +32,7 @@
 | Key result | Baseline | Target | Actual this window | Delta | Data confidence (high / medium / low, why) |
 |---|---|---|---|---|---|
 | | | | | | |
-| *first-submission approval rate* | *62%* | *80%* | *71%* | *+9 pts, short of target* | *high, finance system of record* |
+| *first-submission approval rate (ILLUSTRATIVE)* | *62%* | *80%* | *71%* | *+9 pts, short of target* | *high, finance system of record* |
 
 ## 2. Input metric movement
 

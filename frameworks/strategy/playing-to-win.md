@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: PLANNING
+gate: 1
+feeds: ["templates/planning/product-strategy.md", "templates/planning/vision.md", "templates/definition/assumptions-register.md"]
+method: "knowledge/INDEX.md"
+aliases: ["Playing to Win cascade", "playing-to-win"]
+---
 # Playing to Win cascade
 
 Based on the ideas of A.G. Lafley and Roger L. Martin, from Playing to Win: How Strategy Really Works (2013). Explained here in this repository's own words.

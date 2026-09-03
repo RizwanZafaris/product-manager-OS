@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DELIVER
+gate: 5
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Customer Comms", "customer-comms"]
+---
 # Customer Comms: [product, release, or event name]
 
 Stage: DELIVER, feeds [Gate 5: release readiness green](../../os/STAGE-GATES.md); reused in OPERATE for incidents and maintenance

@@ -1,3 +1,11 @@
+---
+layer: agents
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["Agents"]
+---
 # Agents: the role instruction files
 
 This directory holds identities, not procedures. A file in [skills/](../skills/README.md) says how a piece of work is done, step by step. A file here says who is doing it: what that role may assert, what it must refuse, what it hands on, and the one hard rule that makes its output trustworthy. The distinction earns its keep at the boundaries. The drafting agent may fill a field; the validation agent may not, because a checker that edits becomes an author and then nobody is checking the author. Several agents reach for a worksheet in [frameworks/](../frameworks/README.md) before they touch a template, the architect agent's decision-doors sheet and the estimator agent's estimation sheet among them, because the arithmetic behind a judgment call belongs in one place, not in the agent's head.

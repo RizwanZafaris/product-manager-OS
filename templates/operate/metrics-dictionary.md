@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: OPERATE
+gate: 6
+feeds: []
+method: ""
+aliases: ["Metrics Dictionary", "metrics-dictionary"]
+---
 # Metrics Dictionary: [product name]
 
 Stage: OPERATE, feeds [Gate 6: outcomes verified](../../os/STAGE-GATES.md); first written in DEFINE, before the instrumentation spec, and maintained for the life of the product

@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["Healthtech"]
+---
 # Healthtech
 
 One question sorts everything in this domain: what is the product's intended use? Intended use, the claim you make about what the software does for a patient or clinician, decides whether you built an app or a medical device, which regulator owns you, what evidence you must produce, and how fast you may ship. The second sorting question is who pays, because in healthcare the user (a patient), the decider (a clinician), and the payer (an insurer, employer, or health system) are almost never the same party, and products that delight users while ignoring payers die solvent-user-rich.

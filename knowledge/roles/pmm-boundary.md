@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["The PM and PMM Boundary", "pmm-boundary"]
+---
 # The PM and PMM Boundary
 
 Product management decides what to build and why; product marketing decides how the market will understand it and equips the people who sell it. Both jobs claim the customer, the segment, and the launch, which is why this boundary produces more quiet duplication and louder turf disputes than any other pairing in the building. This card states a workable default split. Your company will differ; the point is to differ in writing.

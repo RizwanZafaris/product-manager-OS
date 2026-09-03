@@ -11,6 +11,7 @@ A postmortem fails when it finds a person. The room learns that showing up to an
 
 - [../../templates/operate/incident-postmortem.md](../../templates/operate/incident-postmortem.md), the document the review fills
 - [../../frameworks/execution/five-whys-fishbone.md](../../frameworks/execution/five-whys-fishbone.md), the two cause-analysis worksheets
+- [../../frameworks/systems/iceberg-model.md](../../frameworks/systems/iceberg-model.md), reached for when this class of incident has recurred after a fix already shipped. Five whys walks one chain back from one event; the iceberg pushes the event up to the pattern, the structure, and the belief that keep regenerating it, which is what you need when every chain arrives at a different person
 - [../../templates/operate/operational-readiness-review.md](../../templates/operate/operational-readiness-review.md), section 6, where verified actions that change how the service runs are copied
 - [../../templates/execution/risk-register.md](../../templates/execution/risk-register.md), which absorbs any cause the team decides not to fix, as an accepted risk with an owner
 - Method background: the blameless discipline restates, in this repository's own words, the postmortem culture described in Google's SRE writing (2016) and Amazon's Correction of Error practice; five whys (Taiichi Ohno, Toyota Production System, 1978); the fishbone diagram (Kaoru Ishikawa, 1960s)

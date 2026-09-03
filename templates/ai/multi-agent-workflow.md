@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: AI OVERLAY
+gate: 3
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Multi-Agent Workflow", "multi-agent-workflow"]
+---
 # Multi-Agent Workflow: [workflow name]
 
 Stage: AI overlay, active whenever two or more agents cooperate on one task; feeds Gate 3 (architecture and risks reviewed)

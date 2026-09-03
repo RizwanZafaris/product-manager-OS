@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: PLANNING
+gate: 5
+feeds: ["templates/planning/pricing-packaging.md", "frameworks/pricing/gabor-granger.md", "frameworks/pricing/packaging-good-better-best.md"]
+method: "knowledge/INDEX.md"
+aliases: ["Van Westendorp price sensitivity meter", "van-westendorp"]
+---
 # Van Westendorp price sensitivity meter
 
 Based on the ideas of Peter van Westendorp, from the Price Sensitivity Meter presented at the ESOMAR congress (1976). Explained here in this repository's own words.

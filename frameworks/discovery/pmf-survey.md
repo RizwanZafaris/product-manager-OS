@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: OPERATE
+gate: 6
+feeds: ["templates/discovery/discovery-synthesis.md", "templates/planning/positioning.md", "templates/planning/growth-plan.md"]
+method: "knowledge/INDEX.md"
+aliases: ["Product-market fit survey", "pmf-survey"]
+---
 # Product-market fit survey
 
 Based on the ideas of Sean Ellis, from the product/market fit survey he introduced in 2009; the segmentation steps follow a later adaptation by Rahul Vohra (2019). Explained here in this repository's own words.

@@ -1,0 +1,6 @@
+layer: skills
+stage: DISCOVER
+gate: 1
+feeds: ["templates/discovery/interview-guide.md", "templates/discovery/interview-notes.md", "templates/discovery/user-research-plan.md"]
+method: "knowledge/INDEX.md"
+aliases: ["User Interview", "user-interview"]

@@ -1,0 +1,6 @@
+layer: skills
+stage: PLANNING
+gate: 1
+feeds: ["templates/execution/hiring-scorecard.md", "templates/planning/first-90-days.md"]
+method: "knowledge/roles/ladder.md"
+aliases: ["PM Hiring", "pm-hiring"]

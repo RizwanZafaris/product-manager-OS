@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["PM Specializations", "specializations"]
+---
 # PM Specializations
 
 The [ladder](ladder.md) describes altitude; specialization describes terrain. Same rungs, same gate discipline, different problems and different documents. Seven shapes recur across the industry, described below with what each owns, decides, and produces, its success measure, and the specific way it goes wrong. Titles vary by company even more here than on the ladder, so map by the work, not the badge.

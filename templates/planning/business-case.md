@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: PLANNING
+gate: 1
+feeds: []
+method: ""
+aliases: ["Business Case", "business-case"]
+---
 # Business Case: [initiative name]
 
 Stage: PLANNING track, feeds [Gate 1: problem worth solving](../../os/STAGE-GATES.md) and the [roadmap](roadmap.md)
@@ -73,9 +81,11 @@ ILLUSTRATIVE worked line on invented inputs for Ledgerline's expense copilot, op
 
 | Input | Base | Pessimistic | NPV becomes | Payback becomes | Flips the recommendation? |
 |---|---|---|---|---|---|
-| *adoption share of submitters (ILLUSTRATIVE)* | *60 percent* | *30 percent* | *about -91* | *beyond year 3* | *yes* |
+| *adoption share of submitters (ILLUSTRATIVE)* | *60 percent* | *30 percent* | *about -16* | *year 3* | *yes* |
 | *build cost (ILLUSTRATIVE)* | *300* | *450* | *about +118* | *year 3* | *no* |
 | | | | | | |
+
+*Adoption-row arithmetic, disclosed so it can be checked: in this ILLUSTRATIVE example, the year 1 to 3 net flows (140, 260, 300) are revenue benefit net of a fixed run cost, and revenue benefit scales with adoption. Year 0 (-300) is the build cost, fixed and not adoption-linked. Halving adoption halves only the benefit component of each year 1 to 3 flow, giving new net flows of 70, 130, 150. NPV = -300 + 70 / 1.1 + 130 / 1.21 + 150 / 1.331 = -300 + 64 + 107 + 113 = about -16. Cumulative net is -300, -230, -100, +50, so payback lands in year 3, not beyond it. State your own benefit-versus-fixed-cost split here; a sensitivity row with no disclosed split is not reproducible and should not ship.*
 
 **The case survives when:** [the one or two conditions that must hold, in plain words].
 

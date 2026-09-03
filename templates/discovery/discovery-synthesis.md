@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DISCOVER
+gate: 1
+feeds: []
+method: "knowledge/torres-continuous-discovery.md"
+aliases: ["Discovery Synthesis", "discovery-synthesis"]
+---
 # Discovery Synthesis: [study or question short name]
 
 Stage: DISCOVER, feeds Gate 1 (problem worth solving)

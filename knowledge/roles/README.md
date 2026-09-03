@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["Roles Index"]
+---
 # Roles Index
 
 The method cards in [knowledge/](../README.md) answer WHY a technique exists. This layer answers WHO: what each product title owns, what it decides, which documents it produces and consumes, and how the same title changes meaning as a company grows. Reach for it when you are hiring, being hired, writing a [first 90 days plan](../../templates/planning/first-90-days.md), or sitting in a meeting where two people both believe they own the same decision.

@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: DESIGN
+gate: 3
+feeds: ["templates/execution/risk-register.md", "templates/operate/post-launch-review.md", "templates/execution/dependency-register.md"]
+method: "knowledge/INDEX.md"
+aliases: ["Premortem Worksheet", "premortem-worksheet"]
+---
 # Premortem Worksheet
 
 Based on the ideas of Gary Klein, from "Performing a Project Premortem", Harvard Business Review (2007). Explained here in this repository's own words.

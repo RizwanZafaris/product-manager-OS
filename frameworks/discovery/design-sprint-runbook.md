@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: DISCOVER
+gate: 1
+feeds: ["templates/discovery/discovery-document.md", "templates/definition/assumptions-register.md", "templates/execution/decision-log.md"]
+method: "knowledge/INDEX.md"
+aliases: ["Design sprint runbook", "design-sprint-runbook"]
+---
 # Design sprint runbook
 
 Based on the ideas of Jake Knapp, with John Zeratsky and Braden Kowitz, from Sprint (2016), developed at Google Ventures. Explained here in this repository's own words.

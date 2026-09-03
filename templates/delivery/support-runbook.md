@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DELIVER
+gate: 5
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Support Runbook", "support-runbook"]
+---
 # Support Runbook: [product or feature name]
 
 Stage: DELIVER, feeds [Gate 5: release readiness green](../../os/STAGE-GATES.md); maintained through OPERATE

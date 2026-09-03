@@ -1,3 +1,11 @@
+---
+layer: skills
+stage: OPERATE
+gate: 6
+feeds: []
+method: ""
+aliases: ["OPERATE bank"]
+---
 # OPERATE bank
 
 Stage: OPERATE, feeds Gate 6 (outcomes verified) in [../../../os/STAGE-GATES.md](../../../os/STAGE-GATES.md), which loops back to DISCOVER.

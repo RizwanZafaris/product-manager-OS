@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["STATE"]
+---
 # STATE: <product name>
 
 Stage: all stages, written continuously; read first by any runtime resuming this product, and at every gate in [STAGE-GATES](../../os/STAGE-GATES.md)

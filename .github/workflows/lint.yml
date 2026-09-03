@@ -28,6 +28,29 @@ jobs:
       - name: OS tree gate
         run: python3 lint.py --os
 
+      # The graph is generated from declarations already in the tree, so a
+      # commit that changes a feeds key or a Stage header without regenerating
+      # leaves a map that disagrees with the files it describes. This step is
+      # what makes docs/GRAPH.md a reading of the repository rather than a
+      # second copy of it.
+      - name: Graph freshness
+        run: python3 tools/graph.py --check
+
+      # The router table in CLAUDE.md is the human face of the task list and
+      # harness/MANIFEST.json is the machine face. They are two descriptions of
+      # one contract, so a row added to either without the other is a silent
+      # divergence. This step proves they still agree, and it passes on a tree
+      # with no harness/ at all, because the harness is deletable by design.
+      - name: Manifest agrees with the router table
+        run: python3 tools/check_manifest.py --quiet
+
+      # The frontmatter pass is derived and idempotent, so a complete tree
+      # reports nothing to write. Anything else means a new file landed without
+      # its declaration; run the script and commit the result.
+      - name: Frontmatter declarations are complete
+        run: |
+          python3 tools/frontmatter_init.py --dry-run | grep -q "created: 0, extended: 0"
+
       - name: Unit tests (root)
         run: python3 -m unittest test_lint.py -v
 

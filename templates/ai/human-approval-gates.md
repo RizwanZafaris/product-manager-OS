@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: AI OVERLAY
+gate: 3
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Human Approval Gates", "human-approval-gates"]
+---
 # Human Approval Gates: [feature name]
 
 Stage: AI overlay, active whenever the product contains a model; feeds Gate 3 (architecture and risks reviewed) and Gate 5 (release readiness)

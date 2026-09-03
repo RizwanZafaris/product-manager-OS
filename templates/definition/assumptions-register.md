@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DEFINE
+gate: 2
+feeds: ["templates/definition/prd.md", "templates/definition/brd.md"]
+method: "knowledge/INDEX.md"
+aliases: ["Assumptions Register", "assumptions-register"]
+---
 # Assumptions Register: [feature or product name]
 
 Stage: DEFINE, feeds Gate 2 (requirements signed off)

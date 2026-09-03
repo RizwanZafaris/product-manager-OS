@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: PLANNING
+gate: 1
+feeds: []
+method: "knowledge/rice-prioritization.md"
+aliases: ["Roadmap"]
+---
 # Roadmap: [product name]
 
 **Stage:** PLANNING track (feeds every stage of the [operating loop](../../os/OPERATING-LOOP.md))
@@ -45,7 +53,7 @@
 | Theme | Initiative | Outcome it serves (objective ref) | Target period | Confidence | Dependencies | Status |
 |---|---|---|---|---|---|---|
 | | | | [month or sprint] | [%] | | Not started / In progress / Done |
-| *reduce manual entry* | *receipt auto-extraction v1* | *O1: submission time cut in half* | *[month]* | *85%* | *storage service upgrade* | *In progress* |
+| *reduce manual entry (ILLUSTRATIVE)* | *receipt auto-extraction v1* | *O1: submission time cut in half* | *[month]* | *85%* | *storage service upgrade* | *In progress* |
 
 ## Next (planned, shaped, not yet committed)
 

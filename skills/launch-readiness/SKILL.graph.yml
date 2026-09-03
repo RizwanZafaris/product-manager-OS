@@ -1,0 +1,6 @@
+layer: skills
+stage: DELIVER
+gate: 5
+feeds: ["templates/delivery/release-readiness.md", "templates/delivery/uat-plan.md", "templates/delivery/testing-strategy.md"]
+method: ""
+aliases: ["Launch Readiness", "launch-readiness"]

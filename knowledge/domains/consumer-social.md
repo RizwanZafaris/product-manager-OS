@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["Consumer social", "consumer-social"]
+---
 # Consumer social
 
 A social product's value is other people, which produces the domain's two permanent facts. First, growth is a designed loop, not a funnel: users create content or invitations that pull in the next users, and the product team owns the loop's arithmetic. Second, the same openness that powers the loop imports every form of human misbehavior, so trust and safety is a standing cost of doing business, not a feature to schedule. The products that fail here usually optimized the loop and deferred the misbehavior.

@@ -1,0 +1,6 @@
+layer: skills
+stage: PLANNING
+gate: 1
+feeds: ["templates/planning/roadmap.md", "templates/planning/okrs.md", "templates/execution/dependency-register.md"]
+method: "knowledge/rice-prioritization.md"
+aliases: ["Roadmap Builder", "roadmap-builder"]

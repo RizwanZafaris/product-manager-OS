@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: OPERATE
+gate: 6
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Experiment Brief", "experiment-brief"]
+---
 # Experiment Brief: [experiment short name]
 
 **Stage:** OPERATE (this file feeds [Gate 6: outcomes verified, learn or sunset](../../os/STAGE-GATES.md))
@@ -44,7 +52,7 @@
 |---|---|---|
 | Control | [current behavior] | [share] |
 | A | | [share] |
-| *B* | *checkout survey moved to post-receipt* | *25 percent* |
+| *B (ILLUSTRATIVE)* | *checkout survey moved to post-receipt* | *25 percent* |
 
 ## 4. Sample size and duration
 

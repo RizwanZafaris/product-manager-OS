@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: PLANNING
+gate: 1
+feeds: []
+method: "knowledge/north-star-metric.md"
+aliases: ["North Star Sheet"]
+---
 # North Star Sheet: [product name]
 
 **Stage:** PLANNING track (feeds every stage of the [operating loop](../../os/OPERATING-LOOP.md))
@@ -36,7 +44,7 @@
 |---|---|---|---|---|
 | | | | | |
 | | | | | |
-| *search-to-order conversion* | *more completed searches become orders, and orders are the unit the north star counts* | *[name]* | *2.8%* | *4%* |
+| *search-to-order conversion (ILLUSTRATIVE)* | *more completed searches become orders, and orders are the unit the north star counts* | *[name]* | *2.8%* | *4%* |
 
 ## 3. Guardrails
 

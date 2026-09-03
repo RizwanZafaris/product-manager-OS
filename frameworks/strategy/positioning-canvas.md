@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: PLANNING
+gate: 1
+feeds: ["templates/planning/positioning.md", "frameworks/strategy/value-proposition-canvas.md", "templates/planning/gtm-plan.md"]
+method: "knowledge/INDEX.md"
+aliases: ["Positioning canvas", "positioning-canvas"]
+---
 # Positioning canvas
 
 Based on the ideas of April Dunford, from Obviously Awesome: How to Nail Product Positioning so Customers Get It, Buy It, Love It (2019). Explained here in this repository's own words.

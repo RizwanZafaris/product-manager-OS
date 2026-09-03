@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["Knowledge Index"]
+---
 # Knowledge Index
 
 The knowledge layer answers WHY a method exists and when it misleads. Templates tell you what to produce at each stage; these cards tell you which thinking tool to reach for, and the specific way each tool goes wrong in the hands of a tired team. Every card encodes its framework in this repository's own words, names its originator, states the trap, and ends with the templates that draw on it.
@@ -8,7 +16,7 @@ Eleven methods earned full cards because a template in this repository leans on 
 
 ## Where the running sheets live
 
-A card here explains a method and names the way it misleads. It is deliberately not the form. When you want to run the method, the worksheet with its scales, its arithmetic, and its skip line is in [frameworks/](../frameworks/README.md): RICE, Kano, JTBD, WSJF, MoSCoW, the strategy kernel, the Playing to Win cascade, market sizing, the pricing sheets, the premortem, and thirty-six more. Cards and worksheets link each other, and the split is the point: reading the trap section before filling the sheet is what stops a scoring exercise from laundering opinion into a decimal.
+A card here explains a method and names the way it misleads. It is deliberately not the form. When you want to run the method, the worksheet with its scales, its arithmetic, and its skip line is in [frameworks/](../frameworks/README.md): RICE, Kano, JTBD, WSJF, MoSCoW, the strategy kernel, the Playing to Win cascade, market sizing, the pricing sheets, the premortem, and forty-eight more, including the diagnostic sheets in `systems/` and `assessment/` that no card here has a counterpart for. Cards and worksheets link each other, and the split is the point: reading the trap section before filling the sheet is what stops a scoring exercise from laundering opinion into a decimal.
 
 ## Role and domain layers
 

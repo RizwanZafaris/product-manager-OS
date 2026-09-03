@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: PLANNING
+gate: 1
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Exec Update", "exec-update"]
+---
 # Exec Update: [product or program], [period]
 
 Stage: PLANNING track, runs through every stage; feeds the [gate in progress](../../os/STAGE-GATES.md) by getting its blocking decisions made, and rolls up into the [QBR](../operate/qbr-board-update.md)

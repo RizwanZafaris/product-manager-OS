@@ -12,6 +12,7 @@ Programs rarely die from the risk on the register. They die from patterns everyo
 - [../../templates/execution/risk-register.md](../../templates/execution/risk-register.md), where PRESENT findings land as owned risks
 - [../../templates/execution/dependency-register.md](../../templates/execution/dependency-register.md), the evidence base for modes 1 and 6
 - The premortem runs before Gate 3 of [../../os/STAGE-GATES.md](../../os/STAGE-GATES.md); its findings are inputs to that gate's review
+- See also [../../frameworks/execution/fmea.md](../../frameworks/execution/fmea.md) (from MIL-P-1629, 1949) when the plan is sound and the system itself is what worries you. A premortem invents causes for one named failure; FMEA walks the design function by function and enumerates the failure modes nobody thought to name, which is the half this skill does not cover
 
 ## When to use
 

@@ -1,0 +1,6 @@
+layer: skills
+stage: DISCOVER
+gate: 1
+feeds: ["templates/discovery/jtbd-spec.md", "templates/discovery/personas.md", "templates/discovery/journey-map.md"]
+method: "knowledge/jobs-to-be-done.md"
+aliases: ["Persona Builder", "persona-builder"]

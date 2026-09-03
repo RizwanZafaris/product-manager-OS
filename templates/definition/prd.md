@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DEFINE
+gate: 2
+feeds: []
+method: "knowledge/cagan-product-teams.md"
+aliases: ["PRD", "Product Requirements Document"]
+---
 # Product Requirements Document: [feature or product name]
 
 Stage: DEFINE, feeds Gate 2 (requirements signed off)
@@ -197,7 +205,8 @@ Full register: [nfr.md](nfr.md) · Accessibility: [accessibility-checklist.md](.
      still calm. Three rules make it real:
 
      - A threshold, not a mood. "Adoption is disappointing" is not a criterion.
-       "Weekly active use in the pilot cohort below 200 accounts at day 60" is.
+       "Weekly active use in the pilot cohort below 200 accounts at day 60"
+       (ILLUSTRATIVE, invented for this example) is.
      - A check point, not a vigil. Name the date or the milestone when someone looks.
        A criterion nobody is scheduled to check is not a criterion.
      - A named caller. The person who is allowed to say stop, in advance, in writing.

@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["Ecommerce"]
+---
 # Ecommerce
 
 Selling goods per order means every feature decision lands on a contribution margin waterfall: revenue, minus cost of goods, minus fulfillment and shipping, minus payment costs and returns, minus the marketing that produced the order. A product that grows top-line GMV while the waterfall leaks at returns or last-mile shipping is a product that scales losses. The PM's job in this domain is to know which layer of the waterfall each initiative touches before anyone celebrates a conversion win.

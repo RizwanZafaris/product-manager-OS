@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: PLANNING
+gate: 1
+feeds: []
+method: "knowledge/roles/pm-hiring-and-growth.md"
+aliases: ["Hiring Scorecard", "hiring-scorecard"]
+---
 # Hiring Scorecard: [role title], [ladder rung]
 
 Stage: PLANNING track (team); feeds the [capacity plan](../planning/capacity-plan.md) and, through it, every [gate](../../os/STAGE-GATES.md) that needs a staffed team

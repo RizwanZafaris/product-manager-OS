@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: DISCOVER
+gate: 1
+feeds: ["templates/discovery/jtbd-spec.md", "templates/discovery/journey-map.md", "templates/discovery/opportunity-solution-tree.md"]
+method: "knowledge/jobs-to-be-done.md"
+aliases: ["JTBD job map and forces of progress", "jtbd-job-map"]
+---
 # JTBD job map and forces of progress
 
 Based on the ideas of Tony Ulwick and Lance Bettencourt, from The Customer-Centered Innovation Map (Harvard Business Review, 2008), and of Bob Moesta, from Demand-Side Sales 101 (2020). Explained here in this repository's own words.

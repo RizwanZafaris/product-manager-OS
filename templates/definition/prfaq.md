@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DEFINE
+gate: 2
+feeds: []
+method: "knowledge/amazon-pr-faq.md"
+aliases: ["PR/FAQ", "prfaq"]
+---
 # PR/FAQ: [product or feature name]
 
 Stage: DEFINE, feeds Gate 2 (requirements signed off)

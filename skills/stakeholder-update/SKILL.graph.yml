@@ -1,0 +1,6 @@
+layer: skills
+stage: OPERATE
+gate: 6
+feeds: ["templates/operate/qbr-board-update.md", "templates/planning/exec-update.md", "templates/execution/status-report.md"]
+method: "knowledge/INDEX.md"
+aliases: ["Stakeholder Update", "stakeholder-update"]

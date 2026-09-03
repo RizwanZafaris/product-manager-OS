@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DEFINE
+gate: 2
+feeds: []
+method: "knowledge/cagan-product-teams.md"
+aliases: ["One-Pager"]
+---
 # One-Pager: [feature or change name]
 
 Stage: DEFINE, feeds Gate 2 (requirements signed off)

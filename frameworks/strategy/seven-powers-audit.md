@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: PLANNING
+gate: 1
+feeds: ["templates/planning/product-strategy.md", "templates/discovery/competitive-analysis.md", "templates/planning/pricing-packaging.md"]
+method: "knowledge/INDEX.md"
+aliases: ["Seven Powers audit", "seven-powers-audit"]
+---
 # Seven Powers audit
 
 Based on the ideas of Hamilton Helmer, from 7 Powers: The Foundations of Business Strategy (2016). Explained here in this repository's own words.

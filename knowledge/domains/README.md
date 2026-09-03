@@ -1,3 +1,11 @@
+---
+layer: knowledge
+stage: ALL STAGES
+gate: 1
+feeds: []
+method: ""
+aliases: ["Domain Index"]
+---
 # Domain Index
 
 The knowledge cards one level up answer WHY a method exists. This layer answers a different question: what changes about the operating loop when your product lives in a specific market. A domain card does not add stages or gates. It sharpens the questions the loop already asks, names the gatekeepers who can stop a launch that engineering cannot see, and replaces generic metrics with the ones practitioners in that market are actually judged on.

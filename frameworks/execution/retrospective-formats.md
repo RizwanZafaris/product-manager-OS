@@ -1,3 +1,11 @@
+---
+layer: frameworks
+stage: ALL STAGES
+gate: 6
+feeds: ["templates/execution/retrospective.md", "templates/execution/decision-log.md", "templates/execution/risk-register.md"]
+method: "knowledge/INDEX.md"
+aliases: ["Retrospective Formats", "retrospective-formats"]
+---
 # Retrospective Formats
 
 Based on the ideas of Norman Kerth, from Project Retrospectives (2001), and of Esther Derby and Diana Larsen, from Agile Retrospectives (2006); the sailboat adapts Luke Hohmann's Speed Boat game from Innovation Games (2006), and the 4Ls come from Mary Gorman and Ellen Gottesdiener (2010). Explained here in this repository's own words.

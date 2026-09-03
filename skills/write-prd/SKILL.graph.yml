@@ -1,0 +1,6 @@
+layer: skills
+stage: DEFINE
+gate: 2
+feeds: ["templates/definition/prd.md", "templates/definition/one-pager.md", "templates/definition/brd.md"]
+method: "knowledge/cagan-product-teams.md"
+aliases: ["Write PRD", "write-prd"]

@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: ALL STAGES
+gate: 6
+feeds: []
+method: ""
+aliases: ["Retrospective"]
+---
 # Retrospective: [team or initiative], [cycle or milestone]
 
 Stage: any stage, run at the end of each cycle and after each gate; feeds the next cycle's plan and [Gate 6: outcomes verified](../../os/STAGE-GATES.md), whose last check asks what this pass taught us
@@ -17,6 +25,12 @@ Skill: [postmortem-facilitator](../../skills/postmortem-facilitator/SKILL.md) fo
      (../operate/post-launch-review.md) judges a launch against its goals; the
      metrics review (../operate/metrics-review.md) reads the numbers. This file is
      about how the team worked.
+
+     See also the Westrum culture typology
+     (../../frameworks/assessment/westrum-culture-typology.md), worth running before
+     you facilitate for a team you have not sat with. This file assumes people will
+     say what they saw; where they will not, a board of safe observations reads as a
+     good retro and is a symptom, and the two readings need opposite fixes.
 
      Fill first: the facts in section 2, the board in section 3, and the actions in
      section 5. -->

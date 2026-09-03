@@ -1,0 +1,6 @@
+layer: skills
+stage: OPERATE
+gate: 6
+feeds: ["templates/discovery/evidence-note.md", "templates/discovery/discovery-document.md", "templates/discovery/problem-framing.md"]
+method: ""
+aliases: ["Product Analyst", "product-analyst"]

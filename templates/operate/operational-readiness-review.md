@@ -1,3 +1,11 @@
+---
+layer: templates
+stage: DELIVER
+gate: 5
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Operational Readiness Review", "operational-readiness-review"]
+---
 # Operational Readiness Review: [product or service name]
 
 **Stage:** DELIVER into OPERATE (feeds [Gate 5](../../os/STAGE-GATES.md), rechecked at [Gate 6](../../os/STAGE-GATES.md))
