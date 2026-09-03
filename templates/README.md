@@ -53,6 +53,7 @@ DEFINE, feeding Gate 2: requirements signed off. Pick the weight before you pick
 | [nfr.md](definition/nfr.md) | Latency, availability, scale, security, accessibility, and retention targets, each with a number or a named owner for the number | Before Gate 2, because non-functional requirements are where products quietly fail |
 | [business-rules.md](definition/business-rules.md) | Rule ID, statement, trigger, source of truth, exceptions, test traceability | The organization already decided something (eligibility, limits, approvals) and the product must enforce it rather than re-decide it |
 | [assumptions-register.md](definition/assumptions-register.md) | Assumption, confidence, validation method, validate-by date | Always, and hardest when you feel too busy for it. It is the most skipped artifact in the field |
+| [user-stories.md](definition/user-stories.md) | The canonical story register: ids defined once, epics, the release slice, the INVEST check with its six letters and no seventh, six splitting patterns, and traceability run in both directions | Stories change every sprint and a signed PRD must not be edited to hold them |
 | [acceptance-criteria.md](definition/acceptance-criteria.md) | Given, when, then blocks with edge and negative cases and measurable thresholds | A requirement has to be able to fail before anyone builds against it |
 | [prfaq.md](definition/prfaq.md) | Mock press release, customer quote, external and internal FAQ, availability | Working backwards from the launch is cheaper than arguing forward from a feature list |
 
@@ -82,6 +83,7 @@ These open early and are never finished. The stakeholder map is first required a
 |---|---|---|
 | [stakeholder-map.md](execution/stakeholder-map.md) | Name, interest, influence, RACI tag, cadence, concerns | Built early, revisited at every gate. The stakeholder who sinks a launch is the one nobody mapped |
 | [risk-register.md](execution/risk-register.md) | Risk, likelihood, impact, score, mitigation, owner, review date | Kept live from DESIGN through DELIVER, with a premortem pass before Gate 3 |
+| [backlog.md](execution/backlog.md) | The queue policy: what may enter and what each source must carry, one named ranking method, six ways a backlog rots with a rule against each, and a kill policy agreed before it is needed | A backlog is the only artifact that gets worse when people do update it, because intake is easier than triage |
 | [decision-log.md](execution/decision-log.md) | Numbered decisions with context, options, rationale, decider | Continuously. It answers "why did we do it this way" without costing a meeting |
 | [dependency-register.md](execution/dependency-register.md) | Dependency, owning team, needed-by date, status, escalation contact | Work sits on someone else's backlog under someone else's priorities. Governed weekly, not at kickoff only |
 | [state.md](execution/state.md) | The STATE.md blank: position, accepted answers, open challenges, evidence ledger, journal | Any session, in any runtime, has to pick up where the last one stopped |

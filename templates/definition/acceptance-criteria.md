@@ -45,7 +45,7 @@ Skill: [story-writer](../../skills/story-writer/SKILL.md)
 <!-- Duplicate the block per criterion. Group blocks under the story or FR they
      verify. -->
 
-### AC-1 · verifies [USn / FR-nnn]
+### AC-1 · verifies [USn in user-stories.md](user-stories.md) / [FR-nnn in frd.md](frd.md)
 
 ```
 GIVEN [precondition: system state, user state, data on hand]
@@ -58,7 +58,7 @@ THEN  [one observable outcome, with its measurable threshold where one applies]
 - **Test data needed:** [fixtures or accounts required]
 - **Automatable:** [yes / no; if no, who runs it manually]
 
-### AC-2 · verifies [USn / FR-nnn]
+### AC-2 · verifies [USn in user-stories.md](user-stories.md) / [FR-nnn in frd.md](frd.md)
 
 ```
 GIVEN

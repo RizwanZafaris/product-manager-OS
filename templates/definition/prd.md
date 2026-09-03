@@ -118,7 +118,13 @@ hypothesis this product tests, copied from the discovery document.]
 <!-- Every "must" story needs an acceptance criteria ID before Gate 2. A must
      without testable acceptance is a hope, not a requirement. The IDs here (US1,
      US2) are quoted by the FRD, the test plan, and the release readiness pack, so
-     they never get renumbered once this document is circulated. -->
+     they never get renumbered once this document is circulated.
+
+     This table is a summary for the reader of the PRD. The ids are DEFINED in
+     [user-stories.md](user-stories.md), which is where stories are split,
+     INVEST-checked and refined every sprint. Work them there and quote them
+     here, because editing a signed PRD every iteration is how a signature
+     stops meaning anything. -->
 
 ## 4. Functional scope
 

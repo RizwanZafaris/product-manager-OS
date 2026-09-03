@@ -20,13 +20,13 @@ One subgraph per stage of the loop in [os/OPERATING-LOOP.md](../os/OPERATING-LOO
 
 | Measure | Count |
 |---|---|
-| Files scanned in the six declaring layers | 276 |
-| Files carrying frontmatter of any shape | 276 |
+| Files scanned in the six declaring layers | 278 |
+| Files carrying frontmatter of any shape | 278 |
 | Files with no frontmatter yet | 0 |
 | Files declaring a `feeds` key | 117 |
-| Nodes in the diagram | 226 |
-| Artifact nodes | 220 |
-| Edges in the diagram | 451 |
+| Nodes in the diagram | 228 |
+| Artifact nodes | 222 |
+| Edges in the diagram | 453 |
 | Feeds values that resolved to nothing | 0 |
 
 A file with no frontmatter is not an error, and a file with frontmatter has not necessarily declared a feed: every SKILL.md and agent file carries a name and a description already. The `feeds` pass lands file by file, and until it reaches a file, that file still contributes whatever its Stage header declares.
@@ -107,6 +107,7 @@ flowchart LR
     n_templates_definition_one_pager_md_51aafec8["definition/one-pager"]
     n_templates_definition_prd_md_aa4941e0["definition/prd"]
     n_templates_definition_prfaq_md_e10e4b16["definition/prfaq"]
+    n_templates_definition_user_stories_md_a49e1cf8["definition/user-stories"]
     n_templates_operate_compliance_impact_assessment_md_26f196a7["operate/compliance-impact-assessment"]
   end
   subgraph s_DESIGN["DESIGN"]
@@ -147,6 +148,7 @@ flowchart LR
     n_os_maps_build_md_6c277e44["maps/build"]
     n_skills_conductor_questions_build_md_287f6936["questions/build"]
     n_templates_delivery_edge_cases_md_955e9f84["delivery/edge-cases"]
+    n_templates_execution_backlog_md_e545b557["execution/backlog"]
     n_templates_execution_change_request_md_f3ef601e["execution/change-request"]
     n_templates_execution_status_report_md_6f0974e5["execution/status-report"]
     n_templates_execution_tech_debt_register_md_2a21e713["execution/tech-debt-register"]
@@ -331,6 +333,7 @@ flowchart LR
   n_templates_definition_one_pager_md_51aafec8 --> G2
   n_templates_definition_prd_md_aa4941e0 --> G2
   n_templates_definition_prfaq_md_e10e4b16 --> G2
+  n_templates_definition_user_stories_md_a49e1cf8 --> G2
   n_templates_delivery_analytics_instrumentation_spec_md_d96ee1b5 --> G5
   n_templates_delivery_customer_comms_md_88169169 --> G5
   n_templates_delivery_edge_cases_md_955e9f84 --> G4
@@ -365,6 +368,7 @@ flowchart LR
   n_templates_discovery_usability_test_plan_md_cdb9d0ac --> G3
   n_templates_discovery_usability_test_plan_md_cdb9d0ac --> G4
   n_templates_discovery_user_research_plan_md_59694f3a --> G1
+  n_templates_execution_backlog_md_e545b557 --> G4
   n_templates_execution_change_request_md_f3ef601e --> G2
   n_templates_execution_change_request_md_f3ef601e --> G4
   n_templates_execution_dependency_register_md_5edd4dc1 --> G3
@@ -748,9 +752,9 @@ flowchart LR
 | Stage | Gates | Artifacts with a declared relationship |
 |---|---|---|
 | DISCOVER | Gate 1 | 40 |
-| DEFINE | Gate 2 | 26 |
+| DEFINE | Gate 2 | 27 |
 | DESIGN | Gate 3 | 27 |
-| BUILD | Gate 4 | 7 |
+| BUILD | Gate 4 | 8 |
 | DELIVER | Gate 5 | 21 |
 | OPERATE | Gate 6 | 29 |
 | PLANNING track | none | 46 |

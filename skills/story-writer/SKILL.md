@@ -9,6 +9,7 @@ The backlog that fails Gate 2 was decomposed by feature, not by user behavior: s
 
 ## Files this skill drives
 
+- [../../templates/definition/user-stories.md](../../templates/definition/user-stories.md), the register where every story id is defined, split and INVEST-checked
 - [../../templates/definition/acceptance-criteria.md](../../templates/definition/acceptance-criteria.md), where every criterion lands with a permanent ID
 - [../../templates/definition/prd.md](../../templates/definition/prd.md), section 3, whose story table gets its criterion IDs here
 - [../../frameworks/prioritization/user-story-map.md](../../frameworks/prioritization/user-story-map.md), the map the stories hang on
