@@ -128,9 +128,9 @@ STALE_AFTER_DAYS = 180
 # anything: the check does not try to be clever about surrounding words.
 #
 # Not blunt in a product workspace, where they can be. A real product can have
-# a 14% baseline, and rejecting a sourced one taught the operator that the way
-# to pass the gate is to round the number, which is worse than the thing being
-# prevented. In workspace mode the same literal is judged on whether it carries
+# a churn rate equal to one of these, and rejecting a sourced one taught the
+# operator that the way to pass the gate is to round the number, which is worse
+# than the thing being prevented. In workspace mode the same literal is judged on whether it carries
 # provenance: a number with a source beside it is evidence, and a bare one is
 # still the example's answer wearing this product's clothes. See SOURCED_RE.
 BANNED_METRICS = [

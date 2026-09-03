@@ -954,10 +954,10 @@ class WorkspaceModeTests(unittest.TestCase):
         self.assertIn("DASH", codes)
 
     def test_a_sourced_example_number_passes_in_a_workspace(self):
-        """A real product can have a 14% baseline. Rejecting a sourced one
-        taught the operator to round the number to get past the gate, which is
-        worse than the thing being prevented. The repository tree keeps the
-        blunt ban; only a workspace gets this."""
+        """A real product can have a rate equal to one of the example's.
+        Rejecting a sourced one taught the operator to round the number to get
+        past the gate, which is worse than the thing being prevented. The
+        repository tree keeps the blunt ban; only a workspace gets this."""
         codes, messages = ws_run(
             {"products/demo/discovery.md":
              "| churn | 14% | source: https://example.test/2026-q1 |\n"})

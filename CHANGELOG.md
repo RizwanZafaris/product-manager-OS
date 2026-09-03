@@ -10,6 +10,124 @@ What a version number means here, since this is a document system and not a libr
 
 The stability promise is stated in [README.md](README.md) and repeated here so it survives a fork: within a major version, template field names and file paths do not change under you. That is the whole promise, and the paragraph above says what it deliberately leaves out.
 
+## 0.7.1, 2026-09-03
+
+An external audit reproduced six release-blocking defects in the executable
+layer against ce81264. Every one of them is closed here, each with a
+regression test that fails against the behaviour it replaced rather than
+merely passing against the new one. Nothing in the document layers changed
+shape, so a filled artifact from 0.7.0 still matches the template it came
+from and every path a document links to still resolves.
+
+### Fixed
+
+- **The runner and the initializer placed the same template in two
+  different files.** They differed on thirteen of the sixty templates the
+  manifest routes to, and the initializer refused a fourteenth outright.
+  The expensive one was STATE.md: the runner filed it at
+  `execution/state.md` while every skill, prompt and adapter addresses it
+  at the workspace root, so a run could leave a second state file and a
+  later resume could read the wrong one. Every `templates/ai/` file landed
+  outside the DEFINE stage that produced it. `tools/workspace.py` is now
+  the single answer and both callers import it;
+  `tools/check_workspace_contract.py` proves they still agree, and skips
+  cleanly on a tree with no `harness/`.
+- **The runner never rewrote a placed copy's links.** A template's relative
+  links are computed from `templates/`; written unchanged into a workspace
+  folder they point at paths that have never existed. Measured across the
+  sixty templates: 391 broken links in 49 of them. The runner now calls the
+  same rewriter the initializer has always used, reads the staged bytes
+  back off disk, and fails the run rather than committing a document whose
+  links go nowhere.
+- **The Conductor could not satisfy both of its contracts.** Its skill says
+  ask one question and stop; the runner demanded a fully filled STATE.md or
+  its structure check rejected the answer. No reply could pass both. Routes
+  now declare a `kind` and the runner branches on it: `artifact` fills a
+  template, `report` judges without rewriting, `interactive` is one turn of
+  a conversation, `reference` is an answer read out of the tree. Only the
+  first two file a document, and the structure check runs only where there
+  is a template to measure against. The kind is a required, validated key,
+  and it appears on every generated command card.
+- **The three-file transaction was not atomic.** Injecting a failure on the
+  second of three replaces committed the first and left it: an artifact
+  with no log, the exact state the docstring said could not happen. Every
+  destination is now copied aside before anything is replaced and restored
+  if the commit cannot finish. The one thing still not claimable without a
+  write-ahead journal, that the rollback itself cannot fail, is reported by
+  path instead of passed over. `SECURITY.md` says the same thing.
+- **Concurrent journal writes lost rows.** Two runners read the same
+  STATE.md, each appended to that copy, and the second replace overwrote
+  the first: one row on disk where two runs had happened, and no error
+  anywhere. The read-modify-write is serialized under an advisory lock held
+  from the read to the commit, because a lock around the replace alone
+  would still let two processes read the same body.
+- **CI did not test the shipped runtime.** A Python syntax error introduced
+  into `harness/runner.py` did not fail the build: every step read markdown
+  or parsed JSON, and none imported the one file that makes a network call.
+  CI now compiles every tracked `.py`, runs the harness suite, checks the
+  adapter and the desktop self-test, initializes a real workspace and lints
+  it, proves the workspace contract, and runs a second job that deletes
+  `harness/` to keep the deletability guarantee honest.
+- **The review gate checked that a checkbox existed, never that it was
+  ticked.** A document could carry nine empty boxes and pass. An unticked
+  box is not a defect on its own, and the worked example ships with one
+  unticked and a paragraph saying why. A document whose status line says
+  Approved while a box is unticked now fails; everything else is a tally
+  reported as a notice, because nothing here can stop a person ticking a
+  box the evidence does not support.
+- **The metric check rejected truthful evidence.** A sourced churn baseline
+  was refused because that exact figure appears in the worked example, which
+  taught the operator that the way to pass the gate is to round the number.
+  The repository tree keeps the blunt ban. A product workspace now judges
+  the same literal on whether it carries provenance on its line or the
+  next, and the refusal says explicitly not to round it.
+- **The rewriter and the gate read different link patterns.** An
+  angle-bracket destination with a space in it was a link the gate judged
+  and the rewriter never saw, so a workspace could pass `init_product
+  --check` and fail `lint --workspace` on the same file. The rewriter
+  imports `lint.py`'s pattern rather than restating it.
+- **A test asserted the interpreter, not the gate.** The line number
+  CPython reports for a trailing comma in JSON changed between 3.11 and
+  3.14, so `test_lint.py` failed on a Python a user actually had
+  installed. CI now runs on both.
+
+### Added
+
+- `tools/workspace.py`, the one answer to where a filled artifact lands and
+  what its links say once it lands there.
+- `tools/check_workspace_contract.py`, which proves the two writers agree.
+- `init_product --add-all` installs every shipped template and then settles
+  the links between them; `--relink` runs that settling pass alone and is
+  idempotent. Without it, installing everything left 181 links across 41
+  files still aimed at the blank templates rather than at the workspace's
+  own copies, because a link can only prefer a copy that already exists and
+  the order of installation decided which it got.
+- Deferred work writes a durable job record with an id, deduplicated by
+  route and input, listable with `runner.py --list-queue`, and exits 75
+  (EX_TEMPFAIL) instead of 0. It is a record, not a queue: nothing picks a
+  job up, and the record says so in as many words.
+
+### Changed
+
+- `harness/README.md` states the harness's maturity separately from the
+  document system's, in a table of what it is not: not a job queue, not a
+  team system of record, not governance evidence, not a portfolio, not
+  reproducible. The document layers carry none of those limits, which is
+  why the two are now stated apart rather than under one version number.
+
+### Known gaps, unchanged by this release
+
+Named because a release note that only lists wins is marketing. STATE.md
+still models one product at one stage, so it cannot carry a portfolio.
+There is still no immutable audit log, no approval identity, and no hash
+over the evidence a gate was passed on, so this tree still produces no
+governance evidence. There is still no run id tying a document to the
+commit, prompt, template and skill that produced it, so a run is not
+replayable. Twenty-two routes still require `--template` when they name
+more than one, which is deliberate: picking the first would turn a request
+for a BRD into a PRD silently. And the repository's tags stop at v0.4.0
+while this file describes releases through 0.7.1.
+
 ## 0.7.0, 2026-09-03
 
 The graph, harness, and systems work. It is numbered 0.7.0 rather than 0.6.0 because
