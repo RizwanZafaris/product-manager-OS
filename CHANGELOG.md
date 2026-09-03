@@ -10,6 +10,28 @@ What a version number means here, since this is a document system and not a libr
 
 The stability promise is stated in [README.md](README.md) and repeated here so it survives a fork: within a major version, template field names and file paths do not change under you. That is the whole promise, and the paragraph above says what it deliberately leaves out.
 
+## Unreleased: 0.8.0 local runtime
+
+This is an unreleased working-tree change set, not a tag, published package, hosted-CI result, provider certification, or release attestation. It adds executable local engineering capability; the separate external requirements remain in [docs/readiness/external-gates.json](docs/readiness/external-gates.json).
+
+### Added
+
+- A dependency-free `pmos` package and CLI for deterministic local onboarding, SQLite-backed transactional snapshots, compare-and-swap commits, backup/restore, a leased at-least-once queue, scoped OS and task memory, migration/rollback, offline provenance, and verification.
+- A policy-first domain model for product lifecycle, traceability, approvals that invalidate on evidence change, RBAC, collaboration, portfolio capacity/dependencies, and tamper-evident local audit export.
+- A deterministic Conductor, runtime hooks, typed skill contracts, model routing with safe provenance, and adapter/outbox contracts for issue tracking, source control, analytics, research storage, and notifications.
+- An optional OpenRouter adapter that discovers models at runtime, identifies free models from current pricing metadata, bounds requests/responses, and reads an environment-only credential at call time.
+- Local regression, crash, migration, security, accessibility, use-case, provenance, and evaluator-integrity gates.
+- A repository-local, standard-library PEP 517 backend that builds the wheel in an isolated offline environment without an undeclared setuptools installation.
+
+### Changed
+
+- Documentation now separates the document path, the optional local runtime, and external readiness. Historical claims below describe the state at the time of those entries; where they characterize the legacy harness rather than the `pmos` runtime, they are superseded by this section and the current operator documentation.
+- SQLite backup and restore now retain no-follow directory and database descriptors across connection and copy boundaries, rejecting path replacement before accepting data.
+
+### Known external requirements
+
+- Local checks do not verify hosted CI on the exact commit, a live provider, vendor sandboxes, a non-maintainer journey, independent human team review, organization-specific regulatory approval, or a published release artifact. No tag or published release is claimed here.
+
 ## 0.7.1, 2026-09-03
 
 An external audit reproduced six release-blocking defects in the executable

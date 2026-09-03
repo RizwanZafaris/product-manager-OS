@@ -6,7 +6,7 @@ This document is the blueprint for the whole repository. It defines the operatin
 
 ### 1.1 What this is
 
-Product Manager OS turns any capable language model, or no model at all, into a working product management team. It is a document system first and an AI system second. Every template works with a text editor and a pencil. The AI layers (boot prompts, skills, agents, routing) are accelerants stacked on top of a document format that stands without them.
+Product Manager OS turns any capable language model, or no model at all, into a working product management system. It is a document system first and an AI system second. Every template works with a text editor and a pencil. The AI layers (boot prompts, skills, agents, routing) are accelerants stacked on top of a document format that stands without them. The optional `pmos/` runtime adds durable local execution without replacing the document path: it is dependency-free Python, local SQLite state, and explicit policy contracts rather than a hosted service.
 
 The design follows one rule proven by the regulated module that seeds this repo: graceful degradation is structural, not aspirational. If the model is free-tier, offline, or wrong, the artifacts and gates still function.
 
@@ -45,9 +45,9 @@ The stack is still six deep and the order of dependency has not changed. Two thi
 
 **The harness.** `harness/` is the executable face of the router table in `CLAUDE.md`: `MANIFEST.json` carries one entry per router row in router order, `INVARIANTS.md` states the seven rules an agent must not break and names the four that bind every route unconditionally, `tiers.md` and `runner.py` turn the tier doctrine into a call, and three adapters (`cli`, `claude-code`, `desktop`) read or are generated from the one manifest. `tools/check_manifest.py` proves the manifest and the router table agree, row for row and column by column, and fails the build when they drift.
 
-**The harness is deletable and it is not a runtime dependency.** `rm -rf harness/` leaves a working document system: every template still fills with a text editor, every skill still reads as a procedure, and every gate is still signed by a person, exactly as `AGENTS.md` describes. No manifest entry is a source of truth; each one is an index into a file that already governs the work. The harness stores no state of its own either: product state lives in the user's workspace per `os/PRODUCT-WORKSPACE.md`, credentials live in the environment, and neither is ever written under `harness/`. `tools/check_manifest.py` reports ok on a tree with no `harness/` for that reason, and still fails on a `harness/` that exists without its contract files, because a deletion and a broken contract are different events. The moment a template can only be filled through an adapter, or a gate can only be walked by a tool, the harness has become the product and the failure is structural rather than cosmetic.
+**The harness is deletable and it is not a runtime dependency.** `rm -rf harness/` leaves a working document system: every template still fills with a text editor, every skill still reads as a procedure, and every gate is still signed by a person. No manifest entry is a source of truth; each one is an index into a file that already governs the work. The harness itself keeps no durable state. The optional `pmos/` runtime is a separate, local execution layer: it stores transactional state in `.pmos/runtime.sqlite` under an operator's workspace, never under `harness/`. `tools/check_manifest.py` reports ok on a tree with no `harness/` for that reason, and still fails on a `harness/` that exists without its contract files, because a deletion and a broken contract are different events.
 
-The gate half of that guarantee is currently broken by one file, and recording it is cheaper than restating the guarantee. `AGENTS.md` now names `harness/INVARIANTS.md` and `harness/MANIFEST.json` as markdown links, so on a tree with `harness/` deleted the link gate reports two unresolved links and the one test asserting the tree ships clean fails with them. The documents are unaffected. The rule that fixes it is one line and already written in `harness/README.md`: a file outside `harness/` names a harness path in plain text, in backticks, never as a link. [OPEN: those two links have to become backticked paths, and the owner of `AGENTS.md` holds that edit.]
+The deletion proof remains deliberately narrow: it concerns the legacy harness and document tree, not the separately installed local runtime. A file outside `harness/` names a harness path in plain text, in backticks, never as a link, so a supported deletion does not create an accidental document dependency.
 
 **Deleting a content layer is a different event again.** `skills/`, `agents/`, `system/`, `routing/`, and `modules/regulated/` are all safe to delete in the sense that nothing depends upward on them and every remaining document still fills and still passes a human gate. They are also link targets: each template's `Skill:` header points up at the procedure that drives it, so the four AI layers together carry hundreds of inbound links and the link gate fails on all of them. Usable without a layer, not lint-clean without it. The tree keeps the cross-references because they are what makes it navigable, and states the limit instead of promising the stronger property.
 
@@ -58,6 +58,19 @@ The frameworks layer arrived in v0.5.0 to close a gap the first four versions le
 Dependencies point downward only. Frameworks cite knowledge cards and name the templates they feed. Templates cite knowledge cards and worksheets. Skills cite templates and worksheets. System prompts cite skills and templates by repo path. Routing serves all of them. Nothing in `knowledge/`, `frameworks/`, or `templates/` depends on any AI layer existing.
 
 Four files sit outside the layer stack entirely and are reference, not machinery: `docs/PHILOSOPHY.md`, `docs/COMPARISON.md`, `docs/FAQ.md`, and `GLOSSARY.md`. They link down into every layer and nothing links up to them, which is deliberate: a gate that depended on a belief file would make the belief unfalsifiable, and the whole point of writing the beliefs down is that they can be argued with. The practical consequence for maintenance is that these four go stale in a way the layers do not, because each one makes a claim about something outside its own tree, the field, the maintainer, or the vocabulary in use. Every one of them therefore carries a date and a stated re-check procedure, and `COMPARISON.md` names the two rows most likely to flip first.
+
+### 1.3.1 Runtime capability and evidence boundary
+
+The same operating loop can be used through three deliberately separate surfaces. They answer different questions and must not be collapsed into one readiness claim.
+
+| Surface | What it provides | What its local checks can establish | What it does not establish |
+|---|---|---|---|
+| Document path | Templates, gates, skills, and workspace conventions | The documents and local links are structurally consistent | Truth of a claim, identity of a signer, or a real-world outcome |
+| `pmos/` local runtime | SQLite transactions, lifecycle/domain policy, approvals, portfolio relations, bounded local adapters/queue/outbox, scoped memory, migration, hooks, provenance, and CLI | Deterministic local behavior, integrity, recovery, and policy regression evidence | Hosted CI, a distributed database, exactly-once external delivery, or human acceptance |
+| Optional provider/adapters | Dynamic model catalog, bounded calls, safe routing provenance, and typed external seams | Local request construction and failure handling | Live provider behavior, model suitability, vendor sandbox conformance, privacy terms, or availability |
+| External gates | Evidence protocol in `docs/readiness/external-gates.json` | Nothing merely by being present in this repository | Must be independently tied to the exact release commit |
+
+Local evidence is not external evidence. The local 100-point rubric is executable and useful, but it deliberately leaves hosted CI, live-provider, vendor-sandbox, non-maintainer, independent-review, organization-specific regulatory, and release-publication attestations outside its score. Its mandatory use-case matrix is a local integration harness: each row declares exact assertions and typed observed evidence, while the runner independently records the required public API seams actually crossed; a mutation test replaces every row with conforming constants and proves those stubs fail. Its golden slice crosses the public CLI, Store, Conductor, Domain, hook, skill, and operations seams. It neither simulates a hosted deployment nor treats a row's own success flag as evidence.
 
 ### 1.4 What the field is missing, and what this OS does about it
 
@@ -71,13 +84,13 @@ Legend: (COPY) is a verbatim copy from the source repo, the standalone regulated
 
 ```
 product-manager-OS/
-├── README.md  Front door: story, loop diagram, four usage methods, quickstart, module map
+├── README.md  Front door: story, loop diagram, document/local/provider paths, quickstart, module map
 ├── CLAUDE.md  Thin router for Claude Code: points to AGENTS.md as single source of truth, maps triggers to skills/
 ├── AGENTS.md  Single source of truth for any agent runtime: load order, directory map, gate rules, tool expectations
 ├── CHANGELOG.md  Keep a Changelog format; what each semver level means here, the release inventory, and a stated known-gaps list
 ├── GLOSSARY.md  Every term of art defined once, alphabetical, each entry pointing at the file that governs the term; the governing file wins on any disagreement
 ├── LICENSE  MIT, copyright Rizwan Zafar
-├── SECURITY.md  The threat model, split into the manual path (markdown, no network, no credentials) and the runtime path (one outbound call, one credential read from the environment, writes confined to products/), plus how to report a problem
+├── SECURITY.md  The threat model: manual document path, local runtime, optional provider boundary, and external-evidence limits
 ├── CONTRIBUTING.md  What gets accepted and what does not: sourced claims, failure modes with their tells, skip conditions that test the situation, and the gates to run before pushing
 ├── .github/workflows/lint.yml  The CI gate: both PRD-mode lint runs, the OS tree gate, graph freshness, manifest agreement, frontmatter completeness, and the unit tests in both test_lint.py copies
 ├── lint.py  (EXTEND)  OS-wide quality gate, stdlib only; original regulated checks preserved, tree mode added (spec in section 4)
@@ -86,6 +99,7 @@ product-manager-OS/
 │   ├── graph.py  Reads the declarations in the six declaring layers and renders docs/GRAPH.md; --check fails on drift
 │   ├── frontmatter_init.py  Seeds a declaration from what a file already states; never overwrites a value a human edited
 │   └── check_manifest.py  Proves harness/MANIFEST.json and the router table in CLAUDE.md agree row for row
+├── pmos/  Dependency-free local runtime: store, domain, conductor, routing, OpenRouter adapter, operations, hooks, migrations, provenance, and CLI
 ├── .obsidian/  Committed core-only vault config: editor and link defaults, appearance, and the eight graph color groups, one per layer. Nothing in the tree depends on it
 ├── docs/
 │   ├── ARCHITECTURE.md  (this file)  The blueprint: concept, tree, cross-link conventions, lint spec

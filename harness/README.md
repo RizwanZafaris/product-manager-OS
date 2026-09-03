@@ -1,6 +1,6 @@
 # The Harness
 
-This directory is an adapter over a document system. It takes three things the OS already states in prose, and makes them executable instead of advisory:
+This directory is a legacy route adapter over a document system. It takes three things the OS already states in prose, and makes them executable instead of advisory. The durable local runtime now lives separately in `pmos/`; this harness remains useful for route-manifest compatibility and adapter checks, but its state-free limits are not limits of `pmos/`.
 
 | Stated in prose | Made executable here |
 |---|---|
@@ -21,7 +21,7 @@ mature part. They work with a text editor, they have no runtime, and the
 failure mode of a mistake in them is a document that argues badly, which a
 reader can see and fix.
 
-This directory is the experimental part. It is a real runner with real
+This directory is the legacy adapter part. It is a real runner with real
 tests, and as of the audit it closed in this release, it agrees with the
 initializer about where every artifact lands, rewrites the links in a copy
 it places, distinguishes the four kinds of route rather than treating all
@@ -30,21 +30,17 @@ and serializes journal writes under a lock. Those are the things that were
 wrong and are now right, and each one has a regression test that fails
 against the behaviour it replaced.
 
-What it is still not, stated so nobody has to discover it in production:
+What this directory is still not, stated so nobody has to discover it in production:
 
 | Not this | Why not, concretely |
 |---|---|
-| A job queue | A deferred run writes a durable record with an id and exits 75. Nothing picks it up. There is no worker, no retry schedule, no ownership, no cancellation. Rerunning it is a person typing the command the record carries. |
-| A system of record for a team | The lock serializes writers on one machine's filesystem. It says nothing about two people on two machines, and there is no merge, no compare-and-swap across a network, and no identity attached to a write beyond the journal row. |
-| Governance evidence | A gate is signed by a person editing a file. There is no immutable log, no approval identity, no hash over the evidence a gate was passed on, and no way to prove after the fact that a box was ticked before rather than after the release. |
-| A portfolio | STATE.md models one product at one stage with one next question. It cannot represent several initiatives moving through discovery, build and launch at the same time. |
-| Reproducible | Nothing is pinned to a commit, a prompt hash, or a template version, so a run is not replayable and a document cannot be traced to the exact inputs that produced it. |
+| The `pmos` job queue | A deferred legacy route records a job and exits; it does not run the Store's leased queue, retry state, fencing, or cancellation lifecycle. |
+| A cross-machine team system | The harness lock is local filesystem coordination. Use `pmos.domain` and a persistence integration for local team/approval/portfolio policy; neither substitute for a distributed service. |
+| External governance evidence | A legacy document gate is still a human workflow. `pmos` can hash local evidence and invalidate changed approvals, but neither layer can self-attest external human, regulatory, or release approval. |
+| A portfolio engine | STATE.md is one document workspace. The local domain runtime models initiatives, dependencies, and capacity separately; it is not a hosted portfolio product. |
+| Release reproducibility by itself | The legacy route does not create a complete run record. `pmos` can produce local provenance and deterministic state evidence, but a published artifact and exact hosted CI remain external gates. |
 
-Use it for drafting with a person reading the output. Do not use it
-unattended, do not use it as the place your team's state lives, and do not
-use its output as evidence to a regulator. The document system underneath
-carries none of those limits, which is the reason the two are separated
-here at all.
+Use the harness for document-route compatibility and drafting with a person reading the output. Use `pmos` when the local operation needs durable queue, memory, policy, approval, portfolio, recovery, or provenance semantics. Neither is permission to use output as external regulatory evidence or to claim a hosted team system.
 
 ## What the harness is not
 
@@ -141,7 +137,7 @@ A structurally perfect, logically empty document passes the first and must fail 
 
 ## The harness stores nothing of its own
 
-There is no harness database, no cache of runs, no state file under this directory. That is deliberate. A private store would break the one property that makes this system auditable: you can read everything that happened with a text editor.
+There is no harness database, no cache of runs, no state file under this directory. That is deliberate for this legacy adapter. It does not mean the OS has no runtime state: `pmos.Store` keeps transactional local state in a workspace's `.pmos/runtime.sqlite`, with integrity verification, full snapshots, backup/restore, a leased queue, and scoped memory streams.
 
 | What | Where it lives |
 |---|---|
@@ -151,11 +147,11 @@ There is no harness database, no cache of runs, no state file under this directo
 | Gate attempts | `products/<name>/gates/`, one file per attempt |
 | Logs | Beside the artifact they describe, in the same stage folder, never here |
 
-Logs are the one exception to "the harness writes nothing", and they are written next to the artifact rather than into this directory, so a document and the record of how it was produced travel together.
+Logs are the one exception to "the harness writes nothing", and they are written next to the artifact rather than into this directory, so a document and the record of how it was produced travel together. The local runtime has a different, explicit storage contract; see [../docs/RUNTIME-QUICKSTART.md](../docs/RUNTIME-QUICKSTART.md).
 
 ## Credentials
 
-Two environment variables, `OMNIROUTE_BASE_URL` and the one the config's `endpoint.apiKeyEnv` names (`OMNIROUTE_API_KEY` unless a deployment changes it), resolved at call time by whatever makes the call. They are never written into this repository. An adapter may report whether a variable is set; it never reports a value. [../routing/omniroute.config.json](../routing/omniroute.config.json) names the variables and holds no key. A literal credential anywhere in the tree is a defect, and check 9 of `lint.py` scans for credential shapes with no file exempted, this directory included.
+The legacy harness uses `OMNIROUTE_BASE_URL` and the config's API-key variable (`OMNIROUTE_API_KEY` unless a deployment changes it), resolved at call time. The local OpenRouter adapter separately uses `OPENROUTER_API_KEY` (or a configured environment-variable name), also only at call time. Keys are never written into this repository or the local Store. An adapter may report whether a variable is set; it never reports a value. [../routing/omniroute.config.json](../routing/omniroute.config.json) names variables and holds no key. A literal credential anywhere in the tree is a defect, and the security gate scans for credential shapes with no file exempted, this directory included.
 
 Never printed and never logged is enforced in one place rather than promised at each sink. `runner.py` resolves the credential once and registers that exact value with a single redactor used by standard output, the run log, the artifact's face, and the journal row; masking is longest-first and has no length floor, because a short credential is still a credential. Printed URLs drop userinfo and mask query values, and a failed call records a sanitized status descriptor rather than the gateway's own response body, so a hostile or noisy gateway cannot write its text into your files. The full picture, including the write boundary, is in [../SECURITY.md](../SECURITY.md).
 

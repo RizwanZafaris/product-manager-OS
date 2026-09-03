@@ -1,0 +1,17 @@
+[build-system]
+requires = []
+build-backend = "pmos_build_backend"
+backend-path = ["."]
+
+[project]
+name = "product-manager-os"
+version = "0.8.0"
+description = "A durable, policy-first Product Manager operating system"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {file = "LICENSE"}
+authors = [{name = "Product Manager OS contributors"}]
+dependencies = []
+
+[project.scripts]
+pmos = "pmos.cli:main"

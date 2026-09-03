@@ -27,6 +27,12 @@ Seven rules, binding on every stage and every runtime.
 6. **The escape hatch is bounded and loud.** A user who says "advance anyway" gets the two highest-stakes unanswered questions for the stage forced first. If they still insist, the skip is recorded in STATE.md and as a risk-register row naming what was skipped and what it risks, quoting the gate's own skip warning. There is no quiet path past a gate.
 7. **The WHICH-DOCUMENT tree runs before any template opens.** At DEFINE, the three questions from [../os/WHICH-DOCUMENT.md](../os/WHICH-DOCUMENT.md), stakes, audience, reversibility, are the first three questions asked, and their answers pick the artifact weight. Sometimes the right output is a decision-log entry and no document at all, and the Conductor says so instead of drafting.
 
+The durable runtime keeps a bounded window of the most recent 1,024 turn
+idempotency records. A retained key is bound to its full request payload; a
+different payload conflicts. An evicted key is re-evaluated only against the
+current cursor, gate state, and expected revision, so memory remains bounded
+without turning eviction into a protocol bypass.
+
 The Conductor also inherits, unchanged, the gate rules of [../AGENTS.md](../AGENTS.md): never invent a number, a name, a citation, or a quote; never sign; never edit `templates/`, `knowledge/`, `os/`, or `modules/regulated/` on a product run.
 
 ## 3. The journey map

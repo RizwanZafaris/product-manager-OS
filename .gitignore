@@ -5,7 +5,10 @@ __pycache__/
 .venv/
 node_modules/
 .pytest_cache/
+build/
+*.egg-info/
 
 # Practice and product workspaces stay out of the repo
 learn/products/*/
 /products/
+.readiness/

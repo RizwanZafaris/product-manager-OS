@@ -33,6 +33,7 @@ from __future__ import annotations
 import posixpath
 import re
 import sys
+import urllib.parse
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -64,6 +65,7 @@ sys.path.insert(0, str(REPO))
 import lint as _lint                                       # noqa: E402
 
 LINK_RE = _lint.LINK_RE
+REF_DEF_RE = _lint.REF_DEF_RE
 
 # A destination written inside angle brackets, which is how a target with a
 # space in it is spelled. The brackets are not part of the path.
@@ -249,7 +251,12 @@ def rewrite_target(target, source_dir, dest_dir, slug):
     file in products/x/discovery/ gets ../../../ and STATE.md at the workspace
     root gets ../../ from the identical template text.
     """
-    resolved = posixpath.normpath(posixpath.join(source_dir, target))
+    # The filesystem contains decoded names. Preserve percent encoding only
+    # where it is needed in the relocated destination, so `%20` remains a
+    # valid no-whitespace target while `%2E` need not remain decorative.
+    decoded = urllib.parse.unquote(target)
+    was_encoded = decoded != target
+    resolved = posixpath.normpath(posixpath.join(source_dir, decoded))
     if resolved.startswith(".."):
         return None, "climbs out of the repository"
     if not (REPO / resolved).exists():
@@ -262,7 +269,10 @@ def rewrite_target(target, source_dir, dest_dir, slug):
             local = None
         if local and (REPO / local).exists():
             resolved = local
-    return posixpath.relpath(resolved, dest_dir), None
+    relocated = posixpath.relpath(resolved, dest_dir)
+    if was_encoded:
+        relocated = urllib.parse.quote(relocated, safe="/-._~")
+    return relocated, None
 
 
 def rewrite_links(text, source_dir, dest_dir, slug):
@@ -270,8 +280,20 @@ def rewrite_links(text, source_dir, dest_dir, slug):
     rewrites = []
     skipped = []
 
-    def replace(match):
-        captured = match.group(1)
+    def replace_capture(match, group, replacement):
+        """Replace only one captured destination, preserving surrounding syntax.
+
+        Link titles and reference labels live in the rest of the regular
+        expression's match. Reconstructing the complete link from the target
+        used to discard that content; replacing the capture cannot.
+        """
+        start = match.start(group) - match.start(0)
+        end = match.end(group) - match.start(0)
+        whole = match.group(0)
+        return whole[:start] + replacement + whole[end:]
+
+    def replace_target(match, group):
+        captured = match.group(group)
         inner, angled = unwrap_target(captured)
         target, _, fragment = inner.partition("#")
         if not target or inner.startswith(LEFT_ALONE):
@@ -286,10 +308,13 @@ def rewrite_links(text, source_dir, dest_dir, slug):
         rebuilt = new_target + ("#" + fragment if fragment else "")
         if rebuilt != inner:
             rewrites.append((inner, rebuilt))
-        # Any title the link carried is dropped with the rest of match.group(0)
-        # and re-emitted below, so a rewritten link keeps only what it needs to
-        # resolve. Titles are rare in this tree and none is load bearing.
-        return "](%s)" % wrap_target(rebuilt, angled)
+        return replace_capture(match, group, wrap_target(rebuilt, angled))
+
+    def replace_inline(match):
+        return replace_target(match, 1)
+
+    def replace_reference(match):
+        return replace_target(match, 2)
 
     def replace_bare(match):
         target = match.group(1)
@@ -302,9 +327,10 @@ def rewrite_links(text, source_dir, dest_dir, slug):
         return new_target
 
     out = []
-    for line in LINK_RE.sub(replace, text).splitlines(True):
+    for line in LINK_RE.sub(replace_inline, text).splitlines(True):
         stripped = line.rstrip("\r\n")
         ending = line[len(stripped):]
+        stripped = REF_DEF_RE.sub(replace_reference, stripped)
         if HEADER_LINE_RE.match(stripped):
             stripped = BARE_PATH_RE.sub(replace_bare, stripped)
         out.append(stripped + ending)
@@ -333,26 +359,16 @@ def read_text(path):
 
 
 def broken_links(path):
-    """Every relative link in one file that does not resolve, as (line, raw).
+    """Every markdown link defect in one file, as (line, explanation).
 
-    This is the verification step, and it is deliberately dumb: it does not
-    trust the rewrite, it re-reads the written file and asks the filesystem
-    whether each target is there. A copy tool that produces broken links is the
-    defect rather than the fix, so nothing is reported as copied until this
-    returns empty.
+    This is the verification step. It does not trust the rewrite: it re-reads
+    the written file and calls the same parser and resolver as the repository
+    gate. That includes inline links, reference definitions, undefined
+    reference uses, titles, spaces, and anchors. A copy tool that produces a
+    broken link is the defect rather than the fix, so nothing is reported as
+    copied until this returns empty.
     """
     path = Path(path)
-    broken = []
-    for number, line in enumerate(read_text(path).splitlines(), 1):
-        targets = [unwrap_target(m.group(1))[0]
-                   for m in LINK_RE.finditer(line)]
-        if HEADER_LINE_RE.match(line):
-            targets += [m.group(1) for m in BARE_PATH_RE.finditer(line)]
-        for raw in targets:
-            target = raw.split("#")[0]
-            if not target or raw.startswith(LEFT_ALONE) \
-                    or target.startswith("/"):
-                continue
-            if not (path.parent / target).exists():
-                broken.append((number, raw))
-    return broken
+    problems = _lint.link_problems(
+        path, _lint.mask(read_text(path)), REPO.resolve())
+    return [(number, message) for number, _code, message in problems]

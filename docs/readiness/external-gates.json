@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "title": "External readiness attestations",
+  "note": "These gates are intentionally outside the local 100-point engineering rubric. A repository cannot award itself production, adoption, regulatory, or third-party integration evidence. Each gate remains required until evidence tied to the exact release commit is independently verified.",
+  "gates": [
+    {
+      "id": "EXT-CI",
+      "title": "Hosted CI passes on the exact release commit",
+      "status": "required",
+      "evidence_required": ["immutable commit SHA", "hosted workflow run URL", "all matrix jobs successful"],
+      "owner_action": "Push the reviewed commit and record the completed hosted CI run for that exact SHA."
+    },
+    {
+      "id": "EXT-AI",
+      "title": "Live model providers pass approved smoke and policy tests",
+      "status": "required",
+      "evidence_required": ["provider authorization", "redacted request and response hashes", "resolved model provenance", "budget and privacy policy result"],
+      "owner_action": "Run consented live probes through configured OmniRoute or OpenRouter credentials without storing the credentials."
+    },
+    {
+      "id": "EXT-INTEGRATIONS",
+      "title": "Representative adapters pass approved vendor sandboxes",
+      "status": "required",
+      "evidence_required": ["one approved sandbox per claimed integration class", "contract version", "idempotency and reconciliation result"],
+      "owner_action": "Authorize sandbox accounts and run the adapter conformance suite against them."
+    },
+    {
+      "id": "EXT-USER",
+      "title": "A non-maintainer completes the new-user and recovery journeys",
+      "status": "required",
+      "evidence_required": ["informed consent", "observed task outcome", "accessibility feedback", "issue disposition"],
+      "owner_action": "Observe at least one consented non-maintainer completing the golden path and recovery path."
+    },
+    {
+      "id": "EXT-TEAM",
+      "title": "Independent team review accepts the release candidate",
+      "status": "required",
+      "evidence_required": ["reviewer identity", "exact commit SHA", "P0 and P1 disposition", "approval or rejection"],
+      "owner_action": "Obtain review from a person who did not implement the release."
+    },
+    {
+      "id": "EXT-REGULATORY",
+      "title": "Applicable regulated deployment receives accountable approval",
+      "status": "required",
+      "evidence_required": ["jurisdiction and policy version", "authorized approver", "evidence hashes", "scope and expiry"],
+      "owner_action": "When the OS is used for a regulated decision, obtain organization-specific legal, compliance, and risk approval."
+    },
+    {
+      "id": "EXT-RELEASE",
+      "title": "Release artifact, tag, and provenance are published consistently",
+      "status": "required",
+      "evidence_required": ["signed or protected tag", "artifact digest", "provenance manifest", "rollback artifact"],
+      "owner_action": "Create the authorized release tag and publish artifacts only after all applicable gates are verified."
+    }
+  ]
+}
