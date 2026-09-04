@@ -79,7 +79,25 @@ aliases: ["Metrics Review", "metrics-review"]
 - If pivot: what changes, and the new discovery document: [link to the new ../discovery/discovery-document.md copy]
 - If sunset: wind-down owner, user migration plan, and shutdown date: [name, plan, date]
 
+## How this review fails
+
+<!-- A metrics review that reports movement and decides nothing is the most
+     expensive recurring meeting a product team holds, because it feels like
+     governance. -->
+
+| Failure mode | What it looks like | The rule that stops it |
+|---|---|---|
+| Movement without cause | An arrow moved, and nobody says why or admits they do not know | Each change carries one sentence of cause, or is explicitly marked unexplained |
+| Compared to last period, not to target | The table shows this month against last, and no target column | Every row carries the target it was committed against |
+| Averages that hide two trends | One number improves while two segments move in opposite directions | Split by the segments that behave differently, not by the ones that are easy |
+| Definitions changed quietly | A metric halves because it is now counted differently, with no note | Version the definition and flag any change at the top of the review |
+| No decision | It ends with a recap and the next invitation | It ends with act, watch or stop, recorded against a name |
+
 ## Exit gate
+
+<!-- Checkable by someone who did not write this document, which is the
+     test of whether a gate is a gate. -->
+
 
 Gate 6 is satisfied when:
 

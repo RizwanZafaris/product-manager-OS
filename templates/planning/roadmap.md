@@ -57,6 +57,12 @@ aliases: ["Roadmap"]
 
 ## Next (planned, shaped, not yet committed)
 
+<!-- Shaped means the problem is understood and the approach is plausible. It
+     does not mean estimated, and it does not mean promised. The distinction
+     between this section and Now is a commitment, so moving an item up is a
+     decision that belongs in the change log. -->
+
+
 | Theme | Initiative | Outcome it serves | Target period | Confidence | Dependencies | Status |
 |---|---|---|---|---|---|---|
 | | | | [quarter] | [%] | | Shaping / Shaped |
@@ -80,11 +86,35 @@ aliases: ["Roadmap"]
 
 ## Change log
 
+<!-- The most skipped section and the one that earns trust. A roadmap with no
+     history looks like it was always right, which nobody believes; a roadmap
+     that records what moved and why is one people stop arguing with. -->
+
+
 | Date | Change | Why | Who decided |
 |---|---|---|---|
 | | | | |
 
+## How this roadmap fails
+
+<!-- Each row is a way a roadmap keeps being published and stops being true.
+     The first is the most expensive, because it is caused by the roadmap
+     working: the more credible it looks, the harder a target is read as a
+     promise. -->
+
+| Failure mode | What it looks like | The rule that stops it |
+|---|---|---|
+| Dates read as promises | A month appears next to an item, and a customer is told it | Say in the legend that these are targets. Outward-facing versions use Now, Next, Later with no dates |
+| Features with no outcome | Rows of things to build, none tied to an objective or a metric | Every row names the outcome it serves. A row that cannot is a task, not an initiative |
+| Later is a graveyard | Half the items sit in Later permanently and nobody revisits them | Items in Later expire after two cycles and are re-justified or killed |
+| Nothing moves | The same items sit in Now for months while work happens elsewhere | Anything in Now for more than two cycles is flagged for kill or commit |
+| Killed work vanishes | An item disappears and three months later somebody asks what happened to it | Killed items move to the parked and killed table with one line of reason |
+| Confidence set once | The confidence column was filled at planning and never touched again | Confidence is re-entered every cycle. A carried-over value is not a confidence |
+
 ## Exit gate
+
+<!-- Checkable by a reader who was not in the planning meeting. -->
+
 
 This roadmap is fit to share when:
 

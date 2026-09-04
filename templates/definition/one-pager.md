@@ -33,13 +33,26 @@ Skill: [write-prd](../../skills/write-prd/SKILL.md); [ai-prd](../../skills/ai-pr
 
 ## 1. Problem
 
+<!-- Written so that someone who disagrees can say why. A problem statement
+     nobody could argue with is usually a statement of a solution wearing a
+     problem's clothes. -->
+
+
 [Two or three sentences in the user's terms, with one piece of evidence and its source ID. Link the discovery work rather than restating it; the source of truth is the filled copy of ../discovery/discovery-document.md.]
 
 ## 2. Proposal
 
+<!-- The shape, not the design. Enough for a reader to agree or object, and
+     no more: detail here is the most common reason a one-pager becomes three. -->
+
+
 [Three or four sentences: what changes for the user, stated so an engineer and a support lead read it the same way. No implementation detail that the team has not already agreed.]
 
 ## 3. Scope
+
+<!-- What ships. Read this beside section 5, because scope is defined as
+     much by what is refused as by what is listed. -->
+
 
 | # | In scope, one line each | Story or ticket |
 |---|---|---|
@@ -57,6 +70,11 @@ Skill: [write-prd](../../skills/write-prd/SKILL.md); [ai-prd](../../skills/ai-pr
      with the metric owner are labeled ILLUSTRATIVE until they are agreed. -->
 
 ## 5. Not doing
+
+<!-- The section that does the work. An exclusion is only worth writing if
+     somebody actually wanted it, so a not-doing list of things nobody asked
+     for is decoration. -->
+
 
 [Three to five lines. The adjacent things people will assume are included, and the one-line reason each is out. This section is why a one-pager can be short.]
 
@@ -86,7 +104,25 @@ Skill: [write-prd](../../skills/write-prd/SKILL.md); [ai-prd](../../skills/ai-pr
 
 ---
 
+## How this one-pager fails
+
+<!-- One page is a constraint, and the failures below are all ways of using
+     the page for something other than a decision. -->
+
+| Failure mode | What it looks like | The rule that stops it |
+|---|---|---|
+| Solution before problem | The proposal appears first, with the need compressed into a clause | The problem block comes first, and names no solution |
+| Unfalsifiable success | "Improve the experience", "increase engagement" | One metric, one target number, one date |
+| Nothing excluded | Only the chosen approach appears, and scope is unbounded by omission | The not-doing list carries at least two real items somebody wanted |
+| No decider | It closes with "let us discuss" or "team to align" | One name, one role, and the date by which they decide |
+| The problem is never sized | No estimate of how many, how often, or what it costs | Size it, cite the source, and say how rough the number is |
+| A pitch, not a decision | Heavy on benefit, silent on cost, risk and reversal | Costs, risks and a kill criterion appear on the same page |
+
 ## Exit gate (feeds Gate 2: requirements signed off)
+
+<!-- Checkable by someone who did not write this document, which is the
+     test of whether a gate is a gate. -->
+
 
 - [ ] The problem cites evidence with a source ID rather than asserting it
 - [ ] One outcome metric and one guardrail metric, each with a baseline and an owner

@@ -29,6 +29,10 @@ Skill: [market-sizing](../../skills/market-sizing/SKILL.md) for the benefit side
 
 ## 1. The decision
 
+<!-- Name the decision and who makes it, before any number. A business case
+     with no decision attached becomes a document that is admired and filed. -->
+
+
 [Two to four sentences: what is being decided, by whom, by when. Copy the Gate 1 problem statement and its cost of inaction; the inaction figure becomes the do-nothing row below.]
 
 ## 2. Options, including doing nothing
@@ -91,6 +95,10 @@ ILLUSTRATIVE worked line on invented inputs for Ledgerline's expense copilot, op
 
 ## 6. Recommendation
 
+<!-- Commit. A recommendation that lists options without choosing one hands
+     the work back to the reader, who has less context than you do. -->
+
+
 - **Option:** [letter and name], because [two sentences].
 - **What we give up:** [the option that lost and what it offered].
 - **Door type:** [one-way or two-way, per the decision doors worksheet], so the evidence bar is [high / ordinary].
@@ -100,7 +108,24 @@ ILLUSTRATIVE worked line on invented inputs for Ledgerline's expense copilot, op
 
 ---
 
+## How this case fails
+
+<!-- A business case is an argument with arithmetic attached, and the
+     arithmetic is the part people check least. -->
+
+| Failure mode | What it looks like | The rule that stops it |
+|---|---|---|
+| Benefits without cost to deliver | A revenue line, and no engineering, support or operations cost beneath it | Each benefit carries the cost of producing it |
+| Nobody agreed the assumptions | A rate or a conversion figure taken from a spreadsheet default | Finance or the metric owner agrees the inputs before the model is built |
+| Doing nothing is never costed | Options compared against each other, never against the baseline | Cost the status quo. It is an option and often a good one |
+| Benefits with no owner | "Efficiency gains", with no name against them | Every benefit names an accountable owner and the metric it lands in |
+| False precision | A total to the nearest unit, built on an estimate | Round to the confidence you have, and state the range |
+
 ## Exit gate (feeds Gate 1: problem worth solving)
+
+<!-- Checkable by someone who did not write this document, which is the
+     test of whether a gate is a gate. -->
+
 
 Done when every box is honestly ticked. The signed copy goes to [Gate 1](../../os/STAGE-GATES.md), and the recommended option becomes a row in [roadmap.md](roadmap.md).
 

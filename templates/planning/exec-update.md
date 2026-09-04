@@ -93,7 +93,54 @@ Skill: [stakeholder-update](../../skills/stakeholder-update/SKILL.md)
 
 ---
 
+## 7. How this update fails while looking complete
+
+<!-- Every row is a way a status update reads as informative and moves
+     nothing. The common thread: the document is written for the writer's
+     comfort rather than the reader's decision, and the tell is that nothing
+     in it can be disagreed with. -->
+
+| Failure mode | What it looks like | The rule that stops it |
+|---|---|---|
+| Status theatre | Every row green, no amber, no red, week after week | If nothing is amber, say plainly that nothing is, and expect to be asked why |
+| The ask is buried | The decision needed sits under three sections of progress prose | Section 2 is the ask, and the headline states it in one sentence |
+| Metrics with no baseline | "Adoption up" with no prior number, no target, no period | Every metric carries prior value, target and the period, in the same row |
+| Silent commitment drops | Last period's commitments are not mentioned, and the slipped ones vanish | Section 3 lists every prior commitment and its outcome, including the dropped ones |
+| Soft risk language | "Something to keep an eye on", with no owner and no date | A risk names impact, owner, and the date you will know more |
+| Written for comfort | Dense narrative celebrating activity, with no choice put to the reader | Lead with the decision: the options, the trade, the recommendation, the deadline |
+
+### Worked micro-example (ILLUSTRATIVE, invented)
+
+<!-- One period of a real-shaped update. It is short on purpose: the failure
+     this template exists to prevent is length, not brevity. Note that the ask
+     is first, the amber is stated without softening, and last period's
+     dropped commitment is named rather than omitted. Delete once real
+     content exists. -->
+
+**Headline.** *Receipt extraction ships to one market on 12 June. We need a decision on the second market by 5 June or it slips a quarter.*
+
+**Ask.** *Approve support headcount for a second queue, or confirm we launch market two in Q4. Decision needed by 5 June, owner: you.*
+
+| Commitment from last period | Outcome |
+|---|---|
+| *Support runbook published* | *Done, 28 May* |
+| *Second-market pricing agreed* | ***Not done.** Pricing owner was on leave. Now the critical path for the ask above* |
+
+| Risk | Impact | Owner | We will know more by |
+|---|---|---|---|
+| *Extraction accuracy on low-light photos is below the pre-launch bar* | *Higher manual entry, support load in week one* | *S. Kaur* | *4 June, from the pilot cohort* |
+
+| Metric | Prior | Now | Target | Period |
+|---|---|---|---|---|
+| *Median time to file an expense* | *4m 10s* | *2m 55s* | *under 3m* | *pilot, 3 weeks* |
+
+The second commitment row is the point. It slipped, it is stated as slipped, and it is connected to the ask rather than buried. An update that omits it reads better and is worth less.
+
 ## Exit gate (feeds the gate in progress and the QBR)
+
+<!-- Checkable by the reader, not the writer. Each box is a fact about the
+     document rather than a claim about the work it describes. -->
+
 
 Done when every box is honestly ticked. Decisions the update produces go to [decision-log.md](../execution/decision-log.md); the quarter's updates roll into [qbr-board-update.md](../operate/qbr-board-update.md); the gate they unblock is in [STAGE-GATES.md](../../os/STAGE-GATES.md).
 

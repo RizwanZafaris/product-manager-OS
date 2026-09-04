@@ -96,7 +96,25 @@ Skill: [persona-builder](../../skills/persona-builder/SKILL.md)
 
 ---
 
+## How these personas fail
+
+<!-- Personas are the artifact most often produced from the team's own
+     assumptions and then cited as evidence for them, which is worse than
+     having none. -->
+
+| Failure mode | What it looks like | The rule that stops it |
+|---|---|---|
+| Invented | Polished profiles, no interview behind any of them, everyone agrees | Each persona cites a source interview, or is labelled an assumption |
+| Detail that decides nothing | Age, city, income, a stock photograph, and no decision they change | Every field earns its place by naming a decision it informs |
+| One per segment, not per behaviour | Personas mirror the sales segmentation rather than observed use | Split where behaviour differs, and merge where it does not |
+| Never updated | Written once, cited for years, product changed underneath | Review on a stated cadence, and mark stale rather than quietly trusting |
+| Used to win arguments | "Our persona would not want that", with nothing behind it | If it cannot be traced to evidence, it cannot settle the argument |
+
 ## Exit gate (feeds Gate 1: problem worth solving)
+
+<!-- Checkable by someone who did not write this document, which is the
+     test of whether a gate is a gate. -->
+
 
 - [ ] Two or three personas, no more
 - [ ] Every persona has five or more evidence rows, or " (ASSUMPTION)" in its title

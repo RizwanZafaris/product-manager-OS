@@ -111,7 +111,37 @@ aliases: ["Product Strategy", "product-strategy"]
 |---|---|---|---|
 | | | | |
 
+## How this strategy fails
+
+<!-- Rumelt's test, applied here: a strategy needs a diagnosis, a guiding
+     policy and coherent action. Most documents called strategy have the third
+     only, which is why they read as busy and decide nothing. -->
+
+| Failure mode | What it looks like | The rule that stops it |
+|---|---|---|
+| Goals with no diagnosis | Targets and initiatives, and no statement of what is actually in the way | Every bet names the obstacle it removes |
+| Nothing is refused | Everything is strategic, and no option was given up | Each policy names what it deprioritises, by name |
+| Bets untraceable to the policy | Initiatives in the plan that no stated principle would have produced | A bet that cannot be derived from the policy is a preference |
+| Copying a competitor | The plan mirrors a rival's shipping log, feature for feature | Each bet states the problem you are positioned to solve and they are not |
+| Survives any evidence | Unchanged after a win, a loss and a market shift | Name the observation that would kill each bet, and a date to check |
+
+### Worked micro-example (ILLUSTRATIVE, invented)
+
+<!-- The kernel, compressed. Delete once real content exists. -->
+
+*Diagnosis: reps do not avoid filing expenses because the form is slow; they avoid it because a rejected claim costs them a second submission and an argument. Filing time is a symptom.*
+
+*Guiding policy: optimise for first-time acceptance, not for filing speed. We will refuse work that shortens the form at the cost of accuracy.*
+
+*Coherent action: extraction accuracy on the fields finance rejects most, an in-app pre-check against policy before submission, and no autofill of any field we cannot verify. We are explicitly not building bulk upload, which is the most requested feature and does not touch acceptance.*
+
+*What would kill it: acceptance rate does not move while filing time does. Checked at the end of the pilot.*
+
 ## Exit gate
+
+<!-- Checkable by someone who did not write this document, which is the
+     test of whether a gate is a gate. -->
+
 
 This strategy is fit to operate on when:
 
