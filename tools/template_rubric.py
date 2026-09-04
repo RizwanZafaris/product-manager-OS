@@ -86,6 +86,27 @@ FAILURE_RE = re.compile(
     r"skip it when|do not\b|never\b|is not a\b|red flag|smell\b",
     re.I)
 
+# Files under templates/ that this rubric must not be applied to, each with the
+# reason written out. An exemption list is a place dishonesty hides, so three
+# rules bind it: it is short, every entry says why in a sentence a reader can
+# disagree with, and exempt files are reported in their own block with their
+# score still visible rather than dropped from the output.
+#
+# Being short is not a reason. Nothing here scores length, so a small template
+# is simply a small template. Being weak is not a reason either. The only
+# reason that qualifies is that the document is not a fill-in template at all,
+# and applying the dimensions below would make the file worse while making its
+# number better.
+EXEMPT = {
+    "templates/execution/state.md":
+        "Not a fill-in template. It is the Conductor's memory protocol, and "
+        "its binding rules are stated once in a preamble because they govern "
+        "the whole file rather than any section of it. Scoring it on "
+        "per-section guidance would reward breaking one set of rules into "
+        "seven partial restatements, which is how a protocol stops being "
+        "readable as one.",
+}
+
 WEIGHTS = {
     "self_explaining": 25,
     "failure_aware": 20,
@@ -158,6 +179,19 @@ def score_template(path):
     }
 
 
+def _wrap(text, width):
+    words, line, out = text.split(), "", []
+    for word in words:
+        if len(line) + len(word) + 1 > width:
+            out.append(line)
+            line = word
+        else:
+            line = (line + " " + word).strip()
+    if line:
+        out.append(line)
+    return out
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--json", metavar="PATH",
@@ -175,10 +209,15 @@ def main(argv=None):
         return 0
 
     reference = score_template(REFERENCE)
-    scored = sorted(
+    everything = sorted(
         (score_template(p) for p in sorted(TEMPLATES.rglob("*.md"))
          if p.name != "README.md"),
         key=lambda r: r["score"])
+    # Exempt files keep their score and leave the statistics. Dropping them
+    # silently would let the median improve by declaring the weak files out of
+    # scope, which is the failure this list is most likely to enable.
+    exempt = [r for r in everything if r["path"] in EXEMPT]
+    scored = [r for r in everything if r["path"] not in EXEMPT]
 
     values = [r["score"] for r in scored]
     print("flagship rubric, bar read off %s"
@@ -186,7 +225,10 @@ def main(argv=None):
     print("  reference score : %.1f  (%d lines, %d sections, %d explained)"
           % (reference["score"], reference["lines"], reference["sections"],
              reference["sections_explained"]))
-    print("  templates       : %d" % len(scored))
+    print("  templates scored: %d" % len(scored))
+    if exempt:
+        print("  exempt          : %d (listed below, excluded from the "
+              "statistics)" % len(exempt))
     print("  median score    : %.1f" % statistics.median(values))
     print("  mean score      : %.1f" % statistics.mean(values))
     for threshold in (90, 75, 60):
@@ -202,6 +244,14 @@ def main(argv=None):
         print("  %-52s %6.1f %6d %5d %s"
               % (row["path"], row["score"], row["lines"], row["sections"],
                  worst.replace("_", " ")))
+
+    if exempt:
+        print("")
+        print("exempt from this rubric, with the reason:")
+        for row in exempt:
+            print("  %-52s %6.1f" % (row["path"], row["score"]))
+            for line in _wrap(EXEMPT[row["path"]], 68):
+                print("      " + line)
 
     if args.json:
         out = Path(args.json)

@@ -23,6 +23,10 @@ aliases: ["Operational Readiness Review", "operational-readiness-review"]
 
 ## 1. Service overview
 
+<!-- Written for the person paged at three in the morning who has never seen
+     this service. If it cannot be understood cold, it will not be read then. -->
+
+
 - What it does, in one sentence a responder can act on: [sentence]
 - Criticality tier: [tier, per your org's definitions] · Users affected when down: [who, how many]
 - Upstream dependencies: [list, from ../execution/dependency-register.md]
@@ -40,11 +44,19 @@ aliases: ["Operational Readiness Review", "operational-readiness-review"]
 
 ## 3. On-call and escalation
 
+<!-- Names, not teams, and the path when the first name does not answer.
+     Every escalation ladder is written in daylight and used at night. -->
+
+
 - Rotation: [who is in it, cadence] · Paging tool and policy: [tool, what pages vs. what waits]
 - Escalation path: [first responder] then [name] then [name], with time thresholds: [n minutes each]
 - The one person who knows this system best, and the plan for when they are away: [name, plan]
 
 ## 4. Backup and recovery
+
+<!-- A backup that has never been restored is a belief. Record the last
+     restore, where it ran, and how long it took. -->
+
 
 - Data covered by backups: [what] · Backup cadence: [n]
 - Recovery point objective (max acceptable data loss): [n] · Recovery time objective: [n]
@@ -74,7 +86,25 @@ aliases: ["Operational Readiness Review", "operational-readiness-review"]
 |---|---|---|---|
 | | | | |
 
+## How this review fails
+
+<!-- Every row is a document that reads as ready. The pattern: something was
+     written and never executed, and writing is not the part that fails at
+     three in the morning. -->
+
+| Failure mode | What it looks like | The rule that stops it |
+|---|---|---|
+| A rota with no names | Slots filled with a team name or a placeholder, signed off as complete | Every slot names a primary and a backup, and both know they are on it |
+| Runbooks never executed | Reviewed, tidied, and never once run end to end | At least one full execution per runbook, recently, with the elapsed time recorded |
+| Alerts that page for everything or nothing | Dashboards green while the pager is silent through a real breach | Each alert links to a runbook and has a tested path to a named human |
+| Backups never restored | "Backups are running" in the report, and no restore attempted | A restore into a clean environment on a stated cadence, checked against the source |
+| Sign-off by a team | Several leads approve, and nobody owns it after launch | One named accountable approver per service, with a date |
+
 ## Exit gate
+
+<!-- Checkable by someone who did not write this document, which is the
+     test of whether a gate is a gate. -->
+
 
 This review passes when:
 
