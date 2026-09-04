@@ -197,5 +197,124 @@ class IndependentReviewGateTests(unittest.TestCase):
             self.assertTrue(any("unauthenticated" in error for error in errors))
 
 
+
+class RecordReviewTests(unittest.TestCase):
+    """The gate had no way to close it except hand-writing JSON.
+
+    That is why these exist. A gate that can only be validated and never
+    recorded stays red, red becomes the normal state, and the check stops
+    carrying information: three pull requests were merged with this one red
+    before --record was added. The tests below cover the two properties that
+    matter, which are that it produces a record the validator accepts, and
+    that it refuses to let the person who wrote the tree close the gate on it.
+    """
+
+    def _args(self, root, **over):
+        import argparse
+        # The canonical path matters: tree_digest deliberately excludes
+        # docs/readiness/independent-review.json from its own hash, so a
+        # record written there does not invalidate itself. Writing anywhere
+        # else inside the tree would, which is what the first version of this
+        # test did and is why it failed.
+        canonical = root / review_gate.ATTESTATION
+        canonical.parent.mkdir(parents=True, exist_ok=True)
+        fields = dict(
+            record=True, attestation=str(canonical),
+            reviewer="A. Reviewer", reviewer_kind="human",
+            scope=["templates/"], evidence=["python3 tools/ci_gate.py|17/18"],
+            finding=None, verdict="accepted", digest=False)
+        fields.update(over)
+        return argparse.Namespace(**fields)
+
+    def test_a_recorded_review_validates(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.md").write_text("content\n", encoding="utf-8")
+            code = review_gate.record_review(self._args(root), root)
+            self.assertEqual(0, code)
+            document = json.loads(
+                (root / review_gate.ATTESTATION).read_text(encoding="utf-8"))
+            self.assertEqual([], validate_attestation(document, root))
+
+    def test_it_records_the_digest_of_the_tree_it_saw(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.md").write_text("content\n", encoding="utf-8")
+            review_gate.record_review(self._args(root), root)
+            document = json.loads(
+                (root / review_gate.ATTESTATION).read_text(encoding="utf-8"))
+            expected, _rows = tree_digest(root)
+            self.assertEqual(expected, document["reviewed_tree_sha256"])
+
+            # And a later change makes that record stale, which is the whole
+            # point of binding the review to a digest.
+            (root / "b.md").write_text("added later\n", encoding="utf-8")
+            self.assertIn("stale", " ".join(
+                validate_attestation(document, root)))
+
+    def test_it_refuses_to_let_an_author_attest_their_own_tree(self):
+        """The single integrity property. Everything else here is ergonomics."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.md").write_text("content\n", encoding="utf-8")
+            with patch.object(review_gate, "recent_authors",
+                              return_value={"the author"}):
+                code = review_gate.record_review(
+                    self._args(root, reviewer="The Author"), root)
+            self.assertEqual(2, code)
+            self.assertFalse((root / review_gate.ATTESTATION).exists(),
+                             "a refused self-attestation still wrote a record")
+
+    def test_it_refuses_a_review_that_ran_nothing(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.md").write_text("content\n", encoding="utf-8")
+            code = review_gate.record_review(
+                self._args(root, evidence=None), root)
+            self.assertEqual(2, code)
+            self.assertFalse((root / review_gate.ATTESTATION).exists())
+
+    def test_it_refuses_a_review_with_no_stated_scope(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.md").write_text("content\n", encoding="utf-8")
+            code = review_gate.record_review(self._args(root, scope=None), root)
+            self.assertEqual(2, code)
+
+    def test_findings_are_recorded_with_ids_and_survive_validation(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.md").write_text("content\n", encoding="utf-8")
+            code = review_gate.record_review(self._args(
+                root,
+                finding=["P2|accepted|Tables are becoming uniform|read 25"]),
+                root)
+            self.assertEqual(0, code)
+            document = json.loads(
+                (root / review_gate.ATTESTATION).read_text(encoding="utf-8"))
+            self.assertEqual(1, len(document["findings"]))
+            self.assertEqual("R1", document["findings"][0]["id"])
+            self.assertEqual([], validate_attestation(document, root))
+
+    def test_a_malformed_finding_is_refused_rather_than_guessed(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.md").write_text("content\n", encoding="utf-8")
+            code = review_gate.record_review(
+                self._args(root, finding=["just a sentence"]), root)
+            self.assertEqual(2, code)
+
+    def test_identity_is_never_claimed_as_authenticated(self):
+        """The tool records a claim. It must never dress it as proof."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.md").write_text("content\n", encoding="utf-8")
+            review_gate.record_review(self._args(root), root)
+            document = json.loads(
+                (root / review_gate.ATTESTATION).read_text(encoding="utf-8"))
+            self.assertEqual("unauthenticated-local-claim",
+                             document["identity_assurance"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

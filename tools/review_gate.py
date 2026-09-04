@@ -10,6 +10,7 @@ described as cryptographic or human-identity attestation.
 from __future__ import annotations
 
 import argparse
+import datetime as _dt
 import hashlib
 import json
 import os
@@ -219,12 +220,150 @@ def validate_attestation(document, root=REPO):
     return errors
 
 
+def recent_authors(root, limit=40):
+    """Names and emails that authored the recent history of this tree.
+
+    Used to refuse a self-attestation. This is a weak check and is meant to
+    be: it catches the obvious case where the person recording the review is
+    the person who wrote the commits, and it cannot catch a reviewer who uses
+    a different name. Independence is asserted by a human either way; this
+    only removes the easiest way to assert it falsely by accident.
+    """
+    import subprocess
+    try:
+        done = subprocess.run(
+            ["git", "log", "--format=%an%n%ae", "-%d" % int(limit)],
+            cwd=str(root), capture_output=True, text=True, timeout=20)
+    except (OSError, subprocess.SubprocessError):
+        return set()
+    if done.returncode != 0:
+        return set()
+    return {line.strip().lower() for line in done.stdout.splitlines()
+            if line.strip()}
+
+
+def record_review(args, root=REPO):
+    """Write a review record for the tree as it stands right now.
+
+    This exists because the gate was closable only by hand-writing JSON with
+    a correct schema and a correct digest, and a gate nobody can close is a
+    gate everybody learns to ignore. Three pull requests were merged with this
+    check red before it was added.
+
+    It records; it does not vouch. identity_assurance stays
+    unauthenticated-local-claim, because nothing here authenticates anyone,
+    and the tool refuses outright when the reviewer name matches an author of
+    the recent history. That refusal is the one integrity property worth
+    having: the person who wrote the code must not be able to close the gate
+    on it by running a command.
+    """
+    digest, rows = tree_digest(root)
+    reviewer = (args.reviewer or "").strip()
+    if not reviewer or reviewer.lower() == "root":
+        print("record: --reviewer must name the person who did the review")
+        return 2
+
+    authors = recent_authors(root)
+    if reviewer.lower() in authors:
+        print("record: REFUSED. %r authored commits in this tree's recent "
+              "history, so recording this review would be a self-attestation."
+              % reviewer)
+        print("        The point of this gate is that somebody who did not "
+              "write the change has read it.")
+        print("        If you genuinely did not implement any of it and the "
+              "name simply matches, use the name you review under.")
+        return 2
+
+    if not args.scope:
+        print("record: --scope is required. Say what you actually reviewed, "
+              "so a later reader knows what this covers.")
+        return 2
+    if not args.evidence:
+        print("record: --evidence is required. Name at least one command you "
+              "ran. A review that ran nothing is a reading.")
+        return 2
+
+    findings = []
+    for index, raw in enumerate(args.finding or [], 1):
+        parts = raw.split("|")
+        if len(parts) != 4:
+            print("record: --finding must be "
+                  "SEVERITY|STATUS|SUMMARY|EVIDENCE, got %r" % raw)
+            return 2
+        severity, status, summary, evidence = (p.strip() for p in parts)
+        findings.append({
+            "id": "R%d" % index, "severity": severity, "status": status,
+            "summary": summary, "evidence": evidence,
+        })
+
+    document = {
+        "schema": 1,
+        "reviewer_id": reviewer,
+        "reviewer_kind": args.reviewer_kind,
+        "independent_implementation": True,
+        "identity_assurance": "unauthenticated-local-claim",
+        "reviewed_at": _dt.datetime.now(_dt.timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"),
+        "reviewed_tree_sha256": digest,
+        "scope": list(args.scope),
+        "evidence": [{"command": c, "result": r} for c, r in
+                     (e.split("|", 1) + [""] if "|" not in e else e.split("|", 1)
+                      for e in args.evidence)],
+        "findings": findings,
+        "verdict": args.verdict,
+    }
+
+    errors = validate_attestation(document, root)
+    if errors:
+        print("record: the record this would write does not validate:")
+        for error in errors:
+            print("  " + error)
+        return 1
+
+    path = Path(args.attestation)
+    if not path.is_absolute():
+        path = root / path
+    path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+    print("recorded review of %d files at %s" % (len(rows), digest[:12]))
+    print("  reviewer : %s (%s, identity not authenticated)"
+          % (reviewer, args.reviewer_kind))
+    print("  verdict  : %s" % args.verdict)
+    print("  findings : %d" % len(findings))
+    print("  written  : %s" % path)
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--digest", action="store_true",
                         help="print the current reviewable tree digest")
     parser.add_argument("--attestation", default=str(ATTESTATION))
+    parser.add_argument("--record", action="store_true",
+                        help="record a review of the tree as it stands now. "
+                             "Refuses if the reviewer authored recent history")
+    parser.add_argument("--reviewer", help="who did the review")
+    parser.add_argument("--reviewer-kind", default="human",
+                        choices=("human", "independent-agent"))
+    parser.add_argument("--scope", action="append", metavar="WHAT",
+                        help="what was reviewed. Repeatable, at least one")
+    parser.add_argument("--evidence", action="append", metavar="COMMAND|RESULT",
+                        help="a command you ran and what it returned. "
+                             "Repeatable, at least one")
+    parser.add_argument("--finding", action="append",
+                        metavar="SEVERITY|STATUS|SUMMARY|EVIDENCE",
+                        help="a finding. Repeatable. Omit if none")
+    # The validator accepts exactly one verdict, so the CLI offers exactly one
+    # rather than letting a reviewer type "rejected", write nothing, and learn
+    # why at the end. A rejection is recorded by not recording: the gate stays
+    # red, which is what a rejection means.
+    parser.add_argument("--verdict", default="accepted",
+                        choices=("accepted",),
+                        help="only 'accepted' is recordable. A rejection is "
+                             "expressed by leaving the gate red, and by saying "
+                             "so wherever the change is being discussed")
     args = parser.parse_args(argv)
+    if args.record:
+        return record_review(args)
     if args.digest:
         digest, rows = tree_digest(REPO)
         print(json.dumps({"files": len(rows), "sha256": digest}, sort_keys=True))
