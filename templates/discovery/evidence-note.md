@@ -71,3 +71,40 @@ Copy this row, filled, into the evidence ledger in the product's STATE.md:
 | E# | Claim | Verbatim quote | Source | Source date | Retrieved | Confidence |
 |---|---|---|---|---|---|---|
 | E[n] | [claim, short] | "[quote]" | [locator] | [YYYY-MM-DD] | [YYYY-MM-DD] | [confidence] |
+
+## How an evidence note fails
+
+<!-- This is the smallest artifact in the tree and the one everything else
+     rests on. A gate decision traces back through synthesis, through a
+     persona, to a note like this one, so a defect here is invisible and load
+     bearing at the same time. -->
+
+| Failure mode | What it looks like | The rule that stops it |
+|---|---|---|
+| Paraphrase presented as a quote | Quotation marks around a tidied version of what was said | Quotation marks are reserved for verbatim text. Paraphrase goes outside them, always |
+| No source or no date | "Research shows", with nothing attached | Author or speaker, document or session, and the date. A note without them cannot be checked |
+| Only what we already believed | Sources selected because they agreed, and the disagreement went unrecorded | Record what contradicts the position too. Finding no counter-evidence is itself a finding |
+| Context stripped | A sentence lifted from a paragraph that qualifies or reverses it | Carry enough surrounding text that the meaning survives the extraction |
+| Confidence asserted | "A reliable source", with nothing behind the adjective | Use the classes in Weight above: verified, single-source, contested, unverified |
+
+### Worked micro-example (ILLUSTRATIVE, invented)
+
+<!-- Shows the one thing this template exists to protect: the boundary between
+     what was said and what we concluded. Delete once real notes exist. -->
+
+| E# | Claim | Verbatim quote | Source | Source date | Retrieved | Confidence |
+|---|---|---|---|---|---|---|
+| *E7* | *Rural postcodes are rejected by validation, and reps abandon rather than retry* | *"I put the postcode in three times, then I just gave up and did it at home"* | *Interview, field rep, session 4* | *2026-03-11* | *2026-03-12* | *single-source* |
+
+*Note what is outside the quotation marks. The rep did not say validation was the cause, and did not say others do the same. Both are our inference, and both are why the confidence is single-source rather than verified.*
+
+## Exit gate
+
+<!-- Checkable by someone who was not in the session. -->
+
+- [ ] The quote is verbatim, and everything outside the quotation marks is marked as inference
+- [ ] Source, source date and retrieval date are all present and locatable by someone else
+- [ ] The confidence class is one of the four in Weight, and the reason for it is stated
+- [ ] Contradicting evidence was looked for, and either recorded or explicitly reported as absent
+- [ ] The ledger row is filled and ready to copy into the product's STATE.md
+- [ ] The worked example above has been removed

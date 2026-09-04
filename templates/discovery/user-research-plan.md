@@ -38,6 +38,11 @@ Skill: [research-agent](../../agents/research-agent.md) for fielding, [feedback-
 
 ## 2. Method
 
+<!-- The method follows the question, not the calendar. Say what it cannot
+     tell you as well as what it can: an interview cannot measure frequency,
+     and a survey cannot explain why. -->
+
+
 - **Method:** [semi-structured interviews / contextual observation / diary study / survey / usability session]
 - **Why this method answers the RQs:** [one or two sentences]
 - **Sessions planned:** [count; five to eight interviews per segment is a workable floor for pattern-finding]
@@ -120,7 +125,41 @@ Skill: [research-agent](../../agents/research-agent.md) for fielding, [feedback-
 
 ---
 
+## How this plan fails
+
+<!-- Research is the cheapest place to get a confident wrong answer, because
+     every failure below still produces findings, and findings get quoted. -->
+
+| Failure mode | What it looks like | The rule that stops it |
+|---|---|---|
+| Recruiting people who already like you | The screener quietly selects current, happy, engaged users | Screen for the population the question is about, and cap prior usage |
+| Leading questions | "How much would this help you?", about a feature you want to build | Two people review the guide for leading wording before it is used |
+| Sample size by convenience | A number chosen from recruiter availability, justified afterwards | Set it from the method: per segment, or until sessions stop producing new themes |
+| No analysis plan | The guide is written, transcripts arrive, themes are invented while reading | Write how findings will be coded and how they map to the decision, before fielding |
+| Run to justify a decision | The conclusion arrives with the brief | Ask the requester in writing what result would change the plan. If none, do not run it |
+
+### Worked micro-example (ILLUSTRATIVE, invented)
+
+<!-- The field that stops research being theatre is the last one. Delete once
+     real content exists. -->
+
+| Field | Filled |
+|---|---|
+| *Decision this informs* | *Whether to build in-app correction before launch, or ship extraction alone* |
+| *What result would change the plan* | *If fewer than a third of reps hit a wrong extraction in two weeks of real use, correction waits* |
+| *Population* | *Field reps who file at least four expenses a month, excluding pilot participants and anyone in the design partner programme* |
+| *Method and its limits* | *Diary study over two weeks. It can tell us frequency and what people did next. It cannot tell us why they chose not to correct, which needs follow-up interviews* |
+| *Sample* | *Twelve, or until three consecutive diaries produce no new theme* |
+| *Analysis plan, written before fielding* | *Code each entry for: extraction correct, incorrect and corrected, incorrect and submitted anyway. Themes map to the decision above and nowhere else* |
+| *Consent and incentive* | *Written consent covering data use, retention of eight weeks, and withdrawal at any point. Incentive stated up front and not contingent on completing* |
+
+*The second row is the one most plans omit. A stakeholder who cannot say what result would change the plan is asking for a document, not a study.*
+
 ## Exit gate (feeds Gate 1: problem worth solving)
+
+<!-- Checkable by someone who did not write this document, which is the
+     test of whether a gate is a gate. -->
+
 
 - [ ] Every research question maps to a live decision, not curiosity
 - [ ] Screener screens on behavior, not attitude

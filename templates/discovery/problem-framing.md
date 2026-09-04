@@ -28,9 +28,19 @@ Skill: [persona-builder](../../skills/persona-builder/SKILL.md)
 
 ## 1. Situation
 
+<!-- What is true today, stated so someone who works elsewhere could picture
+     it. Situation and complication are separated because teams routinely
+     write the complication and call it the situation. -->
+
+
 [Two or three sentences of stable context that everyone already agrees on. No news here; this is the shared ground the reader stands on.]
 
 ## 2. Complication
+
+<!-- What changed, or what makes the situation no longer acceptable. If the
+     complication is that leadership asked, say so plainly rather than
+     inventing a user-facing one. -->
+
 
 [What changed or was discovered that makes the situation untenable. This is the news. One or two sentences.]
 
@@ -65,6 +75,11 @@ Skill: [persona-builder](../../skills/persona-builder/SKILL.md)
 
 ## 6. Who feels it and how often
 
+<!-- Frequency and reach, with a number. This decides whether the problem is
+     worth a quarter, and it is the section most often left qualitative
+     because the number is uncomfortable. -->
+
+
 | Segment | How many | Frequency of the pain | Severity (blocks work / slows work / annoys) |
 |---|---|---|---|
 | | | | |
@@ -89,7 +104,25 @@ Skill: [persona-builder](../../skills/persona-builder/SKILL.md)
 
 ---
 
-## Exit gate (feeds Gate 1: problem worth solving)
+## How this framing fails
+
+<!-- The first row is the one that costs quarters. A solution written as a
+     problem passes every later gate, because every later document takes the
+     problem as given. -->
+
+| Failure mode | What it looks like | The rule that stops it |
+|---|---|---|
+| A solution in disguise | "Users cannot find the documentation" names the fix in the phrasing | State what someone is trying to do and what stops them, naming no product and no feature |
+| Too broad to disagree with | "Communication is hard", which rejects nothing and directs nothing | If nobody could argue with it, it is an observation rather than a problem |
+| Nobody is shown to have it | A memorable anecdote, and no interview, ticket or log behind it | Cite one observed case before the document is written, or mark the framing an assumption |
+| Never sized | "This happens a lot", with no count and no cost | A number: how often, to how many, costing what. Rough and sourced beats precise and invented |
+| The person is not named | "Users" and "stakeholders" throughout | One role, one job they are trying to get done, one situation where it fails |
+
+## Exit gate
+
+<!-- Checkable by someone who did not write this document, which is the
+     test of whether a gate is a gate. -->
+ (feeds Gate 1: problem worth solving)
 
 - [ ] Exactly one problem in this file
 - [ ] Problem statement contains no solution words

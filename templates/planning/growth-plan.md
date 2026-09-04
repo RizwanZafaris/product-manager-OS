@@ -70,11 +70,21 @@ aliases: ["Growth Plan", "growth-plan"]
 
 ## 5. Counter-metric
 
+<!-- The metric you are not trying to move and would stop for. Without a
+     floor written as a number this reads as caution and functions as
+     nothing. -->
+
+
 | Metric | Damage it detects | Threshold that stops the experiment | Source system |
 |---|---|---|---|
 | | | | |
 
 ## 6. Kill condition
+
+<!-- Agreed before the work starts, because at the moment it triggers
+     everyone is arguing about whether it is bad enough, and the arguing is
+     the cost. -->
+
 
 - **Ends at:** [the date or the threshold, whichever comes first]
 - **Who decides:** [name]
@@ -89,7 +99,41 @@ aliases: ["Growth Plan", "growth-plan"]
 |---|---|---|---|---|---|
 | | | | | | |
 
+## How this plan fails
+
+<!-- Growth work is the easiest place to produce a number that rises while the
+     business gets worse, which is what the counter-metric exists to prevent. -->
+
+| Failure mode | What it looks like | The rule that stops it |
+|---|---|---|
+| Tactics with no loop | A calendar of activities, and no mechanism by which one feeds the next | Name the loop. A list of tactics is a campaign, not growth |
+| No counter-metric | Signups rise, and so do churn and support load, and the plan reports growth | Every growth metric ships with a guardrail and a floor written as a number |
+| Channels chosen by fashion | Budget moves to whichever channel is discussed most this quarter | Choose from cohort evidence or a bounded pilot with a pass mark set in advance |
+| No kill condition | A channel underperforms all quarter because stopping feels premature | Write the condition that stops it before it starts, with a threshold and a date |
+| Targets with no baseline | A committed lift with no documented starting number | Targets are a delta from a dated baseline, agreed before the period opens |
+
+### Worked micro-example (ILLUSTRATIVE, invented)
+
+<!-- A loop with its counter-metric and kill condition, all three stated
+     before the work starts. Delete once real content exists. -->
+
+*Loop: a rep who files an expense in under a minute tells another rep, who installs the app, who files quickly. The loop turns on filing being fast enough to mention, not on any referral mechanism.*
+
+| | Metric | Baseline (dated) | Target | Floor |
+|---|---|---|---|---|
+| *Growth* | *New reps activated per existing active rep, per month* | *0.08, March* | *0.15* | |
+| *Counter* | *First-time acceptance rate of filed expenses* | *0.71, March* | | ***must not fall below 0.68*** |
+| *Counter* | *Support tickets per hundred submissions* | *2.4, March* | | ***must not exceed 3.0*** |
+
+*Kill condition, agreed before launch: if the counter-metric floor is breached for two consecutive weeks, the referral prompt is turned off and the loop is re-examined, called by the growth owner without further discussion.*
+
+*Note what the counter-metrics are doing. Filing faster by auto-filling fields we cannot verify would move the growth number and break both floors. Without them the plan reports success while finance absorbs the cost.*
+
 ## Exit gate
+
+<!-- Checkable by someone who did not write this document, which is the
+     test of whether a gate is a gate. -->
+
 
 This plan is fit to run when:
 

@@ -54,11 +54,33 @@ Skill: [program-premortem](../../skills/program-premortem/SKILL.md)
 
 ## 4. Weekly review notes
 
+<!-- The log that proves the register is governed rather than filed. No
+     review entries for a month means nobody is reading it, whatever its rows
+     say. -->
+
+
 | Date | Rows that changed status | Escalations opened or closed |
 |---|---|---|
 | | | |
 
+## How this register fails
+
+<!-- The register makes dependency slippage visible weekly. Each row is a way
+     it keeps being maintained and stops being true. -->
+
+| Failure mode | What it looks like | The rule that stops it |
+|---|---|---|
+| A verbal yes recorded as committed | "They said yes in the meeting", entered as committed with no date | Committed means on their plan with their date. Anything else is requested |
+| No named human | The owning team is named and no person is | Teams do not answer messages. Name the contact and the escalation contact |
+| At risk is felt, not computed | The status column reflects mood rather than arithmetic | At risk means their date is after your needed-by. Compare the columns weekly |
+| Escalation avoided | A row sits at risk for weeks because raising it feels aggressive | The ladder is agreed in advance, so escalating is procedural rather than personal |
+| Reverse dependencies blank | Only what you need from others is tracked | Fill what you owe. It earns the goodwill the ladder spends |
+
 ## Exit gate
+
+<!-- Checkable by someone who did not write this document, which is the
+     test of whether a gate is a gate. -->
+
 
 - [ ] Every dependency names a deliverable, a human contact, and an escalation contact
 - [ ] Every row shows both our needed-by date and their committed date
