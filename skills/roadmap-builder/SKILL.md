@@ -80,6 +80,14 @@ A roadmap built in one sitting is a document; a roadmap the org believes is the 
 - If capacity is unknown, build TWO sequences (lean and full) rather than one fiction.
 - The roadmap states what is deliberately NOT being done. A roadmap with no cuts is a list, and lists lose reviews.
 
+## Failure modes this skill guards against
+
+- **Scores that defend nothing.** Reach guessed and never validated, impact defaulting to medium, confidence sitting at full marks, and effort hidden behind sizes nobody calibrated. The arithmetic is real and the inputs are not.
+- **Dependency-blind sequencing.** Items slotted into quarters before dependencies are mapped, so two squads collide on a shared service and a gating interface ships after the feature that needs it.
+- **The regulatory calendar treated as background.** A filing window or mandate date read as nice to know, so required work misses its deadline or displaces capacity that should have been reserved months earlier.
+- **Launch dates with no launch gates.** Dates committed without exit criteria, so done becomes a negotiation each release and stakeholders learn that every date is aspirational.
+- **The risk column as decoration.** Risks listed with no owner, trigger or mitigation cost, so the single external dependency detonates silently and the roadmap loses its only defence in review.
+
 ## Exit gate
 
 The roadmap feeds the PLANNING track that runs across every stage of [../../os/OPERATING-LOOP.md](../../os/OPERATING-LOOP.md). Do not report it done until the roadmap template's fields are filled, every pinned item carries its external date, and the defense page exists.

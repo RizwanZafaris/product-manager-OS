@@ -82,6 +82,14 @@ Stop there. Themes are not requirements. The route from a theme to a story runs 
 - Do not name a solution inside a theme. "Users want bulk upload" is a solution wearing a theme's clothes; the theme is the progress that bulk upload would unblock.
 - Sentiment scores and word clouds are not output of this skill. Counts and circumstances are.
 
+## Failure modes this skill guards against
+
+- **The loudest customer becomes a theme.** One articulate, persistent user fills the transcript and gets framed as a segment, pushing quieter patterns out of the synthesis entirely.
+- **Topic buckets masquerading as themes.** Reporting, onboarding and pricing get logged as findings. They name where the pain lives, not what it is, so the team ships a category label.
+- **Quotes without counts.** Representative snippets pulled with no tally of how many sources echo each one, which makes a single anecdote indistinguishable from a pattern at Gate 1.
+- **No contradiction surfaced.** Divergent needs averaged into one consensus statement, hiding the trade the team will hit in BUILD and discover during sprint planning.
+- **Stopping at the insight.** Output ends at "customers want X" with no implication for the roadmap, the persona or the next experiment, so the artifact is rewritten before review.
+
 ## Exit gate
 
 The synthesis feeds Gate 1 in [../../os/STAGE-GATES.md](../../os/STAGE-GATES.md). Do not report it done until every theme cites three or more independent source IDs, every theme lists its contradictions or states that a search for them was run, the corpus bias is written down, and the rows are actually in the research plan and discovery document rather than in a chat window.

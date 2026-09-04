@@ -56,6 +56,14 @@ The drafted document, at whatever weight it was written, and the document type i
 
 Blocking findings hold the gate: a document with an open blocking finding does not go to its signer. Should-fix findings travel with the document and get a named owner if the author disagrees they block. A note is a suggestion; nothing holds on it.
 
+## Failure modes this skill guards against
+
+- **Unquantified adjectives.** Fast, scalable, intuitive, passed over because the author believes the meaning is obvious. QA cannot script a pass or fail, so engineering picks a number and surprises everyone.
+- **Requirements that cannot fail.** "The system shall improve X", or "shall support flexibility". Something was written, so it clears Gate 2, and a tester cannot construct a failing case.
+- **False precision in owners and dates.** An action owned by "the team" and dated to a quarter reads complete and resolves to no person on no day. This is the classic silent slip.
+- **Conditions hidden in subordinate clauses.** "Shall save the user time, provided the data is clean" buries the proviso, and it surfaces when the edge case reaches a customer.
+- **Vocabulary relitigated through BUILD.** The same word keeps being redefined because nobody pinned it at spec time, and two engineers still disagree at integration.
+
 ## Exit gate
 
 Do not call the review done while a blocking finding is open. This skill's table is evidence for a gate, never the gate itself: [os/STAGE-GATES.md](../../os/STAGE-GATES.md) still names a human who reads the document and signs it. A clean spec-review is not a gate pass; it is the condition that makes a gate pass worth trusting.

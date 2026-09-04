@@ -36,6 +36,10 @@ Programs rarely die from the risk on the register. They die from patterns everyo
 11. **The metric that cannot survive an audit.** A headline number (uptime, success rate, savings) with no agreed source and method. It works in every review until the one review where someone asks how it is measured, and the program's credibility goes with it.
 12. **One-shot stakeholder management.** The kickoff was communicated; nothing since. Sponsors drift, and the program discovers it lost support only when it needs air cover. Test: when did each named sponsor last hear anything requiring a reply?
 
+## Inputs
+
+The plan under examination, in whatever form it exists: a roadmap slice, a delivery plan, a status pack, or a verbal description from the person accountable for it. The dependency register if one exists, because two of the twelve failure modes are read directly from it. The names of the people who would be accountable if each part failed, which is usually the hardest input to get and the one that makes the findings actionable. And the date the plan is committed to, since a premortem run without a date cannot distinguish a risk from a worry. Ask for the dependency register when it is missing; run without it if you must, and say in the output that modes concerning dependencies were assessed on recollection rather than on a register.
+
 ## Workflow
 
 1. Ingest the plan, status pack, or a spoken description (interview if needed: teams, external parties, cutover shape, governance forums, top three headline metrics). Where they exist, read the filled-in risk register and dependency register; their absence is itself evidence for modes 1, 2, and 6.
@@ -50,6 +54,14 @@ Programs rarely die from the risk on the register. They die from patterns everyo
 |---|---|---|---|---|---|
 
 Close with the premortem sentence, completed: "It is six months from now and the program failed. The most likely cause, given the evidence above, was ______." One cause. Committed.
+
+## Failure modes this skill guards against
+
+- **Premortem as theatre.** The session is run to satisfy a gate, risks are named without owners, the memo is filed, and the predicted failure arrives on schedule to general surprise.
+- **Status reported as a colour.** Green and on track, with no named signal that would turn it amber, so leadership cannot tell confidence from inattention.
+- **No rehearsal before cutover.** The plan runs from design approval to go-live with no dress rehearsal, no rollback clock, and nobody assigned to call it.
+- **Scope by accretion.** Small asks accepted individually through the side door, so the business case inflates quietly while the date and the budget hold still.
+- **One person holds the plan.** The whole programme lives in a single senior head, and leave, a role change or burnout takes the institutional memory with it.
 
 ## Exit gate
 

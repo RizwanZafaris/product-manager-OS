@@ -70,6 +70,10 @@ Each guardrail gets a row in [../../templates/ai/guardrails.md](../../templates/
 
 Generic PRD tooling writes the five sections above and stops. When the product sits under a financial or data regulator, do not run this skill's own overlay from memory. Start instead from the byte-exact template at [../../modules/regulated/templates/regulated-ai-prd-template.md](../../modules/regulated/templates/regulated-ai-prd-template.md), follow [../../modules/regulated/SKILL.md](../../modules/regulated/SKILL.md), and complete its section 0 (license preconditions, scheme rules, data residency and vendor terms, financial-crime touchpoints, conduct, the audit-proof metric) before any requirement is written. A blank overlay field is a decision deferred to whoever finds it blank. Regulator names, section numbers, and quoted text come only from that module or from primary text the user supplies; never invent them.
 
+## Inputs
+
+The discovery evidence and the problem statement a normal PRD would need, plus four things this skill cannot proceed without. What the model is actually being asked to decide or produce, stated as the user's outcome rather than the capability. Whether a person sees the output before it has an effect, and who that person is. The data the system reads at inference time, and where it came from. And a labelled set, or the plan and owner for building one, because acceptance criteria here become eval cases and there is nothing to write without examples. Ask for these when they are missing rather than drafting around them. Two conditions stop the work outright: if a financial or data regulator governs the product, route through [reg-gap-check](../reg-gap-check/SKILL.md) and the regulated module before another section is written, and if the implementer turns out to be a human engineering team after all, this is the wrong skill and [write-prd](../write-prd/SKILL.md) is the right one.
+
 ## Workflow
 
 1. Classify the context. Regulated: take the regulated route above, then return here for sections the module does not cover. Unregulated: start from the document at the weight already chosen, [prd.md](../../templates/definition/prd.md) or [one-pager.md](../../templates/definition/one-pager.md); the overlay sections below attach to either.
@@ -85,6 +89,14 @@ Return the restructured PRD with the five sections, then the GAPS table:
 
 | # | Gap | Where in original | Blast radius if shipped as-is | Smallest fix |
 |---|---|---|---|---|
+
+## Failure modes this skill guards against
+
+- **Acceptance criteria that cannot be evaluated.** "Responds helpfully and accurately" as a pass condition. Helpful is not measurable, so nothing can be said to have failed, and it ships anyway.
+- **Non-determinism discovered at launch.** The document treats output as fixed, and latency, cost and the interface were all designed around one answer that the model does not reliably give.
+- **Guardrails left to the prompt.** "Should not hallucinate" written with no owner, no measurement and no escalation path, which makes it the on-call engineer's problem at three in the morning.
+- **An eval set built from demos.** Cases cherry-picked from examples the team already watched work, so distribution shift, adversarial input and edge personas all surface in production first.
+- **Capability described instead of product.** The document says what the model can do rather than what the user gets, and the implementer optimises for the benchmark rather than the workflow.
 
 ## Exit gate
 

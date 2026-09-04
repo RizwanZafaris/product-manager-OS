@@ -62,6 +62,14 @@ Close with the three questions the PM should ask their compliance team THIS WEEK
 
 This skill maps gaps; it does not give legal advice. Where a regime is market-specific and unstated, say "verify against [market] regime" rather than inventing the rule. Where the regulated module covers the instrument, point there; its citations carry verification dates and this skill's prose does not.
 
+## Failure modes this skill guards against
+
+- **Confidently citing invented regulation.** Plausible-sounding clauses no regulator wrote, pasted into a gap analysis. Counsel catches the fabrication and the whole document loses standing.
+- **Treating "we will add consent later" as a plan.** Consent, identity or scheme-mandate mapping deferred as a downstream concern, producing a build that has to be unwired under audit pressure.
+- **Mapping to the wrong regime.** Assuming one licence covers money transmission, electronic money and lending because all three touch money, which triggers filings in markets the product never needed.
+- **Flattening every severity.** A missing receipt line item listed beside an unfiled report as though both were the same colour, so leadership triages neither and the serious one ships.
+- **Routing citations around the regulated module.** Letting the model paraphrase scheme rules in free text rather than through the verified path, so the output cannot be defended in a compliance review.
+
 ## Exit gate
 
 This skill's output feeds Gate 2 and Gate 5 in [../../os/STAGE-GATES.md](../../os/STAGE-GATES.md). Do not report the check done until every domain has a verdict, every BLOCKER and MAJOR has an owner and named closing evidence, and the three compliance questions are written.

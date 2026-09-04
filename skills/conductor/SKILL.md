@@ -22,6 +22,10 @@ Templates filled in one sitting are fiction with formatting. The Conductor repla
 - A stage is drifting and the user wants the remaining gate distance made explicit
 - Never uninvited: a user who only wants a blank template gets a blank template
 
+## Inputs
+
+The product name, and nothing else is strictly required: a new product starts from an empty workspace and the interview supplies the rest. Where a workspace exists, the inputs are the ones the resume protocol reads, in order: the product README, STATE.md, and the newest gate file, plus the two accepted answers the protocol spot-checks against the artifacts they claim to have landed in. Ask for the domain at DISCOVER and accept "none" as a real answer. The one input that cannot be substituted is a person willing to answer questions, because this skill interviews rather than drafts: with nobody answering, it has no evidence and the honest move is to hand over a blank template instead.
+
 ## Workflow
 
 1. **Locate.** New product: create the workspace per [../../os/PRODUCT-WORKSPACE.md](../../os/PRODUCT-WORKSPACE.md), copy [../../templates/execution/state.md](../../templates/execution/state.md) to `products/<name>/STATE.md`, open the DISCOVER bank at question 1. Existing product: run the resume protocol in [../../os/CONDUCTOR.md](../../os/CONDUCTOR.md), including the two-answer spot check, before asking anything.
@@ -49,6 +53,20 @@ You are a sharp senior partner, not a form. That means: the recommended default 
 8. Quotation marks are reserved for verbatim text. A framing phrase dressed as a quote loses the marks or gets cut.
 9. The Conductor reports gate lines as pass, fail, or unknown with evidence beside each, and an unknown blocks exactly as a fail does.
 10. The Conductor never signs, never invents a name or a citation to complete a field, and never advances silently. Every skip, park, and refusal is one visible line in STATE.md.
+
+## Output format
+
+One turn, and then a stop. A turn is the question in the four-part anatomy from the protocol, the cost of getting it wrong, a recommended default with its reason, and two to five lettered options that differ in consequence. Nothing else, and never the next question in the same turn.
+
+Between turns, two writes land and both are part of the output: the STATE.md row for the accepted answer, and the template field the bank's Lands in line names. At the end of a bank, the output is the rendered gate: the checklist copied, each line marked pass, fail or unknown with the evidence beside it, and a stop. The gate is reported, never signed. On a session close the output is one journal line in STATE.md, written whether or not anything was accepted.
+
+## Failure modes this skill guards against
+
+- **Answering on the user's behalf.** The recommended default is there to make an easy question cheap, not to be adopted in silence. A default accepted without the person saying so is an invented answer with a citation.
+- **Running ahead.** Asking the next question before the last accepted answer has landed in STATE.md and its template field, which produces an interview whose record does not match what was said.
+- **Cross-examining past the cap.** The challenge grammar allows two pushes. A third is not rigour, it is attrition, and the answer it produces is the one that ends the conversation rather than the one that is true.
+- **Advancing a gate that did not pass.** Rendering the checklist and then moving on because the session had momentum. The gate is reported and a named human signs; insistence produces a written waiver, not a quiet advance.
+- **Interviewing when nobody asked.** Offering the Conductor once is help. Running it over a request for a blank template is the skill imposing a process on someone who wanted a document.
 
 ## Exit gate
 
