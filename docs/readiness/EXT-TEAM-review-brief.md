@@ -140,7 +140,48 @@ where the documentation claims more than the code does, that is a finding.
 P0 and P1 block the release. P2 and P3 do not, and should be filed rather than
 fixed in the release candidate.
 
+## Recording your review
+
+<!-- Until this existed, closing this gate meant hand-writing a JSON file with
+     a closed schema and a correct tree digest. Nobody did, so the check stayed
+     red, red became its normal state, and three pull requests were merged with
+     it failing. A gate nobody can close is a gate everybody learns to ignore. -->
+
+One command, run from the repository root after you have actually reviewed:
+
+```bash
+python3 tools/review_gate.py --record \
+  --reviewer "Your Name" \
+  --scope "what you actually read" \
+  --evidence "python3 tools/ci_gate.py|18/18 passed" \
+  --finding "P2|accepted|one-line summary|where you saw it"
+```
+
+`--scope`, `--evidence` and `--finding` repeat. Omit `--finding` if you found
+nothing, which is a legitimate outcome and is recorded as such.
+
+Three things it will refuse, on purpose:
+
+- **A review that ran nothing.** `--evidence` is required. A review with no
+  command behind it is a reading, and this gate is not for readings.
+- **A review with no stated scope.** A later reader has to know what the
+  acceptance covered.
+- **A self-attestation.** If the name you give matches an author in the
+  repository's recent history, it refuses and writes nothing. That is the one
+  property this gate exists for: the person who wrote the change must not be
+  able to close the check on it by running a command.
+
+It records a claim and never dresses it as proof. The record it writes says
+`identity_assurance: unauthenticated-local-claim`, because nothing here
+authenticates anyone. Only `accepted` is recordable; a rejection is expressed
+by leaving the gate red and saying so where the change is being discussed.
+
+The record binds to the exact tree you reviewed. Any later change makes it
+stale again, which is correct: your acceptance covered what you read.
+
 ## The record
+
+
 
 Fill this in and the gate has its evidence. An unsigned or undated record does
 not close it.

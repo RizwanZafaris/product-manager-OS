@@ -26,6 +26,12 @@ For agent runtimes, [../../agents/research-agent.md](../../agents/research-agent
 - Whenever a persona, market claim, or competitor statement is about to be written down as fact
 - When two sources in the workspace already disagree and nobody has said so in writing
 
+## Inputs
+
+The research question, and the decision it is meant to inform, because a question with no decision behind it produces a document rather than an answer. The workspace as it stands, so existing evidence notes are read before new searches are run and the same source is not re-litigated. Any claim already written down as fact that this pass is expected to verify, named explicitly. And the date by which the answer is needed, which decides the sizing in pass 3 rather than being discovered when the count is already past twelve.
+
+Ask for the decision when it is missing. If nobody can say what result would change what they do, say so and stop: this method is expensive and it is the wrong instrument for curiosity.
+
 ## The method: six passes, in order
 
 Run them in order. Each pass produces a written artifact before the next begins, because work that lives only in the chat is work that evaporates.
@@ -80,6 +86,14 @@ Before handoff, re-read the whole output as a hostile reviewer whose job is to f
 ## Output shape
 
 The handoff is: the decomposition with its coverage check, the search plan, the evidence notes, the tension list, one committed position per sub-question, and the pass 6 weakest-claim line. Unverified items go to the assumptions register with a suggested validation method, not into any template as fact.
+
+## Failure modes this skill guards against
+
+- **Research that only confirms.** Every source agrees, no adversarial search was planned, and the conclusion is the one the requester arrived with. The adversarial lens in pass 2 exists because this is the default outcome, not the unusual one.
+- **Paraphrase inside quotation marks.** A tidied sentence presented as the source's own words. It reads better, it is unfalsifiable later, and it is the single defect that makes an evidence ledger worthless.
+- **Tensions never surfaced.** Notes are individually well cited and never read against each other, so a real disagreement between two sources survives into a persona as though it were settled.
+- **Dead ends left unrecorded.** A source checked and found irrelevant, with nothing written, so the next person spends the same hour discovering the same nothing.
+- **A position committed with no confidence class.** The answer is stated flatly, the reader assumes it is verified, and the single source it rested on is never visible again.
 
 ## Exit gate
 
