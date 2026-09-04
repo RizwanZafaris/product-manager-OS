@@ -82,6 +82,11 @@ THEN
 
 ## 3. Coverage summary
 
+<!-- Coverage is counted against the stories, not against the criteria. Ten
+     criteria on one story and none on four others reads as thorough and is
+     the most common gap at Gate 2. -->
+
+
 | Story / FR | Happy path ACs | Edge ACs | Negative ACs | Gaps |
 |---|---|---|---|---|
 | | | | | |
@@ -104,7 +109,24 @@ THEN
 
 ---
 
+## How these criteria fail
+
+<!-- The test for every row below: could this criterion fail? If no observable
+     result would ever mark it not met, it is a sentence, not a criterion. -->
+
+| Failure mode | What it looks like | The rule that stops it |
+|---|---|---|
+| Restates the story | "Search returns results", against a search story | A criterion adds a behaviour the title does not already state |
+| Could never fail | "The page is responsive", "the flow is intuitive" | Write the observation that would mark it not met. If there is none, rewrite |
+| Happy path only | No empty input, no timeout, no permission denied, no duplicate | At least one negative and one boundary case per story |
+| Adjectives as thresholds | "Fast", "reliable", "accurate enough" | A number and a unit, or the value is decided by whoever builds it first |
+| A tester cannot run it | "Handles errors gracefully", with no steps and no expected result | Executable by someone who cannot ask the author what was meant |
+
 ## Exit gate (feeds Gate 2: requirements signed off)
+
+<!-- Checkable by someone who did not write this document, which is the
+     test of whether a gate is a gate. -->
+
 
 - [ ] Every must story and must FR has at least one criterion
 - [ ] Every criterion has one action and one observable outcome

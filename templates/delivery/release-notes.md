@@ -101,13 +101,57 @@ Skill: [release-manager-agent](../../agents/release-manager-agent.md)
 
 ## 6. Distribution
 
+<!-- Where a note goes decides who reads it. Support reads it before the
+     customer does, or the first person to explain the change to a customer
+     is guessing. -->
+
+
 | Audience | Where it is published | Owner | Approved by | Published (date) |
 |---|---|---|---|---|
 | Customers | [changelog, help center, in-app] | | | |
 | Internal | [wiki, channel, email] | | | |
 | Support | [knowledge base, macro set] | | | |
 
+## 7. How release notes fail
+
+<!-- These notes are read by people who do not work here, which is what makes
+     the first two rows expensive: internal language is invisible to the
+     person who wrote it and opaque to everyone else. -->
+
+| Failure mode | What it looks like | The rule that stops it |
+|---|---|---|
+| Internal language leaks out | A line describing a service, a queue or a refactor | Every line says what a user can now do, see, or stop seeing |
+| Changes nobody can act on | "Improved internal error handling" | If a reader cannot tell whether it affects them, it does not belong here |
+| Vague bug fixes | "Fixed an issue with exports" | Name the symptom and the situation, so the person who reported it recognises it |
+| Removals go unmentioned | Only additions appear, and something quietly stopped working | A required section for anything removed, deprecated, or changed by default |
+| Written after the release | Users meet the change before the note explaining it exists | The draft is done before the release, and the gate above checks that |
+| No owner, so they stop | A gap of several releases, then an apology | A named owner, and a missing note is a missed deliverable rather than an oversight |
+
+### Worked micro-example (ILLUSTRATIVE, invented)
+
+<!-- The same release written twice. The first is what gets published when
+     notes are drafted from the commit log; the second is what the rules above
+     ask for. Delete once real content exists. -->
+
+*As written from the changelog:*
+
+> *Refactored the extraction pipeline for improved throughput. Updated error handling. Various bug fixes and performance improvements. Deprecated the legacy import endpoint.*
+
+*As published:*
+
+> **New.** *Photograph a receipt and the merchant, date and total fill in for you. Available on iOS and Android, one currency to start.*
+>
+> **Fixed.** *Expenses submitted between midnight and 1am were dated to the previous day. If you corrected a date manually in the last month, it is now correct on new submissions.*
+>
+> **Changing on 30 September.** *The old bulk import link stops working. If you upload a spreadsheet each month, switch to the new import screen before then. Nothing you have already uploaded is affected.*
+
+The third block is the one the first version buried in a single word. A removal that a reader does not notice is the change most likely to generate a support ticket, and it is the one most often written for the team rather than the customer.
+
 ## Exit gate (feeds Gate 5: release readiness green)
+
+<!-- Checkable by someone who did not write this document, which is the
+     test of whether a gate is a gate. -->
+
 
 The customer and support blocks satisfy the comms rows of [release-readiness.md](release-readiness.md) section 6 and the comms checkbox at [Gate 5](../../os/STAGE-GATES.md).
 

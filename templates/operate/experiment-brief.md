@@ -38,6 +38,11 @@ aliases: ["Experiment Brief", "experiment-brief"]
 
 ## 2. Target metric and guardrail
 
+<!-- One primary metric. Two primary metrics means the result can always be
+     read as a win, and it will be. Guardrails are the metrics you are not
+     trying to move and would stop for, with a floor written as a number. -->
+
+
 | Field | Answer |
 |---|---|
 | Target metric | [one metric, with unit and period] |
@@ -47,6 +52,11 @@ aliases: ["Experiment Brief", "experiment-brief"]
 | Guardrail metric and floor | [what must not degrade, and by how much before we stop] |
 
 ## 3. Variants
+
+<!-- Describe what the user experiences, not what was built. A variant a
+     reader cannot picture cannot be reasoned about later, and the person
+     reading this in six months is deciding whether to rerun it. -->
+
 
 | Variant | What the user experiences | Allocation |
 |---|---|---|
@@ -80,7 +90,27 @@ aliases: ["Experiment Brief", "experiment-brief"]
 
 **Decided on [YYYY-MM-DD]:** [result, decision taken, link to the metrics review entry]
 
+## How this experiment fails
+
+<!-- Every row here produces a result that will be quoted in a decision
+     meeting and should not be. The common thread is that the rule was decided
+     after the data arrived, which is the one thing an experiment exists to
+     prevent. -->
+
+| Failure mode | What it looks like | The rule that stops it |
+|---|---|---|
+| A variant, not a hypothesis | The brief names the change but not the behaviour it predicts | State the expected effect and its direction before launch |
+| Peeking and stopping early | Checking daily and calling it the first time it looks significant | Fix the sample size and the analysis date in advance, and hold to them |
+| Never powered | A detectable effect picked to suit the schedule, then "no effect" reported | Compute the minimum detectable effect from the baseline and the traffic first |
+| No guardrails | The primary metric improves while something else quietly gets worse | Name guardrails with floors, and check them before declaring a result |
+| No decision rule | "We will look at the numbers and discuss" | Write ship, kill and extend criteria before the first user sees a variant |
+| The loser ships anyway | The variant underperformed and was merged regardless | Tie the ship decision to the rule written above, or record that it was overridden and by whom |
+
 ## Exit gate
+
+<!-- Checkable by someone who did not write this document, which is the
+     test of whether a gate is a gate. -->
+
 
 This brief is fit to launch when:
 

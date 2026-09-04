@@ -73,7 +73,36 @@ aliases: ["Product Vision", "vision"]
 | | | [condition, not a date] |
 | *build for enterprise procurement* | *the primary customer buys on a card, and compliance work would consume two quarters* | *first cohort saturated and inbound enterprise demand is documented* |
 
+## How this vision fails
+
+<!-- A vision is the easiest document to write and the hardest to write
+     usefully, because nothing in it can be checked this quarter. The rows
+     below are the ways it reads as inspiring and commits to nothing. -->
+
+| Failure mode | What it looks like | The rule that stops it |
+|---|---|---|
+| Indistinguishable from a competitor's | Language any vendor in the category could publish unchanged | Name one moment for one person that only you could credibly own |
+| A roadmap in disguise | Quarters, deliverables and dates dressed as direction | A vision states a destination. The moment it carries a date it is a plan |
+| Adjectives with no picture | "Seamless", "intelligent", "delightful", and no scene | One paragraph describing a named person doing the thing, some years out |
+| Unfalsifiable | So abstract that no outcome could ever contradict it | Write the observation that would mean it had failed |
+| Written once, never referenced | A file nobody opens between annual planning rounds | It is quoted in kickoffs and in PRDs, or it is not operating |
+
+### Worked micro-example (ILLUSTRATIVE, invented)
+
+<!-- Two versions of the same vision. The first is the failure mode; the
+     second is what the rows above ask for. Delete once real content exists. -->
+
+*Weak: "To be the most intuitive and intelligent expense platform, delighting users everywhere with seamless automation."* Any competitor could publish that sentence unchanged, and no result could contradict it.
+
+*Stronger: "By 2029, a field rep never opens an expense form. They photograph a receipt on the way to the next meeting and the filing is done, correctly, without them checking it. We will know we were wrong if reps keep opening the form to verify."*
+
+The second names a person, a moment, a date, and the observation that would mean it failed. It is still ambitious and it is no longer unfalsifiable.
+
 ## Exit gate
+
+<!-- Checkable by someone who did not write this document, which is the
+     test of whether a gate is a gate. -->
+
 
 This vision is fit to publish when:
 

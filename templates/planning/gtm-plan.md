@@ -85,7 +85,24 @@ aliases: ["GTM Plan", "gtm-plan"]
 |---|---|---|---|
 | | [number, with unit and period] | [name, reachable during launch] | [pause / rollback per the readiness doc, plus who is told] |
 
+## How this launch fails
+
+<!-- The first row is the expensive one, because launching to everyone is the
+     default and it removes the only chance to learn cheaply. -->
+
+| Failure mode | What it looks like | The rule that stops it |
+|---|---|---|
+| Everyone at once | One announcement to the whole base on day one, no cohort | Seed a named first cohort, read the signal, then widen |
+| No first cohort | Segments described, but everybody goes live together anyway | Name the cohort, its size, and how feedback is captured |
+| Success is the launch | The measure is that it shipped, or day-one traffic | Success is a retained behaviour some weeks later, per cohort |
+| Support briefed last | Reps and agents get the material the day customers do | Brief support and sales before launch, and record the sign-off |
+| No rollback for the message | Reaction is bad, and the copy stays up while a meeting is arranged | Agree the swap trigger and the alternate wording in advance |
+
 ## Exit gate
+
+<!-- Checkable by someone who did not write this document, which is the
+     test of whether a gate is a gate. -->
+
 
 This plan is fit to launch on when:
 

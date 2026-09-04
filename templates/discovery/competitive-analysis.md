@@ -44,6 +44,12 @@ Skill: [competitive-intel](../../skills/competitive-intel/SKILL.md)
 
 ## 2. The job and the current alternatives
 
+<!-- Start from the job, not the vendor list. A competitor set assembled from
+     the vendors you already know about will miss the alternative most users
+     actually chose, which is frequently a spreadsheet, an internal script, or
+     leaving the problem unsolved. -->
+
+
 - **The job:** [what the customer is trying to get done, stated without naming any product]
 - **What they hire today:** [the incumbent, the spreadsheet, the manual process, the nothing]
 
@@ -84,12 +90,22 @@ Skill: [competitive-intel](../../skills/competitive-intel/SKILL.md)
 
 ## 6. So what
 
+<!-- The section that makes the rest worth writing. It commits to something:
+     what changes in the plan, what does not, and what would have to be true
+     for that to be wrong. An analysis whose conclusion is that the landscape
+     is interesting has not finished. -->
+
+
 - **What this says about the decision:** [two or three sentences, committed, not balanced]
 - **Where we are genuinely behind, and whether it matters to this decision:** [honest, one or two lines]
 - **What we will not copy, and why:** [the feature everyone will ask for after reading this]
 - **Open questions that would change the answer:** [each with an owner and a date]
 
 ## 7. Worked micro-example (illustrative, invented; delete once real content exists)
+
+<!-- Shows the evidence standard: a dated source per claim, and a named
+     decision at the end. Delete it once real content exists. -->
+
 
 > **Decision:** Whether the first release of a receipt-scanning feature ships our own extraction or a vendor's, decided by the product lead by the end of the month.
 > **What would change it:** A vendor priced under our per-receipt cost ceiling that also allows an on-premises deployment for our regulated customers.
@@ -99,7 +115,25 @@ Skill: [competitive-intel](../../skills/competitive-intel/SKILL.md)
 
 ---
 
+## 8. How this analysis fails
+
+<!-- Every row produces a document that looks thorough and changes nothing.
+     The last is the one that costs most, because the alternative most
+     products actually lose to is not a competitor. -->
+
+| Failure mode | What it looks like | The rule that stops it |
+|---|---|---|
+| Feature checklist | Rows of features with ticks, no weighting, no user impact | Compare on the job the user is hiring for, not on counts |
+| Cherry-picked set | Only the direct rivals appear, and not the tools users really consider | Include at least one non-obvious substitute per segment |
+| Undated claims | "Market leader", or a screenshot with no source and no date | Every claim carries a source and the date it was retrieved |
+| No decision attached | A long document ending in "more research needed" | Section 1 names the decision. If none, do not write this document |
+| Copying their roadmap | The plan mirrors a rival's recent launches rather than your own thesis | Prioritise against your differentiation, not their shipping log |
+| Ignoring the real alternative | A spreadsheet, a manual process, or doing nothing is never scored | Score the status quo as a first-class competitor. It usually wins |
+
 ## Exit gate (feeds Gate 1: problem worth solving)
+
+<!-- Checkable by someone who did not do the research. -->
+
 
 - [ ] Section 1 names one decision, one decider, and one date
 - [ ] The finding that would flip the decision was written before the research started

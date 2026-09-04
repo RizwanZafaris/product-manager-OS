@@ -52,11 +52,34 @@ Skill: [program-premortem](../../skills/program-premortem/SKILL.md)
 
 ## 4. Closed risks
 
+<!-- Closed does not mean deleted. The value of this table is the pattern it
+     shows over a year: the same risk closing three times means it was never
+     addressed, only survived. -->
+
+
 | Register # | Closed on | How it resolved (did not occur / occurred, impact was ... / mitigated away) |
 |---|---|---|
 | | | |
 
+## 5. How this register fails
+
+<!-- A register that fails this way still looks like a register, which is the
+     expensive part: the team believes the risk is managed because it is
+     written down. Being written down is not a mitigation. -->
+
+| Failure mode | What it looks like | The rule that stops it |
+|---|---|---|
+| No owner | A row with a score and a date and no human attached | Every row has one named owner. Orphans go to the top of the review, not the bottom |
+| Scored once, never revisited | Probability and impact unchanged for quarters while the world moved | Re-score at every review, and flag any row not touched in a month |
+| Mitigation restates the risk | "Risk: outage. Mitigation: prevent the outage." | A mitigation names an action, an owner and a date, or it is not one |
+| Everything is medium | A long list of identical amber rows and no triage | Force a spread. If most rows are medium, nobody has ranked them |
+| Closed risks deleted | The history disappears, and the same risk returns next quarter unrecognised | Closed rows are archived, not removed, and reviewed for repeats |
+| The register replaces escalation | A serious risk is logged, never raised, and leadership is surprised | Above an agreed threshold, logging is not enough: the row names who was told and when |
+
 ## Exit gate
+
+<!-- Checkable by someone who does not own any of the rows. -->
+
 
 - [ ] Every risk is written as an event that could happen, not a topic heading
 - [ ] Every open risk has a score, an owner, and a review date in the future

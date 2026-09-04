@@ -79,7 +79,25 @@ Skill: [persona-builder](../../skills/persona-builder/SKILL.md)
 
 ---
 
+## How this map fails
+
+<!-- A journey map is the artifact most often drawn from the org chart rather
+     than from a user, and it looks identical either way. -->
+
+| Failure mode | What it looks like | The rule that stops it |
+|---|---|---|
+| Drawn from the org chart | The stages match internal teams and handoffs | Stages are what the user is trying to do, named in their words |
+| The happy path only | Every step succeeds, and nothing is confusing or abandoned | Mark where people drop out. That is where the product is |
+| No evidence behind a step | Emotions and pain points asserted with nothing cited | Each stage cites an interview, a ticket or an observation, or is marked assumption |
+| Ends at purchase | The map stops where the funnel does, and ignores the life after | Map through first value and renewal, because that is where retention is lost |
+| A poster, not an input | Beautifully produced, never referenced again | Every pain point names the opportunity or story it produced, or is deleted |
+| One map for several personas | Composite journey averaging people who behave differently | One map per persona whose journey actually differs |
+
 ## Exit gate (feeds Gate 1: problem worth solving)
+
+<!-- Checkable by someone who did not write this document, which is the
+     test of whether a gate is a gate. -->
+
 
 - [ ] One persona and one scenario, named in the header
 - [ ] Current journey drawn from cited evidence, not memory
