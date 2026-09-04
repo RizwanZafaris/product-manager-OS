@@ -19,6 +19,10 @@ A product review exists to change decisions while they are cheap. The version th
 - When reviews have drifted into demos, status, or theater and need a reset
 - When leaders first meet work at Gate 5 and wish they had met it at the idea stage
 
+## Inputs
+
+The pre-read, circulated at least forty-eight hours before the meeting, which is the input the ritual stands or falls on. From each team: the work in progress across all three stages, pre-build, in-progress and post-build, rather than a highlight from one of them. Post-build numbers come from the metrics review and from nowhere else, so a team without one brings no numbers rather than fresh ones. The open decisions each team needs from the room, named in advance. And the decision log, so the review can see what it decided last time and whether it held. A review whose pre-read arrives in the meeting is a demo, and running it anyway teaches everyone that the pre-read is optional.
+
 ## The three rules
 
 1. **48-hour pre-read.** The team circulates the written material two full days ahead: the relevant discovery document, one-pager, or metrics review, not a deck built for the meeting. The review starts from questions, never from a recap. If the reviewers did not read, the item is rescheduled; the review does not degrade into a presentation to compensate.
@@ -40,6 +44,20 @@ Twenty minutes per team, three buckets in this order:
 3. Run the walk per team, three buckets, weakest thing first.
 4. Record: decisions to the decision log same day, each with decider and rationale; new risks to the [risk register](../../templates/execution/risk-register.md) with owners.
 5. Follow through: open last week's decisions at the start of each review; a decision nobody executed is this week's first agenda item.
+
+## Output format
+
+Decisions, written the same day, in the decision log. Not minutes, not a summary, and not a recording: the output of this ritual is the set of calls it made, each with one named decider and the options that lost.
+
+Anything the room could not decide leaves as a named owner and a date, in the same log, marked as open rather than as discussed. Status belongs in STATE.md and the review does not produce it, which is the mechanism that stops the meeting decaying into a status round.
+
+## Failure modes this skill guards against
+
+- **The demo day.** Teams present finished work and the room applauds. Nothing pre-build is shown, so leadership sees ideas for the first time at launch, when changing them is most expensive.
+- **Status theatre.** The walk becomes a round of updates, everything is on track, and no decision is made. The tell is a review that could have been an email and produced no decision-log entry.
+- **The pre-read read in the room.** Twenty minutes of silent reading, then reactions rather than judgment, and the deep questions never get asked because nobody had time to form them.
+- **Numbers invented for the meeting.** Post-build figures assembled the night before, from a different definition than the metrics review uses, so two teams report the same metric differently and the room debates arithmetic.
+- **Decisions that do not land.** The call is made in the room and never written, so it is remade next month by people who were present the first time.
 
 ## Exit gate
 

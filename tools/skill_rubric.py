@@ -62,6 +62,22 @@ SECTIONS = (
     "Exit gate",
 )
 
+# Headings that carry a contract element under a different name. These are
+# recognised rather than renamed, because in every case here the local name is
+# more informative than the generic one: "The method: six passes, in order"
+# tells a reader how many passes there are and that order matters, which
+# "Workflow" does not. Forcing the rename would score better and read worse,
+# which is the failure this whole family of rubrics keeps having to avoid.
+#
+# They are reported as aliases rather than silently accepted, so the naming
+# inconsistency stays visible to anyone who wants to settle it.
+ALIASES = {
+    "Workflow": ("The method: six passes, in order", "The walk", "The method"),
+    "Output format": ("Output shape",),
+    "Inputs": ("Inputs and preconditions",),
+}
+
+
 # Not prose skills. Their contract is machine-readable and lives beside them,
 # and pmos/skills.py validates it against a schema and a mandatory-asset list.
 EXEMPT_PREFIXES = ("skills/runtime/",)
@@ -82,8 +98,19 @@ def score_skill(path):
     rel = Path(path).resolve().relative_to(REPO.resolve()).as_posix()
     text = Path(path).read_text(encoding="utf-8")
     headings = [h.strip() for h in HEADING_RE.findall(text)]
-    present = [s for s in SECTIONS if s in headings]
-    missing = [s for s in SECTIONS if s not in headings]
+    def found(section):
+        if section in headings:
+            return section
+        for alias in ALIASES.get(section, ()):
+            if alias in headings:
+                return alias
+        return None
+
+    resolved = {s: found(s) for s in SECTIONS}
+    present = [s for s in SECTIONS if resolved[s]]
+    missing = [s for s in SECTIONS if not resolved[s]]
+    aliased = {s: resolved[s] for s in SECTIONS
+               if resolved[s] and resolved[s] != s}
 
     body = {}
     parts = re.split(r"(?m)^##\s+", text)
@@ -93,7 +120,7 @@ def score_skill(path):
 
     # Two checks beyond presence, because a section that exists and says
     # nothing is the failure a heading count cannot see.
-    workflow = body.get("Workflow", "")
+    workflow = body.get(resolved.get("Workflow") or "Workflow", "")
     numbered = len(NUMBERED_STEP_RE.findall(workflow))
     # A skill's exit gate is prose that names the conditions under which the
     # work is not done, not a checkbox list. Counting "- [ ]" here reported
@@ -101,10 +128,12 @@ def score_skill(path):
     # rather than about the skills. What is measured instead is whether the
     # gate says anything: a gate of one sentence that names no condition is
     # the failure worth catching.
-    gate = body.get("Exit gate", "")
+    gate = body.get(resolved.get("Exit gate") or "Exit gate", "")
     gate_boxes = gate.count("- [ ]")
     gate_words = len(gate.split())
-    failures = body.get("Failure modes this skill guards against", "")
+    failures = body.get(
+        resolved.get("Failure modes this skill guards against")
+        or "Failure modes this skill guards against", "")
     failure_items = len(re.findall(r"^\s*[-*]\s+\*\*", failures, re.M)) or \
         len(re.findall(r"^\s*[-*]\s+\S", failures, re.M))
     links = len(LINK_RE.findall(text))
@@ -113,6 +142,7 @@ def score_skill(path):
         "path": rel,
         "sections_present": len(present),
         "missing": missing,
+        "aliased": aliased,
         "workflow_steps": numbered,
         "exit_gate_boxes": gate_boxes,
         "exit_gate_words": gate_words,
@@ -156,6 +186,17 @@ def main(argv=None):
     for section in SECTIONS:
         have = sum(1 for r in scored if section not in r["missing"])
         say("    %-44s %d/%d" % (section, have, len(scored)))
+
+    alias_users = [r for r in scored if r.get("aliased")]
+    if alias_users:
+        say("")
+        say("  %d skill(s) carry a section under a different heading:"
+            % len(alias_users))
+        for row in alias_users:
+            for canonical, actual in row["aliased"].items():
+                say("    %-38s %s -> %s"
+                    % (row["path"].replace("skills/", "").replace(
+                        "/SKILL.md", ""), canonical, actual))
 
     weak = [r for r in scored if r["sections_present"] < 7]
     if weak:

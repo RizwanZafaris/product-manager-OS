@@ -20,6 +20,10 @@ Escalation is a service to the decider, not an act of aggression. The [program p
 - A risk or dependency owner acknowledges the item and does not act
 - Your steering forum has "noted" the same item twice
 
+## Inputs
+
+The decision or dependency that is stuck, and the date it was needed by, because an escalation with no missed date is a complaint. The name of the person who currently holds the decision, taken from the stakeholder map rather than assumed from the org chart. What has already been tried, with dates, since the first question any escalation receives is why it did not resolve at the level below. The cost of continued delay, stated as a number or a named consequence rather than as urgency. And the specific ask: what you want the person you are escalating to actually to do, which is the input most often missing and the reason most escalations return as sympathy.
+
 ## The brief
 
 One page, six labeled parts, in this order:
@@ -49,6 +53,20 @@ Two standing rules. The counterpart sees the brief before it goes up a rung: no 
 2. Write the six-part brief. Show it to the counterpart.
 3. Route up the ladder, one rung at a time, on the SLAs above.
 4. Record the outcome in the decision log: granted, declined, or deferred, with the decider named. A declined or deferred ask becomes a risk-register row with the decider recorded as accepting the risk, a likelihood, an impact, and a review date.
+
+## Output format
+
+The one-page brief in the six-part shape above: situation, impact, urgency, options, recommendation, ask. One page is the constraint and it is load bearing, because the reader is being asked to decide rather than to understand everything.
+
+Two records follow the outcome and both are the output. The decision lands in the decision log, granted or declined, with the decider named. A declined or deferred ask does not disappear: it becomes an owned, accepted risk in the risk register, with the owner being the person who declined it. That second write is what stops escalation from being a way of moving a problem out of view.
+
+## Failure modes this skill guards against
+
+- **Escalating without a missed date.** A dependency that is merely worrying produces a brief nobody can act on, and it spends the credibility needed for the one that has actually slipped.
+- **Skipping the ladder.** Going to the most senior available person first, which resolves this instance and guarantees the next one has to start there too.
+- **An ask stated as a feeling.** "We need more support" gives the reader nothing to grant or decline. Name the decision, the resource or the date change being requested.
+- **Options with one real candidate.** Two straw alternatives beside the preferred one is not a choice, and an experienced reader will notice and discount the recommendation with it.
+- **A decline that goes unrecorded.** The ask is refused, nothing is written, and the risk quietly returns to the person who raised it with no owner and no acceptance behind it.
 
 ## Exit gate
 
