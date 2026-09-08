@@ -52,6 +52,7 @@ sys.path.insert(0, str(REPO))
 
 DEFAULT_OUT = REPO / ".readiness" / "ext-ai-probe.json"
 GATEWAY_TIMEOUT_SECONDS = 120
+GIT_TIMEOUT_SECONDS = 30
 
 # Fixed, public, small. Each names the task class pmos.routing will judge it
 # under, so the policy result is about the router's decision and not about
@@ -94,8 +95,12 @@ def sha256(text):
 
 
 def git(*args):
-    done = subprocess.run(["git", *args], cwd=str(REPO), capture_output=True,
-                          text=True)
+    try:
+        done = subprocess.run(["git", *args], cwd=str(REPO),
+                              capture_output=True, text=True,
+                              timeout=GIT_TIMEOUT_SECONDS)
+    except (OSError, subprocess.SubprocessError):
+        return ""
     return done.stdout.strip() if done.returncode == 0 else ""
 
 
@@ -181,13 +186,34 @@ def omniroute_models(free_only=True):
     Read out of `omniroute simulate`, which resolves the provider chain without
     calling upstream. This never asks OmniRoute for the credential it holds.
     """
-    done = subprocess.run(["omniroute", "simulate", "probe"],
-                          timeout=GATEWAY_TIMEOUT_SECONDS,
-                          capture_output=True, text=True)
+    try:
+        done = subprocess.run(["omniroute", "simulate", "probe"],
+                              timeout=GATEWAY_TIMEOUT_SECONDS,
+                              capture_output=True, text=True)
+    except subprocess.TimeoutExpired:
+        # Previously propagated and crashed the probe instead of failing safely.
+        return None
+    except OSError:
+        return None
+    if done.returncode != 0:
+        # A failed simulation's stdout is not an inventory. Parsing it anyway
+        # turned "the gateway is down" into a catalog, and the catalog is what
+        # decides which models may be dispatched.
+        return None
     models = []
     for line in (done.stdout or "").splitlines():
-        for token in re.findall(r"openrouter/[A-Za-z0-9._/-]+(?::free)?", line):
-            token = token.rstrip(".…")
+        for match in re.finditer(r"openrouter/[A-Za-z0-9._/-]+(?::free)?", line):
+            token = match.group(0)
+            # The CLI elides long ids with a horizontal ellipsis. Stripping that
+            # marker off turned a truncated name into a plausible-looking model
+            # id; the marker is the evidence the name is incomplete, so a token
+            # carrying it is discarded rather than repaired.
+            trailing = line[match.end():match.end() + 3]
+            if trailing.startswith("\u2026") or trailing.startswith("..."):
+                # Only a real elision marker means the id was cut short. A
+                # single period is ordinary prose punctuation, and treating it
+                # as truncation silently dropped legitimate models.
+                continue
             if token not in models and (not free_only or token.endswith(":free")):
                 models.append(token)
     return models
@@ -283,6 +309,14 @@ def usable_cost(value):
     """
     if value is None:
         return None, "UNKNOWN"
+    if isinstance(value, bool):
+        # bool is a subclass of int, so float(True) is 1.0. A flag is not a
+        # price, and silently reading one as $1.00 is worse than refusing it.
+        return None, "INVALID"
+    if not isinstance(value, (int, float)):
+        # A numeric string parses, but authoritative usage arrives as a number.
+        # Accepting "0.5" means accepting whatever else a provider puts there.
+        return None, "INVALID"
     try:
         cost = float(value)
     except (TypeError, ValueError):
@@ -340,6 +374,17 @@ def run_via_omniroute(report, args):
                                        "never read a provider credential"
 
     models = omniroute_models(free_only=args.free_only)
+    if models is None:
+        say("REFUSING: gateway discovery failed; its output is not an inventory.")
+        report["catalog"] = {"discovered": 0, "free_only": args.free_only,
+                             "free_models": [], "certified_models": [],
+                             "error": "discovery_failed",
+                             "source": "omniroute simulate did not complete"}
+        report["totals"] = {"calls_made": 0, "attempts": 0, "errors": 1,
+                            "refusals": 0, "cost_usd": 0.0,
+                            "cost_unknown": True, "budget_breach": False}
+        write(report, args.output)
+        return 1
     report["catalog"] = {"discovered": len(models), "free_only": args.free_only,
                          "free_models": models, "certified_models": [],
                          "source": "omniroute simulate, no upstream call"}
@@ -417,7 +462,14 @@ def run_via_omniroute(report, args):
             say("  [REFUSE] %-28s %s" % (case["id"], reason))
             continue
         attempts += 1
-        result = omniroute_chat(model, case["prompt"])
+        try:
+            result = omniroute_chat(model, case["prompt"])
+        except Exception as error:                          # noqa: BLE001
+            # The direct path records an adapter exception as a failed call.
+            # This path let it escape and abort the probe, losing the evidence
+            # of every case already run.
+            result = {"error": type(error).__name__,
+                      "error_detail": str(error)[:200]}
         if not result.get("error"):
             resolved = result.get("resolved_model")
             if not resolved:
@@ -432,7 +484,11 @@ def run_via_omniroute(report, args):
                 result = {"error": "resolved_model_mismatch",
                           "error_detail": "pinned %r, answered %r"
                                           % (model, resolved)}
+        if not result.get("error") and not (result.get("text") or "").strip():
+            result = dict(result, error="empty_output",
+                          error_detail="the gateway returned no output text")
         if result.get("error"):
+            halted = True
             entry.update({"called": True, "error": result["error"],
                           "error_detail": result.get("error_detail")})
             if "cost_usd" in result:
@@ -717,6 +773,18 @@ def main(argv=None):
                 say("  [ERROR]  %-28s resolved_model_mismatch" % case["id"])
                 halted = True
                 continue
+            if not text.strip():
+                # An empty body is not evidence that a model answered, and the
+                # call may still have been billed. Recording it clean let a
+                # provider returning nothing count towards the gate.
+                entry.update({"error": "empty_output",
+                              "error_detail":
+                                  "the provider returned no output text"})
+                report["calls"].append(entry)
+                report["policy_results"].append(entry)
+                say("  [ERROR]  %-28s empty_output" % case["id"])
+                halted = True
+                continue
             if not resolved_model:
                 # Resolved provenance is one of the four things this gate
                 # requires. Without it there is no evidence a model answered.
@@ -726,6 +794,7 @@ def main(argv=None):
                 report["calls"].append(entry)
                 report["policy_results"].append(entry)
                 say("  [ERROR]  %-28s missing_resolved_model" % case["id"])
+                halted = True
                 continue
             report["calls"].append(entry)
             made += 1
@@ -744,10 +813,13 @@ def main(argv=None):
                 halted = True
                 continue
         except Exception as error:                          # noqa: BLE001
+            # Whether the failed call was billed is unknowable from here, so
+            # the remaining budget is unprovable and the run stops.
             entry.update({"called": True, "error": type(error).__name__,
                           "error_detail": str(error)[:200]})
             report["calls"].append(entry)
             say("  [ERROR]  %-28s %s" % (case["id"], type(error).__name__))
+            halted = True
         report["policy_results"].append(entry)
 
     report["totals"] = {

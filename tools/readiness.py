@@ -73,7 +73,8 @@ def say(*parts):
 
 def git(*args):
     done = subprocess.run(["git", *args], cwd=str(REPO), shell=False,
-                          capture_output=True, text=True)
+                          capture_output=True, text=True,
+                          timeout=30)
     return done.stdout.strip() if done.returncode == 0 else None
 
 
@@ -596,7 +597,8 @@ def output_path(value):
     except ValueError:
         return path
     ignored = subprocess.run(["git", "check-ignore", "-q", str(path)],
-                             cwd=str(REPO), shell=False).returncode == 0
+                             cwd=str(REPO), shell=False,
+                          timeout=30).returncode == 0
     if not ignored:
         raise ReadinessError(
             "scorecard output inside the repository must be ignored; use an "

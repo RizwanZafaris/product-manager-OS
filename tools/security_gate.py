@@ -63,7 +63,8 @@ def _tracked(root: Path) -> list[Path]:
     try:
         done = subprocess.run(["git", "ls-files", "-z", "--cached", "--others",
                                "--exclude-standard"], cwd=root,
-                              shell=False, capture_output=True, check=True)
+                              shell=False, capture_output=True, check=True,
+                          timeout=30)
         names = [part for part in done.stdout.decode("utf-8").split("\0") if part]
         return [root / name for name in names if (root / name).is_file()]
     except (OSError, subprocess.SubprocessError, UnicodeDecodeError):

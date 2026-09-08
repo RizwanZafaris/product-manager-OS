@@ -128,6 +128,48 @@ This is an unreleased working-tree change set, not a tag, published package, hos
   one half of the run never read. Gateway discovery had no timeout even after generation got
   one. Both are bounded now.
 
+### Fixed, shared acceptance matrix
+
+- The probe's behaviour is now stated once as a table and asserted against both transports,
+  because every defect closed before this was found on one transport after the other had been
+  fixed -- the tell that they were being repaired case by case rather than as a contract.
+  Writing the matrix immediately found four more. An empty response body was recorded as a
+  successful call on both paths, though an empty body is not evidence a model answered and the
+  call may still have been billed. A missing resolved model, and an adapter exception, each
+  left the run continuing on the direct path while cost failures halted it. And an exception
+  from the gateway transport escaped entirely, aborting the probe and losing the evidence of
+  every case already run.
+- Gateway discovery trusted output it should not have. A failed `omniroute simulate` -- exit
+  nonzero, gateway down -- had its stdout parsed into a catalog, and that catalog is what
+  decides which models may be dispatched. Discovery failure is now distinct from an empty
+  catalog and refuses the run. A discovery timeout propagated as an unhandled exception rather
+  than failing safely, and a missing gateway binary did the same; both are handled. The parser
+  also stripped the CLI's truncation ellipsis off elided model ids and kept the fragment, so
+  `openrouter/nvidia/nemotron-3.5-lig` could enter the catalog as a real model; the marker is
+  evidence the name is incomplete, so such tokens are discarded rather than repaired.
+- The discovery and response parsers now have tests that drive the real functions and fake only
+  the subprocess beneath them. Every previous test replaced them wholesale, which is why none
+  of their failure handling was exercised.
+
+### Added, guards against recurrence
+
+- `test_pmos_invariants.py`, registered in the canonical gate. Three review rounds each found a
+  fresh instance of a defect class the previous round had fixed one example of, and a unit
+  test that pins an example does nothing for the next instance. Each guard here scans the
+  code for the class and names the finding that motivated it: every `subprocess.run` under
+  `tools/` carries a timeout; the cost parser is checked over its whole value domain rather
+  than a sample, including the bool and numeric-string cases that `float()` would otherwise
+  swallow as `$1.00` and `$0.50`; no billed cost is coerced with `or 0.0`; the review gate never
+  reads git path output as text; the transport matrix stays two-sided and keeps its reviewed
+  rows; and every `test_*.py` at the root is in the list CI actually runs -- which the guard
+  proved on itself, failing until its own module was registered.
+- An adversarial self-review of the matrix change, run before opening the PR rather than
+  after, found and closed three more: `usable_cost` accepted `True` as a cost of $1.00 and
+  `"0.5"` as fifty cents; the truncation guard treated a sentence-ending period as an elision
+  marker and silently dropped legitimate models; and the probe's own `git()` helper had no
+  timeout. Four other unbounded subprocess sites in `readiness.py`, `readiness_probe.py` and
+  `security_gate.py` are now bounded.
+
 ### Known external requirements
 
 - Local checks do not verify hosted CI on the exact commit, a live provider, vendor sandboxes, a non-maintainer journey, independent human team review, organization-specific regulatory approval, or a published release artifact. No tag or published release is claimed here.

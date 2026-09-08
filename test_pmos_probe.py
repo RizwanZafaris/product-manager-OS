@@ -615,3 +615,200 @@ class DiscoveryBoundaryTests(unittest.TestCase):
             probe.omniroute_models(free_only=True)
         self.assertIsNotNone(seen.get("timeout"))
         self.assertGreater(seen["timeout"], 0)
+
+
+# --------------------------------------------------------------------------
+# Shared acceptance matrix
+#
+# Every defect closed so far was found on one transport after the other had
+# already been fixed, which is the tell that they were being repaired case by
+# case rather than as a contract. This table states the contract once and runs
+# it against both transports, so a fix to one cannot silently drift from the
+# other.
+# --------------------------------------------------------------------------
+
+CATALOG_MODEL = "openrouter/test/free:free"
+
+
+def _direct(case):
+    """Run one matrix row through the direct adapter."""
+    argv = ["--max-calls", "2"] + list(case.get("argv", []))
+    if case.get("raises"):
+        return run_probe(argv, complete={"side_effect": case["raises"]})
+    return run_probe(argv, complete={"return_value": answer(
+        output=case.get("output", "a real answer"),
+        model=case.get("model", FREE.model),
+        cost=case.get("cost", None) if "cost" not in case
+        else case["cost"])})
+
+
+def _gateway(case):
+    """Run the same row through the OmniRoute gateway."""
+    argv = ["--via", "omniroute", "--model", CATALOG_MODEL,
+            "--max-calls", "2"] + list(case.get("argv", []))
+    if case.get("raises"):
+        return run_probe(argv, omni={"side_effect": case["raises"]})
+    result = {"text": case.get("output", "a real answer"),
+              "resolved_model": (CATALOG_MODEL if case.get("model", "keep") == "keep"
+                                 else case.get("model"))}
+    if "cost" in case:
+        result["cost_usd"] = case["cost"]
+    return run_probe(argv, omni={"return_value": result})
+
+
+MATRIX = (
+    {"id": "clean-free-call", "cost": 0.0,
+     "expect_ok": True, "max_dispatches": 2},
+    {"id": "cost-missing", "expect_ok": False, "max_dispatches": 1,
+     "cost_status": "UNKNOWN"},
+    {"id": "cost-null", "cost": None, "expect_ok": False, "max_dispatches": 1,
+     "cost_status": "UNKNOWN"},
+    {"id": "cost-negative", "cost": -1.0, "expect_ok": False,
+     "max_dispatches": 1, "cost_status": "INVALID"},
+    {"id": "cost-nan", "cost": float("nan"), "expect_ok": False,
+     "max_dispatches": 1, "cost_status": "INVALID"},
+    {"id": "cost-infinite", "cost": float("inf"), "expect_ok": False,
+     "max_dispatches": 1, "cost_status": "INVALID"},
+    {"id": "overcharge-on-zero-budget", "cost": 0.75, "expect_ok": False,
+     "max_dispatches": 1},
+    {"id": "model-substituted", "cost": 0.0, "model": "unapproved/model",
+     "expect_ok": False, "max_dispatches": 1},
+    {"id": "model-missing", "cost": 0.0, "model": None, "expect_ok": False,
+     "max_dispatches": 1},
+    {"id": "provider-raises", "raises": RuntimeError("upstream refused"),
+     "expect_ok": False, "max_dispatches": 1},
+    {"id": "empty-output", "cost": 0.0, "output": "", "expect_ok": False,
+     "max_dispatches": 1},
+)
+
+
+class SharedAcceptanceMatrixTests(unittest.TestCase):
+    """One contract, asserted identically on the direct and gateway paths."""
+
+    def _assert_row(self, case, code, report, adapter, transport):
+        label = "%s/%s" % (case["id"], transport)
+        if case["expect_ok"]:
+            self.assertEqual(code, 0, "%s should succeed" % label)
+        else:
+            self.assertNotEqual(code, 0, "%s must not report success" % label)
+        self.assertLessEqual(adapter.call_count, case["max_dispatches"],
+                             "%s dispatched too many times" % label)
+        if case.get("cost_status") and report.get("calls"):
+            self.assertEqual(report["calls"][0].get("cost_status"),
+                             case["cost_status"], label)
+
+    def test_the_matrix_holds_on_the_direct_transport(self):
+        for case in MATRIX:
+            with self.subTest(case=case["id"]):
+                code, report, adapter = _direct(case)
+                self._assert_row(case, code, report, adapter, "direct")
+
+    def test_the_matrix_holds_on_the_gateway_transport(self):
+        for case in MATRIX:
+            with self.subTest(case=case["id"]):
+                code, report, adapter = _gateway(case)
+                self._assert_row(case, code, report, adapter, "gateway")
+
+    def test_both_transports_agree_on_every_row(self):
+        """Parity itself is the assertion: same input class, same verdict."""
+        for case in MATRIX:
+            with self.subTest(case=case["id"]):
+                direct_code = _direct(case)[0]
+                gateway_code = _gateway(case)[0]
+                self.assertEqual(bool(direct_code), bool(gateway_code),
+                                 "%s: direct exit %s but gateway exit %s"
+                                 % (case["id"], direct_code, gateway_code))
+
+
+class DiscoveryParsingBoundaryTests(unittest.TestCase):
+    """The discovery parser itself, not a mock standing in for it.
+
+    Every existing test replaced omniroute_models wholesale, so its own
+    failure handling was never exercised. These drive the real function and
+    only fake the subprocess it shells out to.
+    """
+
+    def _models(self, returncode=0, stdout="", stderr="", free_only=True,
+                raises=None):
+        import subprocess as sp
+
+        def fake(argv, **kwargs):
+            if raises is not None:
+                raise raises
+            return sp.CompletedProcess(argv, returncode, stdout=stdout,
+                                       stderr=stderr)
+
+        with patch.object(probe.subprocess, "run", side_effect=fake):
+            return probe.omniroute_models(free_only=free_only)
+
+    def test_a_failed_simulation_is_not_an_inventory(self):
+        """Exit 1 stdout was parsed as a catalog, and the catalog gates dispatch."""
+        self.assertIsNone(self._models(
+            returncode=1, stdout="openrouter/vendor/ghost:free\n",
+            stderr="fatal: gateway down"))
+
+    def test_a_discovery_timeout_fails_safely_rather_than_crashing(self):
+        import subprocess as sp
+        self.assertIsNone(self._models(
+            raises=sp.TimeoutExpired(["omniroute"], 120)))
+
+    def test_a_missing_gateway_binary_fails_safely(self):
+        self.assertIsNone(self._models(raises=OSError("no such executable")))
+
+    def test_a_truncated_model_id_is_discarded_not_repaired(self):
+        """The CLI elides long ids; the marker is evidence, not noise."""
+        self.assertEqual(self._models(
+            stdout="| openrouter/nvidia/nemotron-3.5-lig… |\n",
+            free_only=False), [])
+
+    def test_an_ordinary_catalog_line_still_parses(self):
+        self.assertEqual(
+            self._models(stdout="| 1 | openrouter | openrouter/test/model:free |\n"),
+            ["openrouter/test/model:free"])
+
+    def test_free_only_filters_priced_models(self):
+        models = self._models(
+            stdout="openrouter/a/paid-model\nopenrouter/b/free-model:free\n")
+        self.assertEqual(models, ["openrouter/b/free-model:free"])
+
+
+class GatewayResponseParsingTests(unittest.TestCase):
+    """omniroute_chat's own footer parsing, driven for real."""
+
+    def _chat(self, stdout="", stderr="", returncode=0, raises=None):
+        import subprocess as sp
+
+        def fake(argv, **kwargs):
+            if raises is not None:
+                raise raises
+            return sp.CompletedProcess(argv, returncode, stdout=stdout,
+                                       stderr=stderr)
+
+        with patch.object(probe.subprocess, "run", side_effect=fake):
+            return probe.omniroute_chat("openrouter/test/free:free", "hello")
+
+    def test_the_resolved_model_is_read_from_the_footer(self):
+        result = self._chat(stdout="the answer\n",
+                            stderr="[openrouter/test/free:free · 812ms · 44 tok]\n")
+        self.assertEqual(result["resolved_model"], "openrouter/test/free:free")
+        self.assertEqual(result["total_tokens"], 44)
+        self.assertEqual(result["text"], "the answer")
+
+    def test_a_coloured_footer_still_parses(self):
+        coloured = ("\x1b[36m[openrouter/test/free:free · 5ms · 7 tok]"
+                    "\x1b[0m\n")
+        result = self._chat(stdout="the answer\n", stderr=coloured)
+        self.assertEqual(result["resolved_model"], "openrouter/test/free:free")
+
+    def test_a_nonzero_exit_is_an_error_not_an_answer(self):
+        result = self._chat(returncode=3, stderr="boom")
+        self.assertTrue(result.get("error"))
+
+    def test_a_timeout_is_reported_rather_than_raised(self):
+        import subprocess as sp
+        result = self._chat(raises=sp.TimeoutExpired(["omniroute"], 120))
+        self.assertEqual(result.get("error"), "omniroute_timeout")
+
+    def test_a_missing_footer_yields_no_resolved_model(self):
+        result = self._chat(stdout="an answer with no provenance footer\n")
+        self.assertIsNone(result.get("resolved_model"))
