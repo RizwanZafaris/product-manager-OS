@@ -32,17 +32,52 @@ GIT_CONTROL_NAME = ".git"
 BUILD_ARTIFACT_SUFFIXES = (".pyc", ".pyo")
 GIT_TIMEOUT_SECONDS = 30
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
+# Git's own wording when it has positively determined there is no repository
+# here at all (a plain directory, or one whose parents were all searched and
+# none carried a .git). This is deliberately narrow: dubious ownership,
+# permission failures, and config errors are nonzero exits too, but none of
+# them say this, and none of them mean "nothing is tracked here".
+NOT_A_GIT_REPOSITORY = re.compile(rb"not a git repository", re.IGNORECASE)
 MAX_TREE_ENTRIES = 16384
 MAX_TREE_DEPTH = 64
 MAX_TREE_BYTES = 256 * 1024 * 1024
 
 
+def _as_bytes(value):
+    """Coerce ``_git`` output to bytes regardless of how it arrived.
+
+    Real ``_git`` calls always return ``bytes`` (see below). A caller that
+    substitutes its own ``subprocess.CompletedProcess`` -- a test simulating
+    a git failure it cannot literally reproduce, such as a specific fatal
+    exit -- may hand back plain ``str`` fields instead. Both must be handled
+    the same way, so tracked-ness logic is not accidentally re-coupled to one
+    output type.
+    """
+    if isinstance(value, bytes):
+        return value
+    if value is None:
+        return b""
+    return value.encode("utf-8", "surrogateescape")
+
+
 def _git(root, *args):
-    """Run git in ``root``. Raises OSError when git cannot be executed."""
+    """Run git in ``root`` and return its result with UNDECODED byte output.
+
+    Raises OSError when git cannot be executed at all. Output is deliberately
+    left as bytes rather than captured with ``text=True``: universal-newline
+    translation rewrites a bare CR byte to LF, and a git-tracked *filename*
+    can itself contain a literal CR. That rewrite made the path string this
+    function returned for such a file disagree with the real on-disk name by
+    one byte, the tracked-set lookup for it missed, and the file was silently
+    excluded from the reviewed tree. Callers decode at the point of use:
+    ordinary text output (``rev-parse``) is plain ASCII and safe to decode
+    directly; path output (``ls-files -z``) must be decoded with filesystem
+    semantics (``os.fsdecode``), never with newline translation.
+    """
     import subprocess
     try:
         return subprocess.run(("git",) + args, cwd=str(root), capture_output=True,
-                              text=True, timeout=GIT_TIMEOUT_SECONDS)
+                              timeout=GIT_TIMEOUT_SECONDS)
     except (OSError, subprocess.SubprocessError) as error:
         raise OSError("review tree could not consult git: %s" % (error,))
 
@@ -65,15 +100,33 @@ def tracked_paths(root):
     Returns None when ``root`` is not a work tree at all. There is no tracked
     content to protect there, so the filesystem-metadata exclusion applies on
     its own; this is the case for temporary directories and ad-hoc trees.
+
+    A nonzero ``rev-parse`` exit is not by itself proof of that. Git also
+    exits nonzero for dubious ownership, permission failures, and a broken
+    config -- none of which mean there is no tracked content here, and all of
+    which previously fell into this same "return None" path, letting every
+    metadata-shaped file be excluded because git could not be consulted. Only
+    git's own positive statement that no repository exists is trusted; any
+    other failure to inspect raises instead of guessing.
     """
     probe = _git(root, "rev-parse", "--is-inside-work-tree")
-    if probe.returncode != 0 or probe.stdout.strip() != "true":
+    if probe.returncode != 0:
+        stderr = _as_bytes(probe.stderr)
+        if NOT_A_GIT_REPOSITORY.search(stderr) is not None:
+            return None
+        raise OSError(
+            "review tree could not determine whether %s is a git work tree "
+            "(git rev-parse exited %d: %s); refusing to treat an inspection "
+            "failure as an empty tracked set" %
+            (root, probe.returncode, stderr.decode("utf-8", "replace").strip()))
+    if _as_bytes(probe.stdout).strip() != b"true":
         return None
     listing = _git(root, "ls-files", "-z")
     if listing.returncode != 0:
         raise OSError("review tree is a git work tree whose index could not be "
                       "read; refusing to treat that as an empty tracked set")
-    return frozenset(entry for entry in listing.stdout.split("\0") if entry)
+    return frozenset(os.fsdecode(entry)
+                     for entry in _as_bytes(listing.stdout).split(b"\0") if entry)
 
 
 def is_excluded_sidecar(name):
