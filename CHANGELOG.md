@@ -59,6 +59,24 @@ This is an unreleased working-tree change set, not a tag, published package, hos
   hollow list now decides the exit code too, on the same thresholds. The 50 shipped prose
   skills still pass unchanged; no threshold was lowered to keep them passing.
 
+### Fixed, review-gate follow-up
+
+- Two more ways tracked content could leave the reviewed tree, found by independent review of
+  the fix that closed the first one. `_git()` captured output with `text=True`, and
+  universal-newline translation rewrites a bare CR byte to LF -- including inside the
+  NUL-delimited stream `git ls-files -z` prints. A tracked filename containing a literal CR
+  therefore came back spelled differently from the real on-disk name, the tracked-set lookup
+  missed, and the file was excluded. Git output is now read as bytes and path data is decoded
+  with `os.fsdecode`, the same filesystem semantics `os.listdir` uses, so the two spellings
+  cannot diverge. `rev-parse` text is decoded separately and never with newline translation.
+- `tracked_paths()` read every nonzero `rev-parse` exit as "not a repository" and returned an
+  empty tracked set, which authorises excluding every metadata-shaped file. Git also exits
+  nonzero for dubious ownership, permissions, and a broken config, none of which mean nothing
+  is tracked here. Only git's own positive "not a git repository" wording is now trusted;
+  every other failure to inspect raises. Recognition is positive by construction, so an
+  unrecognised reason -- a permission error, or git answering in another language -- fails
+  closed rather than being read as an absence.
+
 ### Known external requirements
 
 - Local checks do not verify hosted CI on the exact commit, a live provider, vendor sandboxes, a non-maintainer journey, independent human team review, organization-specific regulatory approval, or a published release artifact. No tag or published release is claimed here.
