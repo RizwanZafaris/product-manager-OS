@@ -240,7 +240,17 @@ def main(argv=None):
             say("%d prose skill(s) carry fewer than %d of the seven sections."
                 % (len(below), args.min))
             return 1
-        say("every prose skill carries at least %d of the seven." % args.min)
+        # A heading is not a procedure. The hollow list above was computed and
+        # printed but never enforced, so a skill carrying all seven headings
+        # with nothing underneath them scored a pass -- the rubric graded
+        # autocomplete rather than content. It is the same list and the same
+        # thresholds; it now decides the exit code as well as the report.
+        if hollow:
+            say("%d prose skill(s) carry a required section that is present "
+                "and empty. A heading is not a procedure." % len(hollow))
+            return 1
+        say("every prose skill carries at least %d of the seven, with content "
+            "under them." % args.min)
     return 0
 
 

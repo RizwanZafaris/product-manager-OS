@@ -240,6 +240,23 @@ class provider_stub:
     available = True
 
 
+def reserve_cost_usd(spec, prompt, args):
+    """Worst-case advertised cost of one call, reserved before dispatch.
+
+    Price is only known for certain once the response arrives, so a ceiling
+    checked afterwards is not a ceiling. This reserves against the advertised
+    per-1k price and the maximum output the request can produce, which is the
+    strongest bound obtainable before the call. A provider that then bills more
+    than it advertised is caught on reconciliation and halts the run.
+    """
+    price = getattr(spec, "cost_per_1k_tokens", 0.0) or 0.0
+    if not price:
+        return 0.0
+    max_output = getattr(args, "max_output_tokens", None) or 1024
+    prompt_tokens = max(1, len(prompt) // 4)
+    return price * (prompt_tokens + max_output) / 1000.0
+
+
 def route_decision(spec, case, args):
     """Ask pmos.routing whether this case may run on this model.
 
@@ -295,6 +312,15 @@ def run_via_omniroute(report, args):
         say("no free model resolved through OmniRoute; nothing was called.")
         write(report, args.output)
         return 1
+    if args.discover_only:
+        # Reached before any generation. This guard used to live only on the
+        # direct path, which main() never took when --via omniroute was set,
+        # so --discover-only still generated through the gateway.
+        write(report, args.output)
+        say("")
+        say("Discovery only. No generation was requested, no tokens spent.")
+        return 0
+
     model = args.model or models[0]
     say("  transport         : omniroute (credential held by the gateway)")
     say("  free models        : %s" % ", ".join(models))
@@ -310,8 +336,9 @@ def run_via_omniroute(report, args):
                      privacy_classes=frozenset({"public"}))
 
     made = 0
+    attempts = 0
     for case in CASES:
-        if made >= args.max_calls:
+        if attempts >= args.max_calls:
             break
         allowed, reason = route_decision(spec, case, args)
         entry = {"case": case["id"], "task": case["task"],
@@ -321,7 +348,14 @@ def run_via_omniroute(report, args):
             report["policy_results"].append(entry)
             say("  [REFUSE] %-28s %s" % (case["id"], reason))
             continue
+        attempts += 1
         result = omniroute_chat(model, case["prompt"])
+        if not result.get("error") and not result.get("resolved_model"):
+            # Resolved provenance is one of the four things this gate requires.
+            # A generation whose model is unknown is not evidence that a model
+            # answered, and must not be recorded as a clean call.
+            result = {"error": "missing_resolved_model",
+                      "error_detail": "the gateway returned no resolved model"}
         if result.get("error"):
             entry.update({"called": True, "error": result["error"],
                           "error_detail": result.get("error_detail")})
@@ -363,7 +397,7 @@ def run_via_omniroute(report, args):
            report["totals"]["errors"]))
     say("The refusals are the certification gate working. They belong in the "
         "evidence, not filtered out of it.")
-    return 0
+    return 1 if report["totals"]["errors"] else 0
 
 
 def main(argv=None):
@@ -480,9 +514,17 @@ def main(argv=None):
     from pmos.openrouter import OpenRouterProvider
     provider = OpenRouterProvider()
     made = 0
+    attempts = 0
+    spent = 0.0
+    budget = args.budget_usd or 0.0
+    breach = False
+    budget_refusals = 0
 
     for case in CASES:
-        if made >= args.max_calls:
+        # Attempts, not successes. Counting successes meant a failing adapter
+        # was re-entered once per case: the audit saw four dispatches under
+        # --max-calls 1. A cap that loosens when calls start failing is not one.
+        if attempts >= args.max_calls:
             break
         allowed, reason = route_decision(spec, case, args)
         entry = {"case": case["id"], "task": case["task"],
@@ -493,28 +535,60 @@ def main(argv=None):
             say("  [REFUSE] %-28s %s" % (case["id"], reason))
             continue
 
+        reserved = reserve_cost_usd(spec, case["prompt"], args)
+        if budget and spent + reserved > budget:
+            budget_refusals += 1
+            entry.update({"error": "budget_reservation_refused",
+                          "error_detail":
+                              "advertised price reserves $%.6f against $%.6f "
+                              "remaining" % (reserved, budget - spent)})
+            report["calls"].append(entry)
+            report["policy_results"].append(entry)
+            say("  [REFUSE] %-28s reservation exceeds remaining budget"
+                % case["id"])
+            break
+
+        attempts += 1
         started = time.monotonic()
         try:
-            response = provider.complete(spec, case["prompt"])
+            response = provider.complete(spec.model, case["prompt"])
             elapsed = (time.monotonic() - started) * 1000.0
-            text = getattr(response, "text", "") or ""
+            text = getattr(response, "output", "") or ""
+            resolved_model = getattr(response, "model", None)
+            cost = float(getattr(response, "cost_usd", 0.0) or 0.0)
             entry.update({
                 "called": True,
                 "request_sha256": sha256(case["prompt"]),
                 "response_sha256": sha256(text),
                 "response_chars": len(text),
                 "latency_ms": round(elapsed, 1),
-                "resolved_provider": getattr(response, "provider", None),
-                "resolved_model": getattr(response, "model", None),
-                "prompt_tokens": getattr(response, "prompt_tokens", None),
-                "completion_tokens": getattr(response, "completion_tokens", None),
-                "cost_usd": getattr(response, "cost_usd", None),
+                "resolved_provider": spec.provider,
+                "resolved_model": resolved_model,
+                "prompt_tokens": getattr(response, "input_tokens", None),
+                "completion_tokens": getattr(response, "output_tokens", None),
+                "cost_usd": cost,
             })
+            spent += cost
+            if not resolved_model:
+                # Resolved provenance is one of the four things this gate
+                # requires. Without it there is no evidence a model answered.
+                entry.update({"error": "missing_resolved_model",
+                              "error_detail":
+                                  "the provider returned no resolved model"})
+                report["calls"].append(entry)
+                report["policy_results"].append(entry)
+                say("  [ERROR]  %-28s missing_resolved_model" % case["id"])
+                continue
             report["calls"].append(entry)
             made += 1
             say("  [OK]     %-28s %s  %.0fms  %s chars"
-                % (case["id"], entry["resolved_model"] or spec.model,
-                   elapsed, len(text)))
+                % (case["id"], resolved_model, elapsed, len(text)))
+            if budget and spent > budget:
+                breach = True
+                report["policy_results"].append(entry)
+                say("  [HALT]   billed $%.6f against a $%.6f ceiling; stopping"
+                    % (spent, budget))
+                break
         except Exception as error:                          # noqa: BLE001
             entry.update({"called": True, "error": type(error).__name__,
                           "error_detail": str(error)[:200]})
@@ -524,19 +598,34 @@ def main(argv=None):
 
     report["totals"] = {
         "calls_made": made,
+        "attempts": attempts,
         "refusals": sum(1 for r in report["policy_results"]
                         if not r["eligible"]),
         "errors": sum(1 for r in report["calls"] if r.get("error")),
-        "cost_usd": round(sum(c.get("cost_usd") or 0.0
-                              for c in report["calls"]), 6),
+        "cost_usd": round(spent, 6),
+        "budget_breach": breach,
     }
     write(report, args.output)
     say("")
-    say("calls %d, refusals %d, errors %d, cost $%.6f"
-        % (report["totals"]["calls_made"], report["totals"]["refusals"],
+    say("calls %d, attempts %d, refusals %d, errors %d, cost $%.6f"
+        % (report["totals"]["calls_made"], attempts,
+           report["totals"]["refusals"],
            report["totals"]["errors"], report["totals"]["cost_usd"]))
     say("EXT-AI evidence written. It records what happened, including the "
         "refusals, which are the gate working rather than a shortfall.")
+    if breach:
+        say("BUDGET BREACH: the provider billed more than it advertised.")
+    # A run that errored, breached its ceiling, or could not afford its cases
+    # is not a successful run, and must not report success to CI.
+    if report["totals"]["errors"] or breach or budget_refusals:
+        return 1
+    if attempts == 0:
+        # Every case was refused before dispatch, so this run generated no
+        # EXT-AI evidence at all. The refusals are worth recording, but a gate
+        # that produced no evidence has not passed; it did not run.
+        say("INCOMPLETE: no case was dispatched, so no generation evidence "
+            "exists. The refusals are recorded, but this is not a pass.")
+        return 1
     return 0
 
 
