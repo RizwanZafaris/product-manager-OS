@@ -198,6 +198,129 @@ class IndependentReviewGateTests(unittest.TestCase):
 
 
 
+class AppleDoubleSidecarTests(unittest.TestCase):
+    """The reviewed tree must not depend on the filesystem it is checked out on.
+
+    macOS writes AppleDouble sidecars (``._name``) beside every entry when a
+    repository lives on exFAT, FAT or SMB, which is exactly what happens when
+    the maintainer keeps this repository on an external drive. Those sidecars
+    are OS-generated metadata, are already ignored by .gitignore, and can never
+    reach a hosted checkout. Hashing them made the digest recorded on such a
+    workspace permanently unable to match the digest CI computes for the same
+    commit, so a review recorded there could never validate.
+    """
+
+    def test_appledouble_sidecar_does_not_change_the_reviewed_digest(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "runtime.py").write_text("SAFE = True\n", encoding="utf-8")
+            clean, _rows = tree_digest(root)
+            (root / "._runtime.py").write_bytes(
+                b"\x00\x05\x16\x07AppleDouble resource fork")
+            (root / "._agents").write_bytes(b"\x00\x05\x16\x07dir sidecar")
+            dirty, rows = tree_digest(root)
+            self.assertEqual(clean, dirty)
+            self.assertNotIn("._runtime.py", {row["path"] for row in rows})
+            self.assertNotIn("._agents", {row["path"] for row in rows})
+
+    def test_nested_appledouble_sidecars_are_excluded_too(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            package = root / "pmos"
+            package.mkdir()
+            (package / "store.py").write_text("SAFE = True\n", encoding="utf-8")
+            clean, _rows = tree_digest(root)
+            (package / "._store.py").write_bytes(b"\x00\x05\x16\x07sidecar")
+            dirty, rows = tree_digest(root)
+            self.assertEqual(clean, dirty)
+            self.assertNotIn("pmos/._store.py", {row["path"] for row in rows})
+
+    def test_a_recorded_review_survives_sidecars_appearing_afterwards(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "runtime.py").write_text("SAFE = True\n", encoding="utf-8")
+            document = attestation(root)
+            self.assertEqual(validate_attestation(document, root), [])
+            (root / "._runtime.py").write_bytes(b"\x00\x05\x16\x07sidecar")
+            self.assertEqual(validate_attestation(document, root), [])
+
+    def test_real_source_changes_still_stale_the_review_on_such_a_workspace(self):
+        """Excluding sidecars must not blunt the gate's actual job."""
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "runtime.py").write_text("SAFE = True\n", encoding="utf-8")
+            (root / "._runtime.py").write_bytes(b"\x00\x05\x16\x07sidecar")
+            document = attestation(root)
+            self.assertEqual(validate_attestation(document, root), [])
+            (root / "runtime.py").write_text("SAFE = False\n", encoding="utf-8")
+            self.assertTrue(any("stale" in error for error in
+                                validate_attestation(document, root)))
+
+    def test_a_dotfile_that_is_not_a_sidecar_is_still_reviewed(self):
+        """Only the ``._`` AppleDouble prefix is excluded, not dotfiles at large."""
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / ".env.example").write_text("KEY=\n", encoding="utf-8")
+            first, rows = tree_digest(root)
+            self.assertIn(".env.example", {row["path"] for row in rows})
+            (root / ".env.example").write_text("KEY=changed\n", encoding="utf-8")
+            second, _rows = tree_digest(root)
+            self.assertNotEqual(first, second)
+
+
+class WorktreeGitLinkTests(unittest.TestCase):
+    """A review recorded from a git worktree must validate in a plain clone.
+
+    ``git worktree add`` writes ``.git`` as a regular *file* holding an
+    absolute ``gitdir:`` path that is unique to that worktree, where a normal
+    clone has ``.git`` as a directory. The root skip list only skipped the
+    directory form, so the file form was hashed and every worktree produced a
+    different digest for the very same commit -- silently, and in the one
+    workflow the contributing guide asks for.
+    """
+
+    def test_a_gitdir_link_file_is_excluded_like_the_git_directory(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "runtime.py").write_text("SAFE = True\n", encoding="utf-8")
+            clean, _rows = tree_digest(root)
+            (root / ".git").write_text(
+                "gitdir: /somewhere/.git/worktrees/task-branch\n", encoding="utf-8")
+            linked, rows = tree_digest(root)
+            self.assertEqual(clean, linked)
+            self.assertNotIn(".git", {row["path"] for row in rows})
+
+    def test_two_worktrees_of_one_commit_agree_with_a_plain_clone(self):
+        """The same content must hash the same from any checkout shape."""
+        digests = []
+        for gitlink in (None,
+                        "gitdir: /a/.git/worktrees/one\n",
+                        "gitdir: /b/very/different/path/.git/worktrees/two\n"):
+            with TemporaryDirectory() as directory:
+                root = Path(directory)
+                (root / "runtime.py").write_text("SAFE = True\n", encoding="utf-8")
+                if gitlink is None:
+                    (root / ".git").mkdir()
+                    (root / ".git" / "HEAD").write_text("ref: refs/heads/main\n",
+                                                        encoding="utf-8")
+                else:
+                    (root / ".git").write_text(gitlink, encoding="utf-8")
+                digests.append(tree_digest(root)[0])
+        self.assertEqual(len(set(digests)), 1, digests)
+
+    def test_a_nested_git_link_file_is_still_reviewed(self):
+        """Only the repository root's .git is excluded, not any file so named."""
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            nested = root / "vendor"
+            nested.mkdir()
+            (nested / ".git").write_text("gitdir: /elsewhere\n", encoding="utf-8")
+            first, rows = tree_digest(root)
+            self.assertIn("vendor/.git", {row["path"] for row in rows})
+            (nested / ".git").write_text("gitdir: /changed\n", encoding="utf-8")
+            self.assertNotEqual(first, tree_digest(root)[0])
+
+
 class RecordReviewTests(unittest.TestCase):
     """The gate had no way to close it except hand-writing JSON.
 
