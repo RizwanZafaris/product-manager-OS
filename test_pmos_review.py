@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import unittest
 from unittest.mock import patch
@@ -612,6 +613,68 @@ class GitDiscoveryConservatismTests(unittest.TestCase):
             digest, rows = tree_digest(root)
             self.assertNotIn("._runtime.py", {row["path"] for row in rows})
             self.assertTrue(digest)
+
+
+class DamagedRepositoryTests(unittest.TestCase):
+    """A repository git cannot read is not an absence of a repository.
+
+    Renaming .git/objects away makes `rev-parse --is-inside-work-tree` answer
+    with the identical "fatal: not a git repository" line a plain directory
+    produces. Matching that wording therefore excluded a tracked file from a
+    damaged repository and left the digest unmoved when it was edited. Real
+    git, no mocked discovery.
+    """
+
+    def _repo(self, root):
+        run = git_repo(root)
+        (root / "._policy.json").write_text('{"approved": false}\n',
+                                            encoding="utf-8")
+        run("add", "-f", "._policy.json")
+        run("commit", "-qm", "init")
+        return run
+
+    def test_an_unreadable_object_store_fails_closed(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._repo(root)
+            os.rename(root / ".git" / "objects",
+                      root / ".git" / "objects-unavailable")
+            with self.assertRaises(OSError):
+                tree_digest(root)
+
+    def test_a_repository_missing_its_head_fails_closed(self):
+        """Verified: a missing HEAD or refs/ produces the same fatal wording.
+
+        A missing .git/config does NOT -- git exits 0 and carries on with
+        defaults -- so it is deliberately not used here.
+        """
+        for damaged in ("HEAD", "refs"):
+            with self.subTest(damaged=damaged):
+                with TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    self._repo(root)
+                    os.rename(root / ".git" / damaged,
+                              root / ".git" / (damaged + "-gone"))
+                    with self.assertRaises(OSError):
+                        tree_digest(root)
+
+    def test_a_plain_directory_is_still_not_a_repository(self):
+        """The ordinary standalone-directory path must keep working."""
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "runtime.py").write_text("SAFE = True\n", encoding="utf-8")
+            (root / "._runtime.py").write_bytes(b"\x00\x05\x16\x07sidecar")
+            digest, rows = tree_digest(root)
+            self.assertNotIn("._runtime.py", {row["path"] for row in rows})
+            self.assertTrue(digest)
+
+    def test_a_worktree_gitdir_pointer_counts_as_control_metadata(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "runtime.py").write_text("SAFE = True\n", encoding="utf-8")
+            (root / ".git").write_text("gitdir: /nowhere/.git/worktrees/x\n",
+                                       encoding="utf-8")
+            self.assertTrue(review_gate.git_control_present(root))
 
 
 class RecordReviewTests(unittest.TestCase):

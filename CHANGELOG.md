@@ -104,6 +104,30 @@ This is an unreleased working-tree change set, not a tag, published package, hos
   that tokenize badly; it now reserves against byte length, since a token never covers less
   than one byte.
 
+### Fixed, second review round
+
+- A repository git cannot read is not an absence of a repository. Renaming `.git/objects`,
+  `.git/HEAD`, or `.git/refs` away makes `rev-parse` answer with the identical
+  `fatal: not a git repository` line a plain directory produces, so matching that wording
+  excluded a tracked file from a damaged repository and left its digest unmoved when the file
+  was edited. Control metadata on disk now decides: a `.git` entry at the root or any ancestor,
+  or `GIT_DIR`, means a repository exists and any inspection failure raises. The wording is
+  only corroboration. A missing `.git/config` deliberately is not used as a damage case --
+  verified that git exits 0 and carries on with defaults.
+- The gateway fabricated a price. `omniroute_chat()` never returns a cost at all, so the
+  free-catalog fallback meant every ordinary production response recorded $0.00 on no
+  evidence, and the catalog behind it is parsed from CLI strings and a `:free` suffix, which
+  is a name rather than billing evidence. Absent cost is UNKNOWN now, an unprovable remaining
+  budget stops the run before a second dispatch, and the aggregate says so instead of reading
+  as zero. A charge the gateway did report survives a provenance error rather than being
+  discarded with the result.
+- The direct transport accepted model substitution: a response naming `unapproved/model` was
+  recorded as clean, because only emptiness was checked. Resolved identity is now matched
+  against the authorized model on both transports.
+- `--env` reached generation but not discovery, so a custom credential variable selected a key
+  one half of the run never read. Gateway discovery had no timeout even after generation got
+  one. Both are bounded now.
+
 ### Known external requirements
 
 - Local checks do not verify hosted CI on the exact commit, a live provider, vendor sandboxes, a non-maintainer journey, independent human team review, organization-specific regulatory approval, or a published release artifact. No tag or published release is claimed here.
