@@ -480,6 +480,140 @@ class TrackedMetadataNameTests(unittest.TestCase):
             self.assertEqual(clean, tree_digest(root)[0])
 
 
+class TrackedFilenameByteFidelityTests(unittest.TestCase):
+    """A CR byte inside a tracked filename must not vanish from the review.
+
+    ``_git`` ran ``subprocess.run`` with ``text=True``. Universal-newline
+    translation rewrites a bare CR to LF inside decoded output, including
+    inside the NUL-delimited byte stream ``git ls-files -z`` prints. A
+    tracked filename that itself contains a literal CR byte therefore comes
+    back from ``tracked_paths`` spelled with an LF instead, the tracked-set
+    lookup for the real on-disk name misses, and a metadata-shaped file git
+    is genuinely carrying is silently excluded from the digest a recorded
+    review is pinned to.
+    """
+
+    def test_a_tracked_filename_with_a_bare_cr_byte_is_reviewed(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            run = git_repo(root)
+            name = "._policy\r.json"
+            policy = root / name
+            policy.write_bytes(b'{"approved": false}\n')
+            run("add", "-f", name)
+            run("commit", "-qm", "init")
+
+            raw = subprocess.run(["git", "ls-files", "-z"], cwd=str(root),
+                                 capture_output=True, timeout=30)
+            self.assertIn(b"._policy\r.json\x00", raw.stdout,
+                         "fixture setup did not track the exact CR filename")
+
+            _digest, rows = tree_digest(root)
+            self.assertIn(name, {row["path"] for row in rows})
+
+            policy.write_bytes(b'{"approved": true}\n')
+            self.assertNotEqual(_digest, tree_digest(root)[0])
+
+
+class GitDiscoveryFailureFailsClosedTests(unittest.TestCase):
+    """A nonzero rev-parse exit is not proof there is no repository to protect.
+
+    ``tracked_paths`` treated any nonzero ``rev-parse --is-inside-work-tree``
+    exit as "not a work tree" and returned ``None``, which lets every
+    metadata-shaped file be excluded on the theory that there is no tracked
+    content to lose. But git also exits nonzero for reasons that have
+    nothing to do with whether a repository exists here -- dubious
+    ownership, permissions, a broken config -- and those must not be treated
+    as an empty tracked set.
+    """
+
+    def test_a_dubious_ownership_style_failure_raises_instead_of_excluding(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            run = git_repo(root)
+            (root / "app.py").write_text("SAFE = True\n", encoding="utf-8")
+            policy = root / "._policy.json"
+            policy.write_text('{"approved": false}\n', encoding="utf-8")
+            run("add", "-f", "._policy.json")
+            run("add", "app.py")
+            run("commit", "-qm", "init")
+
+            real_git = review_gate._git
+
+            def dubious_ownership(target_root, *args):
+                if args[:1] == ("rev-parse",):
+                    return subprocess.CompletedProcess(
+                        args=("git",) + args, returncode=128, stdout="",
+                        stderr="fatal: detected dubious ownership in repository at "
+                              + str(target_root))
+                return real_git(target_root, *args)
+
+            with patch.object(review_gate, "_git", side_effect=dubious_ownership):
+                with self.assertRaises(OSError):
+                    tree_digest(root)
+
+
+class GitDiscoveryConservatismTests(unittest.TestCase):
+    """Only git's own "no repository" statement may authorise an exclusion.
+
+    The dubious-ownership case is one instance of a general rule. Recognition
+    has to be positive: an exit whose reason is unrecognised -- a permission
+    failure, a broken object store, or git speaking a language this pattern
+    does not match -- must fail closed rather than be read as "nothing is
+    tracked here".
+    """
+
+    def _repo_with_tracked_sidecar(self, root):
+        run = git_repo(root)
+        (root / "._policy.json").write_text('{"approved": false}\n',
+                                            encoding="utf-8")
+        run("add", "-f", "._policy.json")
+        run("commit", "-qm", "init")
+        return run
+
+    def _rev_parse_failure(self, root, stderr, returncode=128):
+        real_git = review_gate._git
+
+        def failing(target_root, *args):
+            if args[:1] == ("rev-parse",):
+                return subprocess.CompletedProcess(
+                    args=("git",) + args, returncode=returncode,
+                    stdout="", stderr=stderr)
+            return real_git(target_root, *args)
+        return failing
+
+    def test_an_unrecognised_failure_reason_raises(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._repo_with_tracked_sidecar(root)
+            failing = self._rev_parse_failure(
+                root, "fatal: could not read Permission denied")
+            with patch.object(review_gate, "_git", side_effect=failing):
+                with self.assertRaises(OSError):
+                    tree_digest(root)
+
+    def test_a_localised_git_message_fails_closed_rather_than_excluding(self):
+        """A translated fatal message is unrecognised, so it must not pass."""
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._repo_with_tracked_sidecar(root)
+            failing = self._rev_parse_failure(
+                root, "fatal: ce n'est pas un depot git")
+            with patch.object(review_gate, "_git", side_effect=failing):
+                with self.assertRaises(OSError):
+                    tree_digest(root)
+
+    def test_a_real_missing_repository_is_still_recognised(self):
+        """The positive path must keep working against real git output."""
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "runtime.py").write_text("SAFE = True\n", encoding="utf-8")
+            (root / "._runtime.py").write_bytes(b"\x00\x05\x16\x07sidecar")
+            digest, rows = tree_digest(root)
+            self.assertNotIn("._runtime.py", {row["path"] for row in rows})
+            self.assertTrue(digest)
+
+
 class RecordReviewTests(unittest.TestCase):
     """The gate had no way to close it except hand-writing JSON.
 
