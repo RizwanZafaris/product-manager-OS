@@ -128,6 +128,29 @@ This is an unreleased working-tree change set, not a tag, published package, hos
   one half of the run never read. Gateway discovery had no timeout even after generation got
   one. Both are bounded now.
 
+### Fixed, shared acceptance matrix
+
+- The probe's behaviour is now stated once as a table and asserted against both transports,
+  because every defect closed before this was found on one transport after the other had been
+  fixed -- the tell that they were being repaired case by case rather than as a contract.
+  Writing the matrix immediately found four more. An empty response body was recorded as a
+  successful call on both paths, though an empty body is not evidence a model answered and the
+  call may still have been billed. A missing resolved model, and an adapter exception, each
+  left the run continuing on the direct path while cost failures halted it. And an exception
+  from the gateway transport escaped entirely, aborting the probe and losing the evidence of
+  every case already run.
+- Gateway discovery trusted output it should not have. A failed `omniroute simulate` -- exit
+  nonzero, gateway down -- had its stdout parsed into a catalog, and that catalog is what
+  decides which models may be dispatched. Discovery failure is now distinct from an empty
+  catalog and refuses the run. A discovery timeout propagated as an unhandled exception rather
+  than failing safely, and a missing gateway binary did the same; both are handled. The parser
+  also stripped the CLI's truncation ellipsis off elided model ids and kept the fragment, so
+  `openrouter/nvidia/nemotron-3.5-lig` could enter the catalog as a real model; the marker is
+  evidence the name is incomplete, so such tokens are discarded rather than repaired.
+- The discovery and response parsers now have tests that drive the real functions and fake only
+  the subprocess beneath them. Every previous test replaced them wholesale, which is why none
+  of their failure handling was exercised.
+
 ### Known external requirements
 
 - Local checks do not verify hosted CI on the exact commit, a live provider, vendor sandboxes, a non-maintainer journey, independent human team review, organization-specific regulatory approval, or a published release artifact. No tag or published release is claimed here.
