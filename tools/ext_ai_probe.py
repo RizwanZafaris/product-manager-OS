@@ -52,6 +52,7 @@ sys.path.insert(0, str(REPO))
 
 DEFAULT_OUT = REPO / ".readiness" / "ext-ai-probe.json"
 GATEWAY_TIMEOUT_SECONDS = 120
+GIT_TIMEOUT_SECONDS = 30
 
 # Fixed, public, small. Each names the task class pmos.routing will judge it
 # under, so the policy result is about the router's decision and not about
@@ -94,8 +95,12 @@ def sha256(text):
 
 
 def git(*args):
-    done = subprocess.run(["git", *args], cwd=str(REPO), capture_output=True,
-                          text=True)
+    try:
+        done = subprocess.run(["git", *args], cwd=str(REPO),
+                              capture_output=True, text=True,
+                              timeout=GIT_TIMEOUT_SECONDS)
+    except (OSError, subprocess.SubprocessError):
+        return ""
     return done.stdout.strip() if done.returncode == 0 else ""
 
 
@@ -203,8 +208,11 @@ def omniroute_models(free_only=True):
             # marker off turned a truncated name into a plausible-looking model
             # id; the marker is the evidence the name is incomplete, so a token
             # carrying it is discarded rather than repaired.
-            if line[match.end():match.end() + 1] in ("\u2026", ".") or \
-                    token.endswith((".", "\u2026")):
+            trailing = line[match.end():match.end() + 3]
+            if trailing.startswith("\u2026") or trailing.startswith("..."):
+                # Only a real elision marker means the id was cut short. A
+                # single period is ordinary prose punctuation, and treating it
+                # as truncation silently dropped legitimate models.
                 continue
             if token not in models and (not free_only or token.endswith(":free")):
                 models.append(token)
@@ -301,6 +309,14 @@ def usable_cost(value):
     """
     if value is None:
         return None, "UNKNOWN"
+    if isinstance(value, bool):
+        # bool is a subclass of int, so float(True) is 1.0. A flag is not a
+        # price, and silently reading one as $1.00 is worse than refusing it.
+        return None, "INVALID"
+    if not isinstance(value, (int, float)):
+        # A numeric string parses, but authoritative usage arrives as a number.
+        # Accepting "0.5" means accepting whatever else a provider puts there.
+        return None, "INVALID"
     try:
         cost = float(value)
     except (TypeError, ValueError):

@@ -151,6 +151,25 @@ This is an unreleased working-tree change set, not a tag, published package, hos
   the subprocess beneath them. Every previous test replaced them wholesale, which is why none
   of their failure handling was exercised.
 
+### Added, guards against recurrence
+
+- `test_pmos_invariants.py`, registered in the canonical gate. Three review rounds each found a
+  fresh instance of a defect class the previous round had fixed one example of, and a unit
+  test that pins an example does nothing for the next instance. Each guard here scans the
+  code for the class and names the finding that motivated it: every `subprocess.run` under
+  `tools/` carries a timeout; the cost parser is checked over its whole value domain rather
+  than a sample, including the bool and numeric-string cases that `float()` would otherwise
+  swallow as `$1.00` and `$0.50`; no billed cost is coerced with `or 0.0`; the review gate never
+  reads git path output as text; the transport matrix stays two-sided and keeps its reviewed
+  rows; and every `test_*.py` at the root is in the list CI actually runs -- which the guard
+  proved on itself, failing until its own module was registered.
+- An adversarial self-review of the matrix change, run before opening the PR rather than
+  after, found and closed three more: `usable_cost` accepted `True` as a cost of $1.00 and
+  `"0.5"` as fifty cents; the truncation guard treated a sentence-ending period as an elision
+  marker and silently dropped legitimate models; and the probe's own `git()` helper had no
+  timeout. Four other unbounded subprocess sites in `readiness.py`, `readiness_probe.py` and
+  `security_gate.py` are now bounded.
+
 ### Known external requirements
 
 - Local checks do not verify hosted CI on the exact commit, a live provider, vendor sandboxes, a non-maintainer journey, independent human team review, organization-specific regulatory approval, or a published release artifact. No tag or published release is claimed here.

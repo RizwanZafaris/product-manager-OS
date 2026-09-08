@@ -48,7 +48,8 @@ def run(command, cwd=None):
     if argv and argv[0] == "python3":
         argv[0] = sys.executable
     done = subprocess.run(argv, cwd=str(cwd or REPO), shell=False,
-                          capture_output=True, text=True)
+                          capture_output=True, text=True,
+                          timeout=1800)
     return done.returncode, (done.stdout or "") + (done.stderr or "")
 
 
