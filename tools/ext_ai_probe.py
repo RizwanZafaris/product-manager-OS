@@ -51,6 +51,7 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
 DEFAULT_OUT = REPO / ".readiness" / "ext-ai-probe.json"
+GATEWAY_TIMEOUT_SECONDS = 120
 
 # Fixed, public, small. Each names the task class pmos.routing will judge it
 # under, so the policy result is about the router's decision and not about
@@ -200,9 +201,18 @@ def omniroute_chat(model, prompt):
     four things EXT-AI requires, so an unpinned call cannot produce evidence.
     """
     started = time.monotonic()
-    done = subprocess.run(
-        ["omniroute", "chat", "--no-history", "-m", model, prompt],
-        capture_output=True, text=True)
+    try:
+        done = subprocess.run(
+            ["omniroute", "chat", "--no-history", "-m", model, prompt],
+            capture_output=True, text=True, timeout=GATEWAY_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired:
+        # An unbounded gateway call can hang a release gate indefinitely.
+        return {"error": "omniroute_timeout",
+                "error_detail": "no response within %ds"
+                                % GATEWAY_TIMEOUT_SECONDS}
+    except OSError as error:
+        return {"error": "omniroute_unavailable",
+                "error_detail": str(error)[:200]}
     elapsed = (time.monotonic() - started) * 1000.0
     if done.returncode != 0:
         return {"error": "omniroute_exit_%d" % done.returncode,
@@ -253,8 +263,29 @@ def reserve_cost_usd(spec, prompt, args):
     if not price:
         return 0.0
     max_output = getattr(args, "max_output_tokens", None) or 1024
-    prompt_tokens = max(1, len(prompt) // 4)
+    # len(prompt)//4 is an average, not a bound, and a reservation built on an
+    # average under-reserves exactly on the inputs that tokenize badly. A token
+    # never covers less than one byte, so byte length is the real upper bound.
+    prompt_tokens = max(1, len(prompt.encode("utf-8")))
     return price * (prompt_tokens + max_output) / 1000.0
+
+
+def usable_cost(value):
+    """(cost, status). Absent authoritative cost stays UNKNOWN, never zero.
+
+    Coercing a missing cost to 0.0 turns "the provider told us nothing" into
+    "the provider told us it was free", which is the one inference a budget
+    gate must never make on its own behalf.
+    """
+    if value is None:
+        return None, "UNKNOWN"
+    try:
+        cost = float(value)
+    except (TypeError, ValueError):
+        return None, "INVALID"
+    if cost != cost or cost in (float("inf"), float("-inf")) or cost < 0:
+        return None, "INVALID"
+    return cost, "OK"
 
 
 def route_decision(spec, case, args):
@@ -322,6 +353,30 @@ def run_via_omniroute(report, args):
         return 0
 
     model = args.model or models[0]
+    if model not in models:
+        # The catalog is the only evidence available here for what this gateway
+        # actually serves and on what terms. Taking --model on trust let an
+        # arbitrary out-of-catalog paid model be dispatched and recorded at
+        # zero cost, on the strength of a free model existing elsewhere in the
+        # catalog. Membership is not a formality; it is the eligibility check.
+        say("REFUSING: %r is not in the discovered catalog." % model)
+        say("  discovered: %s" % ", ".join(models))
+        report["totals"] = {"calls_made": 0, "attempts": 0, "errors": 1,
+                            "refusals": 0, "cost_usd": 0.0,
+                            "budget_breach": False}
+        report["calls"] = [{"case": None, "called": False,
+                            "error": "model_outside_catalog",
+                            "error_detail":
+                                "%r was not advertised by discovery" % model}]
+        write(report, args.output)
+        return 1
+
+    if args.max_calls < 1:
+        say("INCOMPLETE: --max-calls %d permits no dispatch, so this run "
+            "cannot produce generation evidence." % args.max_calls)
+        write(report, args.output)
+        return 1
+
     say("  transport         : omniroute (credential held by the gateway)")
     say("  free models        : %s" % ", ".join(models))
     say("  pinned model      : %s" % model)
@@ -330,14 +385,21 @@ def run_via_omniroute(report, args):
     # Pinned, never auto. An auto call reports the alias back rather than the
     # model that answered, and resolved provenance is one of the four things
     # this gate requires.
-    spec = ModelSpec(provider="openrouter", model=model, free=True,
+    spec = ModelSpec(provider="openrouter", model=model,
+                     free=bool(args.free_only),
                      available=True, certified=False, cost_per_1k_tokens=0.0,
                      context_window=8192,
                      privacy_classes=frozenset({"public"}))
 
     made = 0
     attempts = 0
+    spent = 0.0
+    budget = args.budget_usd or 0.0
+    enforce_budget = not args.unbounded_budget
+    breach = False
     for case in CASES:
+        if breach:
+            break
         if attempts >= args.max_calls:
             break
         allowed, reason = route_decision(spec, case, args)
@@ -356,6 +418,14 @@ def run_via_omniroute(report, args):
             # answered, and must not be recorded as a clean call.
             result = {"error": "missing_resolved_model",
                       "error_detail": "the gateway returned no resolved model"}
+        if not result.get("error"):
+            resolved = result.get("resolved_model")
+            if resolved and resolved != model:
+                # The call is pinned. A different model answering means the
+                # evidence describes something other than what was authorized.
+                result = {"error": "resolved_model_mismatch",
+                          "error_detail": "pinned %r, answered %r"
+                                          % (model, resolved)}
         if result.get("error"):
             entry.update({"called": True, "error": result["error"],
                           "error_detail": result.get("error_detail")})
@@ -372,23 +442,42 @@ def run_via_omniroute(report, args):
                 "resolved_provider": "openrouter",
                 "resolved_model": result.get("resolved_model"),
                 "total_tokens": result.get("total_tokens"),
-                "cost_usd": 0.0,
-                "cost_basis": "model advertises zero prompt and completion "
-                              "price; verify against the provider invoice",
             })
+            if "cost_usd" in result:
+                # A gateway that reports a price is the authority on it.
+                cost, cost_status = usable_cost(result.get("cost_usd"))
+                entry.update({"cost_usd": cost, "cost_status": cost_status,
+                              "cost_basis": "reported by the gateway"})
+                if cost_status != "OK":
+                    entry.update({"error": "cost_%s" % cost_status.lower()})
+                else:
+                    spent += cost
+            else:
+                entry.update({
+                    "cost_usd": 0.0, "cost_status": "OK",
+                    "cost_basis": "model is in the free-only catalog and "
+                                  "advertises zero prompt and completion "
+                                  "price; verify against the provider invoice",
+                })
             made += 1
             say("  [OK]     %-28s %-26s %sms  %s tok"
                 % (case["id"], entry["resolved_model"],
                    entry["latency_ms"], entry["total_tokens"]))
+        if enforce_budget and spent > budget:
+            breach = True
+            say("  [HALT]   billed $%.6f against a $%.6f ceiling; stopping"
+                % (spent, budget))
         report["calls"].append(entry)
         report["policy_results"].append(entry)
 
     report["totals"] = {
         "calls_made": made,
+        "attempts": attempts,
         "refusals": sum(1 for r in report["policy_results"]
                         if not r["eligible"]),
         "errors": sum(1 for r in report["calls"] if r.get("error")),
-        "cost_usd": 0.0,
+        "cost_usd": round(spent, 6),
+        "budget_breach": breach,
     }
     write(report, args.output)
     say("")
@@ -397,7 +486,7 @@ def run_via_omniroute(report, args):
            report["totals"]["errors"]))
     say("The refusals are the certification gate working. They belong in the "
         "evidence, not filtered out of it.")
-    return 1 if report["totals"]["errors"] else 0
+    return 1 if (report["totals"]["errors"] or breach) else 0
 
 
 def main(argv=None):
@@ -412,6 +501,9 @@ def main(argv=None):
                              "price are both zero (default)")
     parser.add_argument("--allow-paid", dest="free_only", action="store_false",
                         help="permit priced models; requires --budget-usd")
+    parser.add_argument("--unbounded-budget", action="store_true",
+                        help="permit spending with no ceiling; must be given "
+                             "explicitly and is never the default")
     parser.add_argument("--budget-usd", type=float, default=0.0,
                         help="hard ceiling passed to the router (default 0.0, "
                              "which only free models can satisfy)")
@@ -512,19 +604,20 @@ def main(argv=None):
     say("")
 
     from pmos.openrouter import OpenRouterProvider
-    provider = OpenRouterProvider()
+    # The chosen credential variable must reach the adapter, or --env silently
+    # selects a key the adapter never reads.
+    provider = OpenRouterProvider(api_key_env=args.env)
     made = 0
     attempts = 0
     spent = 0.0
     budget = args.budget_usd or 0.0
+    enforce_budget = not args.unbounded_budget
     breach = False
     budget_refusals = 0
+    halted = False
 
     for case in CASES:
-        # Attempts, not successes. Counting successes meant a failing adapter
-        # was re-entered once per case: the audit saw four dispatches under
-        # --max-calls 1. A cap that loosens when calls start failing is not one.
-        if attempts >= args.max_calls:
+        if halted:
             break
         allowed, reason = route_decision(spec, case, args)
         entry = {"case": case["id"], "task": case["task"],
@@ -535,8 +628,19 @@ def main(argv=None):
             say("  [REFUSE] %-28s %s" % (case["id"], reason))
             continue
 
+        # Attempts, not successes. Counting successes meant a failing adapter
+        # was re-entered once per case: the audit saw four dispatches under
+        # --max-calls 1. A cap that loosens when calls start failing is not one.
+        # The cap skips dispatch but must not skip the remaining cases: the
+        # refusal checks cost nothing and are the evidence this gate exists for.
+        if attempts >= args.max_calls:
+            entry["router_reason"] = "call cap reached before this case"
+            report["policy_results"].append(entry)
+            say("  [SKIP]   %-28s call cap reached" % case["id"])
+            continue
+
         reserved = reserve_cost_usd(spec, case["prompt"], args)
-        if budget and spent + reserved > budget:
+        if enforce_budget and spent + reserved > budget:
             budget_refusals += 1
             entry.update({"error": "budget_reservation_refused",
                           "error_detail":
@@ -546,7 +650,8 @@ def main(argv=None):
             report["policy_results"].append(entry)
             say("  [REFUSE] %-28s reservation exceeds remaining budget"
                 % case["id"])
-            break
+            halted = True
+            continue
 
         attempts += 1
         started = time.monotonic()
@@ -555,7 +660,7 @@ def main(argv=None):
             elapsed = (time.monotonic() - started) * 1000.0
             text = getattr(response, "output", "") or ""
             resolved_model = getattr(response, "model", None)
-            cost = float(getattr(response, "cost_usd", 0.0) or 0.0)
+            cost, cost_status = usable_cost(getattr(response, "cost_usd", None))
             entry.update({
                 "called": True,
                 "request_sha256": sha256(case["prompt"]),
@@ -567,7 +672,20 @@ def main(argv=None):
                 "prompt_tokens": getattr(response, "input_tokens", None),
                 "completion_tokens": getattr(response, "output_tokens", None),
                 "cost_usd": cost,
+                "cost_status": cost_status,
             })
+            if cost_status != "OK":
+                # Without an authoritative cost there is no evidence the run
+                # stayed inside its ceiling, so the ceiling is unproven.
+                entry.update({"error": "cost_%s" % cost_status.lower(),
+                              "error_detail":
+                                  "provider returned no usable cost; budget "
+                                  "compliance cannot be evidenced"})
+                report["calls"].append(entry)
+                report["policy_results"].append(entry)
+                say("  [ERROR]  %-28s cost %s" % (case["id"], cost_status))
+                halted = True
+                continue
             spent += cost
             if not resolved_model:
                 # Resolved provenance is one of the four things this gate
@@ -583,12 +701,18 @@ def main(argv=None):
             made += 1
             say("  [OK]     %-28s %s  %.0fms  %s chars"
                 % (case["id"], resolved_model, elapsed, len(text)))
-            if budget and spent > budget:
+            if enforce_budget and spent > budget:
+                # Zero is a ceiling, not the absence of one. The guard used to
+                # read `if budget`, so a $0.00 free-only run skipped this check
+                # entirely and billed $1.50 across two dispatches with a clean
+                # exit. Overbilling can explain the first charge; it cannot
+                # explain the second dispatch.
                 breach = True
                 report["policy_results"].append(entry)
                 say("  [HALT]   billed $%.6f against a $%.6f ceiling; stopping"
                     % (spent, budget))
-                break
+                halted = True
+                continue
         except Exception as error:                          # noqa: BLE001
             entry.update({"called": True, "error": type(error).__name__,
                           "error_detail": str(error)[:200]})
@@ -618,6 +742,10 @@ def main(argv=None):
     # A run that errored, breached its ceiling, or could not afford its cases
     # is not a successful run, and must not report success to CI.
     if report["totals"]["errors"] or breach or budget_refusals:
+        return 1
+    if args.max_calls < 1:
+        say("INCOMPLETE: --max-calls %d permits no dispatch, so this run "
+            "cannot produce generation evidence." % args.max_calls)
         return 1
     if attempts == 0:
         # Every case was refused before dispatch, so this run generated no

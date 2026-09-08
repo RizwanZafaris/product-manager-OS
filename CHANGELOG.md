@@ -59,6 +59,34 @@ This is an unreleased working-tree change set, not a tag, published package, hos
   hollow list now decides the exit code too, on the same thresholds. The 50 shipped prose
   skills still pass unchanged; no threshold was lowered to keep them passing.
 
+### Fixed, continued
+
+- The EXT-AI probe reported success on five more paths, found by independent review of the
+  work that closed the first six. A zero-dollar budget disabled enforcement outright, because
+  the guard read `if budget`: a free-only run dispatched twice and billed $1.50 with
+  `budget_breach` false and exit 0. Zero is a ceiling; it now stops after the first
+  unexpected charge, and unbounded spending is an explicit `--unbounded-budget` opt-in that is
+  never the default. The gateway path took `--model` on trust, built its spec with `free=True`
+  regardless, and recorded cost 0.0, so an out-of-catalog paid model billing $2 was dispatched
+  and reported as free; catalog membership is now the eligibility check, free-ness follows the
+  discovery constraint, a resolved model other than the pinned one is an error, and a gateway
+  that reports a price has that price carried and enforced. Absent authoritative cost was
+  coerced to 0.0, turning "the provider told us nothing" into "the provider told us it was
+  free"; it is now UNKNOWN and fails the run, alongside rejection of negative, NaN, and
+  infinite values. `--max-calls 0` returned success with no dispatch on the gateway path, and
+  now reports incomplete on both transports. Reaching the call cap used to abandon the
+  remaining cases, so the refusal checks -- which cost nothing and are the evidence the gate
+  exists for -- went unevaluated; they are now always evaluated.
+- `test_pmos_probe` was not in the canonical root-test list, so none of its regressions ran in
+  hosted CI. It is registered, and a regression asserts the registration so the module cannot
+  drift out again. `tools/skill_rubric.py` was invoked by no gate at all; it is now a gate.
+- `--env` did not reach the adapter, so a custom credential variable selected a key the
+  adapter never read. The gateway subprocess had no timeout and could hang a release gate
+  indefinitely; it now has a finite one. The budget reservation estimated prompt tokens as
+  `len(prompt)//4`, an average rather than a bound, which under-reserves on exactly the inputs
+  that tokenize badly; it now reserves against byte length, since a token never covers less
+  than one byte.
+
 ### Known external requirements
 
 - Local checks do not verify hosted CI on the exact commit, a live provider, vendor sandboxes, a non-maintainer journey, independent human team review, organization-specific regulatory approval, or a published release artifact. No tag or published release is claimed here.

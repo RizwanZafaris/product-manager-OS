@@ -286,3 +286,186 @@ class SkillRubricTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ZeroBudgetTests(unittest.TestCase):
+    """Zero is a ceiling, not an absence of one.
+
+    The guard read ``if budget``, so a budget of $0.00 -- the default, and the
+    value a free-only run declares -- skipped reservation and breach checks
+    entirely. An independent reviewer dispatched twice and billed $1.50 against
+    it with budget_breach false and exit 0. Unexpected billing can explain the
+    first charge; it cannot explain the second dispatch or a successful exit.
+    """
+
+    def test_a_zero_budget_stops_after_the_first_unexpected_charge(self):
+        code, report, adapter = run_probe(
+            ["--max-calls", "2"], complete={"return_value": answer(cost=0.75)})
+        self.assertEqual(adapter.call_count, 1, "the second dispatch must not happen")
+        self.assertTrue(report["totals"]["budget_breach"])
+        self.assertNotEqual(code, 0)
+
+    def test_a_free_run_that_costs_nothing_still_succeeds(self):
+        code, report, _ = run_probe(["--max-calls", "1"],
+                                    complete={"return_value": answer(cost=0.0)})
+        self.assertEqual(code, 0)
+        self.assertFalse(report["totals"]["budget_breach"])
+
+    def test_unbounded_spend_is_opt_in_and_never_the_default(self):
+        code, report, adapter = run_probe(
+            ["--max-calls", "2", "--allow-paid", "--unbounded-budget"],
+            complete={"return_value": answer(cost=0.75)})
+        self.assertEqual(adapter.call_count, 2)
+        self.assertFalse(report["totals"]["budget_breach"])
+        self.assertEqual(code, 0)
+
+
+class UnknownCostTests(unittest.TestCase):
+    """Absent authoritative cost is UNKNOWN, never zero."""
+
+    def test_a_missing_cost_is_not_recorded_as_zero(self):
+        _code, report, _ = run_probe(["--max-calls", "1"],
+                                     complete={"return_value": answer(cost=None)})
+        call = report["calls"][0]
+        self.assertIsNone(call["cost_usd"])
+        self.assertEqual(call.get("cost_status"), "UNKNOWN")
+
+    def test_a_missing_cost_fails_the_run(self):
+        code, _report, _ = run_probe(["--max-calls", "1"],
+                                     complete={"return_value": answer(cost=None)})
+        self.assertNotEqual(code, 0)
+
+    def test_a_nonsense_cost_is_rejected_rather_than_summed(self):
+        for bad in (float("nan"), float("inf"), -1.0):
+            with self.subTest(cost=bad):
+                code, report, _ = run_probe(
+                    ["--max-calls", "1"],
+                    complete={"return_value": answer(cost=bad)})
+                self.assertTrue(report["calls"][0].get("error"))
+                self.assertNotEqual(code, 0)
+
+
+class GatewayEligibilityTests(unittest.TestCase):
+    """The gateway must not invent eligibility or price.
+
+    The OmniRoute path took ``args.model`` on trust, built a ModelSpec with
+    free=True regardless, and recorded cost 0.0. A reviewer pinned
+    ``vendor/paid-model`` against a catalog advertising only a free test model,
+    got one dispatch, exit 0 and a reported cost of $0.00 for a $2 call.
+    """
+
+    def test_a_model_outside_the_discovered_catalog_is_refused(self):
+        code, _report, adapter = run_probe(
+            ["--via", "omniroute", "--model", "vendor/paid-model",
+             "--max-calls", "1"],
+            omni={"return_value": {"text": "answer",
+                                   "resolved_model": "vendor/paid-model",
+                                   "cost_usd": 2}})
+        self.assertEqual(adapter.call_count, 0)
+        self.assertNotEqual(code, 0)
+
+    def test_a_catalog_model_is_still_allowed(self):
+        code, _report, adapter = run_probe(
+            ["--via", "omniroute", "--model", "openrouter/test/free:free",
+             "--max-calls", "1"],
+            omni={"return_value": {"text": "answer",
+                                   "resolved_model": "openrouter/test/free:free"}})
+        self.assertEqual(adapter.call_count, 1)
+        self.assertEqual(code, 0)
+
+    def test_a_resolved_model_other_than_the_pinned_one_is_an_error(self):
+        code, report, _ = run_probe(
+            ["--via", "omniroute", "--model", "openrouter/test/free:free",
+             "--max-calls", "1"],
+            omni={"return_value": {"text": "answer",
+                                   "resolved_model": "something/else"}})
+        self.assertTrue(report["calls"][0].get("error"))
+        self.assertNotEqual(code, 0)
+
+    def test_a_reported_gateway_cost_is_carried_not_zeroed(self):
+        code, report, _ = run_probe(
+            ["--via", "omniroute", "--model", "openrouter/test/free:free",
+             "--max-calls", "1"],
+            omni={"return_value": {"text": "answer",
+                                   "resolved_model": "openrouter/test/free:free",
+                                   "cost_usd": 2}})
+        self.assertEqual(report["calls"][0]["cost_usd"], 2)
+        self.assertTrue(report["totals"]["budget_breach"])
+        self.assertNotEqual(code, 0)
+
+
+class ExecutionLimitTests(unittest.TestCase):
+    """A run that dispatched nothing has not produced generation evidence."""
+
+    def test_a_zero_call_cap_is_not_a_successful_generation_run(self):
+        code, _report, adapter = run_probe(
+            ["--via", "omniroute", "--max-calls", "0"],
+            omni={"return_value": {"text": "answer",
+                                   "resolved_model": "openrouter/test/free:free"}})
+        self.assertEqual(adapter.call_count, 0)
+        self.assertNotEqual(code, 0)
+
+    def test_a_zero_call_cap_fails_on_the_direct_path_too(self):
+        code, _report, adapter = run_probe(
+            ["--max-calls", "0"], complete={"return_value": answer()})
+        self.assertEqual(adapter.call_count, 0)
+        self.assertNotEqual(code, 0)
+
+    def test_refusal_cases_are_still_evaluated_once_the_cap_is_reached(self):
+        """Refusals cost nothing, and they are the evidence the gate exists for."""
+        _code, report, _ = run_probe(["--max-calls", "1"],
+                                     complete={"return_value": answer()})
+        refusal_ids = {r["case"] for r in report["policy_results"]
+                       if not r["eligible"]}
+        self.assertIn("architecture-refusal-check", refusal_ids)
+        self.assertIn("regulatory-refusal-check", refusal_ids)
+
+
+class ProbeConfigurationTests(unittest.TestCase):
+    """Contract details the audit's happy-path cases never exercised."""
+
+    def test_a_custom_credential_variable_reaches_the_adapter(self):
+        seen = {}
+        real_init = OpenRouterProvider.__init__
+
+        def record(self, *args, **kwargs):
+            seen["api_key_env"] = kwargs.get("api_key_env")
+            return real_init(self, *args, **kwargs)
+
+        with patch.object(OpenRouterProvider, "__init__", record):
+            run_probe(["--max-calls", "1", "--env", "CUSTOM_KEY_VAR"],
+                      complete={"return_value": answer()})
+        self.assertEqual(seen.get("api_key_env"), "CUSTOM_KEY_VAR")
+
+    def test_the_gateway_subprocess_has_a_finite_timeout(self):
+        import subprocess as sp
+        seen = {}
+
+        def record(argv, **kwargs):
+            seen.update(kwargs)
+            return sp.CompletedProcess(argv, 0, stdout="ok", stderr="")
+
+        with patch.object(probe.subprocess, "run", side_effect=record):
+            probe.omniroute_chat("openrouter/test/free:free", "hello")
+        self.assertIsNotNone(seen.get("timeout"))
+        self.assertGreater(seen["timeout"], 0)
+
+    def test_the_cost_reservation_bound_is_not_below_the_byte_length(self):
+        """len(prompt)//4 under-counts; a token is never more than a byte."""
+
+        class Args:
+            max_output_tokens = 1
+
+        prompt = "x" * 400
+        reserved = probe.reserve_cost_usd(PAID, prompt, Args())
+        floor = PAID.cost_per_1k_tokens * len(prompt.encode("utf-8")) / 1000.0
+        self.assertGreaterEqual(reserved, floor)
+
+
+class CanonicalCoverageTests(unittest.TestCase):
+    """A regression suite CI does not run is not coverage."""
+
+    def test_this_module_is_registered_in_the_canonical_gate(self):
+        import ci_gate
+        argv = [a for gate in ci_gate.GATES for a in gate.argv]
+        self.assertIn("test_pmos_probe", argv)

@@ -38,7 +38,8 @@ GATES = (
          "test_pmos_store", "test_pmos_domain", "test_pmos_operations",
          "test_pmos_hooks", "test_pmos_usecases", "test_pmos_conductor",
          "test_pmos_skills", "test_pmos_cli", "test_pmos_release",
-         "test_pmos_security", "test_pmos_review"), expects_tests=True,
+         "test_pmos_security", "test_pmos_review",
+         "test_pmos_probe"), expects_tests=True,
          timeout=1800),
     Gate("harness-tests", ("python3", "-m", "unittest", "discover", "-s",
          "harness", "-p", "test_*.py", "-v"), expects_tests=True,
@@ -66,6 +67,7 @@ GATES = (
          required_output="created: 0, extended: 0"),
     Gate("security-policy", ("python3", "tools/security_gate.py")),
     Gate("docs-contract", ("python3", "tools/docs_contract.py", "--strict")),
+    Gate("skill-rubric", ("python3", "tools/skill_rubric.py", "--min", "7")),
     Gate("readiness-local", ("python3", "tools/readiness.py", "--local"),
          timeout=3600),
 )
