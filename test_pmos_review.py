@@ -13,8 +13,23 @@ TOOLS = Path(__file__).resolve().parent / "tools"
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
+import subprocess
+
 import review_gate
 from review_gate import tree_digest, validate_attestation  # noqa: E402
+
+
+def git_repo(root, ignore="._*\n"):
+    """A real git repository, because tracked-ness is the thing under test."""
+    def run(*args):
+        return subprocess.run(('git',) + args, cwd=str(root), capture_output=True,
+                              text=True, timeout=30)
+    run('init', '-q')
+    run('config', 'user.email', 'test@example.invalid')
+    run('config', 'user.name', 'Review Fixture')
+    (root / '.gitignore').write_text(ignore, encoding='utf-8')
+    run('add', '.gitignore')
+    return run
 
 
 def attestation(root, **changes):
@@ -319,6 +334,150 @@ class WorktreeGitLinkTests(unittest.TestCase):
             self.assertIn("vendor/.git", {row["path"] for row in rows})
             (nested / ".git").write_text("gitdir: /changed\n", encoding="utf-8")
             self.assertNotEqual(first, tree_digest(root)[0])
+
+
+class TrackedMetadataNameTests(unittest.TestCase):
+    """A filename that resembles metadata must not exempt tracked content.
+
+    The AppleDouble exclusion shipped in 0b2a466 matched any name beginning
+    "._" outright, and its commit message claimed git could not track such a
+    file. That claim was wrong: `git add -f` overrides .gitignore, so a tracked
+    ._policy.json was force-added, omitted from the reviewed inventory, and its
+    contents could be flipped from {"approved": false} to {"approved": true}
+    without changing the digest a recorded review is pinned to.
+
+    The rule is therefore tracked-aware: git decides what is reviewable, and a
+    name only excuses a file from review when git is not carrying it.
+    """
+
+    def test_a_force_added_dot_underscore_file_is_reviewed(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            run = git_repo(root)
+            (root / "app.py").write_text("SAFE = True\n", encoding="utf-8")
+            policy = root / "._policy.json"
+            policy.write_text('{"approved": false}\n', encoding="utf-8")
+            run("add", "-f", "._policy.json")
+            run("add", "app.py")
+            run("commit", "-qm", "init")
+            self.assertIn("._policy.json", run("ls-files").stdout.split())
+            _digest, rows = tree_digest(root)
+            self.assertIn("._policy.json", {row["path"] for row in rows})
+
+    def test_editing_a_tracked_dot_underscore_file_stales_the_review(self):
+        """The exact bypass: flipping a tracked approval flag must be caught."""
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            run = git_repo(root)
+            policy = root / "._policy.json"
+            policy.write_text('{"approved": false}\n', encoding="utf-8")
+            run("add", "-f", "._policy.json")
+            run("commit", "-qm", "init")
+            document = attestation(root)
+            self.assertEqual(validate_attestation(document, root), [])
+            policy.write_text('{"approved": true}\n', encoding="utf-8")
+            self.assertTrue(any("stale" in error for error in
+                                validate_attestation(document, root)))
+
+    def test_an_untracked_sidecar_is_still_excluded(self):
+        """Reproducibility across filesystems must survive the tighter rule."""
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            run = git_repo(root)
+            (root / "app.py").write_text("SAFE = True\n", encoding="utf-8")
+            run("add", "app.py")
+            run("commit", "-qm", "init")
+            clean, _rows = tree_digest(root)
+            (root / "._app.py").write_bytes(b"\x00\x05\x16\x07AppleDouble")
+            (root / ".DS_Store").write_bytes(b"\x00\x00\x00\x01Bud1")
+            dirty, rows = tree_digest(root)
+            self.assertEqual(clean, dirty)
+            self.assertNotIn("._app.py", {row["path"] for row in rows})
+
+    def test_a_tracked_nested_dot_underscore_file_is_reviewed(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            run = git_repo(root)
+            package = root / "pmos"
+            package.mkdir()
+            nested = package / "._rules.json"
+            nested.write_text('{"allow": false}\n', encoding="utf-8")
+            run("add", "-f", "pmos/._rules.json")
+            run("commit", "-qm", "init")
+            first, rows = tree_digest(root)
+            self.assertIn("pmos/._rules.json", {row["path"] for row in rows})
+            nested.write_text('{"allow": true}\n', encoding="utf-8")
+            self.assertNotEqual(first, tree_digest(root)[0])
+
+    def test_a_tracked_dot_underscore_symlink_is_reviewed(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            run = git_repo(root)
+            (root / "real.py").write_text("SAFE = True\n", encoding="utf-8")
+            link = root / "._link"
+            link.symlink_to("real.py")
+            run("add", "-f", "._link")
+            run("add", "real.py")
+            run("commit", "-qm", "init")
+            _digest, rows = tree_digest(root)
+            entry = {(r["path"], r["kind"]) for r in rows}
+            self.assertIn(("._link", "symlink"), entry)
+
+    def test_a_tracked_pyc_is_reviewed_but_an_untracked_one_is_not(self):
+        """The same bypass class applies to the compiled-artifact exclusion."""
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            run = git_repo(root, ignore="*.pyc\n")
+            blob = root / "vendored.pyc"
+            blob.write_bytes(b"\x00payload-one")
+            run("add", "-f", "vendored.pyc")
+            run("commit", "-qm", "init")
+            first, rows = tree_digest(root)
+            self.assertIn("vendored.pyc", {row["path"] for row in rows})
+            blob.write_bytes(b"\x00payload-two")
+            self.assertNotEqual(first, tree_digest(root)[0])
+            (root / "scratch.pyc").write_bytes(b"\x00untracked")
+            self.assertNotIn("scratch.pyc",
+                             {r["path"] for r in tree_digest(root)[1]})
+
+    def test_ordinary_tracked_source_changes_still_stale_the_review(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            run = git_repo(root)
+            source = root / "app.py"
+            source.write_text("SAFE = True\n", encoding="utf-8")
+            run("add", "app.py")
+            run("commit", "-qm", "init")
+            document = attestation(root)
+            self.assertEqual(validate_attestation(document, root), [])
+            source.write_text("SAFE = False\n", encoding="utf-8")
+            self.assertTrue(any("stale" in error for error in
+                                validate_attestation(document, root)))
+
+    def test_it_fails_closed_when_the_git_index_cannot_be_read(self):
+        """An unreadable index must never be treated as 'nothing is tracked'."""
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            run = git_repo(root)
+            (root / "app.py").write_text("SAFE = True\n", encoding="utf-8")
+            run("add", "app.py")
+            run("commit", "-qm", "init")
+            # A metadata-shaped entry is what forces the tracked-ness question.
+            (root / "._policy.json").write_text('{"approved": true}\n',
+                                                encoding="utf-8")
+            with patch.object(review_gate, "_git",
+                              side_effect=OSError("git unavailable")):
+                with self.assertRaises(OSError):
+                    tree_digest(root)
+
+    def test_a_plain_directory_that_is_not_a_repository_still_works(self):
+        """Tests and ad-hoc trees are not git repositories; excluding is safe there."""
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "app.py").write_text("SAFE = True\n", encoding="utf-8")
+            clean, _rows = tree_digest(root)
+            (root / "._app.py").write_bytes(b"\x00\x05\x16\x07sidecar")
+            self.assertEqual(clean, tree_digest(root)[0])
 
 
 class RecordReviewTests(unittest.TestCase):
