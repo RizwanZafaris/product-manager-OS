@@ -27,10 +27,33 @@ ROOT_SKIP_DIRS = frozenset({
 })
 NESTED_CACHE_DIRS = frozenset({"__pycache__", ".pytest_cache", ".mypy_cache"})
 SKIP_NAMES = frozenset({".DS_Store"})
+APPLEDOUBLE_PREFIX = "._"
+GIT_CONTROL_NAME = ".git"
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 MAX_TREE_ENTRIES = 16384
 MAX_TREE_DEPTH = 64
 MAX_TREE_BYTES = 256 * 1024 * 1024
+
+
+def is_excluded_sidecar(name):
+    """True for OS-generated metadata that is never part of the reviewed source.
+
+    macOS writes an AppleDouble sidecar (``._name``) beside every entry when a
+    repository lives on a filesystem without native extended-attribute support
+    -- exFAT, FAT and SMB, which is what an external drive gives you. The
+    sidecars carry no source, are already listed in .gitignore, and cannot
+    exist in a hosted checkout because git never tracks them.
+
+    Hashing them made the digest depend on which filesystem the checkout sat
+    on, so a review recorded on such a workspace could never match the digest
+    computed for the same commit in CI. Excluding them is the same judgement
+    already made for .DS_Store: it removes Finder's bookkeeping from the
+    reviewed tree, and removes nothing a reviewer would ever read.
+
+    This narrows the digest only to files git cannot carry. Every tracked
+    file, dotfiles included, is still hashed.
+    """
+    return name in SKIP_NAMES or name.startswith(APPLEDOUBLE_PREFIX)
 
 
 def _read_relative(root_fd, relative):
@@ -117,6 +140,15 @@ def tree_digest(root=REPO):
                 relative = (prefix + "/" + name).strip("/")
                 at_root = not prefix
                 metadata = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+                if at_root and name == GIT_CONTROL_NAME:
+                    # A plain clone carries .git as a directory; `git worktree
+                    # add` and submodule checkouts carry it as a regular file
+                    # holding an absolute "gitdir:" pointer unique to that
+                    # checkout. Skipping only the directory form made every
+                    # worktree hash differently from the clone CI builds, so a
+                    # review recorded in a task worktree could never validate.
+                    # Neither form is reviewable content.
+                    continue
                 if stat.S_ISDIR(metadata.st_mode):
                     if ((at_root and (name in ROOT_SKIP_DIRS or name.endswith(".egg-info"))) or
                             (not at_root and name in NESTED_CACHE_DIRS)):
@@ -131,7 +163,8 @@ def tree_digest(root=REPO):
                     finally:
                         os.close(child)
                     continue
-                if (relative == ATTESTATION.as_posix() or name in SKIP_NAMES or
+                if (relative == ATTESTATION.as_posix() or
+                        is_excluded_sidecar(name) or
                         name.endswith((".pyc", ".pyo"))):
                     continue
                 if stat.S_ISLNK(metadata.st_mode):
