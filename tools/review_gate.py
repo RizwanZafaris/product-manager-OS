@@ -29,31 +29,83 @@ NESTED_CACHE_DIRS = frozenset({"__pycache__", ".pytest_cache", ".mypy_cache"})
 SKIP_NAMES = frozenset({".DS_Store"})
 APPLEDOUBLE_PREFIX = "._"
 GIT_CONTROL_NAME = ".git"
+BUILD_ARTIFACT_SUFFIXES = (".pyc", ".pyo")
+GIT_TIMEOUT_SECONDS = 30
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 MAX_TREE_ENTRIES = 16384
 MAX_TREE_DEPTH = 64
 MAX_TREE_BYTES = 256 * 1024 * 1024
 
 
-def is_excluded_sidecar(name):
-    """True for OS-generated metadata that is never part of the reviewed source.
+def _git(root, *args):
+    """Run git in ``root``. Raises OSError when git cannot be executed."""
+    import subprocess
+    try:
+        return subprocess.run(("git",) + args, cwd=str(root), capture_output=True,
+                              text=True, timeout=GIT_TIMEOUT_SECONDS)
+    except (OSError, subprocess.SubprocessError) as error:
+        raise OSError("review tree could not consult git: %s" % (error,))
 
-    macOS writes an AppleDouble sidecar (``._name``) beside every entry when a
-    repository lives on a filesystem without native extended-attribute support
-    -- exFAT, FAT and SMB, which is what an external drive gives you. The
-    sidecars carry no source, are already listed in .gitignore, and cannot
-    exist in a hosted checkout because git never tracks them.
 
-    Hashing them made the digest depend on which filesystem the checkout sat
-    on, so a review recorded on such a workspace could never match the digest
-    computed for the same commit in CI. Excluding them is the same judgement
-    already made for .DS_Store: it removes Finder's bookkeeping from the
-    reviewed tree, and removes nothing a reviewer would ever read.
+def tracked_paths(root):
+    """Every path git tracks under ``root``, or None outside a work tree.
 
-    This narrows the digest only to files git cannot carry. Every tracked
-    file, dotfiles included, is still hashed.
+    Tracked-ness, not the filename, decides what the review covers. This exists
+    because the previous rule excluded any name beginning ``._`` outright, on
+    the stated but false premise that git cannot carry such a file. ``git add
+    -f`` overrides .gitignore, so a tracked ``._policy.json`` was force-added,
+    omitted from the reviewed inventory, and could have its contents flipped
+    without moving the digest a recorded review is pinned to.
+
+    Fails closed. If ``root`` is a work tree whose index cannot be read, this
+    raises rather than reporting an empty set, because "git told us nothing"
+    and "git tracks nothing" must never collapse into the same answer -- the
+    first would silently exclude every metadata-named file in the tree.
+
+    Returns None when ``root`` is not a work tree at all. There is no tracked
+    content to protect there, so the filesystem-metadata exclusion applies on
+    its own; this is the case for temporary directories and ad-hoc trees.
     """
-    return name in SKIP_NAMES or name.startswith(APPLEDOUBLE_PREFIX)
+    probe = _git(root, "rev-parse", "--is-inside-work-tree")
+    if probe.returncode != 0 or probe.stdout.strip() != "true":
+        return None
+    listing = _git(root, "ls-files", "-z")
+    if listing.returncode != 0:
+        raise OSError("review tree is a git work tree whose index could not be "
+                      "read; refusing to treat that as an empty tracked set")
+    return frozenset(entry for entry in listing.stdout.split("\0") if entry)
+
+
+def is_excluded_sidecar(name):
+    """True for a name that *looks* like OS-generated or build metadata.
+
+    A name alone is never sufficient to exclude anything; callers must also
+    confirm the path is untracked. See :func:`is_reviewable_artifact`.
+    """
+    return (name in SKIP_NAMES or name.startswith(APPLEDOUBLE_PREFIX) or
+            name.endswith(BUILD_ARTIFACT_SUFFIXES))
+
+
+def is_reviewable_artifact(relative, name, tracked):
+    """Whether an entry belongs in the reviewed tree.
+
+    macOS writes an AppleDouble sidecar (``._name``) beside every entry on a
+    filesystem without native extended-attribute support -- exFAT, FAT and SMB,
+    which is what an external drive gives you. Hashing those made the digest
+    depend on which filesystem the checkout sat on, so a review recorded on
+    such a workspace could never match the digest CI computes for the same
+    commit. Excluding them is the same judgement already made for .DS_Store.
+
+    But the exclusion is only safe for content git is not carrying. Anything
+    tracked is reviewed no matter what it is called, which keeps both
+    properties at once: an untracked sidecar cannot break reproducibility, and
+    a metadata-shaped filename cannot smuggle tracked content past a reviewer.
+    """
+    if not is_excluded_sidecar(name):
+        return True
+    if tracked is not None and relative in tracked:
+        return True
+    return False
 
 
 def _read_relative(root_fd, relative):
@@ -110,6 +162,7 @@ def _read_entry(directory_fd, name, metadata):
 def tree_digest(root=REPO):
     """Hash paths, file kinds and bytes, excluding only review/ephemera."""
     root = Path(root).resolve()
+    tracked_cache = []
     rows = []
     entries = 0
     total_bytes = 0
@@ -117,6 +170,19 @@ def tree_digest(root=REPO):
                       getattr(os, "O_NOFOLLOW", 0))
     root_identity = os.fstat(root_fd)
     try:
+        def tracked_set():
+            """Consult git only if something metadata-shaped actually turns up.
+
+            Deferring the call keeps the subprocess out of the walk for trees
+            that contain no such entry. That matters for correctness, not only
+            speed: the race-detection tests patch os.read globally and act on
+            the first non-empty read, and an eager `git ls-files` would consume
+            that read from its own pipe before the inventory ever began.
+            """
+            if not tracked_cache:
+                tracked_cache.append(tracked_paths(root))
+            return tracked_cache[0]
+
         def add(relative, kind, payload):
             nonlocal entries, total_bytes
             entries += 1
@@ -163,9 +229,10 @@ def tree_digest(root=REPO):
                     finally:
                         os.close(child)
                     continue
-                if (relative == ATTESTATION.as_posix() or
-                        is_excluded_sidecar(name) or
-                        name.endswith((".pyc", ".pyo"))):
+                if relative == ATTESTATION.as_posix():
+                    continue
+                if (is_excluded_sidecar(name) and
+                        not is_reviewable_artifact(relative, name, tracked_set())):
                     continue
                 if stat.S_ISLNK(metadata.st_mode):
                     target = os.readlink(name, dir_fd=directory_fd)
