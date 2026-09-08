@@ -365,13 +365,31 @@ class GatewayEligibilityTests(unittest.TestCase):
         self.assertNotEqual(code, 0)
 
     def test_a_catalog_model_is_still_allowed(self):
+        """Membership admits the call; cost evidence is a separate requirement.
+
+        Updated when absent gateway cost became UNKNOWN. This case previously
+        passed with no cost at all, which only worked because absence was
+        being read as $0.00 -- the very defect R2 reported. It now supplies a
+        cost, so it tests admission rather than the fabricated zero.
+        """
         code, _report, adapter = run_probe(
+            ["--via", "omniroute", "--model", "openrouter/test/free:free",
+             "--max-calls", "1"],
+            omni={"return_value": {"text": "answer", "cost_usd": 0.0,
+                                   "resolved_model": "openrouter/test/free:free"}})
+        self.assertEqual(adapter.call_count, 1)
+        self.assertEqual(code, 0)
+
+    def test_a_catalog_model_without_cost_evidence_is_admitted_but_fails(self):
+        """Admission and evidence are distinct: it dispatches, then fails."""
+        code, report, adapter = run_probe(
             ["--via", "omniroute", "--model", "openrouter/test/free:free",
              "--max-calls", "1"],
             omni={"return_value": {"text": "answer",
                                    "resolved_model": "openrouter/test/free:free"}})
         self.assertEqual(adapter.call_count, 1)
-        self.assertEqual(code, 0)
+        self.assertEqual(report["calls"][0]["cost_status"], "UNKNOWN")
+        self.assertNotEqual(code, 0)
 
     def test_a_resolved_model_other_than_the_pinned_one_is_an_error(self):
         code, report, _ = run_probe(
@@ -469,3 +487,131 @@ class CanonicalCoverageTests(unittest.TestCase):
         import ci_gate
         argv = [a for gate in ci_gate.GATES for a in gate.argv]
         self.assertIn("test_pmos_probe", argv)
+
+
+class CrossTransportCostAndIdentityTests(unittest.TestCase):
+    """One behaviour matrix, applied to both transports.
+
+    Each defect below was found on one transport after the other had been
+    fixed, which is the tell that they were being fixed case by case rather
+    than as a contract. These assert the contract on both.
+    """
+
+    # -- missing cost ----------------------------------------------------
+    def test_gateway_omitting_cost_entirely_is_unknown_not_zero(self):
+        """The real omniroute_chat never returns cost_usd, so this is the
+        ordinary production shape, not an exotic adapter."""
+        code, report, adapter = run_probe(
+            ["--via", "omniroute", "--max-calls", "2"],
+            omni={"return_value": {"text": "ok",
+                                   "resolved_model": "openrouter/test/free:free"}})
+        call = report["calls"][0]
+        self.assertEqual(call.get("cost_status"), "UNKNOWN")
+        self.assertIsNone(call.get("cost_usd"))
+        self.assertEqual(adapter.call_count, 1, "unknown cost must stop the run")
+        self.assertNotEqual(code, 0)
+
+    def test_direct_omitting_cost_is_unknown_not_zero(self):
+        code, report, adapter = run_probe(
+            ["--max-calls", "2"], complete={"return_value": answer(cost=None)})
+        self.assertEqual(report["calls"][0].get("cost_status"), "UNKNOWN")
+        self.assertEqual(adapter.call_count, 1)
+        self.assertNotEqual(code, 0)
+
+    # -- unknown cost halts ----------------------------------------------
+    def test_gateway_explicit_null_cost_halts_before_a_second_dispatch(self):
+        code, report, adapter = run_probe(
+            ["--via", "omniroute", "--max-calls", "2"],
+            omni={"return_value": {"text": "ok", "cost_usd": None,
+                                   "resolved_model": "openrouter/test/free:free"}})
+        self.assertEqual(adapter.call_count, 1)
+        self.assertNotEqual(code, 0)
+
+    def test_aggregate_cost_reports_uncertainty_rather_than_zero(self):
+        _code, report, _ = run_probe(
+            ["--via", "omniroute", "--max-calls", "2"],
+            omni={"return_value": {"text": "ok",
+                                   "resolved_model": "openrouter/test/free:free"}})
+        self.assertTrue(report["totals"].get("cost_unknown"),
+                        "an aggregate of unknowns must not read as $0.00")
+
+    # -- model identity --------------------------------------------------
+    def test_direct_rejects_a_substituted_model(self):
+        code, report, _ = run_probe(
+            ["--max-calls", "1"],
+            complete={"return_value": answer(model="unapproved/model")})
+        self.assertTrue(report["calls"][0].get("error"))
+        self.assertNotEqual(code, 0)
+
+    def test_gateway_rejects_a_substituted_model(self):
+        code, report, _ = run_probe(
+            ["--via", "omniroute", "--model", "openrouter/test/free:free",
+             "--max-calls", "1"],
+            omni={"return_value": {"text": "ok", "cost_usd": 0.0,
+                                   "resolved_model": "unapproved/model"}})
+        self.assertTrue(report["calls"][0].get("error"))
+        self.assertNotEqual(code, 0)
+
+    def test_the_authorised_model_is_still_accepted_on_both_transports(self):
+        code, _report, _ = run_probe(
+            ["--max-calls", "1"],
+            complete={"return_value": answer(model=FREE.model, cost=0.0)})
+        self.assertEqual(code, 0)
+        code, _report, _ = run_probe(
+            ["--via", "omniroute", "--model", "openrouter/test/free:free",
+             "--max-calls", "1"],
+            omni={"return_value": {"text": "ok", "cost_usd": 0.0,
+                                   "resolved_model": "openrouter/test/free:free"}})
+        self.assertEqual(code, 0)
+
+    # -- a known charge survives a provenance error ----------------------
+    def test_a_known_charge_is_kept_when_provenance_fails(self):
+        _code, report, _ = run_probe(
+            ["--via", "omniroute", "--model", "openrouter/test/free:free",
+             "--max-calls", "1"],
+            omni={"return_value": {"text": "ok", "cost_usd": 0.5,
+                                   "resolved_model": None}})
+        call = report["calls"][0]
+        self.assertTrue(call.get("error"))
+        self.assertEqual(call.get("cost_usd"), 0.5,
+                         "billing data must not be discarded with the result")
+
+
+class DiscoveryBoundaryTests(unittest.TestCase):
+    """The discovery boundary was mocked away in every existing test."""
+
+    def test_discovery_passes_the_custom_credential_variable(self):
+        seen = []
+        import pmos.openrouter as openrouter_module
+        real_init = openrouter_module.OpenRouterProvider.__init__
+
+        def spy(self, *args, **kwargs):
+            seen.append(kwargs.get("api_key_env"))
+            return real_init(self, *args, **kwargs)
+
+        class Args:
+            env = "CUSTOM_KEY_VAR"
+            free_only = True
+            model = None
+            certified_only = False
+
+        with patch.object(openrouter_module.OpenRouterProvider, "__init__", spy):
+            try:
+                probe.discover({"catalog": {}}, Args())
+            except Exception:            # noqa: BLE001 - transport is absent
+                pass
+        self.assertTrue(seen, "discovery never constructed a provider")
+        self.assertIn("CUSTOM_KEY_VAR", seen)
+
+    def test_gateway_discovery_has_a_finite_timeout(self):
+        import subprocess as sp
+        seen = {}
+
+        def record(argv, **kwargs):
+            seen.update(kwargs)
+            return sp.CompletedProcess(argv, 0, stdout="", stderr="")
+
+        with patch.object(probe.subprocess, "run", side_effect=record):
+            probe.omniroute_models(free_only=True)
+        self.assertIsNotNone(seen.get("timeout"))
+        self.assertGreater(seen["timeout"], 0)

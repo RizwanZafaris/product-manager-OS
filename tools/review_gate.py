@@ -82,6 +82,28 @@ def _git(root, *args):
         raise OSError("review tree could not consult git: %s" % (error,))
 
 
+def git_control_present(root):
+    """Whether git control metadata exists at ``root`` or above it.
+
+    Answers the only question that matters when git refuses to talk: is there
+    a repository here whose absence of an answer should be fatal? A ``.git``
+    entry -- the directory a clone carries, or the ``gitdir:`` pointer file a
+    worktree or submodule carries -- is that evidence, and GIT_DIR names it
+    explicitly when the environment overrides discovery.
+
+    Ancestors count, because a subdirectory of a repository is still inside
+    one, which is exactly the case git's own discovery walks.
+    """
+    override = os.environ.get("GIT_DIR")
+    if override and Path(override).exists():
+        return True
+    current = Path(root).resolve()
+    for candidate in (current, *current.parents):
+        if (candidate / GIT_CONTROL_NAME).exists():
+            return True
+    return False
+
+
 def tracked_paths(root):
     """Every path git tracks under ``root``, or None outside a work tree.
 
@@ -112,6 +134,20 @@ def tracked_paths(root):
     probe = _git(root, "rev-parse", "--is-inside-work-tree")
     if probe.returncode != 0:
         stderr = _as_bytes(probe.stderr)
+        # git's wording cannot carry this decision on its own. A repository
+        # whose object store has been renamed away answers a rev-parse with
+        # the very same "fatal: not a git repository" line as a plain
+        # directory, so trusting the message excluded a tracked file from a
+        # damaged repository and left its digest unmoved when it was edited.
+        # Control metadata on disk is the fact; the message is only
+        # corroboration.
+        if git_control_present(root):
+            raise OSError(
+                "review tree at %s carries git control metadata but git could "
+                "not inspect it (rev-parse exited %d: %s); refusing to treat "
+                "an unreadable repository as an empty tracked set" %
+                (root, probe.returncode,
+                 stderr.decode("utf-8", "replace").strip()))
         if NOT_A_GIT_REPOSITORY.search(stderr) is not None:
             return None
         raise OSError(

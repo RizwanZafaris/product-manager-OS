@@ -139,7 +139,10 @@ def discover(report, args):
     """Catalog discovery. Costs no tokens; still requires the credential."""
     from pmos.openrouter import OpenRouterProvider
 
-    provider = OpenRouterProvider()
+    # The same credential variable the generation path uses. Discovery
+    # constructing a default-env provider meant --env selected a key one
+    # half of the run never read.
+    provider = OpenRouterProvider(api_key_env=getattr(args, "env", None))
     started = time.monotonic()
     specs = provider.discover(free_only=args.free_only)
     elapsed = time.monotonic() - started
@@ -179,6 +182,7 @@ def omniroute_models(free_only=True):
     calling upstream. This never asks OmniRoute for the credential it holds.
     """
     done = subprocess.run(["omniroute", "simulate", "probe"],
+                          timeout=GATEWAY_TIMEOUT_SECONDS,
                           capture_output=True, text=True)
     models = []
     for line in (done.stdout or "").splitlines():
@@ -397,8 +401,10 @@ def run_via_omniroute(report, args):
     budget = args.budget_usd or 0.0
     enforce_budget = not args.unbounded_budget
     breach = False
+    cost_unknown = False
+    halted = False
     for case in CASES:
-        if breach:
+        if breach or halted:
             break
         if attempts >= args.max_calls:
             break
@@ -412,15 +418,15 @@ def run_via_omniroute(report, args):
             continue
         attempts += 1
         result = omniroute_chat(model, case["prompt"])
-        if not result.get("error") and not result.get("resolved_model"):
-            # Resolved provenance is one of the four things this gate requires.
-            # A generation whose model is unknown is not evidence that a model
-            # answered, and must not be recorded as a clean call.
-            result = {"error": "missing_resolved_model",
-                      "error_detail": "the gateway returned no resolved model"}
         if not result.get("error"):
             resolved = result.get("resolved_model")
-            if resolved and resolved != model:
+            if not resolved:
+                # Keep any billing the gateway did report: replacing the whole
+                # result with an error discarded a charge that was already made.
+                result = {"error": "missing_resolved_model",
+                          "error_detail": "the gateway returned no resolved model",
+                          "cost_usd": result.get("cost_usd")}
+            elif resolved != model:
                 # The call is pinned. A different model answering means the
                 # evidence describes something other than what was authorized.
                 result = {"error": "resolved_model_mismatch",
@@ -429,6 +435,11 @@ def run_via_omniroute(report, args):
         if result.get("error"):
             entry.update({"called": True, "error": result["error"],
                           "error_detail": result.get("error_detail")})
+            if "cost_usd" in result:
+                known, status = usable_cost(result.get("cost_usd"))
+                entry.update({"cost_usd": known, "cost_status": status})
+                if status == "OK":
+                    spent += known
             say("  [ERROR]  %-28s %s" % (case["id"], result["error"]))
         else:
             text = result.get("text") or ""
@@ -443,23 +454,26 @@ def run_via_omniroute(report, args):
                 "resolved_model": result.get("resolved_model"),
                 "total_tokens": result.get("total_tokens"),
             })
-            if "cost_usd" in result:
-                # A gateway that reports a price is the authority on it.
-                cost, cost_status = usable_cost(result.get("cost_usd"))
-                entry.update({"cost_usd": cost, "cost_status": cost_status,
-                              "cost_basis": "reported by the gateway"})
-                if cost_status != "OK":
-                    entry.update({"error": "cost_%s" % cost_status.lower()})
-                else:
-                    spent += cost
+            # The catalog is parsed from CLI strings and a ":free" suffix,
+            # which is a name, not billing evidence. omniroute_chat does not
+            # return a price at all, so treating absence as zero made every
+            # ordinary production response report $0.00 on no evidence. Absent
+            # cost is UNKNOWN, and an unprovable remaining budget stops the run.
+            cost, cost_status = usable_cost(result.get("cost_usd"))
+            entry.update({"cost_usd": cost, "cost_status": cost_status,
+                          "cost_basis": "reported by the gateway"
+                                        if cost_status == "OK" else
+                                        "the gateway reported no usable cost"})
+            if cost_status != "OK":
+                entry.update({"error": "cost_%s" % cost_status.lower(),
+                              "error_detail":
+                                  "budget compliance cannot be evidenced for "
+                                  "this transport"})
+                cost_unknown = True
+                halted = True
             else:
-                entry.update({
-                    "cost_usd": 0.0, "cost_status": "OK",
-                    "cost_basis": "model is in the free-only catalog and "
-                                  "advertises zero prompt and completion "
-                                  "price; verify against the provider invoice",
-                })
-            made += 1
+                spent += cost
+                made += 1
             say("  [OK]     %-28s %-26s %sms  %s tok"
                 % (case["id"], entry["resolved_model"],
                    entry["latency_ms"], entry["total_tokens"]))
@@ -477,10 +491,14 @@ def run_via_omniroute(report, args):
                         if not r["eligible"]),
         "errors": sum(1 for r in report["calls"] if r.get("error")),
         "cost_usd": round(spent, 6),
+        "cost_unknown": cost_unknown,
         "budget_breach": breach,
     }
     write(report, args.output)
     say("")
+    if cost_unknown:
+        say("AGGREGATE COST IS NOT $0.00: at least one call returned no usable "
+            "cost, so the total below is a lower bound on an unknown amount.")
     say("calls %d, refusals %d, errors %d"
         % (report["totals"]["calls_made"], report["totals"]["refusals"],
            report["totals"]["errors"]))
@@ -687,6 +705,18 @@ def main(argv=None):
                 halted = True
                 continue
             spent += cost
+            if resolved_model and resolved_model != spec.model:
+                # A nonempty model is not the authorized model. Evidence naming
+                # something other than what was approved describes a different
+                # run than the one that was permitted.
+                entry.update({"error": "resolved_model_mismatch",
+                              "error_detail": "authorized %r, answered %r"
+                                              % (spec.model, resolved_model)})
+                report["calls"].append(entry)
+                report["policy_results"].append(entry)
+                say("  [ERROR]  %-28s resolved_model_mismatch" % case["id"])
+                halted = True
+                continue
             if not resolved_model:
                 # Resolved provenance is one of the four things this gate
                 # requires. Without it there is no evidence a model answered.
