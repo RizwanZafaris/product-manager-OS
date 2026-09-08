@@ -30,6 +30,35 @@ This is an unreleased working-tree change set, not a tag, published package, hos
 - Release and review inventories compare symlink target bytes as well as file identity, so immediate inode reuse cannot hide a replaced link on Linux.
 - The reviewed tree digest no longer depends on the filesystem or the checkout shape it is computed from. macOS AppleDouble sidecars (`._name`), which appear beside every entry when the repository lives on exFAT, FAT, or SMB, are excluded the same way `.DS_Store` already was; and `.git` is excluded whether it is the directory a clone carries or the `gitdir:` pointer file `git worktree add` writes. Both were hashed before, so the same commit produced a different digest on an external drive (1075 entries against 491) and a different digest again in every task worktree, which meant a review recorded the way CONTRIBUTING asks for could never match the digest CI computes and CI-6 could not be closed honestly. Corrected 2026-09-08: that entry originally ended by claiming neither exclusion narrowed what a reviewer reads, because git could not track either file. The claim was wrong for the `._` rule. `git add -f` overrides .gitignore, so a tracked `._policy.json` was force-added, left out of the reviewed inventory, and its contents flipped from `{"approved": false}` to `{"approved": true}` without moving the digest. An independent review reproduced it. The exclusion is now tracked-aware: git decides what is reviewable, a metadata-shaped name only excuses a file that git is not carrying, and an unreadable index fails closed instead of being read as an empty tracked set. The same treatment now covers `.DS_Store` and `.pyc`/`.pyo`, which shared the defect. The `.git` half of the original claim stands: the repository's own control path is not reviewable content in either form.
 
+### Fixed
+
+- The EXT-AI probe reported success while doing none of what it claimed. An external audit
+  reproduced six defects offline against `ce81264`; every one still reproduced on `61b2036`,
+  so the 0.7.1 claim that they were closed was wrong for this tool. Each is now closed with a
+  regression at the CLI boundary in `test_pmos_probe.py`, which the repository previously had
+  no coverage for at all. The call cap counted successes, so a failing adapter was re-entered
+  once per case -- four dispatches under `--max-calls 1`; it now counts dispatch attempts. The
+  probe called `provider.complete(spec, prompt)` where the adapter takes a model-ID string, so
+  every real call raised `OpenRouterMalformedResponse`, and it read `.text`, `.prompt_tokens`
+  and `.completion_tokens` where the response carries `output`, `input_tokens` and
+  `output_tokens`, recording zero characters and null usage for a 22-character answer. A run
+  that errored, breached its ceiling, or dispatched nothing returned exit 0; it now returns 1,
+  and a run that generated no evidence reports itself incomplete rather than passing. Cost was
+  compared only after the fact, so $3.00 was billed against a $0.01 ceiling across four calls;
+  spend is now reserved against the advertised price before dispatch and reconciled after, and
+  a provider that bills more than it advertised halts the run instead of repeating it. Because
+  price is only known once a response arrives, that is the honest bound: the ceiling is
+  enforced against advertised pricing, and a discrepancy is caught and stopped, not prevented.
+  `--discover-only` still generated through OmniRoute, because the guard sat on a branch
+  `main()` never reached when `--via omniroute` was set. A generation with no resolved model
+  was recorded as a clean call, though resolved provenance is one of the four things the gate
+  requires; it is now an error.
+- The skill rubric graded autocomplete. It already computed which skills carried a required
+  section that was present and empty, and printed them, but only the section count decided the
+  exit code -- so a skill with all seven headings and nothing underneath scored a pass. The
+  hollow list now decides the exit code too, on the same thresholds. The 50 shipped prose
+  skills still pass unchanged; no threshold was lowered to keep them passing.
+
 ### Known external requirements
 
 - Local checks do not verify hosted CI on the exact commit, a live provider, vendor sandboxes, a non-maintainer journey, independent human team review, organization-specific regulatory approval, or a published release artifact. No tag or published release is claimed here.
