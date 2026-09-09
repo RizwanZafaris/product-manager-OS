@@ -23,6 +23,36 @@ This is an unreleased working-tree change set, not a tag, published package, hos
 - Local regression, crash, migration, security, accessibility, use-case, provenance, and evaluator-integrity gates.
 - A repository-local, standard-library PEP 517 backend that builds the wheel in an isolated offline environment without an undeclared setuptools installation.
 
+### Added, sector cards
+
+- Twenty-eight domain cards, taking the sector layer from sixteen cards to forty-four. Fourteen are
+  financial services, which the layer had covered with a single pointer card: core banking,
+  transaction banking, remittances, payments acquiring, card issuing, lending and credit, embedded
+  finance and banking-as-a-service, wealth and investing, capital markets, insurance, crypto and
+  digital assets, RegTech with AML and KYC, mobile money and wallets, and Islamic finance. Fourteen
+  are general sectors the layer lacked, including the four the release contract named as the
+  twenty-domain target and ten more: hardware and IoT, telecom, public sector and govtech,
+  automotive and mobility, energy and utilities, manufacturing and industrial, agritech, PropTech
+  and real estate, travel and hospitality, media and publishing, LegalTech, pharma and life
+  sciences, retail in store, and food delivery and quick commerce. Every card carries the layer's
+  five parts unchanged: the questions, the gatekeepers, the metrics with how each one lies, the
+  reading, and the Conductor and template overlays.
+- The index splits into a general table and a financial-services table, because the money
+  sectors share one fact the others do not: the licence is held by someone with a veto and every
+  rail was built by a third party with its own rulebook. The fintech card stays a pointer and now
+  routes to the fourteen sector cards as well as to the regulated module.
+- Written under the no-fabrication rule as it applies to a card: no statistic, market size, fine
+  amount, article number or case name that the author could not vouch for. Where a specific was
+  uncertain the sentence carries the tree's own "(verify before relying)" marker or omits the
+  specific; 49 sentences across the twenty-eight cards carry the marker, listed in the
+  pull request. Each card names at least one non-US regime, because the maintainer's market is not
+  the United States and a card that assumes it is teaches the wrong gatekeepers. These are cards,
+  not journeys: the graduation rule in the index still holds, and no sector has a worked
+  end-to-end example yet.
+- Drafted by four Sonnet workers in one isolated worktree, seven cards each, against the exemplar
+  cards and a written contract; every card was then read by the lead for unmarked specifics and
+  by the independent reviewer before the record was re-issued for the new tree.
+
 ### Changed
 
 - Documentation now separates the document path, the optional local runtime, and external readiness. Historical claims below describe the state at the time of those entries; where they characterize the legacy harness rather than the `pmos` runtime, they are superseded by this section and the current operator documentation.
