@@ -299,6 +299,11 @@ This is an unreleased working-tree change set, not a tag, published package, hos
   with no sibling is still listed and still fails the comparison. The lesson is recorded
   here because it is the general one: a portability fix is proven on the volume that
   exhibits the defect, not on the one that does not.
+- Third site, found the same way after the second: `tools/readiness_probe.py` walked
+  `rglob("*.md")` in the drift probe and read every hit, so the probe raised on the drive and
+  the `links_green` hard gate stayed off while all three link criteria passed; the lifecycle
+  probe counted the same sidecars as installed documents. Both now walk through one helper
+  that applies the predicate, with a regression that also asserts the probes use it.
 
 ### Known external requirements
 

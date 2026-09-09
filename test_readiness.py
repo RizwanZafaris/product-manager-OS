@@ -23,6 +23,7 @@ if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
 import readiness  # noqa: E402
+import readiness_probe  # noqa: E402
 from readiness_registry import Step  # noqa: E402
 
 
@@ -427,3 +428,43 @@ class VerdictAndOutputTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ProbeMarkdownWalkIgnoresSidecarsTests(unittest.TestCase):
+    """P0-EXFAT: the drift probe walked ``rglob("*.md")`` and read every hit.
+
+    On the maintainer's exFAT checkout that included the AppleDouble sidecar
+    ``._name.md`` beside each real file, whose body is binary, so the probe
+    raised UnicodeDecodeError and the links hard gate stayed off while every
+    link criterion passed. The lifecycle probe counted the same sidecars as
+    installed documents. Synthesized here so the guard runs on Linux CI.
+    """
+
+    def test_a_real_sidecar_beside_a_document_is_not_a_document(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "a.md").write_text("# a\n", encoding="utf-8")
+            (root / "._a.md").write_bytes(b"\x00\x05\x16\x07" + b"\xb0" * 12)
+            (root / "sub").mkdir()
+            (root / "sub" / "b.md").write_text("# b\n", encoding="utf-8")
+            (root / "sub" / "._b.md").write_bytes(b"\x00\x05\x16\x07" + b"\xb0" * 12)
+            found = [p.relative_to(root).as_posix()
+                     for p in readiness_probe.markdown_files(root)]
+            self.assertEqual(found, ["a.md", "sub/b.md"])
+
+    def test_a_dotfile_with_no_magic_header_is_still_a_document(self):
+        """Name alone excuses nothing; a real file that starts with ._ is kept."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "a.md").write_text("# a\n", encoding="utf-8")
+            (root / "._a.md").write_text("# not a sidecar\n", encoding="utf-8")
+            found = [p.name for p in readiness_probe.markdown_files(root)]
+            self.assertEqual(found, ["._a.md", "a.md"])
+
+    def test_the_lifecycle_and_drift_probes_walk_through_the_helper(self):
+        """The fix is only a fix if the probes actually use it."""
+        source = (Path(readiness_probe.__file__)).read_text(encoding="utf-8")
+        self.assertNotIn('rglob("*.md")))', source.replace(
+            'if path.is_file() and not is_appledouble_sidecar_path(path))', ""),
+            "a probe still walks rglob directly instead of markdown_files()")
+        self.assertEqual(source.count("markdown_files("), 4)
