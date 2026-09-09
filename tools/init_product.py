@@ -48,6 +48,9 @@ REPO = Path(__file__).resolve().parent.parent
 PRODUCTS_DIR = REPO / "products"
 TEMPLATES_DIR = REPO / "templates"
 
+if str(REPO) not in sys.path:
+    sys.path.insert(0, str(REPO))
+
 # Every constant and every function below this line used to live here in a
 # second copy. They now live in tools/workspace.py, which harness/runner.py
 # imports too, so the initializer and the runner can no longer disagree about
@@ -59,6 +62,14 @@ from workspace import (                                   # noqa: E402
     WorkspaceError, broken_links, declared_stage, destination_for, read_text,
     rewrite_links, rewrite_target, safe_product_slug,
 )
+
+# A checkout on exFAT, FAT or SMB carries a macOS AppleDouble sidecar
+# (``._name.md``) beside every real markdown file. rglob("*.md") picks the
+# sidecar up as readily as the file it shadows, and its body is the binary
+# AppleDouble container format rather than UTF-8 text, so read_text() on it
+# raised UnicodeDecodeError. pmos/sidecars.py holds the one positive-
+# recognition predicate both pmos/ and tools/ use for this.
+from pmos.sidecars import is_appledouble_sidecar_path              # noqa: E402
 
 SEED_TEMPLATE = "templates/execution/state.md"
 
@@ -170,7 +181,8 @@ def every_shipped_template():
     hole in the workspace contract, so the two lists are kept the same shape.
     """
     found = sorted(p.relative_to(REPO).as_posix()
-                   for p in (TEMPLATES_DIR).rglob("*.md") if p.is_file())
+                   for p in (TEMPLATES_DIR).rglob("*.md")
+                   if p.is_file() and not is_appledouble_sidecar_path(p))
     for extra in sorted(SPECIAL_DESTINATIONS):
         if extra not in found and (REPO / extra).is_file():
             found.append(extra)
@@ -197,7 +209,8 @@ def relink_workspace(slug, quiet=False):
         raise InitError("products/%s/ does not exist. Create it first: "
                         "python3 tools/init_product.py %s" % (slug, slug))
     moved, touched = 0, 0
-    for path in sorted(p for p in workspace.rglob("*.md") if p.is_file()):
+    for path in sorted(p for p in workspace.rglob("*.md")
+                        if p.is_file() and not is_appledouble_sidecar_path(p)):
         text = read_text(path)
         here = posixpath.dirname(path.relative_to(REPO).as_posix())
         rewritten, rewrites, _skipped = rewrite_links(text, here, here, slug)
@@ -238,7 +251,8 @@ def check_workspace(slug):
     if not workspace.is_dir():
         raise InitError("products/%s/ does not exist. Create it first: "
                         "python3 tools/init_product.py %s" % (slug, slug))
-    files = sorted(p for p in workspace.rglob("*.md") if p.is_file())
+    files = sorted(p for p in workspace.rglob("*.md")
+                   if p.is_file() and not is_appledouble_sidecar_path(p))
     if not files:
         say("products/%s/: no markdown files yet, so nothing to check." % slug)
         return 0

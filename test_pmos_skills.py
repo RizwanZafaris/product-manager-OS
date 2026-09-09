@@ -21,6 +21,7 @@ from pmos.routing import (
     RouteStatus,
     RoutingRequest,
 )
+from pmos.sidecars import APPLEDOUBLE_MAGIC
 from pmos.skills import SkillContractError, SkillRegistry
 
 
@@ -396,6 +397,84 @@ class SkillRegistryTests(unittest.TestCase):
             root_link.symlink_to(root, target_is_directory=True)
             with self.assertRaises(SkillContractError):
                 SkillRegistry(root_link, trusted).load()
+
+
+def _build_demo_skill(root):
+    """One minimal, self-consistent skill dir plus its trusted manifest.
+
+    Shared by the sidecar tests below so each one only has to add the one
+    filesystem entry it is testing.
+    """
+    skill = root / "demo"
+    skill.mkdir(parents=True)
+    source = "# demo\n"
+    graph = 'layer: skills\nstage: DEFINE\ngate: 2\nfeeds: []\nmethod: ""\naliases: ["Demo"]\n'
+    template = "# template\n"
+    skill.joinpath("SKILL.md").write_text(source, encoding="utf-8")
+    skill.joinpath("SKILL.graph.yml").write_text(graph, encoding="utf-8")
+    skill.joinpath("template.md").write_text(template, encoding="utf-8")
+    contract = {
+        "version": "1.0", "id": "demo", "name": "Demo", "description": "demo",
+        "inputs": {}, "outputs": {}, "capabilities": [], "side_effects": [],
+        "risk": "low", "privacy": "public", "allowed_hooks": [],
+        "resume": {"supported": False}, "completion": {"terminal": "done"},
+        "source_hash": hashlib.sha256(source.encode()).hexdigest(),
+        "template_hashes": {"template.md": hashlib.sha256(template.encode()).hexdigest()},
+    }
+    skill.joinpath("contract.json").write_text(json.dumps(contract), encoding="utf-8")
+    trusted = root.parent / "trusted.json"
+    trusted.write_text(json.dumps({
+        "format": "pmos.skill-manifest/v1", "schema": "pmos.skills.v1",
+        "skills": {"demo": {
+            name: hashlib.sha256((skill / name).read_bytes()).hexdigest()
+            for name in ("contract.json", "SKILL.graph.yml", "SKILL.md", "template.md")}}}),
+        encoding="utf-8")
+    return trusted
+
+
+class SkillRegistrySidecarTests(unittest.TestCase):
+    """P0-EXFAT: a macOS AppleDouble sidecar (``._name``) at the runtime root
+    used to fail every load with "unknown or unsafe entry", because the check
+    was name-only (anything starting with ``.``). Recognition is now positive
+    on four independent facts (name, regular file, AppleDouble magic,
+    sibling present); this class proves each one still gates admission on its
+    own, on Linux, with no real exFAT volume involved.
+    """
+
+    def test_a_real_appledouble_sidecar_beside_its_skill_dir_is_ignored(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "runtime"
+            trusted = _build_demo_skill(root)
+            (root / "._demo").write_bytes(APPLEDOUBLE_MAGIC + b"\x00" * 12)
+            registry = SkillRegistry(root, trusted)
+            loaded = registry.load()
+            self.assertEqual(set(loaded), {"demo"})
+
+    def test_a_dotfile_with_no_appledouble_magic_still_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "runtime"
+            trusted = _build_demo_skill(root)
+            (root / "._demo").write_bytes(b"not an appledouble sidecar!!")
+            with self.assertRaises(SkillContractError):
+                SkillRegistry(root, trusted).load()
+
+    def test_appledouble_magic_with_no_sibling_still_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "runtime"
+            trusted = _build_demo_skill(root)
+            # "ghost" has no sibling entry named "ghost" in this directory,
+            # so the fourth positive-recognition condition is never met.
+            (root / "._ghost").write_bytes(APPLEDOUBLE_MAGIC + b"\x00" * 12)
+            with self.assertRaises(SkillContractError):
+                SkillRegistry(root, trusted).load()
+
+    def test_a_directory_literally_named_dot_underscore_still_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "runtime"
+            trusted = _build_demo_skill(root)
+            (root / "._demo_extra").mkdir()
+            with self.assertRaises(SkillContractError):
+                SkillRegistry(root, trusted).load()
 
 
 if __name__ == "__main__":

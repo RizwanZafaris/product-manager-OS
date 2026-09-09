@@ -170,6 +170,53 @@ This is an unreleased working-tree change set, not a tag, published package, hos
   timeout. Four other unbounded subprocess sites in `readiness.py`, `readiness_probe.py` and
   `security_gate.py` are now bounded.
 
+### Fixed, exFAT portability
+
+- The maintainer's checkout lives on an exFAT external drive. macOS writes an AppleDouble
+  sidecar (`._<name>`) beside every file and directory there, and a clone or checkout on
+  exFAT, FAT, or SMB accumulates one per tracked entry -- 654 of them in this tree, none
+  tracked by git. Hosted CI runs on Linux and never sees a single one, so CI stayed green
+  while the maintainer's own machine failed OM-2, WS-4, WS-5, HR-7, CO-4, and CI-1, all with
+  the same root cause and all on Python 3.12.13. `tools/workspace.py`'s `read_text()`, called
+  during template and workspace enumeration (`tools/init_product.py`'s `every_shipped_template`,
+  `relink_workspace`, and `check_workspace`, reached from `add_every_template` and the
+  `--check` route), raised `UnicodeDecodeError: 'utf-8' codec can't decode byte 0xb0 in
+  position 37` the first time an `rglob("*.md")` walk handed it a `._*.md` sidecar instead of
+  the document it shadows. `pmos/skills.py`'s `SkillRegistry.load()` raised
+  `SkillContractError("runtime root contains unknown or unsafe entry")` the moment the
+  runtime skills root held a `._<skilldir>` sidecar file, because the admission check was
+  name-only (anything starting with `.` was rejected) and a sidecar is a regular file, not
+  the directory every real skill is. `harness/runner.py`'s job-queue listing counted a
+  `._<fingerprint>.json` sidecar as a second durable job record, because it matched the same
+  `folder.glob("*.json")` a real record does -- a queued run that should leave exactly one
+  record read back as two. And `test_pmos_invariants.py`'s own subprocess-timeout guard,
+  which scans `tools/*.py`, choked on a `._*.py` sidecar the same way `tools/workspace.py`
+  did.
+- The repository had already solved this class once, for `tools/review_gate.py`'s reviewed-
+  tree digest, by asking git which paths are actually tracked. That answer does not travel:
+  `pmos/` is a dependency-free package by policy and cannot import from `tools/`, let alone
+  shell out to git, and every site above needed an answer before any of them could know
+  whether a git work tree was even in play. `pmos/sidecars.py` is the one predicate both
+  `pmos/` and `tools/` can reach without a cross-import (`tools/` already imports `pmos`).
+  It recognizes a sidecar positively, never by name alone: a path is an AppleDouble sidecar
+  only if its name starts with `._`, it is a regular file (not a symlink, not a directory),
+  its first four bytes are the AppleDouble magic `00 05 16 07`, and a sibling entry with the
+  `._` prefix removed exists beside it. A directory named `._foo`, a plain dotfile with no
+  magic header, and a `._`-prefixed file with the right magic but no sibling all keep
+  whatever behaviour -- crash, error, or listing -- they had before this module existed.
+  `tools/review_gate.py` keeps its own name-only, tracked-aware rule unchanged, because a
+  tracked file force-added under a sidecar-shaped name still has to be reviewed whether or
+  not it happens to carry the AppleDouble magic; a test now pins that the two never disagree
+  about a name both could apply to.
+- `SkillRegistry.load()`, the template and workspace enumeration in `tools/init_product.py`,
+  and a new `harness/runner.py` function (`queue_records()`, now the one place both
+  `list_queue()` and its tests read the job list from) all filter through this predicate.
+  None of it can be exercised on hosted CI or on this task's own APFS worktree, since neither
+  filesystem grows a real AppleDouble sidecar on its own, so every fix carries a synthetic
+  regression: a `._x.md` or `._x.py` written with the real magic bytes beside a real sibling,
+  proven to reproduce each defect above against the unmodified code before the fix and to
+  pass after it.
+
 ### Known external requirements
 
 - Local checks do not verify hosted CI on the exact commit, a live provider, vendor sandboxes, a non-maintainer journey, independent human team review, organization-specific regulatory approval, or a published release artifact. No tag or published release is claimed here.

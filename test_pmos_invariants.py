@@ -20,8 +20,11 @@ REPO = Path(__file__).resolve().parent
 TOOLS = REPO / "tools"
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
+if str(REPO) not in sys.path:
+    sys.path.insert(0, str(REPO))
 
 import ext_ai_probe as probe  # noqa: E402
+from pmos.sidecars import is_appledouble_sidecar, is_appledouble_sidecar_path  # noqa: E402
 
 
 def _calls(source, name):
@@ -34,17 +37,32 @@ def _calls(source, name):
         yield source[:match.start()].count("\n") + 1, source[match.start():i]
 
 
+def _unbounded_subprocess_calls(directory):
+    """Every subprocess.run call under ``directory`` missing a timeout kwarg.
+
+    Shared by the real guard below and by ExfatSidecarsDoNotCrashTheToolsScan,
+    so the synthetic-sidecar test exercises this exact code path rather than
+    a copy of it. A checkout on exFAT/FAT/SMB carries a macOS AppleDouble
+    sidecar (``._name.py``) beside every real script; its body is not UTF-8,
+    and read_text() raised UnicodeDecodeError on it before this guard.
+    """
+    unbounded = []
+    for path in sorted(Path(directory).glob("*.py")):
+        if is_appledouble_sidecar_path(path):
+            continue
+        source = path.read_text(encoding="utf-8")
+        for line, call in _calls(source, "subprocess.run"):
+            if "timeout" not in call:
+                unbounded.append("%s:%d" % (path.name, line))
+    return unbounded
+
+
 class SubprocessesAreBounded(unittest.TestCase):
     """R6, second review: gateway discovery ran with no timeout after generation
     had been given one. An unbounded subprocess can hang a release gate."""
 
     def test_every_subprocess_run_under_tools_passes_a_timeout(self):
-        unbounded = []
-        for path in sorted(TOOLS.glob("*.py")):
-            source = path.read_text(encoding="utf-8")
-            for line, call in _calls(source, "subprocess.run"):
-                if "timeout" not in call:
-                    unbounded.append("%s:%d" % (path.name, line))
+        unbounded = _unbounded_subprocess_calls(TOOLS)
         self.assertEqual(unbounded, [],
                          "subprocess.run without timeout: %s" % unbounded)
 
@@ -91,6 +109,79 @@ class CostIsNeverManufactured(unittest.TestCase):
         found = set(re.findall(r'"cost_status":\s*"?([A-Z]+)"?', source))
         found |= set(re.findall(r'return None, "([A-Z]+)"', source))
         self.assertTrue(found <= {"OK", "UNKNOWN", "INVALID"}, found)
+
+
+class ExfatSidecarsDoNotCrashTheToolsScan(unittest.TestCase):
+    """P0-EXFAT: a macOS AppleDouble sidecar (``._name.py``) beside a real
+    script under tools/ used to crash this file's own subprocess-timeout scan
+    with UnicodeDecodeError, because TOOLS.glob("*.py") picked it up and
+    read_text() assumed UTF-8. Synthesized here so the guard runs on Linux CI,
+    which never grows a real one."""
+
+    def test_a_synthetic_appledouble_sidecar_is_skipped_not_read(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as directory:
+            fake_tools = Path(directory)
+            real = fake_tools / "demo.py"
+            real.write_text("import subprocess\nsubprocess.run([], timeout=1)\n",
+                            encoding="utf-8")
+            sidecar = fake_tools / "._demo.py"
+            sidecar.write_bytes(b"\x00\x05\x16\x07" + b"\xb0" * 12)
+
+            # Calls the exact function test_every_subprocess_run_under_tools_
+            # passes_a_timeout uses, so this test exercises the real guard
+            # rather than a copy of it.
+            self.assertEqual(_unbounded_subprocess_calls(fake_tools), [])
+
+    def test_a_dotfile_with_no_magic_header_is_still_read(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as directory:
+            fake_tools = Path(directory)
+            (fake_tools / "demo.py").write_text("x = 1\n", encoding="utf-8")
+            plain_dotfile = fake_tools / "._demo.py"
+            plain_dotfile.write_text("not a sidecar\n", encoding="utf-8")
+            self.assertFalse(is_appledouble_sidecar_path(plain_dotfile),
+                             "a dotfile with no AppleDouble magic must not "
+                             "be excused")
+
+    def test_a_directory_named_dot_underscore_is_never_a_sidecar(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as directory:
+            fake_tools = Path(directory)
+            weird_dir = fake_tools / "._notasidecar"
+            weird_dir.mkdir()
+            self.assertFalse(is_appledouble_sidecar_path(weird_dir),
+                             "a directory can never be an AppleDouble sidecar")
+
+
+class SidecarPredicatesAgree(unittest.TestCase):
+    """The policy names two copies of this judgement: pmos/sidecars.py
+    (magic-byte, positive recognition) and tools/review_gate.py's
+    is_excluded_sidecar (name-only, gated by git tracked-ness elsewhere).
+    Whenever pmos/sidecars.py positively proves a name is a real AppleDouble
+    sidecar, review_gate's name-only check must also flag that same name --
+    otherwise a real sidecar could be excluded from a loader here and still
+    hashed into a review digest there, or vice versa in a way that widens
+    review_gate's git-safety net rather than narrowing it."""
+
+    def test_every_real_sidecar_is_also_recognized_by_name_by_review_gate(self):
+        import tempfile
+
+        tools_dir = str(REPO / "tools")
+        if tools_dir not in sys.path:
+            sys.path.insert(0, tools_dir)
+        import review_gate  # noqa: E402
+
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            (base / "real.md").write_text("content\n", encoding="utf-8")
+            sidecar = base / "._real.md"
+            sidecar.write_bytes(b"\x00\x05\x16\x07" + b"\x00" * 12)
+            self.assertTrue(is_appledouble_sidecar(base, "._real.md"))
+            self.assertTrue(review_gate.is_excluded_sidecar("._real.md"))
 
 
 class GitPathsKeepTheirBytes(unittest.TestCase):

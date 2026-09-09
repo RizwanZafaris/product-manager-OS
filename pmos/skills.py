@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Optional
 
+from .sidecars import is_appledouble_sidecar
+
 
 class SkillContractError(ValueError):
     """Raised when a runtime skill is not safe or internally consistent."""
@@ -409,6 +411,16 @@ class SkillRegistry:
                     raise SkillContractError("trusted manifest has unsafe asset path")
         skill_dirs = []
         for child in self.root.iterdir():
+            # A checkout on exFAT, FAT or SMB carries a macOS AppleDouble
+            # sidecar (``._<name>``) beside real entries; the runtime root is
+            # no exception. Skip only the entries that positively prove
+            # themselves to be one (name, regular file, AppleDouble magic,
+            # sibling all present) -- see pmos/sidecars.py. Anything that
+            # fails that proof, including a directory literally named
+            # ``._foo`` or a dotfile with no sibling, keeps failing this
+            # check exactly as before.
+            if is_appledouble_sidecar(self.root, child.name):
+                continue
             if child.is_symlink() or not child.is_dir() or child.name.startswith("."):
                 raise SkillContractError("runtime root contains unknown or unsafe entry")
             skill_dirs.append(child.name)

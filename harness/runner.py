@@ -258,6 +258,10 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "tools"))
 import workspace                                          # noqa: E402
 
+if str(REPO) not in sys.path:
+    sys.path.insert(0, str(REPO))
+from pmos.sidecars import is_appledouble_sidecar           # noqa: E402
+
 CONFIG_PATH = REPO / "routing" / "omniroute.config.json"
 MANIFEST_PATH = REPO / "harness" / "MANIFEST.json"
 INVARIANTS_PATH = REPO / "harness" / "INVARIANTS.md"
@@ -2584,16 +2588,32 @@ def report_queued(product, task_id, reason, started_at, tier=None, args=None):
     return EXIT_QUEUED
 
 
+def queue_records(product):
+    """Job record paths for one product's queue, sorted, sidecars excluded.
+
+    A checkout on exFAT, FAT or SMB carries a macOS AppleDouble sidecar
+    (``._<fingerprint>.json``) beside a job record written there, and its
+    name matches the same "*.json" glob the record itself does. Reading one
+    as JSON does not crash -- callers already tolerate an unreadable record
+    -- but it inflates the count of durable job records with a file that
+    holds no job. Filtering it out here, once, keeps every caller (listing,
+    counting, deleting) looking at the same real set.
+    """
+    folder = queue_dir(product)
+    if not folder.is_dir():
+        return []
+    return sorted(path for path in folder.glob("*.json")
+                  if not is_appledouble_sidecar(path.parent, path.name))
+
+
 def list_queue(product):
     """Every deferred job for one product, oldest first."""
-    folder = queue_dir(product)
     jobs = []
-    if folder.is_dir():
-        for path in sorted(folder.glob("*.json")):
-            try:
-                jobs.append(json.loads(path.read_text(encoding="utf-8")))
-            except (OSError, ValueError):
-                say("unreadable job record: %s" % path.relative_to(REPO))
+    for path in queue_records(product):
+        try:
+            jobs.append(json.loads(path.read_text(encoding="utf-8")))
+        except (OSError, ValueError):
+            say("unreadable job record: %s" % path.relative_to(REPO))
     if not jobs:
         say("products/%s/: no deferred jobs." % product)
         return 0

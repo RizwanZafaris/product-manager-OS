@@ -30,6 +30,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import runner                                            # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
+if str(REPO) not in sys.path:
+    sys.path.insert(0, str(REPO))
+from pmos.sidecars import is_appledouble_sidecar_path    # noqa: E402
+
 TEMPLATE = REPO / "templates" / "discovery" / "evidence-note.md"
 
 
@@ -208,6 +212,11 @@ class StructureTests(unittest.TestCase):
         """
         wrong = {}
         for path in sorted((REPO / "templates").rglob("*.md")):
+            # A checkout on exFAT/FAT/SMB carries a macOS AppleDouble
+            # sidecar (``._name.md``) beside every real template; its body
+            # is not UTF-8 and read_text() raised on it before this guard.
+            if is_appledouble_sidecar_path(path):
+                continue
             text = path.read_text(encoding="utf-8")
             problems = runner.structure_report(text, text)
             if problems:
@@ -1227,7 +1236,8 @@ class QueueOutcomeTests(unittest.TestCase):
 
         workspace_dir = runner.PRODUCTS_DIR / self.slug
         documents = sorted(path.relative_to(workspace_dir).as_posix()
-                           for path in workspace_dir.rglob("*.md"))
+                           for path in workspace_dir.rglob("*.md")
+                           if not is_appledouble_sidecar_path(path))
         self.assertEqual(["STATE.md"], documents,
                          "an interactive route left a document behind")
         self.assertIn("conduct-product-journey (interactive)", self._state())
@@ -1242,7 +1252,7 @@ class QueueOutcomeTests(unittest.TestCase):
         runner.call_with_fallback = stub
         self.assertEqual(_quiet_run(self._args(), self.cfg, self.tasks),
                          runner.EXIT_QUEUED)
-        jobs = sorted(runner.queue_dir(self.slug).glob("*.json"))
+        jobs = runner.queue_records(self.slug)
         self.assertEqual(1, len(jobs), "no durable job record was written")
         record = json.loads(jobs[0].read_text(encoding="utf-8"))
         self.assertEqual("gather-evidence", record["task"])
@@ -1252,7 +1262,7 @@ class QueueOutcomeTests(unittest.TestCase):
         # The same work deferred again updates the record instead of piling up.
         self.assertEqual(_quiet_run(self._args(), self.cfg, self.tasks),
                          runner.EXIT_QUEUED)
-        jobs = sorted(runner.queue_dir(self.slug).glob("*.json"))
+        jobs = runner.queue_records(self.slug)
         self.assertEqual(1, len(jobs), "a retry created a second job record")
         record = json.loads(jobs[0].read_text(encoding="utf-8"))
         self.assertEqual(2, record["attempts"])
@@ -1840,6 +1850,86 @@ class AuditRegressionTests(unittest.TestCase):
                 with runner.state_lock(self.slug, timeout=0.2):
                     pass
         self.assertIn("wrote nothing", str(caught.exception))
+
+
+class QueueRecordsIgnoreSidecarsTests(unittest.TestCase):
+    """P0-EXFAT: on exFAT/FAT/SMB, a macOS AppleDouble sidecar
+    (``._<fingerprint>.json``) beside a real job record matches the very
+    same "*.json" glob the record itself does, inflating the durable-job
+    count. runner.queue_records() is the one place both list_queue and the
+    tests that assert "no durable job record was written" now read from."""
+
+    def setUp(self):
+        self.slug = "test-runner-queue-sidecar-%d" % os.getpid()
+        self.folder = runner.queue_dir(self.slug)
+
+    def tearDown(self):
+        _remove_tree(runner.PRODUCTS_DIR / self.slug)
+
+    def test_a_synthetic_sidecar_beside_a_real_job_record_is_not_counted(self):
+        self.folder.mkdir(parents=True)
+        real = self.folder / "abc123.json"
+        real.write_text('{"id": "abc123"}\n', encoding="utf-8")
+        sidecar = self.folder / "._abc123.json"
+        sidecar.write_bytes(b"\x00\x05\x16\x07" + b"\xb0" * 12)
+
+        records = runner.queue_records(self.slug)
+
+        self.assertEqual([real], records,
+                         "a synthetic AppleDouble sidecar was counted as a "
+                         "durable job record")
+
+    def test_a_dotfile_with_no_magic_header_is_still_counted(self):
+        self.folder.mkdir(parents=True)
+        real = self.folder / "abc123.json"
+        real.write_text('{"id": "abc123"}\n', encoding="utf-8")
+        not_a_sidecar = self.folder / "._abc123-notes.json"
+        not_a_sidecar.write_text('{"id": "not-a-sidecar"}\n', encoding="utf-8")
+
+        records = runner.queue_records(self.slug)
+
+        self.assertEqual({real, not_a_sidecar}, set(records),
+                         "a dotfile with no AppleDouble magic and no sibling "
+                         "must not be excused from the count")
+
+
+class WorkspaceEnumerationIgnoresSidecarsTests(unittest.TestCase):
+    """P0-EXFAT: tools/init_product.py's check_workspace() used to crash with
+    UnicodeDecodeError on a ``._<name>.md`` AppleDouble sidecar picked up by
+    workspace.rglob("*.md"), because it is a binary AppleDouble container,
+    not UTF-8 Markdown."""
+
+    def setUp(self):
+        sys.path.insert(0, str(REPO / "tools"))
+        import init_product
+        self.init_product = init_product
+        self.slug = "test-runner-workspace-sidecar-%d" % os.getpid()
+        self.workspace = self.init_product.PRODUCTS_DIR / self.slug
+
+    def tearDown(self):
+        _remove_tree(self.workspace)
+
+    def test_check_workspace_skips_a_synthetic_appledouble_sidecar(self):
+        self.workspace.mkdir(parents=True)
+        (self.workspace / "STATE.md").write_text("# State\n", encoding="utf-8")
+        sidecar = self.workspace / "._STATE.md"
+        sidecar.write_bytes(b"\x00\x05\x16\x07" + b"\xb0" * 12)
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            total = self.init_product.check_workspace(self.slug)
+
+        self.assertEqual(total, 0, "the sidecar was read as a broken document")
+
+    def test_check_workspace_still_flags_a_real_broken_link(self):
+        self.workspace.mkdir(parents=True)
+        (self.workspace / "broken.md").write_text(
+            "[dead link](./nonexistent-target.md)\n", encoding="utf-8")
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            total = self.init_product.check_workspace(self.slug)
+
+        self.assertGreater(total, 0,
+                           "a genuinely broken link stopped being reported")
 
 
 if __name__ == "__main__":
