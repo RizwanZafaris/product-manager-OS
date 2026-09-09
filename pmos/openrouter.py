@@ -292,16 +292,27 @@ class OpenRouterProvider:
                       payload: Optional[Mapping[str, Any]] = None,
                       timeout_seconds: Optional[float] = None,
                       max_response_bytes: Optional[int] = None,
-                      api_key: Optional[str] = None) -> Mapping[str, Any]:
+                      api_key: Optional[str] = None,
+                      anonymous: bool = False) -> Mapping[str, Any]:
         if path not in ("/api/v1/models", "/api/v1/chat/completions"):
             raise OpenRouterError()
+        # The catalog is public and is the provider's own price list, which is
+        # what a caller that holds no credential (the gateway-transport probe,
+        # where the key lives inside OmniRoute) needs in order to know what is
+        # free. Anonymous reads are permitted for that one path only: a chat
+        # completion without a credential is a request that cannot succeed and
+        # must not be attempted, so it is refused here before any transport.
+        if anonymous is not False and anonymous is not True:
+            raise OpenRouterMalformedResponse()
+        if anonymous and (path != "/api/v1/models" or api_key is not None):
+            raise OpenRouterAuthError()
         # Plain HTTP is accepted only for an explicitly injected loopback test
         # transport, and no real credential is read or attached in that mode.
         if api_key is not None and (
                 not isinstance(api_key, str) or not api_key.strip() or
                 any(character in api_key for character in "\r\n")):
             raise OpenRouterAuthMissing()
-        credential = (None if self._insecure_test_transport else
+        credential = (None if (self._insecure_test_transport or anonymous) else
                       (api_key if api_key is not None else self._credential()))
         body = None if payload is None else json.dumps(payload, separators=(",", ":"),
                                                         ensure_ascii=True).encode("utf-8")
@@ -388,9 +399,18 @@ class OpenRouterProvider:
         return decoded
 
     def discover(self, *, free_only: bool = False,
-                 timeout_seconds: Optional[float] = None) -> list[ModelSpec]:
+                 timeout_seconds: Optional[float] = None,
+                 anonymous: bool = False) -> list[ModelSpec]:
+        """List the provider's models with their prices.
+
+        ``anonymous=True`` reads the public catalog with no credential: nothing
+        is read from the environment and no Authorization header is sent. The
+        default still requires the credential, so callers that go on to
+        generate fail at discovery rather than one call later.
+        """
         payload = self._json_request(
-            "/api/v1/models", timeout_seconds=timeout_seconds)
+            "/api/v1/models", timeout_seconds=timeout_seconds,
+            anonymous=anonymous)
         models = payload.get("data")
         if not isinstance(models, list):
             raise OpenRouterMalformedResponse()
@@ -421,7 +441,19 @@ class OpenRouterProvider:
             prompt_price = _number(pricing.get("prompt"))
             completion_price = _number(pricing.get("completion"))
             if prompt_price is None or completion_price is None or prompt_price < 0 or completion_price < 0:
-                raise OpenRouterMalformedResponse()
+                # An entry that cannot be priced is not evidence about anything,
+                # and it is not evidence that the rest of the catalog is bad.
+                # OpenRouter publishes its own meta-router as a real entry
+                # priced "-1" on both sides, meaning "depends on what answers".
+                # Raising here rejected the whole catalog for that one row, so
+                # a caller learned nothing about the hundreds of priced models
+                # beside it. The row is dropped: it can never be selected, never
+                # be called free, and never enter a budget, which is exactly
+                # what an unpriceable model deserves. Structural corruption
+                # (no id, no list, a price that is not a mapping) still raises,
+                # because that is the body being wrong rather than one row
+                # being honest about not having a fixed price.
+                continue
             free = prompt_price == 0 and completion_price == 0
             spec = ModelSpec(
                 self.provider, item["id"], capabilities=capabilities, tools=tools,

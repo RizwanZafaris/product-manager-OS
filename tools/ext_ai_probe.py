@@ -44,6 +44,9 @@ import re
 import subprocess
 import sys
 import time
+import urllib.error
+import urllib.parse
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -52,6 +55,20 @@ sys.path.insert(0, str(REPO))
 
 DEFAULT_OUT = REPO / ".readiness" / "ext-ai-probe.json"
 GATEWAY_TIMEOUT_SECONDS = 120
+GATEWAY_BASE_URL_ENV = "OMNIROUTE_BASE_URL"
+GATEWAY_API_KEY_ENV = "OMNIROUTE_API_KEY"
+GATEWAY_BASE_URL_DEFAULT = "http://localhost:20128/v1"
+GATEWAY_MAX_RESPONSE_BYTES = 2 * 1024 * 1024
+GATEWAY_MAX_OUTPUT_TOKENS = 1024
+# routing/README.md, "Request headers that keep OmniRoute out of your prompts":
+# compression would paraphrase text the model must quote, the semantic cache
+# would replay one answer to every similar prompt, and memory injection
+# changes the prompt the model sees. Every gateway call sends all three.
+GATEWAY_REQUEST_HEADERS = {
+    "x-omniroute-compression": "off",
+    "X-OmniRoute-No-Cache": "true",
+    "x-omniroute-no-memory": "true",
+}
 GIT_TIMEOUT_SECONDS = 30
 
 # Fixed, public, small. Each names the task class pmos.routing will judge it
@@ -177,97 +194,287 @@ def choose_model(specs, args):
     return free[0] if free else None
 
 
-ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+GATEWAY_PREFIX = "openrouter/"
 
 
-def omniroute_models(free_only=True):
-    """Free models OmniRoute would route to, from its own dry-run simulation.
+def gateway_catalog(free_only=True, timeout_seconds=None):
+    """Models the gateway may be asked for, priced by the provider that bills them.
 
-    Read out of `omniroute simulate`, which resolves the provider chain without
-    calling upstream. This never asks OmniRoute for the credential it holds.
+    Until 2026-09-09 this read `omniroute simulate`, on the theory that the
+    router's own dry run was an inventory of what it serves. It is not. The dry
+    run prints the weighted fallback table of the `auto` combo whatever model
+    is pinned, so it could neither confirm that a pinned id was routable nor
+    notice that the one id it did print had stopped being free: on the day this
+    changed it listed `minimax/minimax-m3:free`, which OpenRouter had withdrawn
+    from the free tier (404, "unavailable for free"), and could not surface any
+    model that was free. A catalog whose free-ness is a name suffix is a name,
+    not billing evidence, which the changelog had already said about it.
+
+    The provider's own catalog is the billing evidence. `/api/v1/models` is
+    public, needs no credential, and carries prompt and completion prices per
+    model; the direct transport already trusts exactly this endpoint through
+    `OpenRouterProvider.discover`, so both transports now agree on what "free"
+    means. Nothing here reads a key: the adapter attaches an Authorization
+    header only when one is passed, and none is. No generation is made.
+
+    Membership in this list is the eligibility check, and it remains half of
+    the proof: the other half is the post-call identity check that the model
+    the gateway resolved is the model that was pinned. Returns None when the
+    catalog could not be read (timeout, transport error, malformed body), which
+    callers must treat as "discovery failed" rather than "nothing is free".
     """
+    from pmos.openrouter import OpenRouterError, OpenRouterProvider
+
+    timeout = GATEWAY_TIMEOUT_SECONDS if timeout_seconds is None else timeout_seconds
     try:
-        done = subprocess.run(["omniroute", "simulate", "probe"],
-                              timeout=GATEWAY_TIMEOUT_SECONDS,
-                              capture_output=True, text=True)
-    except subprocess.TimeoutExpired:
-        # Previously propagated and crashed the probe instead of failing safely.
-        return None
-    except OSError:
-        return None
-    if done.returncode != 0:
-        # A failed simulation's stdout is not an inventory. Parsing it anyway
-        # turned "the gateway is down" into a catalog, and the catalog is what
-        # decides which models may be dispatched.
+        specs = OpenRouterProvider().discover(
+            free_only=free_only, timeout_seconds=timeout, anonymous=True)
+    except (OpenRouterError, OSError, ValueError, TimeoutError):
+        # A catalog that could not be read is not an empty catalog. The empty
+        # case means "the provider prices nothing at zero today"; this case
+        # means "we do not know", and dispatch must not proceed on not knowing.
         return None
     models = []
-    for line in (done.stdout or "").splitlines():
-        for match in re.finditer(r"openrouter/[A-Za-z0-9._/-]+(?::free)?", line):
-            token = match.group(0)
-            # The CLI elides long ids with a horizontal ellipsis. Stripping that
-            # marker off turned a truncated name into a plausible-looking model
-            # id; the marker is the evidence the name is incomplete, so a token
-            # carrying it is discarded rather than repaired.
-            trailing = line[match.end():match.end() + 3]
-            if trailing.startswith("\u2026") or trailing.startswith("..."):
-                # Only a real elision marker means the id was cut short. A
-                # single period is ordinary prose punctuation, and treating it
-                # as truncation silently dropped legitimate models.
-                continue
-            if token not in models and (not free_only or token.endswith(":free")):
-                models.append(token)
+    for spec in specs:
+        if free_only and not spec.free:
+            continue
+        model = GATEWAY_PREFIX + spec.model
+        if model not in models:
+            models.append(model)
     return models
 
 
-def omniroute_chat(model, prompt):
+def same_gateway_model(pinned, resolved):
+    """Whether the model the gateway says answered is the model that was pinned.
+
+    The gateway is addressed as ``openrouter/<provider id>`` and answers with
+    the provider id alone: on 2026-09-09 a call pinned to
+    ``openrouter/nvidia/nemotron-3-super-120b-a12b:free`` came back with
+    ``model`` and ``X-OmniRoute-Model`` both reading
+    ``nvidia/nemotron-3-super-120b-a12b:free``. That is the same model under
+    the two spellings the two hops use, and a strict string comparison
+    recorded it as a substitution. The only spellings accepted are the pinned
+    id itself and the pinned id with the gateway prefix removed. Anything
+    else -- another vendor, another variant, a paid twin without the ``:free``
+    suffix, an empty answer -- is still a mismatch, because those are exactly
+    the substitutions the check exists to catch.
+    """
+    if not isinstance(pinned, str) or not isinstance(resolved, str):
+        return False
+    if not pinned or not resolved:
+        return False
+    if resolved == pinned:
+        return True
+    if pinned.startswith(GATEWAY_PREFIX):
+        return resolved == pinned[len(GATEWAY_PREFIX):]
+    return False
+
+
+def gateway_base_url(environ=None):
+    """The gateway's OpenAI-compatible base URL, and only if it is local.
+
+    The evidence this transport produces says "the credential stayed inside a
+    local gateway; this process never saw it". That sentence is only true when
+    the gateway is on this host. A base URL pointing anywhere else would send
+    the prompts off the machine and make the claim false, so it is refused
+    rather than used.
+    """
+    source = os.environ if environ is None else environ
+    value = (source.get(GATEWAY_BASE_URL_ENV) or "").strip() or GATEWAY_BASE_URL_DEFAULT
+    parsed = urllib.parse.urlsplit(value)
+    if parsed.scheme not in ("http", "https"):
+        return None
+    if parsed.hostname not in ("localhost", "127.0.0.1", "::1"):
+        return None
+    if parsed.username or parsed.password or parsed.query or parsed.fragment:
+        return None
+    return value.rstrip("/")
+
+
+class _BoundedReader:
+    """Read at most N+1 bytes so an oversize body is detected, never buffered."""
+
+    @staticmethod
+    def read(response, limit):
+        try:
+            return response.read(limit + 1)
+        except TypeError:
+            return response.read()
+
+
+def _number_or_none(value):
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value.strip())
+        except ValueError:
+            return None
+    return None
+
+
+def omniroute_chat(model, prompt, *, urlopen=None, environ=None):
     """One call through the local OmniRoute gateway. Returns a result dict.
 
     The credential stays inside OmniRoute. This process never reads it, never
     receives it, and could not print it if it tried, which is the whole reason
-    this transport exists alongside the direct one.
+    this transport exists alongside the direct one. (OMNIROUTE_API_KEY, if
+    set, is the gateway's own access key, not a provider credential; it is
+    sent to the loopback gateway and recorded nowhere.)
 
     The model is always pinned. Calling with `auto` returns the alias rather
     than the model that answered, and "resolved model provenance" is one of the
     four things EXT-AI requires, so an unpinned call cannot produce evidence.
+
+    Until 2026-09-09 this shelled out to `omniroute chat` and parsed a coloured
+    footer for the resolved model and a token count. That path could not send
+    the request headers routing/README.md requires, could not see whether the
+    answer was a cache replay, and returned no cost at all, so every gateway
+    run ended after one call with cost UNKNOWN. The gateway's HTTP API carries
+    all of it: the resolved model in the body and in X-OmniRoute-Model, the
+    token counts in `usage`, the cache and compression outcome in headers, and
+    a per-response cost in X-OmniRoute-Response-Cost. The provider's own
+    `usage.cost` is preferred when the gateway forwards it; the header is the
+    fallback and is recorded as the gateway's figure, not the provider's.
     """
+    base = gateway_base_url(environ)
+    if base is None:
+        return {"error": "omniroute_not_local",
+                "error_detail": "%s must name a loopback gateway"
+                                % GATEWAY_BASE_URL_ENV}
+    source = os.environ if environ is None else environ
+    headers = {"Content-Type": "application/json", "Accept": "application/json",
+               **GATEWAY_REQUEST_HEADERS}
+    gateway_key = (source.get(GATEWAY_API_KEY_ENV) or "").strip()
+    if gateway_key and not any(c in gateway_key for c in "\r\n"):
+        headers["Authorization"] = "Bearer " + gateway_key
+    body = json.dumps({
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0,
+        "max_tokens": GATEWAY_MAX_OUTPUT_TOKENS,
+        "stream": False,
+        "usage": {"include": True},
+    }, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+    request = urllib.request.Request(base + "/chat/completions", data=body,
+                                     headers=headers, method="POST")
+    opener = urlopen or urllib.request.urlopen
     started = time.monotonic()
     try:
-        done = subprocess.run(
-            ["omniroute", "chat", "--no-history", "-m", model, prompt],
-            capture_output=True, text=True, timeout=GATEWAY_TIMEOUT_SECONDS)
-    except subprocess.TimeoutExpired:
+        response = opener(request, timeout=GATEWAY_TIMEOUT_SECONDS)
+    except urllib.error.HTTPError as error:
+        detail = ""
+        try:
+            raw = _BoundedReader.read(error, 4096)
+            try:
+                decoded = json.loads(raw.decode("utf-8", "replace"))
+                err = decoded.get("error") if isinstance(decoded, dict) else None
+                detail = (err.get("message") if isinstance(err, dict) else str(err)) or ""
+            except (ValueError, AttributeError):
+                detail = raw.decode("utf-8", "replace")
+        except Exception:                                   # noqa: BLE001
+            detail = ""
+        return {"error": "omniroute_http_%d" % error.code,
+                "error_detail": str(detail)[:200]}
+    except (TimeoutError, socket_timeout()) as error:
         # An unbounded gateway call can hang a release gate indefinitely.
         return {"error": "omniroute_timeout",
-                "error_detail": "no response within %ds"
-                                % GATEWAY_TIMEOUT_SECONDS}
-    except OSError as error:
+                "error_detail": "no response within %ds" % GATEWAY_TIMEOUT_SECONDS}
+    except (urllib.error.URLError, OSError) as error:
+        reason = getattr(error, "reason", error)
+        if isinstance(reason, (TimeoutError, socket_timeout())):
+            return {"error": "omniroute_timeout",
+                    "error_detail": "no response within %ds" % GATEWAY_TIMEOUT_SECONDS}
         return {"error": "omniroute_unavailable",
-                "error_detail": str(error)[:200]}
+                "error_detail": str(reason)[:200]}
     elapsed = (time.monotonic() - started) * 1000.0
-    if done.returncode != 0:
-        return {"error": "omniroute_exit_%d" % done.returncode,
-                "error_detail": (done.stderr or "")[-200:]}
-    # The answer goes to stdout; the provenance footer goes to stderr. Reading
-    # only stdout loses the resolved model, which is the one field this whole
-    # transport exists to capture.
-    body, resolved, tokens = [], None, None
-    for line in ((done.stdout or "") + "\n" + (done.stderr or "")).splitlines():
-        # The CLI colours its footer, and a colour code between the bracket and
-        # the model name is enough to make the footer unparseable. Strip the
-        # escapes before matching rather than widening the pattern to tolerate
-        # them, because a pattern that tolerates junk also matches junk.
-        line = ANSI_RE.sub("", line)
-        stripped = line.strip()
-        if "Loaded env" in line or "STORAGE_ENCRYPTION" in line:
-            continue
-        footer = re.match(r"^\[(.+?)\s+·\s+(\d+)ms\s+·\s+(\d+)\s+tok\]$",
-                          stripped)
-        if footer:
-            resolved, tokens = footer.group(1), int(footer.group(3))
-            continue
-        body.append(line)
-    return {"text": "\n".join(body).strip(), "resolved_model": resolved,
-            "total_tokens": tokens, "latency_ms": round(elapsed, 1)}
+    try:
+        raw = _BoundedReader.read(response, GATEWAY_MAX_RESPONSE_BYTES)
+        header_items = list(getattr(response, "headers", {}).items()) \
+            if hasattr(getattr(response, "headers", None), "items") else []
+    finally:
+        close = getattr(response, "close", None)
+        if callable(close):
+            close()
+    if len(raw) > GATEWAY_MAX_RESPONSE_BYTES:
+        return {"error": "omniroute_response_too_large",
+                "error_detail": "body exceeded %d bytes" % GATEWAY_MAX_RESPONSE_BYTES}
+    try:
+        decoded = json.loads(raw.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        return {"error": "omniroute_malformed_response",
+                "error_detail": "body is not JSON"}
+    if not isinstance(decoded, dict):
+        return {"error": "omniroute_malformed_response",
+                "error_detail": "body is not an object"}
+    h = {str(k).lower(): str(v) for k, v in header_items}
+    if decoded.get("error"):
+        err = decoded["error"]
+        message = err.get("message") if isinstance(err, dict) else str(err)
+        return {"error": "omniroute_error", "error_detail": str(message)[:200]}
+    # Provenance the doctrine headers exist to secure. A replayed answer is
+    # not evidence that this model answered this prompt now, and a compressed
+    # prompt is not the prompt whose hash the evidence records.
+    cache = (h.get("x-omniroute-cache") or "").strip().upper()
+    if cache == "HIT" or (h.get("x-omniroute-cache-hit") or "").strip().lower() == "true":
+        return {"error": "cached_response",
+                "error_detail": "the gateway replayed a cached answer"}
+    compression = (h.get("x-omniroute-compression") or "").strip().lower()
+    if compression and not compression.startswith("off"):
+        return {"error": "compressed_prompt",
+                "error_detail": "gateway compression was %r" % compression[:40]}
+    body_model = decoded.get("model") if isinstance(decoded.get("model"), str) else None
+    header_model = (h.get("x-omniroute-model") or "").strip() or None
+    if body_model and header_model and body_model != header_model:
+        return {"error": "resolved_model_conflict",
+                "error_detail": "body says %r, header says %r"
+                                % (body_model, header_model)}
+    resolved = body_model or header_model
+    choices = decoded.get("choices")
+    text = ""
+    if isinstance(choices, list) and choices and isinstance(choices[0], dict):
+        message = choices[0].get("message")
+        if isinstance(message, dict) and isinstance(message.get("content"), str):
+            text = message["content"]
+    usage = decoded.get("usage") if isinstance(decoded.get("usage"), dict) else {}
+
+    def _tokens(key):
+        value = usage.get(key)
+        return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+
+    result = {
+        "text": text.strip(),
+        "resolved_model": resolved,
+        "prompt_tokens": _tokens("prompt_tokens"),
+        "completion_tokens": _tokens("completion_tokens"),
+        "total_tokens": _tokens("total_tokens"),
+        "latency_ms": round(elapsed, 1),
+        "gateway": {
+            "request_id": h.get("x-omniroute-request-id"),
+            "provider": h.get("x-omniroute-provider"),
+            "cache": h.get("x-omniroute-cache"),
+            "compression": h.get("x-omniroute-compression"),
+            "model_header": header_model,
+        },
+    }
+    provider_cost = _number_or_none(usage.get("cost"))
+    if provider_cost is not None:
+        result["cost_usd"] = provider_cost
+        result["cost_source"] = "provider usage.cost forwarded by the gateway"
+    else:
+        gateway_cost = _number_or_none(h.get("x-omniroute-response-cost"))
+        if gateway_cost is not None:
+            result["cost_usd"] = gateway_cost
+            result["cost_source"] = ("gateway header x-omniroute-response-cost; "
+                                     "the gateway's figure, not the provider's invoice")
+    return result
+
+
+def socket_timeout():
+    import socket
+    return socket.timeout
 
 
 class provider_stub:
@@ -373,13 +580,15 @@ def run_via_omniroute(report, args):
     report["provider_authorization"] = "delegated to OmniRoute; this process " \
                                        "never read a provider credential"
 
-    models = omniroute_models(free_only=args.free_only)
+    models = gateway_catalog(free_only=args.free_only)
     if models is None:
-        say("REFUSING: gateway discovery failed; its output is not an inventory.")
+        say("REFUSING: provider catalog could not be read; an unreadable "
+            "catalog is not an inventory.")
         report["catalog"] = {"discovered": 0, "free_only": args.free_only,
                              "free_models": [], "certified_models": [],
                              "error": "discovery_failed",
-                             "source": "omniroute simulate did not complete"}
+                             "source": "openrouter /api/v1/models, keyless, "
+                                       "did not complete"}
         report["totals"] = {"calls_made": 0, "attempts": 0, "errors": 1,
                             "refusals": 0, "cost_usd": 0.0,
                             "cost_unknown": True, "budget_breach": False}
@@ -387,7 +596,8 @@ def run_via_omniroute(report, args):
         return 1
     report["catalog"] = {"discovered": len(models), "free_only": args.free_only,
                          "free_models": models, "certified_models": [],
-                         "source": "omniroute simulate, no upstream call"}
+                         "source": "openrouter /api/v1/models, keyless GET; "
+                                   "prices are the provider's; no generation"}
     if not models:
         say("no free model resolved through OmniRoute; nothing was called.")
         write(report, args.output)
@@ -478,7 +688,7 @@ def run_via_omniroute(report, args):
                 result = {"error": "missing_resolved_model",
                           "error_detail": "the gateway returned no resolved model",
                           "cost_usd": result.get("cost_usd")}
-            elif resolved != model:
+            elif not same_gateway_model(model, resolved):
                 # The call is pinned. A different model answering means the
                 # evidence describes something other than what was authorized.
                 result = {"error": "resolved_model_mismatch",
@@ -509,15 +719,18 @@ def run_via_omniroute(report, args):
                 "resolved_provider": "openrouter",
                 "resolved_model": result.get("resolved_model"),
                 "total_tokens": result.get("total_tokens"),
+                "prompt_tokens": result.get("prompt_tokens"),
+                "completion_tokens": result.get("completion_tokens"),
+                "gateway_provenance": result.get("gateway"),
             })
-            # The catalog is parsed from CLI strings and a ":free" suffix,
-            # which is a name, not billing evidence. omniroute_chat does not
-            # return a price at all, so treating absence as zero made every
-            # ordinary production response report $0.00 on no evidence. Absent
-            # cost is UNKNOWN, and an unprovable remaining budget stops the run.
+            # Absent cost is UNKNOWN, and an unprovable remaining budget stops
+            # the run. The gateway reports a per-response cost in a header and
+            # may forward the provider's own figure; whichever was used is
+            # named in cost_basis so a reader can weigh it.
             cost, cost_status = usable_cost(result.get("cost_usd"))
             entry.update({"cost_usd": cost, "cost_status": cost_status,
-                          "cost_basis": "reported by the gateway"
+                          "cost_basis": result.get("cost_source")
+                                        or "reported by the gateway"
                                         if cost_status == "OK" else
                                         "the gateway reported no usable cost"})
             if cost_status != "OK":
