@@ -52,7 +52,7 @@ The second distinctive fact is jurisdictional patchwork by design: the same toke
 - **FATF's guidance for a risk-based approach to virtual assets and VASPs.** The primary text behind the travel rule, Recommendation 16; read it before any vendor's compliance summary.
 - **MiCA, Regulation (EU) 2023/1114.** Read Title III on asset-referenced and e-money tokens and Title V on crypto-asset service providers; the phased application dates matter more than the passage date.
 - **FinCEN's 2013 guidance (FIN-2013-G001) on virtual currency administrators and exchangers as money services businesses.** The foundational US reading connecting crypto activity to the Bank Secrecy Act framework.
-- **New York's BitLicense, 23 NYCRR Part 200.** The oldest dedicated state-level crypto licensing regime in the US, still the reference point competitors measure their own burden against.
+- **New York's BitLicense, 23 NYCRR Part 200.** Finalised in June 2015, the first dedicated state-level virtual-currency licensing regime in the US, still the reference point competitors measure their own burden against.
 - **SEC v. Coinbase, Inc., filed 6 June 2023 in the Southern District of New York.** Read for the theory of the case rather than any outcome, since which tokens are securities remains genuinely unsettled.
 - **Public reporting on the FTX collapse, filed for Chapter 11 bankruptcy on 11 November 2022.** Read for the custody-commingling failure that made proof of reserves a customer expectation afterward.
 

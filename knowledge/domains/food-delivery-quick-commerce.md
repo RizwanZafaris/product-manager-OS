@@ -46,7 +46,7 @@ Three or four sides move at once: the diner who orders, the restaurant or dark s
 
 ## Reading
 
-- **The EU's directive on platform work.** Read the control-indicator test for the employment presumption and the algorithmic-management transparency provisions directly; they name the exact dispatch and monitoring features a product team builds without thinking of them as legally load-bearing (verify transposition status in your target member state).
+- **The EU's directive on platform work.** Read Article 5 on the employment presumption, which turns on facts indicating direction and control under national law rather than on a count of indicators, and the algorithmic-management chapter directly; they name the exact dispatch and monitoring features a product team builds without thinking of them as legally load-bearing (verify transposition status in your target member state).
 - **Uber BV v Aslam [2021] UKSC 5 (UK Supreme Court).** Read for which features, routing, pricing, deactivation, counted as evidence of control; drivers were found "workers," a UK status short of employment but carrying minimum-wage and holiday-pay rights.
 - **The FDA Food Code**, or your national food-safety code, and the EU's General Food Law framework where applicable. Read the temperature-control and traceability sections directly.
 - **Reporting on a major quick-commerce dark-store retrenchment or shutdown wave.** Several well-funded operators scaled back or exited markets after unit economics did not hold at the promised delivery-time band; read for which cost line broke first.

@@ -13,7 +13,7 @@ This domain runs two loops that rarely share a codebase and never share a regula
 ## Questions a PM must ask
 
 1. Is this a search or lead feature, a financing or closing feature, or a tenancy or property-management feature? Each loop has different gatekeepers and different money changing hands.
-2. Which fields does the ranking, targeting, or screening model use, and do any correlate with a protected class such as race, national origin, or familial status? Since Inclusive Communities (2015), effect is enough; intent is not required.
+2. Which fields does the ranking, targeting, or screening model use, and do any correlate with a protected class such as race, national origin, or familial status? Since Inclusive Communities (2015), intent is not required, and effect alone is not enough either: the plaintiff must show a robust causal link between the policy and the disparity, which is exactly the question a ranking or screening feature will be asked.
 3. Are we a broker of record, a technology vendor to brokers, or a lender or servicer? The answer decides which license, fiduciary duty, and regulator attaches, regardless of how the company describes itself.
 4. For a valuation or pricing feature: when the automated estimate is badly wrong on a specific address, who absorbs the error? Zillow's own iBuying arm found out the answer is whoever guaranteed the price.
 5. For a mortgage or disclosure feature: does the timeline respect the Loan Estimate and Closing Disclosure delivery windows, and what happens to the clock when a term changes late? TRID's timing is not a UX preference.

@@ -43,9 +43,9 @@ This is an unreleased working-tree change set, not a tag, published package, hos
   routes to the fourteen sector cards as well as to the regulated module.
 - Written under the no-fabrication rule as it applies to a card: no statistic, market size, fine
   amount, article number or case name that the author could not vouch for. Where a specific was
-  uncertain the sentence carries a parenthetical that begins "verify" and ends "before relying",
-  the tree's marker in the wording each card needed, or omits the specific; 49 such
-  parentheticals sit across the twenty-eight cards, listed in the pull request. Each card names at least one non-US regime, because the maintainer's market is not
+  uncertain the sentence carries a parenthetical that begins with "verify", the tree's marker in
+  the wording each card needed, or omits the specific; 49 such parentheticals sit across the
+  twenty-eight cards, listed in the pull request. Each card names at least one non-US regime, because the maintainer's market is not
   the United States and a card that assumes it is teaches the wrong gatekeepers. These are cards,
   not journeys: the graduation rule in the index still holds, and no sector has a worked
   end-to-end example yet.
@@ -58,7 +58,10 @@ This is an unreleased working-tree change set, not a tag, published package, hos
   rate-filing regimes, and the platform-work directive described from its superseded proposal;
   plus two omissions, the causation requirement in Inclusive Communities and the reversal of
   the Tornado Cash designation. Each was checked against primary sources through a web-grounded
-  search before the sentence was rewritten. The lesson is recorded because a scan for numbers
+  search before the sentence was rewritten. A second pass found the superseded platform-work
+  wording surviving in that card's reading list and the causation point missing from the
+  PropTech questions, and named four unmarked claims it could not vouch for; all were checked
+  the same way and reworded. The lesson is recorded because a scan for numbers
   catches invented figures and cannot catch a confident wrong sentence; only a reader can.
 
 ### Changed

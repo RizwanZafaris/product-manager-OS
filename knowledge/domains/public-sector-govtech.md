@@ -48,7 +48,7 @@ The second distinctive fact is that the buyer, the builder, and the person the s
 
 ## Reading
 
-- **The EU Web Accessibility Directive**, Directive (EU) 2016/2102, and WCAG at the AA level as the standard it points to. Read the exceptions list; it is shorter than most teams assume.
+- **The EU Web Accessibility Directive**, Directive (EU) 2016/2102, and EN 301 549, the harmonised standard that gives presumption of conformity and that incorporates the WCAG 2.1 level AA criteria for web content. Read the exceptions list; it is shorter than most teams assume.
 - **US Section 508** of the Rehabilitation Act, the American federal accessibility baseline, useful even outside the US as a second, differently worded version of the same requirements.
 - **The UK Government Digital Service Service Standard** and its published service-assessment reports. Read a failed assessment before a passed one; it names the traps more precisely.
 - **The eIDAS Regulation**, (EU) 910/2014, and its recent update establishing a European Digital Identity Wallet (verify the current rollout timeline before relying on it), the reference for cross-border digital identity built as a legal framework rather than a login screen.
