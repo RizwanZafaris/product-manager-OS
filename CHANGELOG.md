@@ -243,6 +243,27 @@ This is an unreleased working-tree change set, not a tag, published package, hos
   required because the evidence is not in this tree. The exFAT sidecar difference between a
   maintainer's machine and CI is named so it is not filed twice.
 
+### Changed, everyday templates
+
+- `templates/planning/gtm-plan.md` and `templates/operate/experiment-brief.md` each scored
+  88.6 on `tools/template_rubric.py`, both held back by the same mark: `failure_aware` at
+  0.429, three warnings spread across seven sections. Each of their seven `##` sections now
+  carries one concrete failure mode in its existing guidance comment, naming the bad answer
+  and the tell that reveals it, in the file's own voice: a cohort named by title alone is not
+  a beachhead, a metric borrowed from the marketing dashboard is a bad answer, a guardrail
+  with no numeric floor is not a guardrail, a gate signed by the plan's own author is a rubber
+  stamp rather than a check. `templates/definition/one-pager.md` scored 89.8, held back by two
+  marks: `fillable` at 0.3 (three fields) and `failure_aware` at 0.667 (six warnings over nine
+  sections). Its six sections that carried no failure-mode language at all got the same
+  treatment, and three places that asked for a value in prose or left a table cell bare now
+  carry a fill-in field in the tree's `[field name]` convention instead: the guardrail row
+  names the missing number, the scope row gets a ticket-ID field, and the acceptance row spells
+  out given, when, then. No existing sentence, link, table row, or the ILLUSTRATIVE example
+  moved to make room for any of this. gtm-plan.md and experiment-brief.md now score 100.0;
+  one-pager.md scores 99.0 (fillable 0.8, eight fields; failure_aware 1.0, twelve warnings).
+  `tools/template_rubric.py` itself was not touched: every point moved because guidance was
+  written into these three files, not because the instrument changed.
+
 ### Fixed, exFAT portability
 
 - The maintainer's checkout lives on an exFAT external drive. macOS writes an AppleDouble
@@ -304,6 +325,7 @@ This is an unreleased working-tree change set, not a tag, published package, hos
   the `links_green` hard gate stayed off while all three link criteria passed; the lifecycle
   probe counted the same sidecars as installed documents. Both now walk through one helper
   that applies the predicate, with a regression that also asserts the probes use it.
+
 
 ### Known external requirements
 
