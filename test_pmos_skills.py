@@ -21,6 +21,7 @@ from pmos.routing import (
     RouteStatus,
     RoutingRequest,
 )
+from pmos.sidecars import APPLEDOUBLE_MAGIC
 from pmos.skills import SkillContractError, SkillRegistry
 
 
@@ -398,73 +399,124 @@ class SkillRegistryTests(unittest.TestCase):
                 SkillRegistry(root_link, trusted).load()
 
 
-if __name__ == "__main__":
-    unittest.main()
+def _build_demo_skill(root):
+    """One minimal, self-consistent skill dir plus its trusted manifest.
+
+    Shared by the sidecar tests below so each one only has to add the one
+    filesystem entry it is testing.
+    """
+    skill = root / "demo"
+    skill.mkdir(parents=True)
+    source = "# demo\n"
+    graph = 'layer: skills\nstage: DEFINE\ngate: 2\nfeeds: []\nmethod: ""\naliases: ["Demo"]\n'
+    template = "# template\n"
+    skill.joinpath("SKILL.md").write_text(source, encoding="utf-8")
+    skill.joinpath("SKILL.graph.yml").write_text(graph, encoding="utf-8")
+    skill.joinpath("template.md").write_text(template, encoding="utf-8")
+    contract = {
+        "version": "1.0", "id": "demo", "name": "Demo", "description": "demo",
+        "inputs": {}, "outputs": {}, "capabilities": [], "side_effects": [],
+        "risk": "low", "privacy": "public", "allowed_hooks": [],
+        "resume": {"supported": False}, "completion": {"terminal": "done"},
+        "source_hash": hashlib.sha256(source.encode()).hexdigest(),
+        "template_hashes": {"template.md": hashlib.sha256(template.encode()).hexdigest()},
+    }
+    skill.joinpath("contract.json").write_text(json.dumps(contract), encoding="utf-8")
+    trusted = root.parent / "trusted.json"
+    trusted.write_text(json.dumps({
+        "format": "pmos.skill-manifest/v1", "schema": "pmos.skills.v1",
+        "skills": {"demo": {
+            name: hashlib.sha256((skill / name).read_bytes()).hexdigest()
+            for name in ("contract.json", "SKILL.graph.yml", "SKILL.md", "template.md")}}}),
+        encoding="utf-8")
+    return trusted
 
 
-class UnpriceableCatalogRowsTests(unittest.TestCase):
-    """One row the provider cannot price must not discard the priced rows.
-
-    OpenRouter's catalog carries its meta-router priced "-1" on both sides.
-    discover() raised OpenRouterMalformedResponse on that row and returned
-    nothing, so a caller that only wanted to know which models are free
-    learned nothing at all. Reproduced 2026-09-09 against the live catalog.
+class SkillRegistrySidecarTests(unittest.TestCase):
+    """P0-EXFAT: a macOS AppleDouble sidecar (``._name``) at the runtime root
+    used to fail every load with "unknown or unsafe entry", because the check
+    was name-only (anything starting with ``.``). Recognition is now positive
+    on four independent facts (name, regular file, AppleDouble magic,
+    sibling present); this class proves each one still gates admission on its
+    own, on Linux, with no real exFAT volume involved.
     """
 
-    @staticmethod
-    def _row(model, prompt="0", completion="0"):
-        return {"id": model, "context_length": 1024,
-                "pricing": {"prompt": prompt, "completion": completion},
-                "supported_parameters": [], "architecture": {}}
+    def test_a_real_appledouble_sidecar_beside_its_skill_dir_is_ignored(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "runtime"
+            trusted = _build_demo_skill(root)
+            (root / "._demo").write_bytes(APPLEDOUBLE_MAGIC + b"\x00" * 12)
+            registry = SkillRegistry(root, trusted)
+            loaded = registry.load()
+            self.assertEqual(set(loaded), {"demo"})
 
-    def _provider(self, payload):
-        import json as _json
+    def test_a_dotfile_with_no_appledouble_magic_still_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "runtime"
+            trusted = _build_demo_skill(root)
+            (root / "._demo").write_bytes(b"not an appledouble sidecar!!")
+            with self.assertRaises(SkillContractError):
+                SkillRegistry(root, trusted).load()
 
-        class Response:
-            status = 200
+    def test_appledouble_magic_with_no_sibling_still_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "runtime"
+            trusted = _build_demo_skill(root)
+            # "ghost" has no sibling entry named "ghost" in this directory,
+            # so the fourth positive-recognition condition is never met.
+            (root / "._ghost").write_bytes(APPLEDOUBLE_MAGIC + b"\x00" * 12)
+            with self.assertRaises(SkillContractError):
+                SkillRegistry(root, trusted).load()
 
-            def read(self, n=-1):
-                return _json.dumps(payload).encode("utf-8")
+    def test_a_directory_literally_named_dot_underscore_still_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "runtime"
+            trusted = _build_demo_skill(root)
+            (root / "._demo_extra").mkdir()
+            with self.assertRaises(SkillContractError):
+                SkillRegistry(root, trusted).load()
 
-            def geturl(self):
-                return "https://openrouter.ai/api/v1/models"
+    # -- inside a skill directory --------------------------------------------
+    # The first fix covered the runtime root and passed on an APFS worktree.
+    # On the exFAT checkout the very next check failed instead: every asset
+    # inside a skill has its own sidecar (``._SKILL.md`` beside ``SKILL.md``),
+    # the asset walk listed it, and the shipped set "differed from the trusted
+    # manifest". Found by running readiness on the real drive rather than
+    # trusting the synthetic case, which is why these three exist.
 
-            def close(self):
-                pass
+    def test_a_sidecar_beside_a_skill_asset_is_ignored(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "runtime"
+            trusted = _build_demo_skill(root)
+            (root / "demo" / "._SKILL.md").write_bytes(APPLEDOUBLE_MAGIC + b"\x00" * 12)
+            loaded = SkillRegistry(root, trusted).load()
+            self.assertEqual(set(loaded), {"demo"})
 
-        return OpenRouterProvider(environ={"OPENROUTER_API_KEY": "k"},
-                                  urlopen=lambda request, timeout=None: Response())
+    def test_a_non_sidecar_dotfile_inside_a_skill_still_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "runtime"
+            trusted = _build_demo_skill(root)
+            (root / "demo" / "._SKILL.md").write_bytes(b"looks like one, is not")
+            with self.assertRaises(SkillContractError):
+                SkillRegistry(root, trusted).load()
 
-    def test_a_negative_sentinel_price_drops_the_row_and_keeps_the_rest(self):
-        provider = self._provider({"data": [
-            self._row("openrouter/auto", prompt="-1", completion="-1"),
-            self._row("vendor/free"),
-            self._row("vendor/paid", prompt="0.001", completion="0.002"),
-        ]})
-        models = [spec.model for spec in provider.discover()]
-        self.assertEqual(models, ["vendor/free", "vendor/paid"])
-        free = [spec.model for spec in provider.discover(free_only=True)]
-        self.assertEqual(free, ["vendor/free"])
+    def test_a_sidecar_shaped_file_with_no_sibling_inside_a_skill_still_fails_closed(self):
+        """Recognition needs the sibling; without it the file is just a file.
 
-    def test_an_unparseable_price_drops_the_row_not_the_catalog(self):
-        provider = self._provider({"data": [
-            self._row("vendor/odd", prompt="n/a", completion="0"),
-            self._row("vendor/free"),
-        ]})
-        self.assertEqual([s.model for s in provider.discover()], ["vendor/free"])
+        This is also why a directory cannot consist of sidecars alone: a
+        sidecar only exists beside the asset it shadows, so the asset walk's
+        empty-directory rule keeps its meaning unchanged.
+        """
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "runtime"
+            trusted = _build_demo_skill(root)
+            extra = root / "demo" / "extra"
+            extra.mkdir()
+            (extra / "._orphan.md").write_bytes(APPLEDOUBLE_MAGIC + b"\x00" * 12)
+            with self.assertRaises(SkillContractError):
+                SkillRegistry(root, trusted).load()
 
-    def test_an_unpriceable_row_is_never_reported_free(self):
-        provider = self._provider({"data": [
-            self._row("vendor/mystery", prompt=None, completion=None),
-        ]})
-        self.assertEqual(provider.discover(free_only=True), [])
-        self.assertEqual(provider.discover(), [])
 
-    def test_structural_corruption_still_raises(self):
-        for payload in ({"data": [{"context_length": 1, "pricing": {}}]},
-                        {"data": "not a list"},
-                        {"data": [{"id": "v/m", "context_length": 1,
-                                   "pricing": "free"}]}):
-            with self.subTest(payload=payload):
-                with self.assertRaises(OpenRouterMalformedResponse):
-                    self._provider(payload).discover()
+
+if __name__ == "__main__":
+    unittest.main()

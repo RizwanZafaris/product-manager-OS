@@ -33,6 +33,22 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "tools"))
 sys.path.insert(0, str(REPO))
 
+from pmos.sidecars import is_appledouble_sidecar_path                # noqa: E402
+
+
+def markdown_files(root):
+    """Every real Markdown file under ``root``, sorted, sidecars excluded.
+
+    On an exFAT, FAT or SMB checkout under macOS, ``rglob("*.md")`` returns
+    the AppleDouble sidecar ``._name.md`` beside each real file, and its body
+    is binary rather than UTF-8. The drift probe read one and raised
+    ``UnicodeDecodeError`` on the maintainer's drive while passing on CI, and
+    the lifecycle probe counted them as documents. One predicate, the same
+    one the loaders use, decides what is a document here.
+    """
+    return sorted(path for path in Path(root).rglob("*.md")
+                  if path.is_file() and not is_appledouble_sidecar_path(path))
+
 PROBE_SLUG = "readiness-probe-%d" % os.getpid()
 
 
@@ -110,8 +126,8 @@ def probe_workspace_lifecycle():
                 say("FAILED at: %s" % " ".join(step))
                 say(out.strip()[-1500:])
                 return 1
-        installed = len(list((REPO / "products" / PROBE_SLUG).rglob("*.md")))
-        shipped = len(list((REPO / "templates").rglob("*.md")))
+        installed = len(markdown_files(REPO / "products" / PROBE_SLUG))
+        shipped = len(markdown_files(REPO / "templates"))
         say("workspace lifecycle: created, %d document(s) installed from %d "
             "shipped templates, every link re-resolved." % (installed, shipped))
         return 0 if installed >= shipped else 1
@@ -149,7 +165,7 @@ def probe_workspace_drift():
         run(["python3", "tools/init_product.py", PROBE_SLUG, "--add-all"])
         drifted, files = 0, set()
         root = REPO / "products" / PROBE_SLUG
-        for path in sorted(root.rglob("*.md")):
+        for path in markdown_files(root):
             here = posixpath.dirname(path.relative_to(REPO).as_posix())
             _text, rewrites, _skipped = ws.rewrite_links(
                 path.read_text(encoding="utf-8"), here, here, PROBE_SLUG)

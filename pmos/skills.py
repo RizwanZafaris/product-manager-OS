@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Optional
 
+from .sidecars import is_appledouble_sidecar
+
 
 class SkillContractError(ValueError):
     """Raised when a runtime skill is not safe or internally consistent."""
@@ -182,9 +184,20 @@ def _asset_paths(skill_dir: Path) -> set[str]:
         dirs[:] = sorted(dirs)
         # Empty/unpopulated directories are still untrusted tree entries.  A
         # manifest closes the complete shipped asset set, not just its files.
-        if current != str(skill_dir) and not dirs and not names:
+        # The same AppleDouble sidecars that shadow the runtime root shadow
+        # every asset inside a skill on exFAT, FAT or SMB: ``._SKILL.md``
+        # beside ``SKILL.md``. Listing one as an asset made the shipped set
+        # differ from the trusted manifest on the maintainer's own drive while
+        # matching on CI. Only a positively recognised sidecar is left out,
+        # and recognition needs the sibling it shadows, so a directory can
+        # never consist of sidecars alone: the empty-directory rule below
+        # keeps its meaning, and a sidecar-shaped file with no sibling is
+        # still listed and still fails the manifest comparison.
+        real_names = [name for name in names
+                      if not is_appledouble_sidecar(Path(current), name)]
+        if current != str(skill_dir) and not dirs and not real_names:
             raise SkillContractError("skill contains an empty asset directory")
-        for name in sorted(names):
+        for name in sorted(real_names):
             path = Path(current, name)
             if path.is_symlink() or not path.is_file():
                 raise SkillContractError("skill contains an unsafe asset")
@@ -409,6 +422,16 @@ class SkillRegistry:
                     raise SkillContractError("trusted manifest has unsafe asset path")
         skill_dirs = []
         for child in self.root.iterdir():
+            # A checkout on exFAT, FAT or SMB carries a macOS AppleDouble
+            # sidecar (``._<name>``) beside real entries; the runtime root is
+            # no exception. Skip only the entries that positively prove
+            # themselves to be one (name, regular file, AppleDouble magic,
+            # sibling all present) -- see pmos/sidecars.py. Anything that
+            # fails that proof, including a directory literally named
+            # ``._foo`` or a dotfile with no sibling, keeps failing this
+            # check exactly as before.
+            if is_appledouble_sidecar(self.root, child.name):
+                continue
             if child.is_symlink() or not child.is_dir() or child.name.startswith("."):
                 raise SkillContractError("runtime root contains unknown or unsafe entry")
             skill_dirs.append(child.name)
