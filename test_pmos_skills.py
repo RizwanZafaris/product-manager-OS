@@ -479,3 +479,71 @@ class SkillRegistrySidecarTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class UnpriceableCatalogRowsTests(unittest.TestCase):
+    """One row the provider cannot price must not discard the priced rows.
+
+    OpenRouter's catalog carries its meta-router priced "-1" on both sides.
+    discover() raised OpenRouterMalformedResponse on that row and returned
+    nothing, so a caller that only wanted to know which models are free
+    learned nothing at all. Reproduced 2026-09-09 against the live catalog.
+    """
+
+    @staticmethod
+    def _row(model, prompt="0", completion="0"):
+        return {"id": model, "context_length": 1024,
+                "pricing": {"prompt": prompt, "completion": completion},
+                "supported_parameters": [], "architecture": {}}
+
+    def _provider(self, payload):
+        import json as _json
+
+        class Response:
+            status = 200
+
+            def read(self, n=-1):
+                return _json.dumps(payload).encode("utf-8")
+
+            def geturl(self):
+                return "https://openrouter.ai/api/v1/models"
+
+            def close(self):
+                pass
+
+        return OpenRouterProvider(environ={"OPENROUTER_API_KEY": "k"},
+                                  urlopen=lambda request, timeout=None: Response())
+
+    def test_a_negative_sentinel_price_drops_the_row_and_keeps_the_rest(self):
+        provider = self._provider({"data": [
+            self._row("openrouter/auto", prompt="-1", completion="-1"),
+            self._row("vendor/free"),
+            self._row("vendor/paid", prompt="0.001", completion="0.002"),
+        ]})
+        models = [spec.model for spec in provider.discover()]
+        self.assertEqual(models, ["vendor/free", "vendor/paid"])
+        free = [spec.model for spec in provider.discover(free_only=True)]
+        self.assertEqual(free, ["vendor/free"])
+
+    def test_an_unparseable_price_drops_the_row_not_the_catalog(self):
+        provider = self._provider({"data": [
+            self._row("vendor/odd", prompt="n/a", completion="0"),
+            self._row("vendor/free"),
+        ]})
+        self.assertEqual([s.model for s in provider.discover()], ["vendor/free"])
+
+    def test_an_unpriceable_row_is_never_reported_free(self):
+        provider = self._provider({"data": [
+            self._row("vendor/mystery", prompt=None, completion=None),
+        ]})
+        self.assertEqual(provider.discover(free_only=True), [])
+        self.assertEqual(provider.discover(), [])
+
+    def test_structural_corruption_still_raises(self):
+        for payload in ({"data": [{"context_length": 1, "pricing": {}}]},
+                        {"data": "not a list"},
+                        {"data": [{"id": "v/m", "context_length": 1,
+                                   "pricing": "free"}]}):
+            with self.subTest(payload=payload):
+                with self.assertRaises(OpenRouterMalformedResponse):
+                    self._provider(payload).discover()

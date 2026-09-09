@@ -170,6 +170,79 @@ This is an unreleased working-tree change set, not a tag, published package, hos
   timeout. Four other unbounded subprocess sites in `readiness.py`, `readiness_probe.py` and
   `security_gate.py` are now bounded.
 
+### Fixed, gateway discovery source
+
+- The gateway path discovered its catalog from `omniroute simulate`, on the theory that the
+  router's own dry run was an inventory of what it serves. Reproduced on 2026-09-09 against
+  df46608: the dry run prints the weighted fallback table of the `auto` combo whatever model
+  is pinned (`simulate -m openrouter/nvidia/nemotron-3-super-120b-a12b:free` printed the same
+  two rows as `simulate` with no model at all), so it could neither confirm that a pinned id
+  was routable nor notice that the one id it printed, `minimax/minimax-m3:free`, had been
+  withdrawn from the free tier by the provider (404, "This model is unavailable for free").
+  Twenty-one models were free that day by the provider's own prices; the probe could dispatch
+  to none of them and refused every one as "not in the discovered catalog", which was the
+  eligibility check working correctly on a source that could not answer it. The second-review
+  entry above had already said that a catalog parsed from CLI strings and a `:free` suffix is
+  a name rather than billing evidence.
+- Discovery on the gateway path now reads the provider's public catalog, `/api/v1/models`,
+  through the same `OpenRouterProvider.discover` the direct transport already trusts, so both
+  transports agree on what "free" means: prompt and completion price both zero, as stated by
+  the party that bills. The request is keyless by construction -- the adapter attaches an
+  Authorization header only when one is passed, and a regression asserts that discovery
+  neither reads nor sends one -- and it makes no generation. An unreadable catalog (timeout,
+  transport error, malformed body) is still reported as discovery failure, distinct from an
+  empty catalog, and still refuses dispatch. Membership remains half of the eligibility proof;
+  the post-call check that the resolved model is the pinned model remains the other half. The
+  parser-boundary tests that drove the retired simulate parser are replaced by tests that
+  drive the new function against a faked HTTP boundary, covering the same failure classes
+  plus the one the old source could not express: a `:free` name on a priced model is filtered
+  by its price.
+
+- The gateway call shelled out to `omniroute chat` and parsed a coloured footer. That path
+  could not send the three request headers routing/README.md requires (compression off, no
+  cache, no memory), so every "evidence" call was made under whatever the gateway's defaults
+  were; it could not see whether the answer was a semantic-cache replay of an earlier prompt;
+  and it returned no cost at all, so by the rule that absent cost is UNKNOWN every gateway
+  run halted after its first call and no EXT-AI evidence could be produced through the
+  transport that exists to keep the credential out of this process. It now calls the
+  gateway's loopback HTTP API. The doctrine headers go on every request, and a regression
+  asserts each one. A base URL that is not loopback is refused before any call, because the
+  evidence says the prompts stayed on this host. The resolved model is read from the body and
+  cross-checked against `X-OmniRoute-Model`; a disagreement is an error. A cache hit and a
+  compressed prompt are errors, since neither is evidence that this model answered this
+  prompt now. Token counts come from `usage`. Cost comes from the provider's own `usage.cost`
+  when the gateway forwards it, otherwise from `X-OmniRoute-Response-Cost`, and the evidence
+  names which of the two it was, because the gateway's figure is its pricing table applied,
+  not the provider's invoice. The same gateway answers with the provider's spelling of the
+  model id, `nvidia/...`, for a call pinned as `openrouter/nvidia/...`; the strict comparison
+  recorded that as a substitution, and the check now accepts exactly those two spellings and
+  nothing else, so a paid twin without the `:free` suffix is still a mismatch.
+- `OpenRouterProvider.discover` raised `OpenRouterMalformedResponse` on the first catalog row
+  it could not price and returned nothing. OpenRouter publishes five of its own meta-routers
+  priced `-1` on both sides, so on the live catalog the adapter rejected 431 models for the
+  sake of five that mean "depends on what answers". Such a row is now dropped: it can never
+  be selected, never be called free and never enter a budget, which is what an unpriceable
+  model deserves, while the priced rows beside it are kept. A body that is not a catalog, or
+  a row with no id or a non-mapping price, still raises. Discovery also gained an explicit
+  `anonymous=True` mode, permitted for the catalog path only and refused for generation, so
+  a caller that holds no provider credential can still learn what the provider prices at
+  zero; a regression asserts at the transport that no credential is read or sent, after a
+  first version of that test faked the very method that was resolving one.
+
+### Changed, review brief
+
+- `docs/readiness/EXT-TEAM-review-brief.md` carried a commit, a digest, a file count and an
+  expected gate count typed in by hand on 2026-09-03. Seven merges later a reviewer following
+  it would have checked out `ba286db`, confirmed a digest that described nothing, and expected
+  `18/18` from a suite that now has nineteen gates. The brief now tells the reviewer to
+  establish the head, the digest and the hosted run for themselves and to write what they saw
+  into the record; the expected result is stated as "18/19 with CI-6 the only red", with any
+  other red a finding. The known-limits list no longer says the AI layer has never been
+  observed against a live model, because on 2026-09-09 it was, through the gateway transport
+  at a $0 ceiling; it now says exactly how far that observation goes and that EXT-AI stays
+  required because the evidence is not in this tree. The exFAT sidecar difference between a
+  maintainer's machine and CI is named so it is not filed twice.
+
 ### Fixed, exFAT portability
 
 - The maintainer's checkout lives on an exFAT external drive. macOS writes an AppleDouble
@@ -216,6 +289,7 @@ This is an unreleased working-tree change set, not a tag, published package, hos
   regression: a `._x.md` or `._x.py` written with the real magic bytes beside a real sibling,
   proven to reproduce each defect above against the unmodified code before the fix and to
   pass after it.
+
 
 ### Known external requirements
 
