@@ -4,58 +4,46 @@
   "reviewer_kind": "independent-agent",
   "independent_implementation": true,
   "identity_assurance": "unauthenticated-local-claim",
-  "reviewed_at": "2026-09-09T09:59:51Z",
-  "reviewed_tree_sha256": "76f9a56fc0c82aaa05c65ef5edacd7859daf511aabbf0bcbb6b95a91eb7df18a",
+  "reviewed_at": "2026-09-09T12:32:25Z",
+  "reviewed_tree_sha256": "d7f251f0a60c88c9076fad6080eeef1a6977389b1daf3afb0eb5d6906bc8edab",
   "scope": [
-    "PR #27 diff from a17c9c1 through e35c872: gateway billing typing and cost aggregates",
-    "SidecarFilter root containment, tracked-path behavior, worktree gitdir handling, and call-site regressions",
-    "readiness registry method IDs, test-class inventory guard, restored test assertions, and fourth-round CHANGELOG",
-    "required local gates plus targeted adversarial reproductions for prior findings and new edge cases"
+    "All twenty-eight new knowledge/domains sector cards: three-pass content review under the no-fabrication rule, including every Gatekeepers and Reading section and every dated, numbered, named-instrument, regulator, standard and case claim in orientation and metrics",
+    "Six final reworded card sentences in crypto-digital-assets.md, food-delivery-quick-commerce.md, insurance.md, islamic-finance.md, proptech-real-estate.md and public-sector-govtech.md; verified against the disclosed primary-source corrections and prior findings",
+    "Domain structure and routing: fixed section order, Conductor question ids, template links, README table coverage and scope, fintech fourteen-card pointer, knowledge index count, regulated-module handoffs, graph freshness and CHANGELOG accuracy",
+    "Repository release gates and exact-tree identity for commit 55b2c41f6a0c6b14fc672266e8e749e9f34d03bb"
   ],
   "evidence": [
     {
       "command": "git rev-parse HEAD",
-      "result": "e35c872ddce03b1360fe87b06c69e2d7c17c41a7"
+      "result": "55b2c41f6a0c6b14fc672266e8e749e9f34d03bb; exit 0"
     },
     {
       "command": "python3 tools/review_gate.py --digest",
-      "result": "495 files; sha256 76f9a56fc0c82aaa05c65ef5edacd7859daf511aabbf0bcbb6b95a91eb7df18a"
+      "result": "523 files; sha256 d7f251f0a60c88c9076fad6080eeef1a6977389b1daf3afb0eb5d6906bc8edab; exit 0"
     },
     {
       "command": "python3 tools/ci_gate.py",
-      "result": "18/19 passed; CI-6 the only red"
+      "result": "18/19 release gates passed; 48 criteria, 1 failing, 0 not built; local exact-tree review record/CI-6 only red; exit 1 as expected before recording"
     },
     {
-      "command": "python3 -m unittest -q test_pmos_probe test_pmos_review test_pmos_skills test_pmos_invariants test_readiness test_pmos_usecases",
-      "result": "223 tests; OK"
+      "command": "python3 tools/graph.py --check",
+      "result": "docs/GRAPH.md up to date; 306 files scanned; exit 0"
     },
     {
-      "command": "python3 -m unittest discover -s harness -p test_*.py",
-      "result": "115 tests; OK"
-    },
-    {
-      "command": "python3 tools/security_gate.py",
-      "result": "0 findings"
+      "command": "python3 lint.py --os",
+      "result": "OS tree mode, 11 checks passed; exit 0"
     },
     {
       "command": "python3 tools/docs_contract.py",
-      "result": "0 errors; 0 warnings"
-    },
-    {
-      "command": "python3 tools/readiness.py --category harness",
-      "result": "15/15; 7 passing; 0 failing"
-    },
-    {
-      "command": "python3 tools/readiness.py --category ci",
-      "result": "9/10; CI-6 only failure"
-    },
-    {
-      "command": "targeted fourth-round adversarial reproduction",
-      "result": "body string and bool costs INVALID; NaN and negative header costs INVALID; unknown cost exits 1; outside-root sidecar not excused; registry IDs complete"
+      "result": "0 errors, 0 warnings; exit 0"
     },
     {
       "command": "git diff --check",
-      "result": "exit 0; no output"
+      "result": "no output; exit 0"
+    },
+    {
+      "command": "git diff 70dda6a..HEAD",
+      "result": "six reworded sentences across six cards and two CHANGELOG paragraphs; 7 files changed, 13 insertions, 10 deletions"
     }
   ],
   "findings": [],
