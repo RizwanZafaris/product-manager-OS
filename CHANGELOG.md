@@ -229,6 +229,20 @@ This is an unreleased working-tree change set, not a tag, published package, hos
   zero; a regression asserts at the transport that no credential is read or sent, after a
   first version of that test faked the very method that was resolving one.
 
+### Changed, review brief
+
+- `docs/readiness/EXT-TEAM-review-brief.md` carried a commit, a digest, a file count and an
+  expected gate count typed in by hand on 2026-09-03. Seven merges later a reviewer following
+  it would have checked out `ba286db`, confirmed a digest that described nothing, and expected
+  `18/18` from a suite that now has nineteen gates. The brief now tells the reviewer to
+  establish the head, the digest and the hosted run for themselves and to write what they saw
+  into the record; the expected result is stated as "18/19 with CI-6 the only red", with any
+  other red a finding. The known-limits list no longer says the AI layer has never been
+  observed against a live model, because on 2026-09-09 it was, through the gateway transport
+  at a $0 ceiling; it now says exactly how far that observation goes and that EXT-AI stays
+  required because the evidence is not in this tree. The exFAT sidecar difference between a
+  maintainer's machine and CI is named so it is not filed twice.
+
 ### Known external requirements
 
 - Local checks do not verify hosted CI on the exact commit, a live provider, vendor sandboxes, a non-maintainer journey, independent human team review, organization-specific regulatory approval, or a published release artifact. No tag or published release is claimed here.

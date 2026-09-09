@@ -17,8 +17,8 @@ the point: every check in this repository was written by the same hands that
 wrote the code it checks, so the tests agree with the implementation by
 construction. A second reader is the only thing that breaks that circle.
 
-You do not need to be a Python expert, and you do not need to read all 475
-files. The sections below name the six places where a defect would be most
+You do not need to be a Python expert, and you do not need to read every
+file in the digest. The sections below name the six places where a defect would be most
 expensive, and each says what "wrong" would look like. If you can read a
 function and ask "what happens if this fails halfway", you can do this review.
 
@@ -26,21 +26,35 @@ Budget about an hour.
 
 ## What you are reviewing
 
-| Field | Value |
-|---|---|
-| Commit | `ba286db0121e613f5c1a6a6d3bdfa3cc6bee2c27` on `main` |
-| Reviewable tree digest | `847e2993a5d4ae49722e222415ba1ee45c6b44995b92c552aac6114528998d1d` |
-| Files in digest | 475 |
-| Hosted CI on that exact commit | [run 33810668652](https://github.com/RizwanZafaris/product-manager-OS/actions/runs/33810668652), 3/3 jobs green |
+<!-- This table used to carry a commit, a digest and a file count typed in by
+     hand. They were right for one afternoon. The tree moved, the brief did
+     not, and a reviewer following it would have checked out a commit seven
+     merges old and confirmed a digest that no longer described anything. The
+     values now come from the tree you have in front of you, and the record at
+     the bottom asks you to write down what you actually saw. -->
 
-Confirm the digest before you start. If it does not match, the tree moved and
-this brief is stale:
+The candidate is the head of `main` at the moment you start, and nothing
+else. Establish what that is yourself rather than taking a number from this
+file:
 
 ```bash
-git fetch origin main && git checkout ba286db
-python3 tools/review_gate.py --digest
-# expect: {"files": 475, "sha256": "847e2993...998d1d"}
+git fetch origin main && git checkout origin/main
+git rev-parse HEAD                     # the commit you are reviewing
+python3 tools/review_gate.py --digest  # {"files": N, "sha256": "..."}
 ```
+
+Write both values into the record at the bottom. If either changes while you
+are reviewing, the tree moved under you; start again from the new head, because
+an acceptance covers the tree that was read and no other.
+
+Then find the hosted run for that exact commit and note its result:
+
+```bash
+gh run list --branch main --limit 1    # the run for the SHA you just printed
+```
+
+It is expected to be red on the two `gate` jobs for exactly one criterion,
+CI-6, which is the criterion your review closes. Any other red is a finding.
 
 ## Run it yourself first
 
@@ -48,11 +62,22 @@ One command, about 90 seconds. Do not take the reported result on trust; it is
 the thing under review.
 
 ```bash
-python3 tools/ci_gate.py            # expect: release gates: 18/18 passed
+python3 tools/ci_gate.py
 ```
 
-If that fails on your machine and passes on CI, that difference is itself a
-finding and worth more than anything below.
+Expect `release gates: 18/19 passed`, with the one failure being
+`readiness-local` reporting `failing : 1 criteria`, and that criterion CI-6.
+The number of gates has grown since this brief was first written and will grow
+again; what matters is that the only red is the review record you are about to
+write. Any other red is a finding.
+
+If that fails on your machine differently from how it fails on CI, that
+difference is itself a finding and worth more than anything below. One such
+difference is already known and documented: on an exFAT, FAT or SMB volume
+under macOS, sidecar files named `._name` appear beside every entry, and the
+loaders were not written to expect them. If you see `UnicodeDecodeError` or
+`runtime root contains unknown or unsafe entry`, check the changelog for the
+entry that closes it before filing it again.
 
 ## The six places to look
 
@@ -121,8 +146,15 @@ hunting for them:
 - There is no identity, RBAC, or immutable audit log. A gate is signed by a
   person editing a file.
 - No integration adapter has been verified against a vendor sandbox.
-- The AI layer has never been observed against a live model; every test stubs
-  the gateway. `tools/ext_ai_probe.py --dry-run` shows what it would do.
+- Every test of the AI layer stubs the gateway. The layer has been observed
+  against a live model exactly as far as `tools/ext_ai_probe.py` records:
+  on 2026-09-09, three pinned calls to a free model through the local
+  OmniRoute gateway, at a $0 ceiling, with the resolved model, cache and
+  compression outcome, token counts and gateway-reported cost written to the
+  evidence file. That file is not in this tree, and EXT-AI in
+  `external-gates.json` stays `required` until evidence tied to the release
+  commit is verified independently. `--dry-run` still shows what a run would
+  do without touching the socket.
 
 None of these are defects in what was built. They are things that were not
 built, and the README and `harness/README.md` say so. If you find a place
@@ -153,7 +185,7 @@ One command, run from the repository root after you have actually reviewed:
 python3 tools/review_gate.py --record \
   --reviewer "Your Name" \
   --scope "what you actually read" \
-  --evidence "python3 tools/ci_gate.py|18/18 passed" \
+  --evidence "python3 tools/ci_gate.py|18/19 passed; the one red is CI-6" \
   --finding "P2|accepted|one-line summary|where you saw it"
 ```
 
@@ -191,9 +223,9 @@ Reviewer name        :
 Reviewer contact     :
 Relationship to work : (must be: did not implement this release)
 Date reviewed        :
-Commit reviewed      : ba286db0121e613f5c1a6a6d3bdfa3cc6bee2c27
-Digest confirmed     : yes / no   (847e2993...998d1d)
-ci_gate.py result    : 18/18 / other:
+Commit reviewed      : (output of git rev-parse HEAD)
+Digest confirmed     : (files and sha256 from review_gate.py --digest)
+ci_gate.py result    : 18/19 with CI-6 the only red / other:
 Time spent           :
 
 P0 findings          : (none, or list with file and line)
