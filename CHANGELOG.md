@@ -23,6 +23,28 @@ This is an unreleased working-tree change set, not a tag, published package, hos
 - Local regression, crash, migration, security, accessibility, use-case, provenance, and evaluator-integrity gates.
 - A repository-local, standard-library PEP 517 backend that builds the wheel in an isolated offline environment without an undeclared setuptools installation.
 
+### Changed, role ladder
+
+- The eight rungs in `knowledge/roles/ladder.md` and the seven specializations in
+  `knowledge/roles/specializations.md` now link the artifacts each role produces and consumes to
+  the template each one lands in, and name the recurring workflows that drive them: two skills per
+  rung, three or four skills or framework sheets per shape, each with the trigger or cadence it
+  runs on. Before this the ladder's document lines were prose with an occasional link, and two of
+  the eight rungs, Group PM and CPO, linked nothing at all: a reader who wanted the group's OKRs
+  or the investment thesis that closes a product line was told the document existed and not where.
+  The specializations' single `Documents` line splits into `Documents out`, `Documents in`, and
+  `Recurring workflows`, the ladder's three-line shape. Only the document lines moved; `Owns`,
+  `Decides`, `Success`, `Failure`, and `Stage variance` are untouched on every card.
+- Every role's list is distinct from its neighbours by construction. Each artifact sentence on a
+  specialization says which neighbouring shape does not produce it and why: a Product Owner starts
+  from the PRD and never writes the discovery document, a Platform PM's integration register faces
+  inward where a Technical PM's faces the counterparties it sells to. On the ladder no two adjacent
+  rungs share more than two links, and the two they share sit at the top, where Director, VP, and
+  CPO each produce a product strategy and a board or quarterly update because that is the work at
+  those altitudes; the workflows behind each are different.
+- These are cards, not journeys. No rung and no specialization has a worked example yet; the
+  journeys land separately.
+
 ### Added, sector cards
 
 - Twenty-eight domain cards, taking the sector layer from sixteen cards to forty-four. Fourteen are
