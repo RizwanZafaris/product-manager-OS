@@ -12,6 +12,8 @@ This is a pointer card, and that is deliberate. Fintech is the one domain whose 
 
 ## Where to go
 
+The sub-sector packs that this pointer used to lack now exist beside it. Read the one whose licence and rail are yours: [core banking](core-banking.md), [transaction banking](transaction-banking.md), [remittances](remittances.md), [payments acquiring](payments-acquiring.md), [card issuing](card-issuing.md), [lending and credit](lending-credit.md), [embedded finance and BaaS](embedded-finance-baas.md), [wealth and investing](wealth-investing.md), [capital markets](capital-markets.md), [insurance](insurance.md), [crypto and digital assets](crypto-digital-assets.md), [RegTech, AML and KYC](regtech-aml-kyc.md), [mobile money and wallets](mobile-money-wallets.md), and [Islamic finance](islamic-finance.md). This card still owns one thing: when the product contains a model that decides, the regulated module applies on top of whichever sector card you read.
+
 - **[modules/regulated/README.md](../../modules/regulated/README.md)** explains when the overlay activates (any product where a supervisor can ask for the document trail: licensed payment flows, credit decisions, KYC or screening steps, stored value) and how it binds at Gate 2 and Gate 5.
 - **[skills/reg-gap-check/SKILL.md](../../skills/reg-gap-check/SKILL.md)** runs the challenge in advance: eleven regulatory domains checked against a spec, findings ranked by severity, owners and closing evidence named. Run it before any money-touching PRD reaches engineering.
 - **[templates/operate/compliance-impact-assessment.md](../../templates/operate/compliance-impact-assessment.md)** captures the data-protection side and carries the legal sign-off.
