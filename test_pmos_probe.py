@@ -484,6 +484,61 @@ class ProvenanceErrorsStillBillTests(unittest.TestCase):
         self.assertTrue(report["totals"]["budget_breach"])
 
 
+class BodyCostTypingReachesTheRunLoopTests(unittest.TestCase):
+    """The end-to-end shape of the fourth round's P1: a provider body cost
+    of "0" (string) or True must fail the run as INVALID, never pass as OK."""
+
+    def _gateway(self, cost):
+        return run_probe(["--via", "omniroute", "--max-calls", "2"],
+                         omni={"return_value": {
+                             "text": "answer", "cost_usd": cost,
+                             "cost_source": "provider usage.cost",
+                             "resolved_model": "openrouter/test/free:free"}})
+
+    def test_a_numeric_string_body_cost_is_invalid_not_ok(self):
+        code, report, adapter = self._gateway("0")
+        self.assertNotEqual(code, 0)
+        self.assertEqual(report["calls"][0]["cost_status"], "INVALID")
+        self.assertEqual(adapter.call_count, 1)
+
+    def test_a_bool_body_cost_is_invalid_not_a_dollar(self):
+        code, report, _ = self._gateway(True)
+        self.assertNotEqual(code, 0)
+        self.assertEqual(report["calls"][0]["cost_status"], "INVALID")
+        self.assertNotEqual(report["totals"]["cost_usd"], 1.0)
+
+
+class ErrorsWithoutBillingAreUnknownTests(unittest.TestCase):
+    """Fourth review round, P2: an errored call the gateway said nothing
+    about aggregated as cost_usd 0.0 with cost_unknown false. Silence about
+    money is not $0.00, on either transport."""
+
+    def test_a_gateway_error_with_no_cost_makes_the_aggregate_unknown(self):
+        code, report, _ = run_probe(
+            ["--via", "omniroute", "--max-calls", "2"],
+            omni={"return_value": {"error": "cached_response",
+                                   "error_detail": "replayed"}})
+        self.assertNotEqual(code, 0)
+        self.assertEqual(report["calls"][0]["cost_status"], "UNKNOWN")
+        self.assertTrue(report["totals"]["cost_unknown"])
+
+    def test_a_direct_adapter_exception_makes_the_aggregate_unknown(self):
+        code, report, _ = run_probe(
+            ["--max-calls", "2"],
+            complete={"side_effect": RuntimeError("upstream refused")})
+        self.assertNotEqual(code, 0)
+        self.assertEqual(report["calls"][0]["cost_status"], "UNKNOWN")
+        self.assertTrue(report["totals"]["cost_unknown"])
+
+    def test_a_refusal_before_any_request_is_not_an_unknown_charge(self):
+        code, report, _ = run_probe(
+            ["--via", "omniroute", "--max-calls", "1"],
+            omni={"return_value": {"error": "omniroute_not_local",
+                                   "error_detail": "must be loopback"}})
+        self.assertNotEqual(code, 0)
+        self.assertFalse(report["totals"]["cost_unknown"])
+
+
 class ExecutionLimitTests(unittest.TestCase):
     """A run that dispatched nothing has not produced generation evidence."""
 
@@ -1118,6 +1173,25 @@ class GatewayHttpBoundaryTests(unittest.TestCase):
         result, _ = self._chat(raises=err)
         self.assertEqual(result.get("error"), "omniroute_http_402")
         self.assertEqual(result.get("cost_usd"), 0.5)
+
+    def test_a_string_body_cost_is_handed_on_untyped_for_usable_cost_to_judge(self):
+        """Fourth review round, P1: "0" in the body became 0.0 before
+        usable_cost could call a numeric string INVALID, so a value the
+        contract rejects passed as OK. The helper no longer types the body."""
+        result, _ = self._chat(body=_ok_body(usage={"prompt_tokens": 1,
+                                                    "completion_tokens": 1,
+                                                    "total_tokens": 2,
+                                                    "cost": "0"}))
+        self.assertEqual(result.get("cost_usd"), "0")
+        self.assertEqual(probe.usable_cost(result["cost_usd"])[1], "INVALID")
+
+    def test_a_bool_body_cost_is_handed_on_untyped_too(self):
+        result, _ = self._chat(body=_ok_body(usage={"prompt_tokens": 1,
+                                                    "completion_tokens": 1,
+                                                    "total_tokens": 2,
+                                                    "cost": True}))
+        self.assertIs(result.get("cost_usd"), True)
+        self.assertEqual(probe.usable_cost(result["cost_usd"])[1], "INVALID")
 
     def test_no_charge_reported_means_no_cost_key_on_errors_too(self):
         result, _ = self._chat(headers={"X-OmniRoute-Cache": "HIT"})

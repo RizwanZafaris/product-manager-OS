@@ -214,13 +214,17 @@ class SidecarFilter:
         path = Path(path)
         if not is_appledouble_sidecar(path.parent, path.name):
             return False
-        if self.tracked is None:
-            return True
         try:
             relative = path.resolve().relative_to(self._resolved).as_posix()
         except (OSError, ValueError):
-            # Outside the root git was asked about, or gone: not excused.
+            # Outside the root this filter was built for, or gone. The fourth
+            # review round handed a genuine sidecar from another directory to
+            # a filter built on a directory git did not know, and it was
+            # excused because the root check came after the no-repository
+            # shortcut. A filter answers for its root and nothing else.
             return False
+        if self.tracked is None:
+            return True
         return relative not in self.tracked
 
 

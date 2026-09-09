@@ -564,6 +564,21 @@ class TrackedSidecarsAreNeverExcusedTests(unittest.TestCase):
             self.assertIsNone(f.tracked)
             self.assertTrue(f.excused(root / "._real.md"))
 
+    def test_a_filter_answers_only_for_paths_under_its_root(self):
+        """Fourth review round, P2: with no repository the shortcut returned
+        True before the root check, so a genuine sidecar from another
+        directory was excused by a filter built for this one."""
+        with tempfile.TemporaryDirectory() as here, tempfile.TemporaryDirectory() as there:
+            root, other = Path(here), Path(there)
+            (other / "real.md").write_text("# r\n", encoding="utf-8")
+            (other / "._real.md").write_bytes(APPLEDOUBLE_MAGIC + b"\x00" * 12)
+            f = SidecarFilter(root)
+            self.assertIsNone(f.tracked)
+            self.assertFalse(f.excused(other / "._real.md"))
+            (root / "real.md").write_text("# r\n", encoding="utf-8")
+            (root / "._real.md").write_bytes(APPLEDOUBLE_MAGIC + b"\x00" * 12)
+            self.assertTrue(f.excused(root / "._real.md"))
+
     def test_a_repository_git_cannot_read_fails_closed(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
