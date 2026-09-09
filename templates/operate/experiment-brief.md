@@ -29,7 +29,10 @@ aliases: ["Experiment Brief", "experiment-brief"]
 ## 1. Hypothesis
 
 <!-- Falsifiable, with the mechanism stated. "We believe X will move Y because Z"
-     forces the causal claim into daylight, where the retro can examine it. -->
+     forces the causal claim into daylight, where the retro can examine it. A
+     hypothesis that only names the variant, with no "because" clause, is a build
+     ticket wearing a brief's cover page, and it never tells you what would prove
+     it wrong. -->
 
 - **We believe that** [the change]
 - **will move** [the target metric]
@@ -40,7 +43,10 @@ aliases: ["Experiment Brief", "experiment-brief"]
 
 <!-- One primary metric. Two primary metrics means the result can always be
      read as a win, and it will be. Guardrails are the metrics you are not
-     trying to move and would stop for, with a floor written as a number. -->
+     trying to move and would stop for, with a floor written as a number. A
+     guardrail with no numeric floor is not a guardrail, it is a good intention,
+     and good intentions do not stop an experiment when the number moves the
+     wrong way. -->
 
 
 | Field | Answer |
@@ -55,7 +61,10 @@ aliases: ["Experiment Brief", "experiment-brief"]
 
 <!-- Describe what the user experiences, not what was built. A variant a
      reader cannot picture cannot be reasoned about later, and the person
-     reading this in six months is deciding whether to rerun it. -->
+     reading this in six months is deciding whether to rerun it. A variant
+     described as a flag name, like "enable_v2_flow," is a build detail, not
+     a description a reader can picture; the red flag is a row nobody outside
+     engineering could act out in a hallway. -->
 
 
 | Variant | What the user experiences | Allocation |
@@ -68,7 +77,10 @@ aliases: ["Experiment Brief", "experiment-brief"]
 
 <!-- Sized before launch, because "we will run it until it looks done" is how
      peeking becomes policy. If nobody on the team can size the sample, that is a
-     named dependency, not a section to skip. -->
+     named dependency, not a section to skip. A sample size computed after the
+     experiment has already been watched for a week is not sizing, it is
+     rationalizing a number everyone already likes; the tell is arithmetic that
+     was never written down before day one. -->
 
 | Field | Answer |
 |---|---|
@@ -80,7 +92,10 @@ aliases: ["Experiment Brief", "experiment-brief"]
 ## 5. Decision rule
 
 <!-- The section that makes this a brief instead of a diary. Three outcomes, each
-     with a pre-committed action and the person who executes it. -->
+     with a pre-committed action and the person who executes it. A rule with no
+     owner in the last column is a sentence, not a decision, because nobody is
+     bound to execute it once the data arrives; the smell is a table with Ship,
+     Iterate and Kill rows, and no name in any of them. -->
 
 | Outcome | Rule (written before launch) | Action | Owner |
 |---|---|---|---|
@@ -95,7 +110,10 @@ aliases: ["Experiment Brief", "experiment-brief"]
 <!-- Every row here produces a result that will be quoted in a decision
      meeting and should not be. The common thread is that the rule was decided
      after the data arrived, which is the one thing an experiment exists to
-     prevent. -->
+     prevent. Reading this table after the results are in, to explain what
+     already happened, is a post-mortem wearing a checklist's name; the trap is
+     a decision meeting where every row here would have applied and none were
+     checked beforehand. -->
 
 | Failure mode | What it looks like | The rule that stops it |
 |---|---|---|
@@ -109,7 +127,10 @@ aliases: ["Experiment Brief", "experiment-brief"]
 ## Exit gate
 
 <!-- Checkable by someone who did not write this document, which is the
-     test of whether a gate is a gate. -->
+     test of whether a gate is a gate. A gate signed while the decision rule
+     still says "we will decide later" is not a gate, it is a placeholder with
+     a signature on it; the tell is a Ship, Iterate or Kill row with the rule
+     column left blank. -->
 
 
 This brief is fit to launch when:

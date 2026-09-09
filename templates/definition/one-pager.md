@@ -35,7 +35,9 @@ Skill: [write-prd](../../skills/write-prd/SKILL.md); [ai-prd](../../skills/ai-pr
 
 <!-- Written so that someone who disagrees can say why. A problem statement
      nobody could argue with is usually a statement of a solution wearing a
-     problem's clothes. -->
+     problem's clothes. A problem with no source ID attached is not evidence,
+     it is an opinion with a heading; the red flag is a paragraph nobody could
+     go verify by opening the linked discovery doc. -->
 
 
 [Two or three sentences in the user's terms, with one piece of evidence and its source ID. Link the discovery work rather than restating it; the source of truth is the filled copy of ../discovery/discovery-document.md.]
@@ -43,7 +45,10 @@ Skill: [write-prd](../../skills/write-prd/SKILL.md); [ai-prd](../../skills/ai-pr
 ## 2. Proposal
 
 <!-- The shape, not the design. Enough for a reader to agree or object, and
-     no more: detail here is the most common reason a one-pager becomes three. -->
+     no more: detail here is the most common reason a one-pager becomes three.
+     A proposal that never says what the user sees differently tomorrow is a
+     solution description, not a proposal; the tell is a support lead and an
+     engineer who read it and picture two different products. -->
 
 
 [Three or four sentences: what changes for the user, stated so an engineer and a support lead read it the same way. No implementation detail that the team has not already agreed.]
@@ -51,12 +56,15 @@ Skill: [write-prd](../../skills/write-prd/SKILL.md); [ai-prd](../../skills/ai-pr
 ## 3. Scope
 
 <!-- What ships. Read this beside section 5, because scope is defined as
-     much by what is refused as by what is listed. -->
+     much by what is refused as by what is listed. A scope row with no story
+     or ticket behind it is not a plan, it is a promise nobody is building
+     toward; the tell is a line item that cannot be found in the backlog once
+     the sprint starts. -->
 
 
 | # | In scope, one line each | Story or ticket |
 |---|---|---|
-| 1 | | |
+| 1 | | [story or ticket ID] |
 | 2 | | |
 
 ## 4. How we will know it worked
@@ -64,16 +72,21 @@ Skill: [write-prd](../../skills/write-prd/SKILL.md); [ai-prd](../../skills/ai-pr
 | Metric | Baseline | Target | Measured where | Owner |
 |---|---|---|---|---|
 | | | | | |
-| Guardrail: what this must not damage | | must not worsen | | |
+| Guardrail: what this must not damage | | must not worsen by more than [number, with unit] | | |
 
 <!-- One outcome metric and one guardrail is the floor. Targets nobody has agreed
-     with the metric owner are labeled ILLUSTRATIVE until they are agreed. -->
+     with the metric owner are labeled ILLUSTRATIVE until they are agreed. A
+     guardrail written as "must not worsen" with no number attached never
+     actually triggers, because nobody can say the day it crossed the line; the
+     tell is a floor with no digit in it. -->
 
 ## 5. Not doing
 
 <!-- The section that does the work. An exclusion is only worth writing if
      somebody actually wanted it, so a not-doing list of things nobody asked
-     for is decoration. -->
+     for is decoration. An exclusion written here and never said out loud to
+     the stakeholder who wanted it resurfaces as a surprise in week six; the
+     tell is a reviewer who signed off without reading this section. -->
 
 
 [Three to five lines. The adjacent things people will assume are included, and the one-line reason each is out. This section is why a one-pager can be short.]
@@ -86,7 +99,7 @@ Skill: [write-prd](../../skills/write-prd/SKILL.md); [ai-prd](../../skills/ai-pr
 
 | # | Given, when, then | Owner |
 |---|---|---|
-| AC1 | | |
+| AC1 | Given [starting state], when [action], then [expected result] | |
 
 ## 7. Risks and open questions
 
@@ -94,7 +107,11 @@ Skill: [write-prd](../../skills/write-prd/SKILL.md); [ai-prd](../../skills/ai-pr
 |---|---|---|---|
 | | | | |
 
-<!-- If the product contains a model, the AI overlay still applies at this weight:
+<!-- A risk or question with no owner and no date is a worry, not a tracked
+     item, and it is never revisited once the document is signed; the tell is
+     the same row appearing three reviews later, untouched.
+
+     If the product contains a model, the AI overlay still applies at this weight:
      an eval row from ../ai/eval-spec.md replaces any prose criterion about model
      output. If the product contains an AI or machine-learning feature and a
      financial or data regulator applies to it, stop and use the regulated

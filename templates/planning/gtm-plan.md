@@ -33,7 +33,9 @@ aliases: ["GTM Plan", "gtm-plan"]
 
 <!-- Small enough to name and reach. "Evidence" means an artifact: a list you hold, a
      community you already stand in, a signed pilot agreement. "We will post about it"
-     is a hope with a verb. The italic row shows a completed entry. -->
+     is a hope with a verb. The italic row shows a completed entry. A cohort named by
+     title alone, such as "enterprise admins," is not a beachhead; the tell is that
+     nobody on the team could hand over today's list of who it means. -->
 
 | Cohort (who, precisely) | Size | Channel that reaches them | Evidence the channel reaches them | Owner |
 |---|---|---|---|---|
@@ -45,7 +47,9 @@ aliases: ["GTM Plan", "gtm-plan"]
 <!-- The alternative is what the cohort does today, which is usually a spreadsheet,
      an intern, or nothing, not the competitor on your slide. If the "unlike" line
      names no specific alternative, the competition has not been studied and this
-     section is returned for rework, not polished. -->
+     section is returned for rework, not polished. A positioning skeleton filled with
+     adjectives the team likes, not words the cohort actually uses, is decoration;
+     the red flag is an "ours" line nobody could verify by watching one demo. -->
 
 - **For** [the cohort in section 1]
 - **who** [the struggle, stated in words a cohort member has actually used]
@@ -58,7 +62,9 @@ aliases: ["GTM Plan", "gtm-plan"]
 
 <!-- Phases advance on conditions, not on the calendar. An exit condition is evidence
      a reader could check, and each phase's comms are drafted before its entry, which
-     is what Gate 5's comms line will ask about. -->
+     is what Gate 5's comms line will ask about. A phase that exits "when it feels
+     ready" instead of on the stated condition never actually gates anything; the
+     tell is a phase 2 that started before phase 1's evidence existed. -->
 
 | Phase | Cohort added | Entry condition | Exit condition (evidence, not a date) | Comms that go out | Owner |
 |---|---|---|---|---|---|
@@ -70,7 +76,10 @@ aliases: ["GTM Plan", "gtm-plan"]
 
 <!-- Exactly one. It should feed the Gate 1 success signal or an input metric on the
      north star tree, so the launch is scored in the product's own currency, not in
-     launch-day applause. Impressions and coverage are activity, not adoption. -->
+     launch-day applause. Impressions and coverage are activity, not adoption. A
+     metric borrowed from the marketing dashboard because the number is already
+     flowing is a bad answer here; the tell is a target with no owner on the product
+     side who would act if it missed. -->
 
 | Metric | Source system | Baseline | Target | Review date |
 |---|---|---|---|---|
@@ -79,7 +88,10 @@ aliases: ["GTM Plan", "gtm-plan"]
 ## 5. Stop condition
 
 <!-- Decided before launch, while everyone is still calm. The rollback this triggers
-     is the one Gate 5 rehearsed in pre-production, not a new plan invented live. -->
+     is the one Gate 5 rehearsed in pre-production, not a new plan invented live. A
+     stop condition written as "if things go badly" is not a threshold, it is a
+     mood, and moods get argued down mid-launch; the tell is a number nobody agreed
+     to before day one. -->
 
 | What pauses rollout | Threshold | Who calls it | What happens next |
 |---|---|---|---|
@@ -88,7 +100,10 @@ aliases: ["GTM Plan", "gtm-plan"]
 ## How this launch fails
 
 <!-- The first row is the expensive one, because launching to everyone is the
-     default and it removes the only chance to learn cheaply. -->
+     default and it removes the only chance to learn cheaply. A failure-mode table
+     copied verbatim from the last launch, with no row edited for this cohort, is
+     never actually read again; the tell is a "rule that stops it" column with no
+     name attached to who enforces it. -->
 
 | Failure mode | What it looks like | The rule that stops it |
 |---|---|---|
@@ -101,7 +116,9 @@ aliases: ["GTM Plan", "gtm-plan"]
 ## Exit gate
 
 <!-- Checkable by someone who did not write this document, which is the
-     test of whether a gate is a gate. -->
+     test of whether a gate is a gate. A gate signed by the plan's own author
+     is not a check, it is a rubber stamp; the tell is a signature with no
+     evidence attached to a single box above it. -->
 
 
 This plan is fit to launch on when:
