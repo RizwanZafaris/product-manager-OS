@@ -192,6 +192,16 @@ OPENROUTER_TESTS = tuple(
         "test_dynamic_discovery_failure_is_safe_and_honors_request_timeout",
         "test_completion_requires_usage_and_enforces_output_and_timeout_caps",
         "test_router_supplied_environment_secret_is_used_without_retention",
+    )) + tuple(
+    # Fourth review round: these four went missing from main for five merges
+    # and no verifier noticed, because none named them. Named now, so a
+    # deletion is a dangling id and a red verifier rather than a quiet loss.
+    "test_pmos_skills.UnpriceableCatalogRowsTests." + name for name in (
+        "test_a_negative_sentinel_price_drops_the_row_and_keeps_the_rest",
+        "test_an_unparseable_price_drops_the_row_not_the_catalog",
+        "test_an_unpriceable_row_is_never_reported_free",
+        "test_non_finite_prices_drop_the_row_not_the_catalog",
+        "test_structural_corruption_still_raises",
     ))
 
 SKILL_TESTS = tuple(
@@ -201,6 +211,25 @@ SKILL_TESTS = tuple(
         "test_trusted_manifest_blocks_self_approved_graph_contract_and_risk_edits",
         "test_unknown_extra_skill_asset_and_symlink_fail_closed",
         "test_trusted_manifest_symlink_and_path_escape_fail_closed",
+    )) + tuple(
+    "test_pmos_skills.SkillRegistrySidecarTests." + name for name in (
+        "test_a_real_appledouble_sidecar_beside_its_skill_dir_is_ignored",
+        "test_a_dotfile_with_no_appledouble_magic_still_fails_closed",
+        "test_appledouble_magic_with_no_sibling_still_fails_closed",
+        "test_a_directory_literally_named_dot_underscore_still_fails_closed",
+        "test_a_sidecar_beside_a_skill_asset_is_ignored",
+        "test_a_non_sidecar_dotfile_inside_a_skill_still_fails_closed",
+        "test_a_sidecar_shaped_file_with_no_sibling_inside_a_skill_still_fails_closed",
+    )) + tuple(
+    "test_pmos_skills.TrackedSidecarsAreNeverExcusedTests." + name for name in (
+        "test_an_untracked_sidecar_in_a_repository_is_excused",
+        "test_a_tracked_sidecar_is_content_whatever_its_bytes_look_like",
+        "test_outside_any_repository_the_format_is_the_whole_rule",
+        "test_a_filter_answers_only_for_paths_under_its_root",
+        "test_a_repository_git_cannot_read_fails_closed",
+        "test_the_registry_refuses_a_tracked_sidecar_inside_a_skill",
+        "test_the_registry_still_loads_beside_an_untracked_sidecar_in_a_repository",
+        "test_the_registry_fails_closed_when_git_cannot_be_consulted",
     ))
 
 SECURITY_TESTS = (

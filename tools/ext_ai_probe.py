@@ -324,10 +324,18 @@ def _gateway_billing(usage, headers_lower):
     provenance judgement is made, because a charge is a charge whether or not
     the answer it bought is admissible as evidence.
     """
-    provider_cost = _number_or_none((usage or {}).get("cost"))
-    if provider_cost is not None:
-        return {"cost_usd": provider_cost,
+    if isinstance(usage, dict) and "cost" in usage:
+        # Handed on exactly as the provider sent it. The fourth review round
+        # sent "0" as a string and the number parser turned it into 0.0
+        # before usable_cost could apply its rule that a numeric string is
+        # not a cost, so a value the contract calls INVALID passed as OK.
+        # Typing is usable_cost's job; this helper only says where the value
+        # came from.
+        return {"cost_usd": usage["cost"],
                 "cost_source": "provider usage.cost forwarded by the gateway"}
+    # A header can only ever be a string, so parsing it is the only way to
+    # read it; usable_cost still judges the resulting float (NaN, infinity
+    # and negatives are still INVALID there).
     gateway_cost = _number_or_none(headers_lower.get("x-omniroute-response-cost"))
     if gateway_cost is not None:
         return {"cost_usd": gateway_cost,
@@ -741,6 +749,18 @@ def run_via_omniroute(report, args):
                                             or "reported by the gateway"})
                 if status == "OK":
                     spent += known
+                else:
+                    cost_unknown = True
+            elif result["error"] != "omniroute_not_local":
+                # The gateway said nothing about money for a call it may
+                # have served. That is not $0.00; it is unknown, and the
+                # aggregate must say so rather than sum what it does not
+                # know. The one exception is the refusal made before any
+                # request left this process.
+                entry.update({"cost_usd": None, "cost_status": "UNKNOWN",
+                              "cost_basis": "the gateway reported no cost for "
+                                            "an errored call"})
+                cost_unknown = True
             say("  [ERROR]  %-28s %s" % (case["id"], result["error"]))
         else:
             text = result.get("text") or ""
@@ -937,6 +957,7 @@ def main(argv=None):
     breach = False
     budget_refusals = 0
     halted = False
+    cost_unknown = False
 
     for case in CASES:
         if halted:
@@ -1007,6 +1028,7 @@ def main(argv=None):
                 report["policy_results"].append(entry)
                 say("  [ERROR]  %-28s cost %s" % (case["id"], cost_status))
                 halted = True
+                cost_unknown = True
                 continue
             spent += cost
             if resolved_model and resolved_model != spec.model:
@@ -1064,10 +1086,14 @@ def main(argv=None):
             # Whether the failed call was billed is unknowable from here, so
             # the remaining budget is unprovable and the run stops.
             entry.update({"called": True, "error": type(error).__name__,
-                          "error_detail": str(error)[:200]})
+                          "error_detail": str(error)[:200],
+                          "cost_usd": None, "cost_status": "UNKNOWN",
+                          "cost_basis": "the adapter raised before any cost "
+                                        "could be read"})
             report["calls"].append(entry)
             say("  [ERROR]  %-28s %s" % (case["id"], type(error).__name__))
             halted = True
+            cost_unknown = True
         report["policy_results"].append(entry)
 
     report["totals"] = {
@@ -1077,6 +1103,7 @@ def main(argv=None):
                         if not r["eligible"]),
         "errors": sum(1 for r in report["calls"] if r.get("error")),
         "cost_usd": round(spent, 6),
+        "cost_unknown": cost_unknown,
         "budget_breach": breach,
     }
     write(report, args.output)

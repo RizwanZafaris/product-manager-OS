@@ -362,6 +362,34 @@ with the regression the reviewer's own reproduction implies.
   Recorded because a test that disappears without a failing build is exactly the class of
   loss the review record is meant to make visible, and it was not.
 
+### Fixed, fourth review round
+
+The same reviewer re-read the tree at `a17c9c1`, confirmed all three earlier findings closed,
+and rejected again on one P1 and three P2s, every one of them in code written the same day.
+
+- P1. The gateway billing helper typed the provider's `usage.cost` with the same number parser
+  it uses for the response-cost header, so a body cost sent as the string `"0"` became `0.0`
+  before `usable_cost` could apply its rule that a numeric string is not a cost; a value the
+  contract calls INVALID passed as OK with a clean exit. The body value is now handed on
+  exactly as received and typed by `usable_cost` alone, so `"0"` and `True` fail the run as
+  INVALID. The header is still parsed, because a header can only ever be a string, and the
+  resulting float is still judged by the same validator.
+- P2. `SidecarFilter` shortcut to "excused" when there was no repository, before checking that
+  the path lay under its root, so a genuine sidecar from another directory was excused by a
+  filter built for this one. The root check now comes first in every case.
+- P2. An errored gateway call the gateway said nothing about aggregated as `cost_usd` 0.0 with
+  `cost_unknown` false. Silence about money is not $0.00: such a call is now recorded with
+  cost status UNKNOWN and the aggregate says so, on both transports; the one exception is the
+  refusal made before any request leaves this process. The direct transport's totals now
+  carry `cost_unknown` too, which they never did.
+- P2. Restoring the four deleted tests did not guard against the class of loss. Two guards
+  now: the restored and new skills test methods are named in the readiness registry, so a
+  deletion is a dangling id and a red verifier; and `docs/readiness/test-classes.json` is an
+  inventory of every test class at the root, which `test_pmos_invariants` asserts is exactly
+  what the modules define, so a class cannot be deleted, renamed or added without editing
+  that file in the same change. The inventory proved itself on the way in: the first version
+  was generated before the guard class existed and the guard failed on its own absence.
+
 ### Known external requirements
 
 - Local checks do not verify hosted CI on the exact commit, a live provider, vendor sandboxes, a non-maintainer journey, independent human team review, organization-specific regulatory approval, or a published release artifact. No tag or published release is claimed here.

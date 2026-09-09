@@ -218,6 +218,42 @@ class TransportsShareOneContract(unittest.TestCase):
         self.assertTrue(required <= rows, "matrix lost rows: %s" % (required - rows))
 
 
+class TestClassesCannotVanish(unittest.TestCase):
+    """Fourth review round: commit a92cefa deleted four tests from
+    test_pmos_skills.py by slicing to a moved __main__ block, no gate noticed,
+    and a grep found the loss five merges later. The module-in-CI guard below
+    cannot see a class go missing from a module that is still run. This one
+    can: the classes each root module defines must equal the committed
+    inventory, so a deletion, a rename or an addition has to touch
+    docs/readiness/test-classes.json in the same change.
+    """
+
+    INVENTORY = REPO / "docs" / "readiness" / "test-classes.json"
+
+    def test_every_root_test_module_defines_exactly_its_inventoried_classes(self):
+        import json
+        inventory = json.loads(self.INVENTORY.read_text(encoding="utf-8"))["modules"]
+        on_disk = {}
+        for path in sorted(REPO.glob("test_*.py")):
+            source = path.read_text(encoding="utf-8")
+            on_disk[path.stem] = sorted(re.findall(
+                r"^class (\w+)\((?:unittest\.)?TestCase\):", source, re.M))
+        self.assertEqual(sorted(on_disk), sorted(inventory),
+                         "root test modules differ from the inventory")
+        for module in sorted(on_disk):
+            missing = sorted(set(inventory[module]) - set(on_disk[module]))
+            extra = sorted(set(on_disk[module]) - set(inventory[module]))
+            self.assertEqual(missing, [], "%s lost test classes: %s" % (module, missing))
+            self.assertEqual(extra, [], "%s gained classes not in the inventory "
+                                        "(add them to docs/readiness/test-classes.json): %s"
+                             % (module, extra))
+
+    def test_the_inventory_names_the_classes_that_went_missing_once(self):
+        import json
+        inventory = json.loads(self.INVENTORY.read_text(encoding="utf-8"))["modules"]
+        self.assertIn("UnpriceableCatalogRowsTests", inventory["test_pmos_skills"])
+
+
 class RegressionsReachHostedCI(unittest.TestCase):
     """Finding 7, first probe review: 346 tests passed locally and none of the
     new ones ran in CI, because the module was not in the canonical list."""
