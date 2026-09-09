@@ -29,7 +29,7 @@ Settlement is also moving faster on different clocks: the US and Canada moved to
 
 - **The exchange or venue operator.** Sets the rules of the market and membership requirements, and can suspend a member's access on a surveillance finding alone, before any regulator is involved.
 - **The central counterparty (CCP).** LCH, Eurex Clearing, or a national equivalent; sets margin requirements and default-fund contributions, and can force a member to unwind positions on a risk breach.
-- **The central securities depository (CSD).** DTC in the US, Euroclear and Clearstream in Europe, the National Clearing Company of Pakistan Limited for Pakistan Stock Exchange trades; settlement finality happens here, and a fail here is a fail no matter how correct the trade looked upstream.
+- **The central securities depository (CSD).** DTC in the US, Euroclear and Clearstream in Europe, the Central Depository Company of Pakistan Limited for Pakistan Stock Exchange securities, with the National Clearing Company of Pakistan Limited as the separate clearing, settlement and risk-management body; settlement finality happens here, and a fail here is a fail no matter how correct the trade looked upstream.
 - **Market abuse surveillance and the regulator behind it.** The EU's Market Abuse Regulation (596/2014) requires suspicious transaction and order reports; a system that cannot produce one on demand is not meeting the duty it exists for.
 - **The systems and controls regulator.** The SEC's Regulation SCI for critical US market infrastructure, or an equivalent operational-resilience regime elsewhere, treats uptime as compliance, not only engineering.
 

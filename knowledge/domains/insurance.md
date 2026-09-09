@@ -25,7 +25,7 @@ The second distinctive fact is distribution: most policies reach the customer th
 
 ## Gatekeepers
 
-- **The insurance regulator and its rate-filing regime.** US state Departments of Insurance under prior-approval or file-and-use rules, the national competent authority under the EU's Solvency II, the SECP under Pakistan's Insurance Ordinance, 2000, and IRDAI in India. Each can block a price or a product before it reaches a customer.
+- **The insurance regulator and its rate-filing regime.** US state Departments of Insurance under prior-approval or file-and-use rules, the SECP under Pakistan's Insurance Ordinance, 2000, and IRDAI in India can each block a price or a product before it reaches a customer. The EU is the counter-example: Solvency II, Article 21, bars member states from requiring prior approval or systematic notification of policy conditions and premium scales, so the national competent authority's gate there is solvency and conduct supervision after the fact, not a rate filing before launch.
 - **The Appointed Actuary or Chief Actuary.** Certifies that claim reserves, including incurred-but-not-reported claims, are adequate; a named, personal sign-off, not a committee decision that disappears into minutes.
 - **Claims-conduct enforcement.** Built on the pattern set by the NAIC's Model Unfair Claims Settlement Practices Act in the US and equivalent conduct rules elsewhere; a systematic pattern of wrongful denial is where regulators start asking for your claims-triage logic.
 - **The reinsurer.** Large or novel risks are ceded under a treaty with its own exclusions and audit rights; the reinsurer can effectively veto a product feature by declining to cover it.

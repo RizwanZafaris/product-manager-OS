@@ -43,15 +43,23 @@ This is an unreleased working-tree change set, not a tag, published package, hos
   routes to the fourteen sector cards as well as to the regulated module.
 - Written under the no-fabrication rule as it applies to a card: no statistic, market size, fine
   amount, article number or case name that the author could not vouch for. Where a specific was
-  uncertain the sentence carries the tree's own "(verify before relying)" marker or omits the
-  specific; 49 sentences across the twenty-eight cards carry the marker, listed in the
-  pull request. Each card names at least one non-US regime, because the maintainer's market is not
+  uncertain the sentence carries a parenthetical that begins "verify" and ends "before relying",
+  the tree's marker in the wording each card needed, or omits the specific; 49 such
+  parentheticals sit across the twenty-eight cards, listed in the pull request. Each card names at least one non-US regime, because the maintainer's market is not
   the United States and a card that assumes it is teaches the wrong gatekeepers. These are cards,
   not journeys: the graduation rule in the index still holds, and no sector has a worked
   end-to-end example yet.
 - Drafted by four Sonnet workers in one isolated worktree, seven cards each, against the exemplar
-  cards and a written contract; every card was then read by the lead for unmarked specifics and
-  by the independent reviewer before the record was re-issued for the new tree.
+  cards and a written contract. The lead scanned every card for unmarked specifics and found none;
+  the independent reviewer then read the content and found six confidently stated errors the
+  scan could not see: a bank described as a fiduciary custodian of deposits, Pakistan's clearing
+  company named as its depository, a FATF grey listing said to impose enhanced due diligence,
+  the EU Radio Equipment Directive said always to need a notified body, Solvency II grouped with
+  rate-filing regimes, and the platform-work directive described from its superseded proposal;
+  plus two omissions, the causation requirement in Inclusive Communities and the reversal of
+  the Tornado Cash designation. Each was checked against primary sources through a web-grounded
+  search before the sentence was rewritten. The lesson is recorded because a scan for numbers
+  catches invented figures and cannot catch a confident wrong sentence; only a reader can.
 
 ### Changed
 
