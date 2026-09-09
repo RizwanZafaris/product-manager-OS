@@ -289,7 +289,16 @@ This is an unreleased working-tree change set, not a tag, published package, hos
   regression: a `._x.md` or `._x.py` written with the real magic bytes beside a real sibling,
   proven to reproduce each defect above against the unmodified code before the fix and to
   pass after it.
-
+- The first version of this fix covered the runtime root and passed every synthetic case on
+  an APFS worktree. Run on the exFAT checkout itself, the very next check failed instead:
+  every asset inside a skill carries its own sidecar (`._SKILL.md` beside `SKILL.md`), the
+  per-skill asset walk listed it, and the shipped set "differed from the trusted manifest"
+  for the first skill it reached. The walk now applies the same positive recognition. Because
+  a sidecar is only recognised beside the asset it shadows, a directory can never consist of
+  sidecars alone, so the empty-directory rule keeps its meaning and a sidecar-shaped file
+  with no sibling is still listed and still fails the comparison. The lesson is recorded
+  here because it is the general one: a portability fix is proven on the volume that
+  exhibits the defect, not on the one that does not.
 
 ### Known external requirements
 

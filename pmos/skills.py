@@ -184,9 +184,20 @@ def _asset_paths(skill_dir: Path) -> set[str]:
         dirs[:] = sorted(dirs)
         # Empty/unpopulated directories are still untrusted tree entries.  A
         # manifest closes the complete shipped asset set, not just its files.
-        if current != str(skill_dir) and not dirs and not names:
+        # The same AppleDouble sidecars that shadow the runtime root shadow
+        # every asset inside a skill on exFAT, FAT or SMB: ``._SKILL.md``
+        # beside ``SKILL.md``. Listing one as an asset made the shipped set
+        # differ from the trusted manifest on the maintainer's own drive while
+        # matching on CI. Only a positively recognised sidecar is left out,
+        # and recognition needs the sibling it shadows, so a directory can
+        # never consist of sidecars alone: the empty-directory rule below
+        # keeps its meaning, and a sidecar-shaped file with no sibling is
+        # still listed and still fails the manifest comparison.
+        real_names = [name for name in names
+                      if not is_appledouble_sidecar(Path(current), name)]
+        if current != str(skill_dir) and not dirs and not real_names:
             raise SkillContractError("skill contains an empty asset directory")
-        for name in sorted(names):
+        for name in sorted(real_names):
             path = Path(current, name)
             if path.is_symlink() or not path.is_file():
                 raise SkillContractError("skill contains an unsafe asset")
