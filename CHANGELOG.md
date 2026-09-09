@@ -327,6 +327,41 @@ This is an unreleased working-tree change set, not a tag, published package, hos
   that applies the predicate, with a regression that also asserts the probes use it.
 
 
+### Fixed, third review round
+
+An independent reviewer (OpenAI Codex, reporting itself as GPT-5) read the exact tree at
+`0384d4a`, ran every gate, and rejected it with one P0, one P1 and one P2. Each is closed here
+with the regression the reviewer's own reproduction implies.
+
+- P0. The gateway call rewritten in the previous round returned before reading the cost
+  whenever it refused an answer as evidence: a cache replay, a compressed prompt, or a body
+  model disagreeing with the `X-OmniRoute-Model` header. The reviewer sent a body carrying
+  `usage.cost` 0.75 under each condition; each was rightly refused and each aggregated to
+  $0.00 with `cost_unknown` false, against a charge the gateway had reported. Billing is now
+  read before any judgement about the answer and travels with every error result, including
+  an error body and an HTTP error whose headers carry a cost; the run loop carries it through
+  the identity checks too, so a substituted model that was billed for is billed for. A charge
+  on a refused answer breaches a zero ceiling and stops the run, as it should have.
+- P1. The sidecar predicate recognised AppleDouble files by format alone. The reviewer
+  force-added `._real.md` with genuine AppleDouble bytes beside `real.md`, and every loader
+  excused it: git was carrying the file, and nothing had asked. `pmos/sidecars.py` now carries
+  the same tracked-set logic `tools/review_gate.py` already had, as `SidecarFilter`: a file git
+  tracks is content whatever its bytes look like and is never excused; only in a tree git does
+  not know is the format the whole rule; a repository git cannot inspect fails closed rather
+  than reading as an empty tracked set. Every call site (the skill registry's root and asset
+  walk, the template and workspace enumeration, the queue listing, the probes, the invariants
+  scan) constructs one filter per walk and consults git once.
+- P2. A catalog price of `NaN` or `Infinity` parsed to a float that passed the none-or-negative
+  test, reached `ModelSpec`, and raised for the whole catalog on account of one row. Non-finite
+  is unpriceable; the row is dropped and its neighbours kept.
+- Also in this round, found by the lead and not by the reviewer: commit `a92cefa` on the exFAT
+  branch replaced a test by slicing from its first line to the file's `__main__` block, and
+  because that block had just been moved to the end of the file the slice also removed the
+  four `UnpriceableCatalogRowsTests` cases the previous round had added. They were absent from
+  `main` for five merges and are restored here unchanged, with the NaN case added beside them.
+  Recorded because a test that disappears without a failing build is exactly the class of
+  loss the review record is meant to make visible, and it was not.
+
 ### Known external requirements
 
 - Local checks do not verify hosted CI on the exact commit, a live provider, vendor sandboxes, a non-maintainer journey, independent human team review, organization-specific regulatory approval, or a published release artifact. No tag or published release is claimed here.

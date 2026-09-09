@@ -440,7 +440,9 @@ class OpenRouterProvider:
                 raise OpenRouterMalformedResponse()
             prompt_price = _number(pricing.get("prompt"))
             completion_price = _number(pricing.get("completion"))
-            if prompt_price is None or completion_price is None or prompt_price < 0 or completion_price < 0:
+            if (prompt_price is None or completion_price is None or
+                    not math.isfinite(prompt_price) or not math.isfinite(completion_price) or
+                    prompt_price < 0 or completion_price < 0):
                 # An entry that cannot be priced is not evidence about anything,
                 # and it is not evidence that the rest of the catalog is bad.
                 # OpenRouter publishes its own meta-router as a real entry
@@ -452,7 +454,10 @@ class OpenRouterProvider:
                 # what an unpriceable model deserves. Structural corruption
                 # (no id, no list, a price that is not a mapping) still raises,
                 # because that is the body being wrong rather than one row
-                # being honest about not having a fixed price.
+                # being honest about not having a fixed price. NaN and infinity
+                # are unpriceable too: they slipped past the None-or-negative
+                # test and reached ModelSpec, which raised for the whole
+                # catalog on their account, found by the third review round.
                 continue
             free = prompt_price == 0 and completion_price == 0
             spec = ModelSpec(

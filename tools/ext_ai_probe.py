@@ -315,6 +315,27 @@ def _number_or_none(value):
     return None
 
 
+def _gateway_billing(usage, headers_lower):
+    """Whatever the gateway said this call cost, from wherever it said it.
+
+    The provider's own ``usage.cost`` when the gateway forwards it, otherwise
+    the gateway's ``X-OmniRoute-Response-Cost`` header, labelled as the
+    gateway's figure. Empty when neither is present. Computed before any
+    provenance judgement is made, because a charge is a charge whether or not
+    the answer it bought is admissible as evidence.
+    """
+    provider_cost = _number_or_none((usage or {}).get("cost"))
+    if provider_cost is not None:
+        return {"cost_usd": provider_cost,
+                "cost_source": "provider usage.cost forwarded by the gateway"}
+    gateway_cost = _number_or_none(headers_lower.get("x-omniroute-response-cost"))
+    if gateway_cost is not None:
+        return {"cost_usd": gateway_cost,
+                "cost_source": ("gateway header x-omniroute-response-cost; "
+                                "the gateway's figure, not the provider's invoice")}
+    return {}
+
+
 def omniroute_chat(model, prompt, *, urlopen=None, environ=None):
     """One call through the local OmniRoute gateway. Returns a result dict.
 
@@ -376,8 +397,15 @@ def omniroute_chat(model, prompt, *, urlopen=None, environ=None):
                 detail = raw.decode("utf-8", "replace")
         except Exception:                                   # noqa: BLE001
             detail = ""
+        error_headers = getattr(error, "headers", None)
+        try:
+            lowered = {str(k).lower(): str(v) for k, v in error_headers.items()} \
+                if hasattr(error_headers, "items") else {}
+        except Exception:                                   # noqa: BLE001
+            lowered = {}
         return {"error": "omniroute_http_%d" % error.code,
-                "error_detail": str(detail)[:200]}
+                "error_detail": str(detail)[:200],
+                **_gateway_billing({}, lowered)}
     except (TimeoutError, socket_timeout()) as error:
         # An unbounded gateway call can hang a release gate indefinitely.
         return {"error": "omniroute_timeout",
@@ -410,27 +438,39 @@ def omniroute_chat(model, prompt, *, urlopen=None, environ=None):
         return {"error": "omniroute_malformed_response",
                 "error_detail": "body is not an object"}
     h = {str(k).lower(): str(v) for k, v in header_items}
+    usage = decoded.get("usage") if isinstance(decoded.get("usage"), dict) else {}
+    # Billing first, judgement second. The third review round returned a
+    # body carrying usage.cost 0.75 with a cache hit, then with compression
+    # on, then with a body/header model disagreement; all three were rightly
+    # refused as evidence and all three returned before the cost was read,
+    # so the run aggregated $0.00 with cost_unknown false against a reported
+    # charge. A charge survives whatever is decided about the answer.
+    billing = _gateway_billing(usage, h)
     if decoded.get("error"):
         err = decoded["error"]
         message = err.get("message") if isinstance(err, dict) else str(err)
-        return {"error": "omniroute_error", "error_detail": str(message)[:200]}
+        return {"error": "omniroute_error", "error_detail": str(message)[:200],
+                **billing}
     # Provenance the doctrine headers exist to secure. A replayed answer is
     # not evidence that this model answered this prompt now, and a compressed
     # prompt is not the prompt whose hash the evidence records.
     cache = (h.get("x-omniroute-cache") or "").strip().upper()
     if cache == "HIT" or (h.get("x-omniroute-cache-hit") or "").strip().lower() == "true":
         return {"error": "cached_response",
-                "error_detail": "the gateway replayed a cached answer"}
+                "error_detail": "the gateway replayed a cached answer",
+                **billing}
     compression = (h.get("x-omniroute-compression") or "").strip().lower()
     if compression and not compression.startswith("off"):
         return {"error": "compressed_prompt",
-                "error_detail": "gateway compression was %r" % compression[:40]}
+                "error_detail": "gateway compression was %r" % compression[:40],
+                **billing}
     body_model = decoded.get("model") if isinstance(decoded.get("model"), str) else None
     header_model = (h.get("x-omniroute-model") or "").strip() or None
     if body_model and header_model and body_model != header_model:
         return {"error": "resolved_model_conflict",
                 "error_detail": "body says %r, header says %r"
-                                % (body_model, header_model)}
+                                % (body_model, header_model),
+                **billing}
     resolved = body_model or header_model
     choices = decoded.get("choices")
     text = ""
@@ -438,7 +478,6 @@ def omniroute_chat(model, prompt, *, urlopen=None, environ=None):
         message = choices[0].get("message")
         if isinstance(message, dict) and isinstance(message.get("content"), str):
             text = message["content"]
-    usage = decoded.get("usage") if isinstance(decoded.get("usage"), dict) else {}
 
     def _tokens(key):
         value = usage.get(key)
@@ -459,16 +498,7 @@ def omniroute_chat(model, prompt, *, urlopen=None, environ=None):
             "model_header": header_model,
         },
     }
-    provider_cost = _number_or_none(usage.get("cost"))
-    if provider_cost is not None:
-        result["cost_usd"] = provider_cost
-        result["cost_source"] = "provider usage.cost forwarded by the gateway"
-    else:
-        gateway_cost = _number_or_none(h.get("x-omniroute-response-cost"))
-        if gateway_cost is not None:
-            result["cost_usd"] = gateway_cost
-            result["cost_source"] = ("gateway header x-omniroute-response-cost; "
-                                     "the gateway's figure, not the provider's invoice")
+    result.update(billing)
     return result
 
 
@@ -682,18 +712,21 @@ def run_via_omniroute(report, args):
                       "error_detail": str(error)[:200]}
         if not result.get("error"):
             resolved = result.get("resolved_model")
+            billing = {key: result[key] for key in ("cost_usd", "cost_source")
+                       if key in result}
             if not resolved:
                 # Keep any billing the gateway did report: replacing the whole
                 # result with an error discarded a charge that was already made.
                 result = {"error": "missing_resolved_model",
                           "error_detail": "the gateway returned no resolved model",
-                          "cost_usd": result.get("cost_usd")}
+                          "cost_usd": result.get("cost_usd"), **billing}
             elif not same_gateway_model(model, resolved):
                 # The call is pinned. A different model answering means the
                 # evidence describes something other than what was authorized.
+                # The charge for it was still made, and is carried.
                 result = {"error": "resolved_model_mismatch",
                           "error_detail": "pinned %r, answered %r"
-                                          % (model, resolved)}
+                                          % (model, resolved), **billing}
         if not result.get("error") and not (result.get("text") or "").strip():
             result = dict(result, error="empty_output",
                           error_detail="the gateway returned no output text")
@@ -703,7 +736,9 @@ def run_via_omniroute(report, args):
                           "error_detail": result.get("error_detail")})
             if "cost_usd" in result:
                 known, status = usable_cost(result.get("cost_usd"))
-                entry.update({"cost_usd": known, "cost_status": status})
+                entry.update({"cost_usd": known, "cost_status": status,
+                              "cost_basis": result.get("cost_source")
+                                            or "reported by the gateway"})
                 if status == "OK":
                     spent += known
             say("  [ERROR]  %-28s %s" % (case["id"], result["error"]))

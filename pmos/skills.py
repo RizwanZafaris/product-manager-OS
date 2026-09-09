@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Optional
 
-from .sidecars import is_appledouble_sidecar
+from .sidecars import SidecarFilter, SidecarInspectionError
 
 
 class SkillContractError(ValueError):
@@ -175,7 +175,7 @@ def _regular(path: Path, label: str) -> None:
         raise SkillContractError("%s must be a regular non-symlink file" % label)
 
 
-def _asset_paths(skill_dir: Path) -> set[str]:
+def _asset_paths(skill_dir: Path, sidecars: SidecarFilter) -> set[str]:
     """Return all regular asset paths, rejecting symlink files/directories."""
     assets: set[str] = set()
     for current, dirs, names in os.walk(skill_dir, topdown=True, followlinks=False):
@@ -194,7 +194,7 @@ def _asset_paths(skill_dir: Path) -> set[str]:
         # keeps its meaning, and a sidecar-shaped file with no sibling is
         # still listed and still fails the manifest comparison.
         real_names = [name for name in names
-                      if not is_appledouble_sidecar(Path(current), name)]
+                      if not sidecars.excused(Path(current, name))]
         if current != str(skill_dir) and not dirs and not real_names:
             raise SkillContractError("skill contains an empty asset directory")
         for name in sorted(real_names):
@@ -421,6 +421,11 @@ class SkillRegistry:
                         "\\" in asset_name):
                     raise SkillContractError("trusted manifest has unsafe asset path")
         skill_dirs = []
+        try:
+            sidecars = SidecarFilter(self.root)
+        except SidecarInspectionError as exc:
+            raise SkillContractError(
+                "runtime root's git state could not be inspected") from exc
         for child in self.root.iterdir():
             # A checkout on exFAT, FAT or SMB carries a macOS AppleDouble
             # sidecar (``._<name>``) beside real entries; the runtime root is
@@ -430,7 +435,7 @@ class SkillRegistry:
             # fails that proof, including a directory literally named
             # ``._foo`` or a dotfile with no sibling, keeps failing this
             # check exactly as before.
-            if is_appledouble_sidecar(self.root, child.name):
+            if sidecars.excused(child):
                 continue
             if child.is_symlink() or not child.is_dir() or child.name.startswith("."):
                 raise SkillContractError("runtime root contains unknown or unsafe entry")
@@ -443,7 +448,7 @@ class SkillRegistry:
             assets = trusted[skill_id]
             if skill_dir.is_symlink() or not skill_dir.is_dir():
                 raise SkillContractError("runtime skill directory is unsafe")
-            actual_assets = _asset_paths(skill_dir)
+            actual_assets = _asset_paths(skill_dir, sidecars)
             if actual_assets != set(assets):
                 raise SkillContractError("skill asset set differs from trusted manifest: %s" % skill_id)
             snapshots: dict[str, bytes] = {}

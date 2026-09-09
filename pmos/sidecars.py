@@ -37,21 +37,23 @@ magic header, or a sidecar with no sibling all get the unmodified behaviour
 of whatever inspects them (crash, error, or listing) that they would have
 gotten before this module existed.
 
-``tools/review_gate.py`` keeps its own tracked-aware rule and does not import
-this module, because its exclusion additionally has to stay safe for a
-tracked file that happens to be named like a sidecar without necessarily
-carrying the AppleDouble magic (a name-only ``is_excluded_sidecar`` check
-guarded by tracked-ness). Its docstrings at lines ~100-200 and ~320 explain
-why that check is name-only and tracked-aware rather than magic-byte-based.
-Both copies apply to disjoint problems -- reproducible review digests here,
-loader crashes and mis-listings everywhere else -- and a test in
+Format alone turned out not to be enough either. The independent review of
+this module force-added a genuine AppleDouble file beside its sibling and
+the predicate excused it, because git was carrying it and nothing here had
+asked. ``SidecarFilter`` below adds the half ``tools/review_gate.py`` already
+had: a file git tracks is content whatever its bytes look like and is never
+excused; only in a tree git does not know is the format the whole rule.
+``review_gate`` keeps its own copy of the tracked-set logic because its
+exclusion is name-only under tracked-ness; a test in
 ``test_pmos_invariants.py`` pins that the two never disagree about a name
 that both could apply to.
 """
 
 from __future__ import annotations
 
+import os
 import stat
+import subprocess
 from pathlib import Path
 
 APPLEDOUBLE_MAGIC = b"\x00\x05\x16\x07"
@@ -111,9 +113,124 @@ def without_appledouble_sidecars(paths):
             yield path
 
 
+
+GIT_CONTROL_NAME = ".git"
+GIT_TIMEOUT_SECONDS = 30
+
+
+class SidecarInspectionError(OSError):
+    """A git work tree is present but could not be consulted.
+
+    Raised instead of guessing, because "git told us nothing" and "git tracks
+    nothing here" must never collapse into the same answer: the first would
+    let every sidecar-shaped file be excused, tracked or not.
+    """
+
+
+def git_control_present(root):
+    """Whether git control metadata exists at ``root`` or above it.
+
+    A ``.git`` entry, the directory a clone carries or the ``gitdir:`` pointer
+    file a worktree carries, is the evidence; ``GIT_DIR`` names it explicitly
+    when the environment overrides discovery. Ancestors count, because a
+    subdirectory of a repository is still inside one.
+    """
+    override = os.environ.get("GIT_DIR")
+    if override and Path(override).exists():
+        return True
+    current = Path(root).resolve()
+    for candidate in (current, *current.parents):
+        if (candidate / GIT_CONTROL_NAME).exists():
+            return True
+    return False
+
+
+def _git(root, *args):
+    try:
+        return subprocess.run(("git",) + args, cwd=str(root), capture_output=True,
+                              timeout=GIT_TIMEOUT_SECONDS)
+    except (OSError, subprocess.SubprocessError) as error:
+        raise SidecarInspectionError(
+            "sidecar filter could not consult git in %s: %s" % (root, error))
+
+
+def tracked_paths(root):
+    """Paths git tracks under ``root``, relative to it; None outside a work tree.
+
+    The same judgement ``tools/review_gate.py`` makes for the reviewed digest,
+    carried here so the loaders can make it too. An independent review of
+    the first sidecar fix force-added ``._real.md`` with genuine AppleDouble
+    bytes beside ``real.md``, and the positive-recognition predicate excused
+    it: git was carrying the file, and the loaders never looked. Tracked-ness
+    is the fact that settles it. A file git carries is content whatever its
+    bytes look like, and is never excused; a file git does not carry, in a
+    tree git does not know, is judged by its format alone.
+
+    Fails closed. When control metadata is present but git cannot answer (a
+    damaged repository, a permission failure, a missing binary), this raises
+    rather than returning an empty set, for the reason on the exception.
+    Returns None only when there is no repository here at all, which is the
+    case for temporary directories, ad-hoc trees and packaged installs.
+    """
+    root = Path(root)
+    if not git_control_present(root):
+        return None
+    probe = _git(root, "rev-parse", "--is-inside-work-tree")
+    if probe.returncode != 0:
+        raise SidecarInspectionError(
+            "%s carries git control metadata but git could not inspect it "
+            "(rev-parse exited %d: %s); refusing to treat an unreadable "
+            "repository as an empty tracked set" %
+            (root, probe.returncode,
+             (probe.stderr or b"").decode("utf-8", "replace").strip()))
+    if (probe.stdout or b"").strip() != b"true":
+        return None
+    listing = _git(root, "ls-files", "-z")
+    if listing.returncode != 0:
+        raise SidecarInspectionError(
+            "%s is inside a git work tree whose index could not be read; "
+            "refusing to treat that as an empty tracked set" % root)
+    # Bytes, decoded with filesystem semantics: a tracked name can carry a
+    # bare CR, and text-mode newline translation would rewrite it.
+    return frozenset(os.fsdecode(entry)
+                     for entry in (listing.stdout or b"").split(b"\0") if entry)
+
+
+class SidecarFilter:
+    """The complete rule: AppleDouble by format, and not carried by git.
+
+    Construct one per walk root. Construction consults git once (or not at
+    all outside a repository); ``excused`` then answers per path with no
+    further process spawns. ``is_appledouble_sidecar`` alone is only the
+    format half of this rule and is kept for callers that have no root.
+    """
+
+    def __init__(self, root):
+        self.root = Path(root)
+        self._resolved = self.root.resolve()
+        self.tracked = tracked_paths(self.root)
+
+    def excused(self, path):
+        path = Path(path)
+        if not is_appledouble_sidecar(path.parent, path.name):
+            return False
+        if self.tracked is None:
+            return True
+        try:
+            relative = path.resolve().relative_to(self._resolved).as_posix()
+        except (OSError, ValueError):
+            # Outside the root git was asked about, or gone: not excused.
+            return False
+        return relative not in self.tracked
+
+
 __all__ = [
     "APPLEDOUBLE_MAGIC",
     "APPLEDOUBLE_PREFIX",
+    "SidecarFilter",
+    "SidecarInspectionError",
+    "git_control_present",
+    "tracked_paths",
     "is_appledouble_sidecar",
     "is_appledouble_sidecar_path",
     "without_appledouble_sidecars",

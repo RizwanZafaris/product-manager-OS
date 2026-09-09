@@ -24,7 +24,7 @@ if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
 import ext_ai_probe as probe  # noqa: E402
-from pmos.sidecars import is_appledouble_sidecar, is_appledouble_sidecar_path  # noqa: E402
+from pmos.sidecars import SidecarFilter, is_appledouble_sidecar, is_appledouble_sidecar_path  # noqa: E402
 
 
 def _calls(source, name):
@@ -47,8 +47,9 @@ def _unbounded_subprocess_calls(directory):
     and read_text() raised UnicodeDecodeError on it before this guard.
     """
     unbounded = []
+    sidecars = SidecarFilter(directory)
     for path in sorted(Path(directory).glob("*.py")):
-        if is_appledouble_sidecar_path(path):
+        if sidecars.excused(path):
             continue
         source = path.read_text(encoding="utf-8")
         for line, call in _calls(source, "subprocess.run"):

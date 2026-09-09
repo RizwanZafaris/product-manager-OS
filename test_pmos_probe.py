@@ -443,6 +443,47 @@ class GatewayEligibilityTests(unittest.TestCase):
         self.assertNotEqual(code, 0)
 
 
+class ProvenanceErrorsStillBillTests(unittest.TestCase):
+    """The run loop's aggregate must carry a charge the gateway reported even
+    when the answer it bought was refused as evidence. Found by the third
+    independent review round: cache hit, compression and identity conflict
+    each aggregated to $0.00 with cost_unknown false against a 0.75 charge.
+    """
+
+    def _run(self, omni_result):
+        return run_probe(["--via", "omniroute", "--max-calls", "2"],
+                         omni={"return_value": omni_result})
+
+    def test_a_cache_replay_with_a_charge_breaches_a_zero_budget(self):
+        code, report, adapter = self._run(
+            {"error": "cached_response", "error_detail": "replayed",
+             "cost_usd": 0.75, "cost_source": "gateway header"})
+        self.assertNotEqual(code, 0)
+        self.assertEqual(report["calls"][0]["cost_usd"], 0.75)
+        self.assertEqual(report["calls"][0]["cost_basis"], "gateway header")
+        self.assertEqual(report["totals"]["cost_usd"], 0.75)
+        self.assertTrue(report["totals"]["budget_breach"])
+        self.assertEqual(adapter.call_count, 1, "a breach must stop the run")
+
+    def test_a_substituted_model_with_a_charge_is_still_billed(self):
+        code, report, adapter = self._run(
+            {"text": "answer", "resolved_model": "other/model",
+             "cost_usd": 0.75, "cost_source": "provider usage.cost"})
+        self.assertNotEqual(code, 0)
+        self.assertEqual(report["calls"][0]["error"], "resolved_model_mismatch")
+        self.assertEqual(report["calls"][0]["cost_usd"], 0.75)
+        self.assertEqual(report["totals"]["cost_usd"], 0.75)
+        self.assertTrue(report["totals"]["budget_breach"])
+
+    def test_a_missing_resolved_model_with_a_charge_is_still_billed(self):
+        code, report, _ = self._run(
+            {"text": "answer", "cost_usd": 0.75, "cost_source": "gateway header"})
+        self.assertNotEqual(code, 0)
+        self.assertEqual(report["calls"][0]["error"], "missing_resolved_model")
+        self.assertEqual(report["totals"]["cost_usd"], 0.75)
+        self.assertTrue(report["totals"]["budget_breach"])
+
+
 class ExecutionLimitTests(unittest.TestCase):
     """A run that dispatched nothing has not produced generation evidence."""
 
@@ -1032,6 +1073,56 @@ class GatewayHttpBoundaryTests(unittest.TestCase):
     def test_a_missing_model_yields_no_resolved_model(self):
         result, _ = self._chat(body=b'{"choices": [{"message": {"content": "x"}}]}')
         self.assertIsNone(result.get("resolved_model"))
+
+    # -- billing survives every judgement about the answer ------------------
+    # Third review round: a body carrying usage.cost 0.75 with a cache hit,
+    # then with compression on, then with a body/header model disagreement,
+    # was refused as evidence each time and each time returned before the
+    # cost was read, so the run aggregated $0.00 against a reported charge.
+
+    def test_a_reported_charge_survives_a_cache_replay_error(self):
+        result, _ = self._chat(
+            body=_ok_body(usage={"prompt_tokens": 1, "completion_tokens": 1,
+                                 "total_tokens": 2, "cost": 0.75}),
+            headers={"X-OmniRoute-Cache": "HIT"})
+        self.assertEqual(result.get("error"), "cached_response")
+        self.assertEqual(result.get("cost_usd"), 0.75)
+
+    def test_a_reported_charge_survives_a_compression_error(self):
+        result, _ = self._chat(headers={"X-OmniRoute-Compression": "on",
+                                        "X-OmniRoute-Response-Cost": "0.75"})
+        self.assertEqual(result.get("error"), "compressed_prompt")
+        self.assertEqual(result.get("cost_usd"), 0.75)
+        self.assertIn("gateway", result.get("cost_source", ""))
+
+    def test_a_reported_charge_survives_a_model_conflict(self):
+        result, _ = self._chat(body=_ok_body(model="test/free:free"),
+                               headers={"X-OmniRoute-Model": "other/model",
+                                        "X-OmniRoute-Response-Cost": "0.75"})
+        self.assertEqual(result.get("error"), "resolved_model_conflict")
+        self.assertEqual(result.get("cost_usd"), 0.75)
+
+    def test_a_reported_charge_survives_an_error_body(self):
+        result, _ = self._chat(body=b'{"error": {"message": "cooling down"}}',
+                               headers={"X-OmniRoute-Response-Cost": "0.25"})
+        self.assertEqual(result.get("error"), "omniroute_error")
+        self.assertEqual(result.get("cost_usd"), 0.25)
+
+    def test_a_reported_charge_survives_an_http_error(self):
+        import urllib.error
+        from email.message import Message
+        hdrs = Message(); hdrs["X-OmniRoute-Response-Cost"] = "0.5"
+        err = urllib.error.HTTPError("http://localhost:20128/v1/chat/completions",
+                                     402, "Payment Required", hdrs,
+                                     io.BytesIO(b'{"error": {"message": "billed"}}'))
+        result, _ = self._chat(raises=err)
+        self.assertEqual(result.get("error"), "omniroute_http_402")
+        self.assertEqual(result.get("cost_usd"), 0.5)
+
+    def test_no_charge_reported_means_no_cost_key_on_errors_too(self):
+        result, _ = self._chat(headers={"X-OmniRoute-Cache": "HIT"})
+        self.assertEqual(result.get("error"), "cached_response")
+        self.assertNotIn("cost_usd", result)
 
     def test_a_remote_gateway_is_refused_before_any_call(self):
         calls = []
