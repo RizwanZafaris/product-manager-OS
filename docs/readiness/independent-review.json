@@ -1,28 +1,63 @@
 {
   "schema": 1,
-  "reviewer_id": "final-release-acceptance",
+  "reviewer_id": "OpenAI Codex (GPT-5)",
   "reviewer_kind": "independent-agent",
   "independent_implementation": true,
   "identity_assurance": "unauthenticated-local-claim",
-  "reviewed_at": "2026-09-03T21:49:17Z",
-  "reviewed_tree_sha256": "847e2993a5d4ae49722e222415ba1ee45c6b44995b92c552aac6114528998d1d",
+  "reviewed_at": "2026-09-09T09:59:51Z",
+  "reviewed_tree_sha256": "76f9a56fc0c82aaa05c65ef5edacd7859daf511aabbf0bcbb6b95a91eb7df18a",
   "scope": [
-    "product correctness and lifecycle behavior",
-    "SQLite transaction, concurrency, integrity, and recovery behavior",
-    "release, provenance, offline packaging, tests, and documentation claims"
+    "PR #27 diff from a17c9c1 through e35c872: gateway billing typing and cost aggregates",
+    "SidecarFilter root containment, tracked-path behavior, worktree gitdir handling, and call-site regressions",
+    "readiness registry method IDs, test-class inventory guard, restored test assertions, and fourth-round CHANGELOG",
+    "required local gates plus targeted adversarial reproductions for prior findings and new edge cases"
   ],
   "evidence": [
-    {"command": "python3.11 tools/review_gate.py --digest", "result": "475 files; digest matches c0704f4a3b26a8b276231929eb3494cbafc1a7eecd1169a3506cf0084d19f309"},
-    {"command": "python3.11 -m unittest -q test_lint test_readiness test_pmos_routing test_pmos_store test_pmos_domain test_pmos_operations test_pmos_hooks test_pmos_usecases test_pmos_conductor test_pmos_skills test_pmos_cli test_pmos_release test_pmos_security test_pmos_review", "result": "313 tests passed; 0 skipped"},
-    {"command": "python3.11 tools/readiness_probe.py full-suite", "result": "root 313, harness 111, regulated 14; total 438 test executions; 0 skipped"},
-    {"command": "python3.11 tools/readiness_probe.py golden-path", "result": "workspace, STATE.md, discovery document, resolving links, and workspace gate green"},
-    {"command": "python3.11 tools/security_gate.py; python3.11 tools/docs_contract.py", "result": "security gate 0 findings; docs contract 0 errors and 0 warnings"},
-    {"command": "python3.11 -m unittest -q test_pmos_release test_pmos_review", "result": "22 targeted regression tests passed; symlink target replacement checks pass"},
-    {"command": "python3.11 tools/readiness.py --category ci", "result": "CI-1, CI-2, and CI-3 passed during bounded review; remaining release checks are code-owned readiness gates"}
+    {
+      "command": "git rev-parse HEAD",
+      "result": "e35c872ddce03b1360fe87b06c69e2d7c17c41a7"
+    },
+    {
+      "command": "python3 tools/review_gate.py --digest",
+      "result": "495 files; sha256 76f9a56fc0c82aaa05c65ef5edacd7859daf511aabbf0bcbb6b95a91eb7df18a"
+    },
+    {
+      "command": "python3 tools/ci_gate.py",
+      "result": "18/19 passed; CI-6 the only red"
+    },
+    {
+      "command": "python3 -m unittest -q test_pmos_probe test_pmos_review test_pmos_skills test_pmos_invariants test_readiness test_pmos_usecases",
+      "result": "223 tests; OK"
+    },
+    {
+      "command": "python3 -m unittest discover -s harness -p test_*.py",
+      "result": "115 tests; OK"
+    },
+    {
+      "command": "python3 tools/security_gate.py",
+      "result": "0 findings"
+    },
+    {
+      "command": "python3 tools/docs_contract.py",
+      "result": "0 errors; 0 warnings"
+    },
+    {
+      "command": "python3 tools/readiness.py --category harness",
+      "result": "15/15; 7 passing; 0 failing"
+    },
+    {
+      "command": "python3 tools/readiness.py --category ci",
+      "result": "9/10; CI-6 only failure"
+    },
+    {
+      "command": "targeted fourth-round adversarial reproduction",
+      "result": "body string and bool costs INVALID; NaN and negative header costs INVALID; unknown cost exits 1; outside-root sidecar not excused; registry IDs complete"
+    },
+    {
+      "command": "git diff --check",
+      "result": "exit 0; no output"
+    }
   ],
-  "findings": [
-    {"id": "LINUX-SYMLINK-TARGET-REPLACEMENT", "severity": "P1", "status": "resolved", "summary": "A replaced symlink could reuse its inode between the first and second observations on Linux; descriptor-relative readlink comparison now detects target replacement even when inode identity is reused.", "evidence": "pmos/release.py and tools/review_gate.py perform a second descriptor-relative readlink comparison; 22 targeted Python 3.11 regression tests pass."},
-    {"id": "EXT-READINESS", "severity": "P2", "status": "accepted", "summary": "Hosted CI, live providers, vendor sandboxes, non-maintainer adoption, accountable regulatory approval, and published release attestations remain external required gates.", "evidence": "docs/readiness/external-gates.json explicitly records these dependencies; this local review does not claim them."}
-  ],
+  "findings": [],
   "verdict": "accepted"
 }
