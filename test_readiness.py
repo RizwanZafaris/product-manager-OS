@@ -461,10 +461,31 @@ class ProbeMarkdownWalkIgnoresSidecarsTests(unittest.TestCase):
             found = [p.name for p in readiness_probe.markdown_files(root)]
             self.assertEqual(found, ["._a.md", "a.md"])
 
+    def test_a_tracked_sidecar_is_still_a_document(self):
+        """Third review round, P1: git carries it, so the probe reads it."""
+        import subprocess
+
+        def git(root, *args):
+            return subprocess.run(("git", *args), cwd=str(root),
+                                  capture_output=True, text=True, timeout=30)
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            git(root, "init", "-q")
+            git(root, "config", "user.email", "t@example.invalid")
+            git(root, "config", "user.name", "t")
+            git(root, "config", "commit.gpgsign", "false")
+            (root / "a.md").write_text("# a\n", encoding="utf-8")
+            (root / "._a.md").write_bytes(b"\x00\x05\x16\x07" + b"\xb0" * 12)
+            git(root, "add", "-f", "a.md", "._a.md")
+            git(root, "commit", "-q", "-m", "x")
+            found = [p.name for p in readiness_probe.markdown_files(root)]
+            self.assertEqual(found, ["._a.md", "a.md"])
+
     def test_the_lifecycle_and_drift_probes_walk_through_the_helper(self):
         """The fix is only a fix if the probes actually use it."""
         source = (Path(readiness_probe.__file__)).read_text(encoding="utf-8")
         self.assertNotIn('rglob("*.md")))', source.replace(
-            'if path.is_file() and not is_appledouble_sidecar_path(path))', ""),
+            'if path.is_file() and not sidecars.excused(path))', ""),
             "a probe still walks rglob directly instead of markdown_files()")
         self.assertEqual(source.count("markdown_files("), 4)

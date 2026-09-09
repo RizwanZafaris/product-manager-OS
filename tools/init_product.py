@@ -67,9 +67,9 @@ from workspace import (                                   # noqa: E402
 # (``._name.md``) beside every real markdown file. rglob("*.md") picks the
 # sidecar up as readily as the file it shadows, and its body is the binary
 # AppleDouble container format rather than UTF-8 text, so read_text() on it
-# raised UnicodeDecodeError. pmos/sidecars.py holds the one positive-
-# recognition predicate both pmos/ and tools/ use for this.
-from pmos.sidecars import is_appledouble_sidecar_path              # noqa: E402
+# raised UnicodeDecodeError. pmos/sidecars.py holds the one rule both pmos/
+# and tools/ use for this: AppleDouble by format, and not carried by git.
+from pmos.sidecars import SidecarFilter                            # noqa: E402
 
 SEED_TEMPLATE = "templates/execution/state.md"
 
@@ -180,9 +180,10 @@ def every_shipped_template():
     template the manifest can send a run to and this tool cannot place is a
     hole in the workspace contract, so the two lists are kept the same shape.
     """
+    sidecars = SidecarFilter(TEMPLATES_DIR)
     found = sorted(p.relative_to(REPO).as_posix()
                    for p in (TEMPLATES_DIR).rglob("*.md")
-                   if p.is_file() and not is_appledouble_sidecar_path(p))
+                   if p.is_file() and not sidecars.excused(p))
     for extra in sorted(SPECIAL_DESTINATIONS):
         if extra not in found and (REPO / extra).is_file():
             found.append(extra)
@@ -209,8 +210,9 @@ def relink_workspace(slug, quiet=False):
         raise InitError("products/%s/ does not exist. Create it first: "
                         "python3 tools/init_product.py %s" % (slug, slug))
     moved, touched = 0, 0
+    sidecars = SidecarFilter(workspace)
     for path in sorted(p for p in workspace.rglob("*.md")
-                        if p.is_file() and not is_appledouble_sidecar_path(p)):
+                        if p.is_file() and not sidecars.excused(p)):
         text = read_text(path)
         here = posixpath.dirname(path.relative_to(REPO).as_posix())
         rewritten, rewrites, _skipped = rewrite_links(text, here, here, slug)
@@ -251,8 +253,9 @@ def check_workspace(slug):
     if not workspace.is_dir():
         raise InitError("products/%s/ does not exist. Create it first: "
                         "python3 tools/init_product.py %s" % (slug, slug))
+    sidecars = SidecarFilter(workspace)
     files = sorted(p for p in workspace.rglob("*.md")
-                   if p.is_file() and not is_appledouble_sidecar_path(p))
+                   if p.is_file() and not sidecars.excused(p))
     if not files:
         say("products/%s/: no markdown files yet, so nothing to check." % slug)
         return 0

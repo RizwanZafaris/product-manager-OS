@@ -260,7 +260,7 @@ import workspace                                          # noqa: E402
 
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
-from pmos.sidecars import is_appledouble_sidecar           # noqa: E402
+from pmos.sidecars import SidecarFilter                    # noqa: E402
 
 CONFIG_PATH = REPO / "routing" / "omniroute.config.json"
 MANIFEST_PATH = REPO / "harness" / "MANIFEST.json"
@@ -2602,8 +2602,9 @@ def queue_records(product):
     folder = queue_dir(product)
     if not folder.is_dir():
         return []
+    sidecars = SidecarFilter(folder)
     return sorted(path for path in folder.glob("*.json")
-                  if not is_appledouble_sidecar(path.parent, path.name))
+                  if not sidecars.excused(path))
 
 
 def list_queue(product):

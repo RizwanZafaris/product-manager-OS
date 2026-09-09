@@ -21,7 +21,7 @@ from pmos.routing import (
     RouteStatus,
     RoutingRequest,
 )
-from pmos.sidecars import APPLEDOUBLE_MAGIC
+from pmos.sidecars import APPLEDOUBLE_MAGIC, SidecarFilter, SidecarInspectionError
 from pmos.skills import SkillContractError, SkillRegistry
 
 
@@ -516,6 +516,173 @@ class SkillRegistrySidecarTests(unittest.TestCase):
             with self.assertRaises(SkillContractError):
                 SkillRegistry(root, trusted).load()
 
+
+def _git(root, *args):
+    import subprocess
+    return subprocess.run(("git", *args), cwd=str(root), capture_output=True,
+                          text=True, timeout=30)
+
+
+def _temp_git_repo(root):
+    """A real repository with a clean identity, so ls-files answers."""
+    _git(root, "init", "-q")
+    _git(root, "config", "user.email", "t@example.invalid")
+    _git(root, "config", "user.name", "t")
+    _git(root, "config", "commit.gpgsign", "false")
+
+
+class TrackedSidecarsAreNeverExcusedTests(unittest.TestCase):
+    """Third review round, P1: a force-added ``._real.md`` with genuine
+    AppleDouble bytes beside ``real.md`` was excused by the format-only
+    predicate, so a tracked file vanished from every loader. Tracked-ness
+    now decides, the same judgement tools/review_gate.py already makes.
+    """
+
+    def test_an_untracked_sidecar_in_a_repository_is_excused(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); _temp_git_repo(root)
+            (root / "real.md").write_text("# r\n", encoding="utf-8")
+            (root / "._real.md").write_bytes(APPLEDOUBLE_MAGIC + b"\x00" * 12)
+            _git(root, "add", "real.md"); _git(root, "commit", "-q", "-m", "x")
+            self.assertTrue(SidecarFilter(root).excused(root / "._real.md"))
+
+    def test_a_tracked_sidecar_is_content_whatever_its_bytes_look_like(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); _temp_git_repo(root)
+            (root / "real.md").write_text("# r\n", encoding="utf-8")
+            (root / "._real.md").write_bytes(APPLEDOUBLE_MAGIC + b"\x00" * 12)
+            _git(root, "add", "-f", "real.md", "._real.md")
+            _git(root, "commit", "-q", "-m", "x")
+            self.assertFalse(SidecarFilter(root).excused(root / "._real.md"))
+
+    def test_outside_any_repository_the_format_is_the_whole_rule(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "real.md").write_text("# r\n", encoding="utf-8")
+            (root / "._real.md").write_bytes(APPLEDOUBLE_MAGIC + b"\x00" * 12)
+            f = SidecarFilter(root)
+            self.assertIsNone(f.tracked)
+            self.assertTrue(f.excused(root / "._real.md"))
+
+    def test_a_repository_git_cannot_read_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            # A .git that is neither a directory nor a valid gitdir pointer:
+            # control metadata is present, git cannot inspect it.
+            (root / ".git").write_text("not a gitdir pointer\n", encoding="utf-8")
+            with self.assertRaises(SidecarInspectionError):
+                SidecarFilter(root)
+
+    def test_the_registry_refuses_a_tracked_sidecar_inside_a_skill(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "runtime"
+            trusted = _build_demo_skill(root)
+            _temp_git_repo(Path(directory))
+            (root / "demo" / "._SKILL.md").write_bytes(APPLEDOUBLE_MAGIC + b"\x00" * 12)
+            _git(Path(directory), "add", "-f", "-A")
+            _git(Path(directory), "commit", "-q", "-m", "x")
+            with self.assertRaises(SkillContractError):
+                SkillRegistry(root, trusted).load()
+
+    def test_the_registry_still_loads_beside_an_untracked_sidecar_in_a_repository(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "runtime"
+            trusted = _build_demo_skill(root)
+            _temp_git_repo(Path(directory))
+            _git(Path(directory), "add", "-A")
+            _git(Path(directory), "commit", "-q", "-m", "x")
+            (root / "demo" / "._SKILL.md").write_bytes(APPLEDOUBLE_MAGIC + b"\x00" * 12)
+            (root / "._demo").write_bytes(APPLEDOUBLE_MAGIC + b"\x00" * 12)
+            self.assertEqual(set(SkillRegistry(root, trusted).load()), {"demo"})
+
+    def test_the_registry_fails_closed_when_git_cannot_be_consulted(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "runtime"
+            trusted = _build_demo_skill(root)
+            (Path(directory) / ".git").write_text("broken\n", encoding="utf-8")
+            with self.assertRaises(SkillContractError):
+                SkillRegistry(root, trusted).load()
+
+
+class UnpriceableCatalogRowsTests(unittest.TestCase):
+    """One row the provider cannot price must not discard the priced rows.
+
+    OpenRouter's catalog carries its meta-router priced "-1" on both sides.
+    discover() raised OpenRouterMalformedResponse on that row and returned
+    nothing, so a caller that only wanted to know which models are free
+    learned nothing at all. Reproduced 2026-09-09 against the live catalog.
+    """
+
+    @staticmethod
+    def _row(model, prompt="0", completion="0"):
+        return {"id": model, "context_length": 1024,
+                "pricing": {"prompt": prompt, "completion": completion},
+                "supported_parameters": [], "architecture": {}}
+
+    def _provider(self, payload):
+        import json as _json
+
+        class Response:
+            status = 200
+
+            def read(self, n=-1):
+                return _json.dumps(payload).encode("utf-8")
+
+            def geturl(self):
+                return "https://openrouter.ai/api/v1/models"
+
+            def close(self):
+                pass
+
+        return OpenRouterProvider(environ={"OPENROUTER_API_KEY": "k"},
+                                  urlopen=lambda request, timeout=None: Response())
+
+    def test_a_negative_sentinel_price_drops_the_row_and_keeps_the_rest(self):
+        provider = self._provider({"data": [
+            self._row("openrouter/auto", prompt="-1", completion="-1"),
+            self._row("vendor/free"),
+            self._row("vendor/paid", prompt="0.001", completion="0.002"),
+        ]})
+        models = [spec.model for spec in provider.discover()]
+        self.assertEqual(models, ["vendor/free", "vendor/paid"])
+        free = [spec.model for spec in provider.discover(free_only=True)]
+        self.assertEqual(free, ["vendor/free"])
+
+    def test_an_unparseable_price_drops_the_row_not_the_catalog(self):
+        provider = self._provider({"data": [
+            self._row("vendor/odd", prompt="n/a", completion="0"),
+            self._row("vendor/free"),
+        ]})
+        self.assertEqual([s.model for s in provider.discover()], ["vendor/free"])
+
+    def test_an_unpriceable_row_is_never_reported_free(self):
+        provider = self._provider({"data": [
+            self._row("vendor/mystery", prompt=None, completion=None),
+        ]})
+        self.assertEqual(provider.discover(free_only=True), [])
+        self.assertEqual(provider.discover(), [])
+
+    def test_non_finite_prices_drop_the_row_not_the_catalog(self):
+        """Third review round, P2: "NaN" parsed to a float that passed the
+        None-or-negative test and reached ModelSpec, which raised for the
+        whole catalog. Non-finite is unpriceable, and only that row goes."""
+        provider = self._provider({"data": [
+            self._row("vendor/nan", prompt="NaN", completion="0"),
+            self._row("vendor/inf", prompt="0", completion="Infinity"),
+            self._row("vendor/free"),
+        ]})
+        self.assertEqual([s.model for s in provider.discover()], ["vendor/free"])
+        self.assertEqual([s.model for s in provider.discover(free_only=True)],
+                         ["vendor/free"])
+
+    def test_structural_corruption_still_raises(self):
+        for payload in ({"data": [{"context_length": 1, "pricing": {}}]},
+                        {"data": "not a list"},
+                        {"data": [{"id": "v/m", "context_length": 1,
+                                   "pricing": "free"}]}):
+            with self.subTest(payload=payload):
+                with self.assertRaises(OpenRouterMalformedResponse):
+                    self._provider(payload).discover()
 
 
 if __name__ == "__main__":

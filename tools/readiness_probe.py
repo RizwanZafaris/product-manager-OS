@@ -33,7 +33,7 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "tools"))
 sys.path.insert(0, str(REPO))
 
-from pmos.sidecars import is_appledouble_sidecar_path                # noqa: E402
+from pmos.sidecars import SidecarFilter                              # noqa: E402
 
 
 def markdown_files(root):
@@ -43,11 +43,13 @@ def markdown_files(root):
     the AppleDouble sidecar ``._name.md`` beside each real file, and its body
     is binary rather than UTF-8. The drift probe read one and raised
     ``UnicodeDecodeError`` on the maintainer's drive while passing on CI, and
-    the lifecycle probe counted them as documents. One predicate, the same
-    one the loaders use, decides what is a document here.
+    the lifecycle probe counted them as documents. One rule, the same one
+    the loaders use, decides what is a document here: AppleDouble by format
+    and not carried by git, so a force-added sidecar is still a document.
     """
+    sidecars = SidecarFilter(root)
     return sorted(path for path in Path(root).rglob("*.md")
-                  if path.is_file() and not is_appledouble_sidecar_path(path))
+                  if path.is_file() and not sidecars.excused(path))
 
 PROBE_SLUG = "readiness-probe-%d" % os.getpid()
 

@@ -32,7 +32,7 @@ import runner                                            # noqa: E402
 REPO = Path(__file__).resolve().parent.parent
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
-from pmos.sidecars import is_appledouble_sidecar_path    # noqa: E402
+from pmos.sidecars import SidecarFilter                  # noqa: E402
 
 TEMPLATE = REPO / "templates" / "discovery" / "evidence-note.md"
 
@@ -211,11 +211,12 @@ class StructureTests(unittest.TestCase):
         false positive here is a defect in the checker.
         """
         wrong = {}
+        sidecars = SidecarFilter(REPO / "templates")
         for path in sorted((REPO / "templates").rglob("*.md")):
             # A checkout on exFAT/FAT/SMB carries a macOS AppleDouble
             # sidecar (``._name.md``) beside every real template; its body
             # is not UTF-8 and read_text() raised on it before this guard.
-            if is_appledouble_sidecar_path(path):
+            if sidecars.excused(path):
                 continue
             text = path.read_text(encoding="utf-8")
             problems = runner.structure_report(text, text)
@@ -1235,9 +1236,10 @@ class QueueOutcomeTests(unittest.TestCase):
         self.assertEqual(_quiet_run(args, self.cfg, self.tasks), 0)
 
         workspace_dir = runner.PRODUCTS_DIR / self.slug
+        sidecars = SidecarFilter(workspace_dir)
         documents = sorted(path.relative_to(workspace_dir).as_posix()
                            for path in workspace_dir.rglob("*.md")
-                           if not is_appledouble_sidecar_path(path))
+                           if not sidecars.excused(path))
         self.assertEqual(["STATE.md"], documents,
                          "an interactive route left a document behind")
         self.assertIn("conduct-product-journey (interactive)", self._state())
