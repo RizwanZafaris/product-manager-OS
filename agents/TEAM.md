@@ -92,6 +92,6 @@ The Conductor interviews; agents work between questions. Its skill file says it 
 4. **Packet fields become interview moves.** Open fields are parked with an owner-to-be and a validate-by date. Conflicts become the next question's options, one letter per side. "Not checked" lines become unknowns on the gate form until evidenced.
 5. **Order inside a stage.** The stage's lead agent produces first, drawing on research where it needs evidence; then validation, because a red team run against a half-filled artifact returns findings about the artifact; then red team; then the lead applies what came back. The estimator runs in parallel. Never two agents on one field at once.
 6. **No agent touches the gate.** Gate rendering is the Conductor's own step, on artifacts, and signing is human.
-7. **Method 4.** Agents run on the tier the protocol's per-method notes assign. A capped judgment tier queues red team and cross-examination; it never downgrades them.
+7. **Method 5.** Agents run on the tier the protocol's per-method notes assign. A capped judgment tier queues red team and cross-examination; it never downgrades them.
 
 This file feeds the gate forms in [../os/STAGE-GATES.md](../os/STAGE-GATES.md), through the humans who sign them.
