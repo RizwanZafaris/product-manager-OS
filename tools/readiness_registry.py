@@ -137,9 +137,11 @@ STORE_TESTS = tuple(
         "test_relative_and_uri_metacharacter_database_names_are_literal",
         "test_post_initialization_database_parent_swap_fails_before_operation",
         "test_forged_missing_or_cross_product_head_fails_closed",
+        "test_read_snapshot_serves_the_head_and_refuses_a_stale_revision",
         "test_cancel_requested_live_lease_is_not_reaped_by_another_poll",
         "test_heartbeat_past_the_deadline_reports_deadline_and_dead_letters",
         "test_queue_admission_check_does_not_read_blob_payload_bytes",
+        "test_promotion_refuses_a_source_that_changed_after_it_was_reviewed",
     ))
 
 OPERATIONS_TESTS = (

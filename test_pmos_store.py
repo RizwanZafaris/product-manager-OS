@@ -63,6 +63,16 @@ class StoreTest(unittest.TestCase):
         self.assertEqual(stale.conflict.code, "stale_revision")
         self.assertEqual(self.store.read_snapshot("p").files, {"a": b"a"})
 
+    def test_read_snapshot_serves_the_head_and_refuses_a_stale_revision(self) -> None:
+        self.store.create_product("p")
+        first = self.store.commit("p", {"a.md": "v1"})
+        stale = first.head.token
+        second = self.store.commit("p", {"a.md": "v2"})
+        current = second.head.token
+        self.assertEqual(self.store.read_snapshot("p", revision=current).files, {"a.md": b"v2"})
+        with self.assertRaises(NotFoundError):
+            self.store.read_snapshot("p", revision=stale)
+
     def test_concurrent_local_writers_and_reader_snapshot(self) -> None:
         self.store.create_product("p")
         base = self.store.head("p")
@@ -360,6 +370,23 @@ class StoreTest(unittest.TestCase):
         self.store._conn.execute("UPDATE memory_events SET event_hash=? WHERE event_id=(SELECT MIN(event_id) FROM memory_events)",
                                  ("0" * 64,))
         self.assertFalse(self.store.verify().ok)
+
+    def test_promotion_refuses_a_source_that_changed_after_it_was_reviewed(self) -> None:
+        self.store.append_memory("task", MemoryClass.SEMANTIC, "semantic", {"v": 1},
+                                 task_id="task-c")
+        reviewed = self.store.retrieve_task_memory("task-c")[0]
+        self.store.append_memory("task", MemoryClass.SEMANTIC, "semantic", {"v": 2},
+                                 task_id="task-c")
+        with self.assertRaises(ValidationError):
+            self.store.promote_to_os("task-c", MemoryClass.SEMANTIC, "semantic",
+                                     reviewed_by="reviewer",
+                                     expected_source_event_hash=reviewed.event_hash)
+        self.assertEqual(self.store.retrieve_memory(scope="os"), ())
+        current = self.store.retrieve_task_memory("task-c")[0]
+        promoted = self.store.promote_to_os("task-c", MemoryClass.SEMANTIC, "semantic",
+                                            reviewed_by="reviewer",
+                                            expected_source_event_hash=current.event_hash)
+        self.assertEqual((promoted.reviewed, promoted.value), (True, current.value))
 
     def test_memory_projection_drift_fails_verification_and_rebuild_repairs(self) -> None:
         self.store.append_memory(
