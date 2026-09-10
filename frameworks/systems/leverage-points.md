@@ -126,7 +126,7 @@ Rung inflation. Every team wants its work to be high altitude, so a copy change 
 
 The second failure is authority theater, scoring A of 1 on everything strong so the slate can be all parameters with a clear conscience. An A of 1 that cannot name the person or the market event is a 2, and the memo gets written.
 
-The third is the multiplication itself, which hides the tail exactly as it does in the [risk matrix](../execution/risk-matrix.md): a rung 2 paradigm shift at A of 1 scores 12 and ties a delay fix at A of 3, so read L and A as a pair and never sort on altitude alone. Underneath all three sits Meadows' own caution, which this sheet cannot enforce: the ranking came out of a specific frustration with people tuning numbers, she treated it as provisional rather than settled, and a team that recites the twelve rungs while never drawing its own loops has swapped one ritual for another.
+The third is the multiplication itself, which hides the tail exactly as it does in the [risk matrix](../execution/risk-matrix.md): a rung 2 paradigm shift at A of 1 scores 11 and sits below a delay fix at A of 3, which scores 12, so read L and A as a pair and never sort on altitude alone. Underneath all three sits Meadows' own caution, which this sheet cannot enforce: the ranking came out of a specific frustration with people tuning numbers, she treated it as provisional rather than settled, and a team that recites the twelve rungs while never drawing its own loops has swapped one ritual for another.
 
 ## Feeds
 
