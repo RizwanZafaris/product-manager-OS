@@ -117,6 +117,7 @@
       "VerifierExecutionTests"
     ],
     "test_tools_gates": [
+      "ReadinessProbeMutationAnchorTests",
       "TemplateInventoryGateTests"
     ]
   }

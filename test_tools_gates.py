@@ -68,6 +68,27 @@ def quietly(function, *args, **kwargs):
     return result, out.getvalue()
 
 
+def mutation_table():
+    """probe_mutation_checks' mutants, read from the source rather than run.
+
+    The list is a literal, so it can be read without building eighteen fresh
+    trees. If it ever stops being one, this raises rather than returning an
+    empty table that every test below would pass against.
+    """
+    source = (TOOLS / "readiness_probe.py").read_text(encoding="utf-8")
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.FunctionDef) \
+                and node.name == "probe_mutation_checks":
+            for statement in node.body:
+                if isinstance(statement, ast.Assign) \
+                        and len(statement.targets) == 1 \
+                        and getattr(statement.targets[0], "id", None) \
+                        == "mutations":
+                    return ast.literal_eval(statement.value)
+    raise AssertionError("probe_mutation_checks no longer assigns a literal "
+                         "mutations list, so its anchors cannot be read")
+
+
 class TemplateInventoryGateTests(unittest.TestCase):
     """The count nothing measured, now measured against the tree.
 
@@ -159,6 +180,61 @@ class TemplateInventoryGateTests(unittest.TestCase):
             root = copy_tree(tmp)
             shutil.rmtree(root / "templates")
             self.assertEqual([], self.findings(root))
+
+
+class ReadinessProbeMutationAnchorTests(unittest.TestCase):
+    """Criterion CI-3's mutants, checked for the one way they fail silently.
+
+    Each mutant replaces an anchor that has to occur exactly once in its file.
+    When a later edit moves an anchored line the count goes to zero, and the
+    probe reports that mutant as not caught: CI-3 goes red for a reason that
+    has nothing to do with the gate it names, and only after a full fresh-tree
+    run. The store's cancel handling was rewritten on exactly the line after
+    the queue-integrity anchor, which is how that happened once already.
+    """
+
+    QUEUE = "queue integrity check bypassed before dispatch"
+    CHECK = "            self._assert_queue_verified()\n"
+
+    def test_every_anchor_matches_its_target_exactly_once(self):
+        anchored = [row for row in mutation_table() if "rel" in row]
+        self.assertTrue(anchored)
+        for row in anchored:
+            with self.subTest(label=row["label"]):
+                text = (REPO / row["rel"]).read_text(encoding="utf-8")
+                self.assertEqual(1, text.count(row["old"]),
+                                 "the anchor for %r matches %d time(s) in %s"
+                                 % (row["label"], text.count(row["old"]),
+                                    row["rel"]))
+                self.assertNotEqual(row["old"], row["new"])
+
+    def test_the_table_keeps_every_mutant_and_names_each_once(self):
+        table = mutation_table()
+        labels = [row["label"] for row in table]
+        self.assertEqual(len(labels), len(set(labels)))
+        self.assertGreaterEqual(len(table), 18, "a mutant was dropped from "
+                                "the table rather than re-anchored")
+        for row in table:
+            with self.subTest(label=row["label"]):
+                self.assertTrue(row.get("argv"))
+                self.assertTrue(row.get("diagnostic"))
+
+    def test_the_queue_mutant_removes_only_the_check_and_only_in_lease_next(self):
+        """Whatever text anchors it, the mutant has to take the queue check
+        out of the dispatch path and change nothing else. The same two opening
+        lines also start recovery and heartbeat, so an anchor that drifted
+        into one of those would still match once and prove nothing about
+        dispatch."""
+        row = next(row for row in mutation_table()
+                   if row["label"] == self.QUEUE)
+        self.assertEqual(row["old"].replace(self.CHECK, "", 1), row["new"],
+                         "the mutant removes the queue check and nothing else")
+        text = (REPO / row["rel"]).read_text(encoding="utf-8")
+        start = text.index("    def lease_next(")
+        end = text.find("\n    def ", start + 1)
+        at = text.find(row["old"])
+        self.assertTrue(start < at < end,
+                        "the anchor sits outside lease_next, the dispatch path")
 
 
 if __name__ == "__main__":

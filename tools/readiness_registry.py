@@ -471,7 +471,17 @@ REGISTRY = {
     "full-suite": (probe("full-suite", timeout=1800),),
     "ci-runtime": (probe("ci-covers-runtime"),),
     "deletable-harness": (probe("deletable-harness"),),
-    "mutation-gates": (probe("mutation-checks", timeout=1800),),
+    # The anchors are read first: a moved anchor is a table defect, and the
+    # probe below would otherwise report it as a gate that caught nothing.
+    "mutation-gates": (
+        unit(
+            "test_tools_gates.ReadinessProbeMutationAnchorTests."
+            "test_every_anchor_matches_its_target_exactly_once",
+            "test_tools_gates.ReadinessProbeMutationAnchorTests."
+            "test_the_queue_mutant_removes_only_the_check_and_only_in_lease_next",
+        ),
+        probe("mutation-checks", timeout=1800),
+    ),
     "golden-path": (probe("golden-path"),),
     "regulated-example": (
         Step(("python3", "lint.py",
