@@ -51,6 +51,14 @@ OWNABLE_HARD_GATES = frozenset({"local_review_record_complete"})
 
 # These are local engineering gates. External evidence is deliberately
 # reported in a separate lane and can never be manufactured by a local test.
+#
+# A gate is named for what its verifiers prove, never for what a reader would
+# like proved. The last entry used to be called documentation_claims_match,
+# which read as though a documented claim had been executed and compared
+# against the tree; its one verifier reads the operator documents for heading
+# order, image alt text, link labels and resolution, banned overclaim phrases,
+# evidence-boundary phrases, and the existence of the runtime paths those
+# documents name. That is a document contract, so that is what it is called.
 LOCAL_HARD_GATE_VERIFIERS = {
     "thirteen_use_cases_green": ("usecase-matrix",),
     "routes_executable": ("manifest-contract", "harness-route-behavior"),
@@ -59,7 +67,7 @@ LOCAL_HARD_GATE_VERIFIERS = {
     "links_green": ("workspace-links", "workspace-drift", "link-grammar"),
     "security_green": ("secret-boundaries", "security-policy"),
     "local_review_record_complete": ("independent-review",),
-    "documentation_claims_match": ("docs-contract",),
+    "operator_docs_contract_green": ("docs-contract",),
 }
 
 

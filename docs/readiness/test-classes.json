@@ -113,7 +113,9 @@
     "test_readiness": [
       "BuildArtifactIgnoreTests",
       "DistributionMetadataTests",
+      "GeneratedEvidenceFreshnessTests",
       "ProbeMarkdownWalkIgnoresSidecarsTests",
+      "ReleaseGateContractTests",
       "RubricValidationTests",
       "VerdictAndOutputTests",
       "VerifierExecutionTests"
