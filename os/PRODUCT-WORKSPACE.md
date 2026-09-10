@@ -52,7 +52,7 @@ Where the folder sits is your choice. Three arrangements work, and only the thir
 
 1. **Its own repository**, with this one cloned alongside as reference. The cleanest option for a team.
 2. **Inside your product's existing repository**, next to the code the documents describe.
-3. **Inside a clone of this repository.** Allowed, and the reason `products/` is the reserved name: nothing in this repository will ever ship a directory by that name, so your work cannot collide with an update. Add `products/` to `.gitignore` if the contents are private and the clone is not.
+3. **Inside a clone of this repository.** Allowed, and the reason `products/` is the reserved name: nothing in this repository will ever ship a directory by that name, so your work cannot collide with an update. `/products/` is already in this repository's `.gitignore`, so work there is untracked by default and cannot be committed into the clone by accident. That also means the clone is not backing it up: to version it in place, `git add -f` each file, or remove that line from `.gitignore` and accept that your product work is now part of this repository's history.
 
 ## A filled workspace, month nine
 
