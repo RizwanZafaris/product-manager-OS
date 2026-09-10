@@ -894,6 +894,9 @@ class TransactionalOutbox:
     envelope carrying the immutable idempotency key and payload hash. A
     delivered-but-unacknowledged event is never dispatched automatically a
     second time; reconciliation must query the remote system by that key.
+    A sender that returns an unusable external id has already produced its
+    remote effect, so that record dead-letters for the same reconciliation
+    rather than being dispatched again.
     This class intentionally stores only canonical payloads and hashes, never
     commands, headers, or secrets.
     """
@@ -1010,14 +1013,25 @@ class TransactionalOutbox:
             }
             try:
                 result = sender(envelope)
-                external_id = _text(result, "sender external id", maximum=MAX_IDENTIFIER_CHARS)
-                _assert_safe({"external_id": external_id})
             except Exception as exc:  # adapter boundaries expose only a safe category
+                # The sender raised, so whether the remote acted is unknown and
+                # the idempotency key in the envelope makes another attempt safe.
                 return self._delivery_failure(
                     record, attempts=attempts, current=current,
-                    error=("invalid_external_id" if isinstance(exc, DataValidationError)
-                           else type(exc).__name__),
+                    error=type(exc).__name__,
                 )
+            try:
+                external_id = _text(result, "sender external id", maximum=MAX_IDENTIFIER_CHARS)
+                _assert_safe({"external_id": external_id})
+            except DataValidationError:
+                # The sender returned, so the remote effect already happened;
+                # only its acknowledgement is unusable. Retrying here would
+                # repeat a completed non-idempotent action, so the record
+                # terminates and reconciliation queries the remote by key.
+                return self._replace(record, attempts=attempts,
+                                     status=OutboxStatus.DEAD_LETTER,
+                                     next_attempt_at=current,
+                                     last_error="invalid_external_id")
             return self._replace(record, attempts=attempts, status=OutboxStatus.DELIVERED,
                                  external_id=external_id, last_error=None)
 
