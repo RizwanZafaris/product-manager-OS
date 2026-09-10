@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Tests for harness/runner.py. Standard library only, and no network.
+"""Tests for harness/runner.py and the adapters that read the same manifest.
+Standard library only, and no network.
 
     python3 harness/test_runner.py
 
@@ -17,9 +18,11 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import importlib.util
 import io
 import json
 import os
+import subprocess
 import sys
 import unittest
 import urllib.error
@@ -1934,6 +1937,15 @@ class WorkspaceEnumerationIgnoresSidecarsTests(unittest.TestCase):
                            "a genuinely broken link stopped being reported")
 
 
+def _load_by_path(name, path):
+    """Import one file by path, for the tools and adapters that are scripts
+    rather than modules on sys.path."""
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 _GATEWAY_CFG = {"tiers": {"drafting": {"model": "auto/coding",
                                        "temperature": 0.3,
                                        "maxOutputTokens": 4096}},
@@ -2206,6 +2218,208 @@ class StoryRouteStageTests(unittest.TestCase):
         prose = (REPO / "skills/story-writer/SKILL.md").read_text(
             encoding="utf-8")
         self.assertIn("feed Gate %d" % self.task["gate"], prose)
+
+
+class GeneratedCommandTests(unittest.TestCase):
+    """The claude-code adapter reads the same manifest, so its wording is
+    part of the route contract and is pinned here.
+
+    report-routes-contradict-their-own-templates-heading: it titled every
+    route's template list "Templates the output lands in", including the
+    report routes whose own numbered step says the opposite one line above.
+    fallback-route-forbids-its-own-job: it read a null stage as no gate,
+    which is right for a reference read and wrong for the catch-all row whose
+    whole procedure ends at a gate, and it told that row to report rather
+    than fill a template.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.generate = _load_by_path(
+            "_generate",
+            REPO / "harness" / "adapters" / "claude-code" / "generate.py")
+        _data, tasks = cls.generate.load_manifest()
+        cls.tasks = {task["id"]: task for task in tasks}
+
+    def _render(self, route):
+        return self.generate.render_command(self.tasks[route])
+
+    def test_a_report_route_does_not_call_its_reads_a_destination(self):
+        task = self.tasks["diagnose-symptom-or-structure"]
+        self.assertEqual(task["kind"], "report")
+        self.assertTrue(task["templates"])
+        body = self._render("diagnose-symptom-or-structure")
+        self.assertIn("## Templates this route reads for context", body)
+        self.assertNotIn("## Templates the output lands in", body,
+                         "the section title contradicts the step above it")
+
+    def test_an_artifact_route_still_titles_its_templates_as_the_destination(self):
+        body = self._render("write-stories")
+        self.assertIn("## Templates the output lands in", body)
+        self.assertIn("Take the output to Gate 2 in", body)
+
+    def test_an_interactive_route_says_the_answer_lands_there_later(self):
+        body = self._render("conduct-product-journey")
+        self.assertIn("## Templates an accepted answer lands in later", body)
+
+    def test_a_route_whose_stage_is_decided_at_run_time_names_its_gate(self):
+        task = self.tasks["fallback-stage-loop"]
+        self.assertIsNone(task["stage"], "this route declares no stage")
+        body = self._render("fallback-stage-loop")
+        self.assertIn("Take the output to the gate of the stage you placed "
+                      "the request in", body)
+        self.assertNotIn("There is no gate on this output", body,
+                         "the catch-all row's procedure ends at a gate and "
+                         "the command told the agent it does not")
+        self.assertNotIn("No stage and no gate", body)
+
+    def test_the_catch_all_is_told_to_fill_a_template_not_to_report(self):
+        body = self._render("fallback-stage-loop")
+        self.assertIn("Land the output in the one template the request needs",
+                      body)
+        self.assertNotIn("Report what you found", body,
+                         "the catch-all fills a stage template; it judges "
+                         "nothing supplied")
+        self.assertIn("None named in advance", body)
+        self.assertNotIn("This route writes no template", body,
+                         "an artifact route was told it writes nothing")
+
+    def test_a_stage_less_route_with_no_gate_note_still_denies_a_gate(self):
+        task = self.tasks["explain-role-scope"]
+        self.assertIsNone(task["stage"])
+        self.assertNotIn("gate_note", task)
+        body = self._render("explain-role-scope")
+        self.assertIn("There is no gate on this output", body,
+                      "the denial is not blanket and must survive for the "
+                      "routes that really end at no gate")
+
+
+class CliPlanGateTests(unittest.TestCase):
+    """The cli adapter reads the same manifest and carried the same defect.
+
+    It printed "no gate applies, never that a gate was skipped" over the
+    catch-all row, whose own note ends at a gate. Fixing only the generated
+    plugin would have left two adapters answering the same question two ways.
+    """
+
+    ADAPTER = REPO / "harness" / "adapters" / "cli" / "pmos.py"
+
+    def _plan(self, route):
+        done = subprocess.run([sys.executable, str(self.ADAPTER), route],
+                              capture_output=True, text=True, cwd=str(REPO))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        return done.stdout
+
+    def test_a_route_whose_stage_is_decided_at_run_time_names_its_gate(self):
+        plan = self._plan("fallback-stage-loop")
+        self.assertIn("Take the output to the gate of the stage you placed "
+                      "the request in", plan)
+        self.assertNotIn("No gate applies to this row", plan)
+        self.assertNotIn("no gate applies, never that a gate was skipped", plan)
+        self.assertNotIn("This row produces no artifact", plan,
+                         "the catch-all files a document")
+
+    def test_a_reference_route_still_reports_that_no_gate_applies(self):
+        plan = self._plan("explain-role-scope")
+        self.assertIn("No gate applies to this row", plan)
+        self.assertIn("no gate applies, never that a gate was skipped", plan)
+
+
+class DesktopRouteGateTests(unittest.TestCase):
+    """The desktop adapter is the third reader of the same entry, and it read
+    a null stage as no gate and no template as no artifact."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tools = _load_by_path(
+            "_manifest_tools",
+            REPO / "harness" / "adapters" / "desktop" / "manifest_tools.py")
+        cls.tasks, _note = runner.load_manifest()
+
+    def test_the_catch_all_has_a_gate_and_files_a_document(self):
+        entry = self.tasks["fallback-stage-loop"]
+        stage = self.tools.stage_line(entry)
+        self.assertIn("Take the output to the gate of the stage you placed "
+                      "the request in", stage)
+        self.assertNotIn("null means no gate applies", stage)
+        self.assertNotEqual("no artifact", self.tools.landing_line(entry))
+
+    def test_a_route_that_files_nothing_still_says_so(self):
+        quiet = [task for task in self.tasks.values()
+                 if task.get("kind") in ("reference", "report")
+                 and not task.get("templates") and task.get("stage") is None]
+        self.assertTrue(quiet, "the manifest has no stage-less, template-less "
+                               "non-artifact route to control against")
+        entry = quiet[0]
+        self.assertIn("null means no gate applies",
+                      self.tools.stage_line(entry))
+        self.assertEqual("no artifact", self.tools.landing_line(entry))
+
+
+class CatchAllRouteTests(unittest.TestCase):
+    """fallback-route-forbids-its-own-job, the kind half.
+
+    The catch-all fills whatever stage template the request needs and takes
+    it to that stage's gate, which is kind artifact by this runner's own
+    definition, but it can name no template in advance. It carried kind
+    report and named templates/README.md, the catalog, as its destination,
+    so the generated command told the agent to report rather than fill a
+    template. tools/check_manifest.py failed the honest shape, kind artifact
+    with no template, although this runner already implements it by refusing
+    a run that passed no --template. The checker now admits that one shape,
+    stage null plus a gate_note, and these tests keep the exemption that
+    narrow.
+    """
+
+    CATCH_ALL = "fallback-stage-loop"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.checker = _load_by_path("_check_manifest",
+                                    REPO / "tools" / "check_manifest.py")
+        cls.tasks, _note = runner.load_manifest()
+
+    def test_the_catch_all_files_a_document_and_names_no_template(self):
+        entry = self.tasks[self.CATCH_ALL]
+        self.assertEqual("artifact", entry["kind"])
+        self.assertEqual([], entry["templates"],
+                         "the destination is decided at run time")
+        self.assertIsNone(entry["stage"])
+        self.assertTrue(entry.get("gate_note"))
+        self.assertIn("templates/README.md", entry["reads"],
+                      "the template catalog is read, never written into")
+
+    def test_the_manifest_gate_passes_the_tree(self):
+        self.assertEqual([], self.checker.check_manifest(REPO))
+
+    def test_the_exemption_reaches_that_route_and_no_other(self):
+        exempt = sorted(task_id for task_id, task in self.tasks.items()
+                        if task.get("kind") == "artifact"
+                        and not task.get("templates"))
+        self.assertEqual([self.CATCH_ALL], exempt)
+
+    def test_the_predicate_needs_both_declarations(self):
+        chosen_later = self.checker.destination_chosen_at_run_time
+        self.assertTrue(chosen_later({"stage": None,
+                                      "gate_note": "ends at a gate"}))
+        for entry in ({"stage": None},
+                      {"stage": None, "gate_note": ""},
+                      {"stage": None, "gate_note": "   "},
+                      {"stage": None, "gate_note": True},
+                      {"stage": "DEFINE", "gate_note": "ends at a gate"},
+                      {}):
+            with self.subTest(entry=entry):
+                self.assertFalse(chosen_later(entry))
+
+    def test_a_run_of_it_with_no_template_is_refused(self):
+        with self.assertRaises(runner.RunnerError) as caught:
+            runner.template_for(self.tasks[self.CATCH_ALL], None)
+        self.assertIn("--template", str(caught.exception))
+
+    def test_a_run_of_it_names_its_template_with_the_flag(self):
+        path = runner.template_for(self.tasks[self.CATCH_ALL],
+                                   "templates/definition/prd.md")
+        self.assertEqual(REPO / "templates" / "definition" / "prd.md", path)
 
 
 if __name__ == "__main__":

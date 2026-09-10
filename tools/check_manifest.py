@@ -292,6 +292,30 @@ def walk_strings(node, trail="tasks"):
             yield from walk_strings(value, "%s[%d]" % (trail, index))
 
 
+def destination_chosen_at_run_time(entry):
+    """True when this route cannot name its destination in advance.
+
+    Exactly one shape qualifies, and both halves are required: stage null, so
+    the entry declares no stage folder for the output, and a gate_note, which
+    is what an entry carries when its stage is null and a gate nonetheless
+    applies. That pair describes the catch-all row, whose stage is whatever the
+    request turns out to belong to; harness/runner.py implements the same case
+    by refusing the run with an instruction to pass --template.
+
+    Either half alone would widen this past that one route. A null stage on its
+    own covers the PLANNING and reference rows, which produce no artifact at
+    all and would then be free to claim kind artifact with nowhere to land. A
+    gate_note on a route that does declare a stage is a contradiction the
+    stage-and-gate check already reads, and is not a licence to drop the
+    template. Every other artifact route names a fixed destination and still
+    fails the check above without one.
+    """
+    if entry.get("stage") is not None:
+        return False
+    note = entry.get("gate_note")
+    return isinstance(note, str) and bool(note.strip())
+
+
 def check_paths(entry, root, line_no, fail):
     """Every path in skill, templates and reads is a real file inside the tree."""
     for key in PATH_KEYS:
@@ -486,11 +510,15 @@ def check_manifest(root):
             fail(line_no, "KIND", "%s: kind %r is not one of %s. The runner "
                  "branches on this value and implements no other."
                  % (entry_id, kind, ", ".join(KINDS)))
-        elif kind == "artifact" and not (entry.get("templates") or []):
+        elif kind == "artifact" and not (entry.get("templates") or []) \
+                and not destination_chosen_at_run_time(entry):
             fail(line_no, "KIND", "%s: kind artifact names no template, so a "
                  "run of it has nowhere to land. Give it a template, or give "
-                 "it the kind that matches what it actually produces."
-                 % entry_id)
+                 "it the kind that matches what it actually produces. One "
+                 "shape is exempt and this entry is not it: a route whose "
+                 "stage is null AND which carries a gate_note has its "
+                 "destination chosen at run time, and both halves are "
+                 "required." % entry_id)
 
         # A non-writing kind may still name templates. They are the documents
         # the route works with rather than a destination for its output, which

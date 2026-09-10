@@ -143,6 +143,13 @@ def missing_paths(entry, root):
 def stage_line(entry):
     """How this route's gate reads, including the honest null case."""
     stage, gate = entry.get("stage"), entry.get("gate")
+    # A null stage usually means no gate. The exception is a row whose stage
+    # is decided at run time: it says so in gate_note, and reading null as no
+    # gate would tell the client the opposite of what that row does.
+    gate_note = " ".join(str(entry.get("gate_note") or "").split())
+    if stage is None and gate is None and gate_note:
+        return ("decided at run time, by placing the request in a stage per "
+                "os/OPERATING-LOOP.md. %s" % gate_note.rstrip("."))
     if stage is None and gate is None:
         return ("no stage and no gate. This row is a cross loop overlay or a "
                 "reference read, reviewed on its own cadence per "
@@ -159,12 +166,24 @@ def tool_name(entry):
     return name
 
 
+def landing_line(entry):
+    """Where the output lands. An artifact route that names no template has
+    its destination chosen at run time, which tools/check_manifest.py admits
+    only with a null stage and a gate_note; it still files a document."""
+    templates = entry.get("templates") or []
+    if templates:
+        return ", ".join(templates)
+    if entry.get("kind") == "artifact":
+        return ("one template chosen at run time from the reads; none is "
+                "named in advance")
+    return "no artifact"
+
+
 def describe(entry):
     """The tool description a desktop client shows, built from the entry alone."""
     triggers = entry.get("trigger") or []
     skill = entry.get("skill") or ("no skill; the router row names none, so "
                                    "follow the reads below")
-    templates = entry.get("templates") or []
     if triggers:
         said = "Say one of: %s." % ", ".join('"%s"' % t for t in triggers)
     else:
@@ -176,8 +195,7 @@ def describe(entry):
         "Tier: %s (a tier name only; the model is chosen in "
         "routing/omniroute.config.json and nowhere else)." % entry.get("tier"),
         "Skill: %s." % skill,
-        "Output lands in: %s." % (", ".join(templates) if templates
-                                  else "no artifact"),
+        "Output lands in: %s." % landing_line(entry),
         "Binds: %s." % ", ".join(entry.get("invariants") or []),
         HONESTY,
     ]
@@ -251,7 +269,7 @@ def plan_text(entry, root, request=None, include_file_text=False, rules=None):
     lines.append("| Tier | %s |" % entry.get("tier"))
     lines.append("| Skill | %s |" % (entry.get("skill") or
                                      "none; the router row names no skill"))
-    lines.append("| Output lands in | %s |" % (", ".join(templates) or "no artifact"))
+    lines.append("| Output lands in | %s |" % landing_line(entry))
     lines.append("")
 
     lines.append("## Read first")

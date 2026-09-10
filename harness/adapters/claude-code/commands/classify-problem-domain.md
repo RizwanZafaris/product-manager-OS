@@ -38,7 +38,7 @@ No skill: the sheet is the procedure. The domain is a reading of what is knowabl
 - `frameworks/prioritization/now-next-later.md`
 - `os/OPERATING-LOOP.md`
 
-## Templates the output lands in
+## Templates this route reads for context
 
 - `templates/discovery/problem-framing.md`
 - `templates/execution/decision-log.md`

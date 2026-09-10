@@ -40,7 +40,7 @@ Practice artifacts go under learn/products/, never under products/, and never in
 - `learn/path-transitioning.md`
 - `learn/library.md`
 
-## Templates the output lands in
+## Templates an accepted answer lands in later
 
 None. This route writes no template.
 
