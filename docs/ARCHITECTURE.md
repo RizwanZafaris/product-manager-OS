@@ -278,7 +278,7 @@ product-manager-OS/
 │   │   ├── SKILL.md  Entry skill for the stage-gated interviewer; the full protocol lives in os/CONDUCTOR.md, the triggering in CLAUDE.md and AGENTS.md
 │   │   └── questions/
 │   │       ├── README.md  Bank file format and the five-class evidence ladder
-│   │       ├── discover.md  Seven core questions, each with evidence class, cross-examination trigger, and target template field
+│   │       ├── discover.md  Eight core questions, ending at the domain pack that Gate 1's domain line rests on, each with evidence class, cross-examination trigger, and target template field
 │   │       ├── define.md  Eight core questions, opening with the WHICH-DOCUMENT weight tree
 │   │       ├── design.md  Seven core questions, including the twice-asked premortem entry
 │   │       ├── build.md  Six core questions against acceptance criteria, edge cases, and the red team
