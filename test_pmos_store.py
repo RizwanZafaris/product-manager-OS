@@ -227,6 +227,41 @@ class StoreTest(unittest.TestCase):
         self.store.fail(dead.job_id, l2.token, l2.generation, "last", backoff_base=0, now=10)
         self.assertEqual(self.store.get_job(dead.job_id).status, QueueStatus.DEAD_LETTER)
 
+    def test_cancel_requested_live_lease_is_not_reaped_by_another_poll(self) -> None:
+        held = self.store.enqueue("payload", idempotency_key="held", available_at=0)
+        lease = self.store.lease_next("worker-a", now=100, lease_seconds=600)
+        self.assertEqual(self.store.cancel(held.job_id, now=101).status, "cancel_requested")
+        self.assertIsNone(self.store.lease_next("worker-b", now=102))
+        during = self.store.get_job(held.job_id)
+        self.assertEqual(during.status, QueueStatus.CANCEL_REQUESTED)
+        self.assertIsNotNone(during.lease_token)
+        finished = self.store.succeed(held.job_id, lease.token, lease.generation, "done", now=103)
+        self.assertEqual(finished.status, "cancelled")
+        self.assertEqual(self.store.get_job(held.job_id).error, "cancelled while leased")
+        # The lease, not a bystander poll, bounds how long the request waits.
+        expiring = self.store.enqueue("payload", idempotency_key="expiring", available_at=0)
+        self.store.lease_next("worker-a", now=200, lease_seconds=5)
+        self.assertEqual(self.store.cancel(expiring.job_id, now=201).status, "cancel_requested")
+        self.assertIsNone(self.store.lease_next("worker-b", now=300))
+        after = self.store.get_job(expiring.job_id)
+        self.assertEqual((after.status, after.error),
+                         (QueueStatus.CANCELLED, "cancelled after lease expiration"))
+
+    def test_heartbeat_past_the_deadline_reports_deadline_and_dead_letters(self) -> None:
+        base = time.time()
+        job = self.store.enqueue("payload", idempotency_key="deadline",
+                                 available_at=0, deadline=base + 10)
+        lease = self.store.lease_next("worker", now=base + 1, lease_seconds=1000)
+        self.assertEqual(lease.job.job_id, job.job_id)
+        self.assertTrue(self.store.heartbeat(job.job_id, lease.token, lease.generation,
+                                             now=base + 2).ok)
+        elapsed = self.store.heartbeat(job.job_id, lease.token, lease.generation, now=base + 20)
+        self.assertEqual((elapsed.status, elapsed.reason), ("deadline", "deadline elapsed"))
+        stored = self.store.get_job(job.job_id)
+        self.assertEqual((stored.status, stored.error),
+                         (QueueStatus.DEAD_LETTER, "deadline elapsed"))
+        self.assertIsNone(stored.lease_token)
+
     def test_queue_recovers_expired_leases_and_commits_one_result(self) -> None:
         queued = self.store.enqueue("payload", idempotency_key="recover", available_at=0)
         lease = self.store.lease_next("owner", now=10, lease_seconds=1)
@@ -237,6 +272,18 @@ class StoreTest(unittest.TestCase):
         self.assertTrue(self.store.succeed(queued.job_id, newer.token, newer.generation, "new", now=12).ok)
         self.assertEqual(self.store.get_job(queued.job_id).result, b"new")
         self.assertEqual(self.store.succeed(queued.job_id, newer.token, newer.generation, "again", now=13).status, "fenced")
+
+    def test_queue_admission_check_does_not_read_blob_payload_bytes(self) -> None:
+        self.store.enqueue({"action": "later"}, idempotency_key="later", available_at=1e9)
+        statements: list[str] = []
+        self.store._conn.set_trace_callback(statements.append)
+        try:
+            self.assertIsNone(self.store.lease_next("worker", now=0))
+        finally:
+            self.store._conn.set_trace_callback(None)
+        blob_reads = [text for text in statements if "FROM blobs" in text]
+        self.assertTrue(blob_reads)
+        self.assertEqual([text for text in blob_reads if "data" in text], [])
 
     def test_queue_projection_and_event_tampering_fail_before_dispatch(self) -> None:
         safe = self.store.enqueue({"action": "safe"}, idempotency_key="safe", available_at=0)
