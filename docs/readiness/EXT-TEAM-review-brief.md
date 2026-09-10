@@ -142,7 +142,13 @@ making the software better. If you can, that is a P0.
 These are documented, not hidden. Confirm they are still true rather than
 hunting for them:
 
-- `STATE.md` models one product at one stage. There is no portfolio.
+- `STATE.md` models one product at one stage, so the document path has no
+  portfolio view. The `pmos/` domain model is a separate surface and does:
+  an organization holds products, a product holds initiatives, and
+  `score_initiative`, `allocate_capacity`, `sequence_initiative` and `rollup`
+  in `pmos/domain.py` carry score, capacity per named period, and sequence.
+  Nothing derives one surface from the other, which is the limit worth
+  checking.
 - There is no identity, RBAC, or immutable audit log. A gate is signed by a
   person editing a file.
 - No integration adapter has been verified against a vendor sandbox.

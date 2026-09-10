@@ -170,7 +170,7 @@ Relationship to work  : (must be: did not build this)
 Consent given         : yes / no      Date:
 Recording agreed      : yes / no / not requested
 Observer              :
-Commit under test     : ba286db0121e613f5c1a6a6d3bdfa3cc6bee2c27
+Commit under test     : (output of git rev-parse HEAD)
 Date of session       :
 
 Golden path           : completed unaided / completed with prompting / not completed
