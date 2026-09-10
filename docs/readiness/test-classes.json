@@ -48,8 +48,10 @@
     "test_pmos_matrix": [
       "GraderTests",
       "RecordTests",
+      "RenderTests",
       "SelectionTests",
-      "ShippedMatrixTests"
+      "ShippedMatrixTests",
+      "SpendCeilingTests"
     ],
     "test_pmos_operations": [
       "AdapterContractTests",

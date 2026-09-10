@@ -32,16 +32,22 @@ What it will not do:
 - It never accepts an unpinned model id. `auto/...` returns an alias rather
   than the model that answered, and a matrix row whose model is unknown is a
   row about nothing.
-- It never spends. --free-only is the default and a non-zero cost on any call
-  aborts the run rather than continuing quietly.
+- It never spends by default. --free-only is the default and the spend
+  ceiling defaults to zero. Once the reported total passes the ceiling, or an
+  answered call carries no usable cost, no further call is dispatched: calls
+  already in flight finish and are recorded, the record is marked halted, and
+  the run exits non-zero. A charge reported on an error response counts
+  toward the total like any other charge.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import sys
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
@@ -91,6 +97,23 @@ ERROR_CLASSES = (
                            r"resolved_model_conflict|omniroute_not_local", re.I),
      "the gateway returned an answer that is not admissible as evidence"),
 )
+
+
+PROVIDER_ERROR_NOTE = "the provider returned an error the classes above do not name"
+
+
+def shown(path):
+    """A path as a reader should see it: repository-relative when it can be.
+
+    --out and --doc accept any path, and the tests hand check() files in a
+    temporary directory. Path.relative_to raises on a path outside the
+    repository, which turned a stale-table finding into a traceback.
+    """
+    path = Path(path)
+    try:
+        return path.resolve().relative_to(REPO).as_posix()
+    except ValueError:
+        return str(path)
 
 
 def classify_error(cell):
@@ -412,6 +435,14 @@ def run_case(model, case):
                     reason=answer.get("error_detail") or answer["error"],
                     error=answer["error"])
         cell["error_class"] = classify_error(cell)
+        # A charge is a charge whether or not the answer it bought is
+        # admissible, which is the rule omniroute_chat follows when it keeps
+        # billing on its error returns. Dropping it here would let a charged
+        # refusal pass as free.
+        if "cost_usd" in answer:
+            cost, cost_status = probe.usable_cost(answer.get("cost_usd"))
+            cell.update(cost_usd=cost, cost_status=cost_status,
+                        cost_source=answer.get("cost_source"))
         return cell
     text = answer.get("text") or ""
     passed, reason = case["grade"](text)
@@ -437,13 +468,71 @@ def run_case(model, case):
     return cell
 
 
-def run(models, cases, workers):
-    """Run every (model, case) pair. Order of the output is deterministic."""
+def charge_of(cell):
+    """The positive charge a cell reports, or 0.0 when it reports none."""
+    cost = cell.get("cost_usd")
+    if isinstance(cost, bool) or not isinstance(cost, (int, float)):
+        return 0.0
+    return float(cost) if cost > 0 else 0.0
+
+
+def cost_unprovable(cell):
+    """Whether a cell leaves the run unable to show what it has spent.
+
+    An answered call must carry a usable cost: absent is UNKNOWN, never zero,
+    per ext_ai_probe.usable_cost. An error cell carries billing only when the
+    gateway reported some, and billing it did report must be usable.
+    """
+    if cell.get("status") == "graded":
+        return cell.get("cost_status") != "OK"
+    return "cost_status" in cell and cell["cost_status"] != "OK"
+
+
+def run(models, cases, workers, budget_usd=0.0):
+    """Run (model, case) pairs until spend stops being provably in budget.
+
+    Returns (cells, ledger). Cells come back in pair order whatever the worker
+    count. The ceiling is on the running total, not on one call, and it is
+    checked as each call returns: once the total passes it, or an answered
+    call carries no usable cost, no further pair is dispatched. Calls already
+    in flight when that happens finish and are recorded, so with N workers
+    the overshoot is bounded by N-1 calls, and with one worker by none.
+    """
     pairs = [(model, case) for model in models for case in cases]
+    results = [None] * len(pairs)
+    ledger = {"spent_usd": 0.0, "halted": None}
+    lock = threading.Lock()
+
+    def one(index):
+        with lock:
+            if ledger["halted"]:
+                return
+        model, case = pairs[index]
+        cell = run_case(model, case)
+        with lock:
+            results[index] = cell
+            ledger["spent_usd"] += charge_of(cell)
+            if ledger["halted"]:
+                return
+            if cost_unprovable(cell):
+                ledger["halted"] = (
+                    "%s / %s returned no usable cost (%s), so spend can no "
+                    "longer be shown to be inside the ceiling"
+                    % (model, case["id"], cell.get("cost_status") or "UNKNOWN"))
+            elif ledger["spent_usd"] > budget_usd:
+                ledger["halted"] = (
+                    "reported spend reached %.6f USD, above the %.6f USD "
+                    "ceiling, at %s / %s"
+                    % (ledger["spent_usd"], budget_usd, model, case["id"]))
+
     if workers <= 1:
-        return [run_case(model, case) for model, case in pairs]
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        return list(pool.map(lambda pair: run_case(*pair), pairs))
+        for index in range(len(pairs)):
+            one(index)
+    else:
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            list(pool.map(one, range(len(pairs))))
+    ledger["spent_usd"] = round(ledger["spent_usd"], 6)
+    return [cell for cell in results if cell is not None], ledger
 
 
 def summarise(cells, models, cases):
@@ -460,9 +549,7 @@ def summarise(cells, models, cases):
         passed = [c for c in graded if c["passed"]]
         errors = [c for c in rows if c["status"] == "error"]
         substituted = [c for c in graded if c.get("model_matches_request") is False]
-        charged = [c for c in graded
-                   if isinstance(c.get("cost_usd"), (int, float))
-                   and c["cost_usd"] > 0]
+        charged = [c for c in rows if charge_of(c) > 0]
         latencies = [c["latency_ms"] for c in graded
                      if isinstance(c.get("latency_ms"), (int, float))]
         by_model[model] = {
@@ -501,15 +588,48 @@ def summarise(cells, models, cases):
 
 MARK = {True: "pass", False: "fail", None: "--"}
 
+# What the header says about the tree the run came from. A record made from a
+# dirty tree names a commit that does not contain the tool that ran, and a
+# header that printed the commit alone would claim a reproducibility the
+# record does not have.
+TREE_NOTE = {
+    "clean": " from a clean working tree",
+    "dirty": (" with uncommitted changes in the working tree, so that commit "
+              "alone does not reproduce the tool that ran"),
+}
+
+
+def error_class_of(cell):
+    """The recorded class, or the one the gateway's own words give."""
+    return cell.get("error_class") or classify_error(cell)
+
 
 def render(report):
+    """The generated block. Every sentence in it is computed from the record.
+
+    House style bans em and en dashes in every Markdown file, and this block
+    lands in one, so separators here are colons and parentheses.
+    """
     models = report["models"]["tested"]
     cells = {(c["model"], c["case"]): c for c in report["cells"]}
     ids = [case["id"] for case in report["suite"]]
     lines = [BEGIN, ""]
     lines.append("Generated by `python3 tools/model_matrix.py`. "
-                 "Run of %s against commit `%s`."
-                 % (report["generated"], report["commit"][:12]))
+                 "Run of %s against commit `%s`%s."
+                 % (report["generated"], report["commit"][:12],
+                    TREE_NOTE.get(report.get("working_tree"), "")))
+    lines.append("")
+    recorded = report["cells"]
+    graded = [c for c in recorded if c.get("status") == "graded"]
+    errors = [c for c in recorded if c.get("status") == "error"]
+    priced = [c for c in recorded if c.get("cost_status") == "OK"]
+    lines.append("%d model(s), %d call(s): %d answered and graded, %d returned "
+                 "no answer. Spend reported by the gateway: %s USD across the "
+                 "%d call(s) that carried a cost figure; the other %d carried "
+                 "none."
+                 % (len(models), len(recorded), len(graded), len(errors),
+                    "%g" % sum(charge_of(c) for c in priced), len(priced),
+                    len(recorded) - len(priced)))
     lines.append("")
     lines.append("| Model | " + " | ".join(ids) + " | Passed | Median ms |")
     lines.append("|---|" + "---|" * (len(ids) + 2))
@@ -520,7 +640,7 @@ def render(report):
             if cell is None:
                 row.append("--")
             elif cell["status"] == "error":
-                row.append("error")
+                row.append("error (%s)" % error_class_of(cell))
             else:
                 row.append(MARK[cell["passed"]])
         summary = report["by_model"][model]
@@ -532,15 +652,25 @@ def render(report):
     lines.append("Case meanings, in column order:")
     lines.append("")
     for case in report["suite"]:
-        lines.append("- **%s** (%s tier) — %s"
+        lines.append("- **%s** (%s tier): %s"
                      % (case["id"], case["tier"], case["measures"]))
     lines.append("")
+    seen = sorted({error_class_of(c) for c in errors})
+    if seen:
+        legend = dict(error_legend(), **{"provider-error": PROVIDER_ERROR_NOTE})
+        lines.append("Why a cell carries no answer, classified from the "
+                     "gateway's own error text. None of these is a pass or a "
+                     "fail of the case:")
+        lines.append("")
+        for name in seen:
+            lines.append("- **%s**: %s" % (name, legend[name]))
+        lines.append("")
     excluded = report["models"]["excluded"]
     if excluded:
         lines.append("Discovered and excluded, with the reason:")
         lines.append("")
         for row in excluded:
-            lines.append("- `%s` — %s" % (row["model"], row["reason"]))
+            lines.append("- `%s`: %s" % (row["model"], row["reason"]))
         lines.append("")
     lines.append(END)
     return "\n".join(lines)
@@ -559,25 +689,43 @@ def check(out_path, doc_path):
     """Prove the document's generated block still matches the recorded run."""
     if not out_path.exists():
         return ["%s is missing; run tools/model_matrix.py to produce it"
-                % out_path.relative_to(REPO)]
+                % shown(out_path)]
     if not doc_path.exists():
-        return ["%s is missing" % doc_path.relative_to(REPO)]
+        return ["%s is missing" % shown(doc_path)]
     report = json.loads(out_path.read_text(encoding="utf-8"))
     problems = []
     if report.get("schema") != SCHEMA:
         problems.append("model-matrix.json schema is %r, this tool writes %d"
                         % (report.get("schema"), SCHEMA))
-    recorded = [case["id"] for case in report.get("suite", [])]
+    suite = report.get("suite", [])
+    recorded = [case["id"] for case in suite]
     if recorded != list(suite_ids()):
         problems.append("recorded suite %s no longer matches the suite in this "
                         "tool %s; re-run the matrix" % (recorded, list(suite_ids())))
+    else:
+        # Same ids with a reworded prompt, a moved tier or a new description
+        # is a different suite: the recorded answers were given to other
+        # questions, and the table would attribute them to these.
+        for case, current in zip(suite, SUITE):
+            for key in ("tier", "measures", "prompt"):
+                if case.get(key) != current[key]:
+                    problems.append("recorded %s of case %s differs from this "
+                                    "tool; re-run the matrix"
+                                    % (key, current["id"]))
     if report.get("dry_run"):
         problems.append("model-matrix.json is a dry run and is not evidence")
-    charged = [c for c in report.get("cells", [])
-               if isinstance(c.get("cost_usd"), (int, float)) and c["cost_usd"] > 0]
+    if report.get("halted"):
+        problems.append("the recorded run halted before it finished (%s) and "
+                        "is not a complete matrix" % report["halted"])
+    cells = report.get("cells", [])
+    charged = [c for c in cells if charge_of(c) > 0]
     if charged:
         problems.append("%d call(s) recorded a non-zero cost in a free-only run"
                         % len(charged))
+    unprovable = [c for c in cells if cost_unprovable(c)]
+    if unprovable:
+        problems.append("%d call(s) carry no usable cost, so the record cannot "
+                        "show the run was free" % len(unprovable))
     if problems:
         return problems
     current = doc_path.read_text(encoding="utf-8")
@@ -585,7 +733,7 @@ def check(out_path, doc_path):
     if current != expected:
         problems.append("the generated block in %s does not match %s; "
                         "run tools/model_matrix.py --render"
-                        % (doc_path.relative_to(REPO), out_path.relative_to(REPO)))
+                        % (shown(doc_path), shown(out_path)))
     return problems
 
 
@@ -610,7 +758,10 @@ def parse_args(argv):
                              "can cost money and is refused unless --budget-usd "
                              "is raised")
     parser.add_argument("--budget-usd", type=float, default=0.0,
-                        help="hard ceiling; a call above it aborts the run")
+                        help="ceiling on the total reported spend; once the "
+                             "running total passes it no further call is "
+                             "dispatched and the run exits non-zero (calls "
+                             "already in flight finish)")
     parser.add_argument("--workers", type=int, default=4,
                         help="concurrent calls (default: %(default)s)")
     parser.add_argument("--list-models", action="store_true",
@@ -640,8 +791,15 @@ def main(argv=None):
         args.doc.write_text(splice(args.doc.read_text(encoding="utf-8"),
                                    render(report)), encoding="utf-8")
         probe.say("model-matrix: rendered", len(report["models"]["tested"]),
-                  "rows into", args.doc.relative_to(REPO))
+                  "rows into", shown(args.doc))
         return 0
+
+    # NaN compares false with everything, so a NaN ceiling would never be
+    # passed and would never stop a run; a negative one is not a ceiling.
+    if not math.isfinite(args.budget_usd) or args.budget_usd < 0:
+        probe.say("model-matrix: --budget-usd must be a finite number, zero "
+                  "or above")
+        return 2
 
     if args.models:
         candidates, excluded = list(args.models), []
@@ -671,11 +829,14 @@ def main(argv=None):
         return 0
 
     started = datetime.now(timezone.utc)
-    cells = [] if args.dry_run else run(candidates, cases, max(1, args.workers))
+    if args.dry_run:
+        cells, ledger = [], {"spent_usd": 0.0, "halted": None}
+    else:
+        cells, ledger = run(candidates, cases, max(1, args.workers),
+                            args.budget_usd)
 
-    overspend = [c for c in cells
-                 if isinstance(c.get("cost_usd"), (int, float))
-                 and c["cost_usd"] > args.budget_usd]
+    overspend = ([c for c in cells if charge_of(c) > 0]
+                 if ledger["spent_usd"] > args.budget_usd else [])
     by_model, by_case = summarise(cells, candidates, cases)
     report = {
         "schema": SCHEMA,
@@ -694,17 +855,24 @@ def main(argv=None):
         "cells": cells,
         "by_model": by_model,
         "by_case": by_case,
+        "spent_usd": ledger["spent_usd"],
+        "halted": ledger["halted"],
         "overspend": overspend,
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(report, indent=2, sort_keys=False) + "\n",
                         encoding="utf-8")
-    probe.say("model-matrix: wrote", args.out.relative_to(REPO))
+    probe.say("model-matrix: wrote", shown(args.out))
     for model in candidates:
         row = by_model[model]
         probe.say("  %-58s %2d/%-2d pass  %d error%s"
                   % (model, row["passed"], row["graded"], row["errors"],
                      "  SUBSTITUTED" if row["substituted"] else ""))
+    probe.say("model-matrix: reported spend %.6f USD against a ceiling of "
+              "%.6f USD" % (ledger["spent_usd"], args.budget_usd))
+    if ledger["halted"]:
+        probe.say("model-matrix: halted:", ledger["halted"])
+        return 1
     if overspend:
         probe.say("model-matrix: %d call(s) exceeded the budget" % len(overspend))
         return 1
