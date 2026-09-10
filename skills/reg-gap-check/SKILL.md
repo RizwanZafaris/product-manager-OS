@@ -9,7 +9,7 @@ Most payments product work dies in review, not in build. The PM ships a spec, th
 
 ## Files this skill drives
 
-- [../../modules/regulated/README.md](../../modules/regulated/README.md), which explains when the regulated overlay activates and names the canonical source
+- [../../modules/regulated/README.md](../../modules/regulated/README.md), which names the canonical source. It retains the broader "operates under a regulator" wording; the narrowed rule in [../../os/STAGE-GATES.md](../../os/STAGE-GATES.md) governs, and the overlay activates only when the product contains an AI or machine-learning feature and a financial or data regulator applies to it
 - [../../modules/regulated/templates/regulated-ai-prd-template.md](../../modules/regulated/templates/regulated-ai-prd-template.md), the byte-exact template whose section 0 and Appendix A hold the repository's only verified regulatory citations
 - [../../modules/regulated/SKILL.md](../../modules/regulated/SKILL.md), the authoring procedure for a regulated AI PRD
 - Findings land in [../../templates/execution/risk-register.md](../../templates/execution/risk-register.md) and, where an assessment is warranted, trigger [../../templates/operate/compliance-impact-assessment.md](../../templates/operate/compliance-impact-assessment.md)

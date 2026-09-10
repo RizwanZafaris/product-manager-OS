@@ -84,7 +84,7 @@ Turn the validated problem into requirements someone can build, test, and sign.
 
 - **Entry:** Gate 1 signed.
 - **Work:** business case (`../templates/definition/brd.md`), product requirements (`../templates/definition/prd.md`, or `../templates/definition/one-pager.md` at the lighter weight), functional detail (`../templates/definition/frd.md`), non-functional targets (`../templates/definition/nfr.md`), business rules, the assumptions register, and acceptance criteria that can actually fail. Pick the weight first with `WHICH-DOCUMENT.md`; the gate asks the same questions either way.
-- **Exit:** Gate 2, requirements signed off. Every requirement testable, every assumption registered, sponsor named. Regulated products answer the regulated overlay's precondition questions here, before design starts, because a license condition beats a sprint plan every time.
+- **Exit:** Gate 2, requirements signed off. Every requirement testable, every assumption registered, sponsor named. Products under the regulated overlay (an AI or machine-learning feature, with a financial or data regulator applying to it) answer its precondition questions here, before design starts, because a license condition beats a sprint plan every time.
 
 **Entry test.** A signed Gate 1 attempt in `products/<name>/gates/`, plus a weight decision logged per [WHICH-DOCUMENT.md](WHICH-DOCUMENT.md). Opening a PRD before the weight question is answered is how a two-week change acquires twelve sections nobody reads.
 
@@ -132,7 +132,7 @@ Ship it on purpose, with a way back.
 
 - **Entry:** Gate 4 signed.
 - **Work:** UAT with real users against entry and exit criteria (`../templates/delivery/uat-plan.md`), release readiness (`../templates/delivery/release-readiness.md`), rollback rehearsed, comms drafted.
-- **Exit:** Gate 5, release readiness green. Go or no-go signed per function, rollback tested, known issues listed rather than hoped away. Regulated products re-check their overlay here: what was promised in section 0 at DEFINE must be true in the thing that ships.
+- **Exit:** Gate 5, release readiness green. Go or no-go signed per function, rollback tested, known issues listed rather than hoped away. Products under the regulated overlay re-check it here: what was promised in section 0 at DEFINE must be true in the thing that ships, and a regulated product with no model re-checks whatever its regulatory owner used instead.
 
 **Entry test.** Signed Gate 4 and a release candidate that exists, deployed somewhere a non-engineer can open. UAT run against a branch that will be rebuilt before release tests a product that will never ship.
 
