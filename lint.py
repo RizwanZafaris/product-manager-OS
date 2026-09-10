@@ -57,7 +57,10 @@ and a file that is not valid UTF-8 fails rather than being skipped, because a
 file no check could read is a file no check has cleared. The path gate reads the
 raw lines of system/ prompts, fences included, since the prompt body a user
 pastes lives inside a fence; a name in a manifest line is resolved against the
-directory that line names as well as against the repository root. The graph gate
+directory that line names as well as against the repository root, and a
+tracked .md file sitting directly in a manifest block's directory fails when
+the block does not name it, because the prompt promises the model that its
+manifest is every file it can ask for. The graph gate
 checks the declaration against the truth it claims: layer is the directory the
 file lives in, gate is a gate os/STAGE-GATES.md defines, and stage and gate
 agree with the file's own Stage header and with the gate that document says
@@ -605,6 +608,8 @@ HEADER_WINDOW = 8
 # it holds, named relative to it.
 MANIFEST_PREFIX_RE = re.compile(
     r"^(?:>\s*)?([A-Za-z0-9._\-]+(?:/[A-Za-z0-9._\-]+)*/)\s{2,}\S")
+# A file named inside a manifest block, relative to the block's directory.
+MANIFEST_NAME_RE = re.compile(r"[A-Za-z0-9._\-]+(?:/[A-Za-z0-9._\-]+)*\.md\b")
 
 # The six layers that declare themselves to the graph, and the key set every
 # file in them carries. Written by tools/frontmatter_init.py, read by
@@ -1174,14 +1179,23 @@ def os_check(root, pins=None):
         # check exists to read. The manifest inside that fence lists a
         # directory and then its contents, so a name is resolved against the
         # directory prefix in force as well as against the repository root.
+        # The manifest is also read the other way. The prompt tells the model
+        # the manifest is every file it can ask for, so a tracked .md file
+        # sitting directly in a block's directory and named nowhere in that
+        # block is a file a pasted session can never reach. Subdirectories
+        # answer to their own block.
         if rp.startswith("system/"):
             prefix = ""
+            blocks = []
             for i, line in enumerate(raw_lines, 1):
                 head = MANIFEST_PREFIX_RE.match(line)
                 if head and in_tree(head.group(1).rstrip("/"), tree):
                     prefix = head.group(1)
+                    blocks.append((prefix, i, [line[head.end(1):]]))
                 elif line.strip() and not line.startswith((" ", "\t")):
                     prefix = ""
+                elif prefix:
+                    blocks[-1][2].append(line)
                 for m in REPO_PATH_RE.finditer(line):
                     named = m.group(1)
                     if in_tree(named, tree) or (prefix and
@@ -1189,6 +1203,17 @@ def os_check(root, pins=None):
                         continue
                     fail(rp, i, "PATH",
                          "names repo path %s, which does not exist." % named)
+            for prefix, i, text in blocks:
+                listed = set(MANIFEST_NAME_RE.findall(" ".join(text)))
+                for target in sorted(tree):
+                    leaf = target[len(prefix):]
+                    if (target.startswith(prefix) and "/" not in leaf
+                            and leaf.endswith(".md") and leaf not in listed
+                            and target not in listed):
+                        fail(rp, i, "PATH", "manifest block %s does not name "
+                             "%s, a tracked file in that directory, so a "
+                             "session given this prompt can never ask for it."
+                             % (prefix, target))
 
         # Check 10, graph gate: the declaration every file in the six layers
         # carries. A missing key is a hole in the graph; a stage outside the

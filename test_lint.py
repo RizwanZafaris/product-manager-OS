@@ -641,6 +641,27 @@ class PathGateFenceTests(unittest.TestCase):
                  "---\nname: tutor\ndescription: Use when learning.\n---\nX.\n"})
         self.assertNotIn("PATH", codes, messages)
 
+    def test_a_manifest_block_must_name_every_file_in_its_directory(self):
+        # The prompt calls its manifest every file a session can ask for, so a
+        # tracked file left off its directory's block is unreachable.
+        prompt = ("```\nlearn/         README.md,\n"
+                  "               library.md\n```\n")
+        tree = {"learn/README.md": "# Learn\n",
+                "learn/library.md": "# Library\n",
+                "learn/INDEX.md": "# Index\n",
+                "learn/skills/tutor/SKILL.md":
+                    "---\nname: tutor\ndescription: Use when learning.\n---\nX.\n"}
+        codes, messages = os_run(dict(tree, **{"system/PROMPT.md": prompt}))
+        self.assertIn("PATH", codes)
+        self.assertIn("does not name learn/INDEX.md", messages)
+        # A name on a continuation line counts, and a file in a subdirectory
+        # answers to its own block, not to this one.
+        self.assertNotIn("does not name learn/library.md", messages)
+        self.assertNotIn("does not name learn/skills", messages)
+        whole = prompt.replace("library.md", "library.md, INDEX.md")
+        clean, messages = os_run(dict(tree, **{"system/PROMPT.md": whole}))
+        self.assertNotIn("PATH", clean, messages)
+
 
 class GraphTruthTests(unittest.TestCase):
     """Check 10. Legal keys are not the same claim as a true graph."""
