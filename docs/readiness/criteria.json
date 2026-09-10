@@ -93,7 +93,7 @@
       "criteria": [
         {"id": "UX-1", "points": 2, "title": "A new user can initialize, inspect, verify, and recover through documented human and JSON CLI output", "verifier": "cli-contract"},
         {"id": "UX-2", "points": 1, "title": "Key operator documentation and output conventions pass an executable accessibility review", "verifier": "accessibility"},
-        {"id": "UX-3", "points": 1, "title": "README, runtime quickstart, API, CLI, and maturity claims agree with executable capability", "verifier": "docs-contract"},
+        {"id": "UX-3", "points": 1, "title": "Key operator documents pass a document contract: heading order, image alt text, link labels and local link resolution, banned overclaim phrases, evidence-boundary phrases, and the existence of the runtime paths they name", "verifier": "docs-contract"},
         {"id": "UX-4", "points": 1, "title": "A consent-aware observation mechanism records adoption evidence without claiming external adoption occurred", "verifier": "operations-runtime"}
       ]
     }
