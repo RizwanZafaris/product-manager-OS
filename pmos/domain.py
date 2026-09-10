@@ -1970,17 +1970,19 @@ class PMOSDomain:
     revoke = revoke_approval
 
     @_transactional
-    def score_initiative(self, initiative_id: str, score: float, *, actor_id: Optional[str] = None, expected_revision: Optional[int] = None) -> PortfolioAllocation:
+    def score_initiative(self, initiative_id: str, score: float, *, actor_id: Optional[str] = None, period: str = "", expected_revision: Optional[int] = None) -> PortfolioAllocation:
         init = self._allowed(initiative_id, actor_id, "edit")
         actor = self._public_actor(actor_id)
         if not self._finite_number(score):
             raise AllocationError("score must be a finite number")
-        existing = next((a for a in self._tables["portfolio_allocation"].values() if a.initiative_id == initiative_id), None)
+        # An allocation row is identified by (product, initiative, period), so
+        # a score belongs to one period exactly as capacity and sequence do.
+        existing = next((a for a in self._tables["portfolio_allocation"].values() if a.initiative_id == initiative_id and a.period == period), None)
         if existing:
             if expected_revision is None: expected_revision = existing.revision
             return self.update("portfolio_allocation", existing.id, expected_revision=expected_revision, actor_id=actor, score=float(score))  # type: ignore[return-value]
         product = self._require("product", init.product_id)
-        return self._create("portfolio_allocation", actor, product_id=product.id, initiative_id=initiative_id, score=float(score))  # type: ignore[return-value]
+        return self._create("portfolio_allocation", actor, product_id=product.id, initiative_id=initiative_id, period=period, score=float(score))  # type: ignore[return-value]
 
     set_priority = score_initiative
     set_score = score_initiative

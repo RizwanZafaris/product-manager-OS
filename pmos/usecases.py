@@ -440,12 +440,20 @@ def portfolio() -> UseCaseResult:
     domain.set_capacity(product.id, "Q1", 5, actor_id=actor)
     domain.allocate_capacity(first.id, "Q1", 3, actor_id=actor)
     domain.allocate_capacity(second.id, "Q1", 2, actor_id=actor)
-    domain.score_initiative(first.id, 9, actor_id=actor)
-    domain.score_initiative(second.id, 7, actor_id=actor)
+    # An allocation row is keyed by (product, initiative, period), so a score
+    # names the period its capacity and sequence already name. Omitting it
+    # writes a second row under the empty period, and the Q1 rollup this
+    # walkthrough reports then carries the capacity with none of the scores.
+    domain.score_initiative(first.id, 9, period="Q1", actor_id=actor)
+    domain.score_initiative(second.id, 7, period="Q1", actor_id=actor)
     domain.sequence_initiative(first.id, 1, period="Q1", actor_id=actor)
     rollup = domain.rollup(product.id, "Q1", actor_id=actor)
     if rollup.get("capacity") != 5:
         raise AssertionError("portfolio rollup lost allocated capacity")
+    if rollup.get("score") != 16:
+        raise AssertionError("portfolio rollup lost the scores for Q1")
+    if rollup.get("initiative_count") != 2:
+        raise AssertionError("Q1 rollup counts an initiative twice")
 
     second_product = domain.create_product(
         product.organization_id, "Platform", actor_id=actor)
@@ -453,11 +461,12 @@ def portfolio() -> UseCaseResult:
         second_product.id, "Shared services", actor_id=actor)
     domain.set_capacity(second_product.id, "Q1", 4, actor_id=actor)
     domain.allocate_capacity(platform.id, "Q1", 4, actor_id=actor)
-    domain.score_initiative(platform.id, 8, actor_id=actor)
+    domain.score_initiative(platform.id, 8, period="Q1", actor_id=actor)
     domain.sequence_initiative(platform.id, 1, period="Q1", actor_id=actor)
     portfolio_rollup = domain.rollup(period="Q1", actor_id=actor)
     visible_products = domain.list_entities("product", actor_id=actor)
     if (portfolio_rollup.get("capacity") != 9
+            or portfolio_rollup.get("score") != 24
             or portfolio_rollup.get("initiative_count") != 3
             or len(visible_products) != 2):
         raise AssertionError("multi-product portfolio rollup is incomplete")

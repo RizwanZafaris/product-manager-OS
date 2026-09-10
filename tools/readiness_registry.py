@@ -53,6 +53,7 @@ DOMAIN_TESTS = tuple(
         "test_two_instances_conflict_rolls_back_then_refresh_retry_preserves_both",
         "test_tampered_hash_and_unknown_schema_fail_closed",
         "test_every_public_mutator_is_transactional",
+        "test_score_writes_to_the_allocation_row_for_the_named_period",
     ))
 
 CONDUCTOR_TESTS = tuple(
