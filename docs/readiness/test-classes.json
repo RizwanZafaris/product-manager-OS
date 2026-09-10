@@ -115,6 +115,9 @@
       "RubricValidationTests",
       "VerdictAndOutputTests",
       "VerifierExecutionTests"
+    ],
+    "test_tools_gates": [
+      "TemplateInventoryGateTests"
     ]
   }
 }

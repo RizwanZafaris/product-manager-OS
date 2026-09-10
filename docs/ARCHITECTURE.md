@@ -160,7 +160,7 @@ product-manager-OS/
 │   ├── systems/  The diagnostic group, added in v0.6.0 because the other six groups all take the problem as given: iceberg-model, cynefin, causal-loop-diagram, leverage-points
 │   └── assessment/  Scores the organization the plan lands in rather than the plan: product-operating-model-assessment, team-topologies-assessment, tech-debt-assessment, westrum-culture-typology
 ├── templates/
-│   ├── README.md  Rendered directory face: the full catalog, one table per stage directory, all 98 templates with what each is and when to reach for it; carries the three-line header the gate demands of every file here
+│   ├── README.md  Rendered directory face: the full catalog, one table per stage directory, all 100 templates with what each is and when to reach for it; carries the three-line header the gate demands of every file here
 │   ├── discovery/
 │   │   ├── discovery-document.md  Trigger, target user, pain, hypothesis, success signal, go or no-go
 │   │   ├── problem-framing.md  One problem statement, evidence, cost of inaction, owner

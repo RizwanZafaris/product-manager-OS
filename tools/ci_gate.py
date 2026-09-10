@@ -35,6 +35,7 @@ GATES = (
     Gate("compile", ("python3", "tools/readiness_probe.py", "compile-all")),
     Gate("root-tests", ("python3", "-m", "unittest", "-v",
          "test_lint", "test_readiness", "test_pmos_routing",
+         "test_tools_gates",
          "test_pmos_store", "test_pmos_domain", "test_pmos_operations",
          "test_pmos_hooks", "test_pmos_usecases", "test_pmos_conductor",
          "test_pmos_skills", "test_pmos_cli", "test_pmos_release",

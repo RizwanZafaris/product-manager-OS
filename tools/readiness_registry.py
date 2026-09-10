@@ -387,7 +387,20 @@ REGISTRY = {
         Step(("python3", "tools/security_gate.py")),
     ),
     "docs-contract": (
-        Step(("python3", "tools/docs_contract.py", "--strict")),),
+        Step(("python3", "tools/docs_contract.py", "--strict")),
+        # The template inventory is the one reading in that gate that counts
+        # against the tree, so a seeded stale total is its only evidence.
+        unit(
+            "test_tools_gates.TemplateInventoryGateTests."
+            "test_the_tree_as_it_stands_states_its_own_inventory",
+            "test_tools_gates.TemplateInventoryGateTests."
+            "test_a_self_consistent_stale_total_is_reported_everywhere_it_sits",
+            "test_tools_gates.TemplateInventoryGateTests."
+            "test_dropping_the_claim_is_not_a_way_to_pass",
+            "test_tools_gates.TemplateInventoryGateTests."
+            "test_the_gate_itself_fails_on_a_stale_total",
+        ),
+    ),
     "accessibility": (
         unit(
             "test_pmos_security.DocumentationContractFixtureTests."
