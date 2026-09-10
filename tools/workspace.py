@@ -370,5 +370,5 @@ def broken_links(path):
     """
     path = Path(path)
     problems = _lint.link_problems(
-        path, _lint.mask(read_text(path)), REPO.resolve())
+        path, _lint.mask(read_text(path), comments=False), REPO.resolve())
     return [(number, message) for number, _code, message in problems]
