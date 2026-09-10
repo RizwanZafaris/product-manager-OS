@@ -162,7 +162,7 @@ in advance rather than decided in the moment.
 - [ ] Every active item names a problem, not a solution, and carries a requester and a date raised
 - [ ] Intake sources each have a stated destination for incomplete requests
 - [ ] One ranking method is named, and any change of method has a decision-log entry
-- [ ] The health check has been run this period and the six numbers are recorded
+- [ ] The health check has been run this period and the five numbers are recorded
 - [ ] Added against killed has been computed, not estimated
 - [ ] The register is inside its size cap, or the overflow is in the ideas bin
 - [ ] No item has been carried through more than the stated number of planning cycles unranked
