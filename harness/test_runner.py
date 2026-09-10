@@ -2493,6 +2493,58 @@ class CatchAllRouteTests(unittest.TestCase):
             with self.subTest(entry=entry):
                 self.assertFalse(chosen_later(entry))
 
+    # gate-note-exemption-unenforced: the exemption is read off gate_note, so
+    # gate_note itself is held to the one shape entry_shape documents. Before
+    # this, a second stage-null route could add a note and escape the
+    # artifact-needs-a-template rule with no finding.
+
+    def _gate_note_findings(self, entries):
+        found = []
+        self.checker.check_gate_notes(
+            entries, lambda entry: 1,
+            lambda line_no, code, message: found.append((code, message)))
+        return found
+
+    def test_the_real_manifest_carries_one_well_formed_gate_note(self):
+        self.assertEqual([], self._gate_note_findings(
+            list(self.tasks.values())))
+
+    def test_a_second_carrier_is_failed(self):
+        found = self._gate_note_findings([
+            {"id": "catch-all", "stage": None, "gate": None,
+             "gate_note": "ends at the stage's gate"},
+            {"id": "second-route", "stage": None, "gate": None,
+             "gate_note": "also ends at a gate"}])
+        self.assertEqual(["GATE"], [code for code, _ in found])
+        self.assertIn("second-route", found[0][1])
+
+    def test_a_gate_note_on_a_staged_route_is_failed(self):
+        found = self._gate_note_findings([
+            {"id": "staged", "stage": "DEFINE", "gate": 2,
+             "gate_note": "Take it to the gate for its stage."}])
+        self.assertEqual(["GATE"], [code for code, _ in found])
+        self.assertIn("staged", found[0][1])
+
+    def test_an_empty_or_non_string_gate_note_is_failed(self):
+        for note in ("", "   ", True, None, ["a gate"]):
+            with self.subTest(note=note):
+                found = self._gate_note_findings([
+                    {"id": "catch-all", "stage": None, "gate": None,
+                     "gate_note": note}])
+                self.assertEqual(["SHAPE"], [code for code, _ in found])
+
+    def test_the_manifest_gate_runs_the_gate_note_check(self):
+        """The rule above is only a rule if check_manifest calls it."""
+        seen = []
+        real = self.checker.check_gate_notes
+        self.checker.check_gate_notes = (
+            lambda entries, line_of, fail: seen.append(len(entries)))
+        try:
+            self.checker.check_manifest(REPO)
+        finally:
+            self.checker.check_gate_notes = real
+        self.assertEqual([len(self.tasks)], seen)
+
     def test_a_run_of_it_with_no_template_is_refused(self):
         with self.assertRaises(runner.RunnerError) as caught:
             runner.template_for(self.tasks[self.CATCH_ALL], None)

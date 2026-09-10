@@ -305,15 +305,52 @@ def destination_chosen_at_run_time(entry):
     Either half alone would widen this past that one route. A null stage on its
     own covers the PLANNING and reference rows, which produce no artifact at
     all and would then be free to claim kind artifact with nowhere to land. A
-    gate_note on a route that does declare a stage is a contradiction the
-    stage-and-gate check already reads, and is not a licence to drop the
-    template. Every other artifact route names a fixed destination and still
-    fails the check above without one.
+    gate_note on a route that does declare a stage is a contradiction that
+    check_gate_notes fails, and is not a licence to drop the template. Every
+    other artifact route names a fixed destination and still fails the check
+    above without one.
     """
     if entry.get("stage") is not None:
         return False
     note = entry.get("gate_note")
     return isinstance(note, str) and bool(note.strip())
+
+
+def check_gate_notes(entries, line_of, fail):
+    """Hold gate_note to the shape the exemption above relies on.
+
+    A gate_note is half of the only exemption from the rule that kind artifact
+    names a template, so its shape is checked here rather than trusted. It is a
+    sentence an adapter can say about the gate, it sits only on an entry whose
+    stage and gate are null, and it sits on at most one entry. Without the last
+    rule a second stage-null route could add a note and file a document with
+    no destination declared anywhere, and nothing here would notice; the
+    runner would still refuse the run, but only at run time.
+    """
+    carriers = []
+    for entry in entries:
+        if "gate_note" not in entry:
+            continue
+        carriers.append(entry)
+        entry_id, note = entry.get("id"), entry.get("gate_note")
+        line_no = line_of(entry)
+        if not isinstance(note, str) or not note.strip():
+            fail(line_no, "SHAPE", "%s: gate_note is %r. It is the sentence an "
+                 "adapter says about the gate in place of 'no gate', so it is "
+                 "a non-empty string or it is absent." % (entry_id, note))
+        if entry.get("stage") is not None or entry.get("gate") is not None:
+            fail(line_no, "GATE", "%s: carries a gate_note and declares stage "
+                 "%r and gate %r. A declared stage already names its gate; the "
+                 "note is for a stage decided at run time, so on this entry the "
+                 "two disagree about which gate applies."
+                 % (entry_id, entry.get("stage"), entry.get("gate")))
+    if len(carriers) > 1:
+        fail(line_of(carriers[1]), "GATE", "gate_note is carried by %s. It "
+             "belongs on at most one entry, the catch-all whose stage is "
+             "decided at run time. Every stage-null carrier is exempt from "
+             "naming a template, so a second one is a second route that files "
+             "a document with no destination declared."
+             % ", ".join(str(e.get("id")) for e in carriers))
 
 
 def check_paths(entry, root, line_no, fail):
@@ -596,6 +633,7 @@ def check_manifest(root):
                  "A stage without its gate hides which checklist applies; a "
                  "gate without its stage names a checklist nothing feeds."
                  % entry.get("id"))
+    check_gate_notes(entries, line_of, fail)
 
     # Check 5, path gate: every named file exists.
     for entry in entries:
