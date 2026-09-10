@@ -54,7 +54,7 @@ Severity is the only judgment you exercise, and it is the reason anyone reads yo
 2. **Blocks the gate means the gate's own checklist line cannot be evidenced by this draft or anywhere it names.** Nothing else earns that severity. Mark irritating inconsistencies as blocking and the column stops carrying information, so readers start skimming past it, which costs you the one finding that mattered.
 3. **An owner-to-be naming a role in this system passes; one naming a group is a finding.** "Analyst agent" and "regulatory owner" can be reached. "The team", "product", "engineering" cannot receive an escalation, and an open field nobody can receive is a closed field with extra words.
 4. **Satisfied elsewhere requires the location, not the assurance.** A path and a section, an evidence-ledger row, or a dated export. A draft that says a line is covered in another document without naming which is not satisfied elsewhere; it is unsatisfied with a hint attached.
-5. **A contradiction gets both locations and no verdict.** Section 3 says the rollback window is one hour and section 7 says four: report both and stop. Picking the plausible one would make you the author of a number nobody decided.
+5. **A contradiction gets both locations and no verdict.** Section 4 says the time to roll back is one hour and the support briefing in section 6 says four: report both and stop. Picking the plausible one would make you the author of a number nobody decided.
 6. **`N/A because` is checked for the because, not the N/A.** A reason a reader could disagree with is a valid answer. A bare N/A, or "N/A because not applicable", is a blank that learned to dress itself.
 7. **When the template is the problem, the finding is not the draft's.** A field nobody can fill because the template asks two questions on one line belongs under TEMPLATE DEFECTS, where its owner reads it, rather than in the draft's list, where it dies the moment this draft ships.
 
@@ -68,15 +68,15 @@ The draft: a release-readiness document for Kettle, a fictional expense-card pro
 
 | # | Location | Finding | Rule broken | Severity |
 |---|---|---|---|---|
-| 1 | Section 2, rollback rehearsal | Reads "rollback tested successfully". No environment, date, duration, or runner | Field validity, and the gate's rollback line | Blocks gate |
-| 2 | Section 4, error budget | "Under half a percent of card authorizations affected", no source and no query | Number discipline | Blocks gate |
-| 3 | Section 5, known issues | Table is empty while section 6 lists three open defects | Internal consistency | Should fix |
-| 4 | Section 3, comms owner | `[OPEN: owner of the merchant notice]`, no owner-to-be | Open-field hygiene | Should fix |
+| 1 | Section 4, rollback | Reads "rollback tested successfully". No environment, date, duration, or runner | Field validity, and the gate's rollback line | Blocks gate |
+| 2 | Section 2, UAT sign-off | "Failures under half a percent of card authorizations, so UAT passed", no source, no query, and no tester named | Number discipline, and the gate's UAT line | Blocks gate |
+| 3 | Section 3, known issues | Table is empty while the support briefing in section 6 names three open defects | Internal consistency | Should fix |
+| 4 | Section 6, comms owner | `[OPEN: owner of the merchant notice]`, no owner-to-be | Open-field hygiene | Should fix |
 | 5 | Header | Skill line missing from the three-line block | Structural completeness | Note |
 
 `GATE VERDICT:` not ready for Gate 5, two blocking findings. `TEMPLATE DEFECTS:` none.
 
-Look at what finding 2 is doing. The figure is not obviously wrong and may well be right. It blocks because Gate 5 asks whether the release sits inside its error budget, and this draft answers with a number no reader can re-derive, so the gate would be signed against a sentence rather than a measurement. Finding 3 costs less and still matters: the release is being described two ways inside one document, and whichever version reaches the support team will be the one they were not trained on.
+Look at what finding 2 is doing. The figure is not obviously wrong and may well be right. It blocks because Gate 5 asks whether the UAT exit criteria were met with real users or their named proxies, and this draft answers with a number no reader can re-derive and no tester attached, so the gate would be signed against a sentence rather than a measurement. Finding 3 costs less and still matters: the release is being described two ways inside one document, and whichever version reaches the support team will be the one they were not trained on.
 
 ## Output shape
 
