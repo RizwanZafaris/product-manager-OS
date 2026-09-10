@@ -237,5 +237,406 @@ class ReadinessProbeMutationAnchorTests(unittest.TestCase):
                         "the anchor sits outside lease_next, the dispatch path")
 
 
+class ReadinessProbeCiWiringTests(unittest.TestCase):
+    """probe_ci_covers_runtime: the workflow runs the canonical suite, and the
+    suite carries every gate the readiness rubric counts on."""
+
+    WORKFLOW = REPO / ".github" / "workflows" / "lint.yml"
+    INVOCATION = "        run: python3 tools/ci_gate.py"
+
+    def probe(self, workflow, gate_ids):
+        manifest = json.dumps({"schema": 1,
+                               "gates": [{"id": gate} for gate in gate_ids]})
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            target = root / ".github" / "workflows" / "lint.yml"
+            target.parent.mkdir(parents=True)
+            target.write_text(workflow, encoding="utf-8")
+            with unittest.mock.patch.object(readiness_probe, "REPO", root), \
+                    unittest.mock.patch.object(readiness_probe, "run",
+                                               return_value=(0, manifest)):
+                return quietly(readiness_probe.probe_ci_covers_runtime)
+
+    def real(self):
+        return (self.WORKFLOW.read_text(encoding="utf-8"),
+                [gate.gate_id for gate in ci_gate.GATES])
+
+    def test_the_shipped_workflow_and_suite_pass(self):
+        code, output = self.probe(*self.real())
+        self.assertEqual(0, code, output)
+
+    def test_a_suite_missing_a_required_gate_fails(self):
+        workflow, gates = self.real()
+        self.assertIn("security-policy", gates)
+        code, output = self.probe(
+            workflow, [gate for gate in gates if gate != "security-policy"])
+        self.assertEqual(1, code, output)
+        self.assertIn("misses gate ids: security-policy", output)
+
+    def test_a_commented_out_invocation_fails(self):
+        workflow, gates = self.real()
+        self.assertIn(self.INVOCATION, workflow)
+        code, output = self.probe(
+            workflow.replace(self.INVOCATION,
+                             "        # run: python3 tools/ci_gate.py"), gates)
+        self.assertEqual(1, code, output)
+        self.assertIn("no active exact invocation", output)
+
+    def test_a_step_allowed_to_fail_fails_the_wiring(self):
+        workflow, gates = self.real()
+        code, output = self.probe(
+            workflow.replace(self.INVOCATION, self.INVOCATION
+                             + "\n        continue-on-error: true", 1), gates)
+        self.assertEqual(1, code, output)
+        self.assertIn("continue-on-error", output)
+
+
+class CiGateVerdictTests(unittest.TestCase):
+    """tools/ci_gate.py decides pass or fail from what a gate printed as well
+    as how it exited. These are the readings a passing exit code cannot hide."""
+
+    def gate(self, script, **options):
+        return ci_gate.Gate("fixture", ("python3", "-c", script), **options)
+
+    def test_a_clean_test_run_passes_and_is_counted(self):
+        row = ci_gate.run_gate(self.gate(
+            "print('Ran 3 tests in 0.010s'); print(); print('OK')",
+            expects_tests=True))
+        self.assertTrue(row["passed"], row)
+        self.assertEqual(3, row["tests"])
+
+    def test_a_nonzero_exit_fails(self):
+        row = ci_gate.run_gate(self.gate("import sys; sys.exit(3)"))
+        self.assertFalse(row["passed"])
+        self.assertIn("exit 3", row["reasons"])
+
+    def test_zero_tests_fails_even_on_a_clean_exit(self):
+        for script in ("print('Ran 0 tests in 0.000s'); print('OK')",
+                       "print('OK')"):
+            with self.subTest(script=script):
+                row = ci_gate.run_gate(self.gate(script, expects_tests=True))
+                self.assertFalse(row["passed"], row)
+                self.assertIn("zero tests", row["reasons"])
+
+    def test_a_skipped_test_is_not_a_pass(self):
+        for tail in ("OK (skipped=1)", "OK (expected failures=1)",
+                     "OK (unexpected successes=1)"):
+            with self.subTest(tail=tail):
+                row = ci_gate.run_gate(self.gate(
+                    "print('Ran 4 tests in 0.100s'); print(%r)" % tail,
+                    expects_tests=True))
+                self.assertFalse(row["passed"], row)
+                self.assertIn("non-passing test disposition", row["reasons"])
+
+    def test_missing_required_output_fails_on_a_clean_exit(self):
+        row = ci_gate.run_gate(self.gate(
+            "print('frontmatter created: 1, extended: 0')",
+            required_output="created: 0, extended: 0"))
+        self.assertFalse(row["passed"])
+        self.assertIn("required output missing", row["reasons"])
+
+    def test_a_gate_that_runs_past_its_timeout_fails(self):
+        row = ci_gate.run_gate(self.gate("import time; time.sleep(30)",
+                                         timeout=1))
+        self.assertFalse(row["passed"])
+        self.assertIsNone(row["exit_code"])
+
+    def test_an_unknown_gate_id_is_refused(self):
+        code, output = quietly(ci_gate.main, ["--gate", "no-such-gate"])
+        self.assertEqual(2, code)
+        self.assertIn("unknown gate", output)
+
+    def test_one_failing_gate_fails_the_suite_and_no_gates_is_no_pass(self):
+        passing = self.gate("pass")
+        failing = ci_gate.Gate("broken", ("python3", "-c",
+                                          "import sys; sys.exit(1)"))
+        for gates, expected in (((passing,), 0), ((passing, failing), 1),
+                                ((), 1)):
+            with self.subTest(gates=[gate.gate_id for gate in gates]):
+                with unittest.mock.patch.object(ci_gate, "GATES", gates):
+                    code, _output = quietly(ci_gate.main, [])
+                self.assertEqual(expected, code)
+
+
+class FrontmatterInitGateTests(unittest.TestCase):
+    """The frontmatter gate is tools/frontmatter_init.py --dry-run plus one
+    required line of output. These hold the script to what that line means."""
+
+    TARGET = "templates/definition/one-pager.md"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.required = next(gate.required_output for gate in ci_gate.GATES
+                            if gate.gate_id == "frontmatter")
+
+    def dry_run(self, root):
+        return quietly(frontmatter_init.main, ["--dry-run", "--root",
+                                               str(root)])
+
+    def edit(self, path, old, new):
+        text = path.read_text(encoding="utf-8")
+        self.assertIn(old, text)
+        path.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+    def method_line(self, path):
+        return next(line for line in path.read_text(encoding="utf-8")
+                    .splitlines() if line.startswith("method:"))
+
+    def test_this_tree_reports_nothing_to_write(self):
+        code, output = self.dry_run(REPO)
+        self.assertEqual(0, code)
+        self.assertIn(self.required, output)
+
+    def test_a_missing_key_is_reported_and_the_dry_run_writes_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            target = root / self.TARGET
+            self.edit(target, self.method_line(target) + "\n", "")
+            before = target.read_bytes()
+            _code, output = self.dry_run(root)
+            self.assertIn("extended: 1", output)
+            self.assertNotIn(self.required, output)
+            self.assertEqual(before, target.read_bytes())
+
+    def test_a_write_restores_the_key_and_keeps_a_human_edit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            target = root / self.TARGET
+            method = self.method_line(target)
+            self.edit(target, method + "\n", "")
+            self.edit(target, 'aliases: ["One-Pager"]',
+                      'aliases: ["One-Pager", "a hand-written alias"]')
+            quietly(frontmatter_init.main, ["--root", str(root)])
+            text = target.read_text(encoding="utf-8")
+            self.assertIn(method, text.splitlines())
+            self.assertIn('aliases: ["One-Pager", "a hand-written alias"]',
+                          text, "a derived value a human edited was replaced")
+            _code, output = self.dry_run(root)
+            self.assertIn(self.required, output,
+                          "a second run over the written tree is not clean")
+
+    def test_a_file_with_no_frontmatter_is_reported_as_created(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            target = root / self.TARGET
+            text = target.read_text(encoding="utf-8")
+            self.assertTrue(text.startswith("---\n"))
+            target.write_text(text.split("\n---\n", 1)[1], encoding="utf-8")
+            _code, output = self.dry_run(root)
+            self.assertIn("created: 1", output)
+            self.assertNotIn(self.required, output)
+
+
+class GraphFreshnessGateTests(unittest.TestCase):
+    """docs/GRAPH.md is generated, and --check is all that keeps it true.
+
+    That gate regenerates from the tree and compares bytes, so it does see a
+    generator change: both sides move and the committed file stops matching.
+    What it cannot see is the part of the generator that never reaches the
+    output. check_unique_ids is exactly that part, and short-circuiting it
+    merges two files into one diagram node with every gate still green, which
+    is why it is read here directly rather than through the diagram.
+    """
+
+    def graph(self, root, *arguments):
+        return subprocess.run(
+            [sys.executable, str(root / "tools" / "graph.py"),
+             "--root", str(root), *arguments], capture_output=True, text=True,
+            timeout=120)
+
+    def test_the_committed_graph_matches_this_tree(self):
+        done = self.graph(REPO, "--check")
+        self.assertEqual(0, done.returncode, done.stdout + done.stderr)
+
+    def test_a_file_leaving_the_tree_makes_the_committed_graph_stale(self):
+        """The graph is a reading of the repository. A committed file that no
+        longer describes the tree is the whole failure this gate exists for."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            self.assertEqual(0, self.graph(root, "--check").returncode)
+            (root / "templates" / "discovery" / "personas.md").unlink()
+            stale = self.graph(root, "--check")
+            self.assertEqual(1, stale.returncode, stale.stdout)
+            self.assertIn("is stale", stale.stderr)
+
+    def test_an_edited_graph_file_is_stale_against_the_same_tree(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            target = root / "docs" / "GRAPH.md"
+            target.write_bytes(target.read_bytes() + b"\n")
+            stale = self.graph(root, "--check")
+            self.assertEqual(1, stale.returncode, stale.stdout)
+            self.assertIn("is stale", stale.stderr)
+
+    def test_a_missing_graph_is_reported_and_not_quietly_written(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            (root / "docs" / "GRAPH.md").unlink()
+            missing = self.graph(root, "--check")
+            self.assertEqual(1, missing.returncode, missing.stdout)
+            self.assertIn("is missing", missing.stderr)
+            self.assertFalse((root / "docs" / "GRAPH.md").exists(),
+                             "--check reports; it does not repair")
+
+    def test_two_paths_that_sanitize_alike_keep_distinct_node_ids(self):
+        # Every byte outside [0-9A-Za-z] collapses to "_", so these two differ
+        # only in the character that collapses. The hash suffix is keyed on the
+        # untouched path, which is the part that carries the difference.
+        self.assertNotEqual(node_id("os/collision-a.md"),
+                            node_id("os/collision_a.md"))
+        check_unique_ids(["os/collision-a.md", "os/collision_a.md"])
+
+    def test_a_real_id_collision_stops_the_build(self):
+        with unittest.mock.patch("tools.graph.node_id",
+                                 side_effect=lambda rel: "n_same"):
+            with self.assertRaises(SystemExit) as stopped:
+                check_unique_ids(["os/one.md", "os/two.md"])
+        self.assertIn("node id collision", str(stopped.exception))
+
+
+STRONG_TEMPLATE = """# Strong
+
+Stage: DEFINE, feeds Gate 2
+
+## Problem
+<!-- What goes here, and what a bad answer looks like: one that never names a user. -->
+| Field | Value |
+|---|---|
+| [owner name] | [target date] |
+| [metric name] | [baseline value] |
+| [risk one] | [mitigation one] |
+| [risk two] | [mitigation two] |
+
+Read with [the PRD](../definition/prd.md), [the one-pager](one-pager.md),
+[the OKRs](okrs.md) and [the roadmap](roadmap.md).
+
+## Worked example
+<!-- ILLUSTRATIVE only. The trap: an example copied as evidence fails the gate. -->
+ILLUSTRATIVE: [field alpha] and [field beta] filled for a fictional product.
+
+## Exit gate
+<!-- Do not pass this gate on an unsigned box; a bad answer is a blank owner. -->
+- [ ] A named human signed.
+"""
+
+WEAK_TEMPLATE = "# Weak\n\n## One\n\n## Two\n\n## Three\n"
+
+
+class TemplateRubricGateTests(unittest.TestCase):
+    """tools/template_rubric.py: the flagship bar and its --min gate mode."""
+
+    def tree(self, tmp, **files):
+        root = Path(tmp)
+        for name, text in files.items():
+            path = root / "templates" / "definition" / (name + ".md")
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text, encoding="utf-8")
+        return root
+
+    def score(self, tmp, text):
+        root = self.tree(tmp, subject=text)
+        with unittest.mock.patch.object(template_rubric, "REPO", root):
+            return template_rubric.score_template(
+                root / "templates" / "definition" / "subject.md")
+
+    def run_gate(self, root, *argv):
+        with unittest.mock.patch.object(template_rubric, "REPO", root), \
+                unittest.mock.patch.object(template_rubric, "TEMPLATES",
+                                           root / "templates"), \
+                unittest.mock.patch.object(template_rubric, "REFERENCE",
+                                           root / "templates" / "definition"
+                                           / "prd.md"):
+            return quietly(template_rubric.main, list(argv))
+
+    def test_the_weights_are_a_hundred_points(self):
+        self.assertEqual(100, sum(template_rubric.WEIGHTS.values()))
+
+    def test_a_template_that_does_what_the_reference_does_scores_full_marks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            report = self.score(tmp, STRONG_TEMPLATE)
+        self.assertEqual(100.0, report["score"], report["marks"])
+
+    def test_named_sections_with_no_guidance_score_as_a_form(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            report = self.score(tmp, WEAK_TEMPLATE)
+        self.assertEqual(0.0, report["marks"]["self_explaining"])
+        self.assertLess(report["score"], 20)
+
+    def test_one_preamble_comment_does_not_explain_every_section(self):
+        text = "# Form\n<!-- one long preamble -->\n\n## One\n\n## Two\n"
+        with tempfile.TemporaryDirectory() as tmp:
+            report = self.score(tmp, text)
+        self.assertEqual(0, report["sections_explained"])
+        self.assertEqual(0.0, report["marks"]["self_explaining"])
+
+    def test_link_text_is_not_a_fill_in_field(self):
+        text = ("# Links\n\n## One\n<!-- guidance -->\n[the knowledge index]"
+                "(../../knowledge/INDEX.md) and [the PRD](prd.md)\n")
+        with tempfile.TemporaryDirectory() as tmp:
+            report = self.score(tmp, text)
+        self.assertEqual(0, report["fields"])
+        self.assertEqual(2, report["links"])
+
+    def test_the_min_gate_fails_on_a_weak_template_and_passes_without_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.tree(tmp, prd=STRONG_TEMPLATE, strong=STRONG_TEMPLATE,
+                             weak=WEAK_TEMPLATE)
+            code, output = self.run_gate(root, "--min", "70")
+            self.assertEqual(1, code, output)
+            self.assertIn("templates/definition/weak.md", output)
+            (root / "templates" / "definition" / "weak.md").unlink()
+            code, output = self.run_gate(root, "--min", "70")
+            self.assertEqual(0, code, output)
+
+    def test_an_exempt_file_keeps_its_row_and_leaves_the_statistics(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.tree(tmp, prd=STRONG_TEMPLATE, weak=WEAK_TEMPLATE)
+            exempt = {"templates/definition/weak.md": "Not a fill-in template."}
+            with unittest.mock.patch.object(template_rubric, "EXEMPT", exempt):
+                code, output = self.run_gate(root, "--min", "70")
+            self.assertEqual(0, code, output)
+            self.assertIn("exempt from this rubric, with the reason:", output)
+            self.assertIn("templates/definition/weak.md", output)
+
+
+class PmWorkingSetGateTests(unittest.TestCase):
+    """tools/pm_working_set.py: the documents written weekly, held to the bar."""
+
+    PRD = "templates/definition/prd.md"
+
+    def gate(self, working_set, score=None):
+        patches = [unittest.mock.patch.object(pm_working_set, "WORKING_SET",
+                                              working_set)]
+        if score is not None:
+            patches.append(unittest.mock.patch.object(
+                pm_working_set, "score_template",
+                return_value={"score": score, "marks": {}}))
+        with contextlib.ExitStack() as stack:
+            for patch in patches:
+                stack.enter_context(patch)
+            return quietly(pm_working_set.main, ["--min", "75"])
+
+    def test_every_document_in_the_set_names_a_template_this_tree_ships(self):
+        for name, _cadence, rel in pm_working_set.WORKING_SET:
+            with self.subTest(document=name):
+                self.assertIsNotNone(rel)
+                self.assertTrue((REPO / rel).is_file(), rel)
+
+    def test_a_document_with_no_template_fails_the_gate(self):
+        code, output = self.gate([
+            ("Ghost document", "weekly", "templates/none/ghost.md"),
+            ("PRD or spec", "per feature", self.PRD)])
+        self.assertEqual(1, code, output)
+        self.assertIn("have no template at all", output)
+
+    def test_a_document_below_the_bar_fails_and_one_above_passes(self):
+        working_set = [("PRD or spec", "per feature", self.PRD)]
+        code, output = self.gate(working_set, score=60.0)
+        self.assertEqual(1, code, output)
+        self.assertIn("below the 75 bar", output)
+        code, output = self.gate(working_set, score=95.0)
+        self.assertEqual(0, code, output)
+
+
 if __name__ == "__main__":
     unittest.main()

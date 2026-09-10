@@ -469,7 +469,21 @@ REGISTRY = {
     ),),
     "compile-all": (probe("compile-all"),),
     "full-suite": (probe("full-suite", timeout=1800),),
-    "ci-runtime": (probe("ci-covers-runtime"),),
+    "ci-runtime": (
+        probe("ci-covers-runtime"),
+        unit(
+            "test_tools_gates.ReadinessProbeCiWiringTests."
+            "test_a_suite_missing_a_required_gate_fails",
+            "test_tools_gates.ReadinessProbeCiWiringTests."
+            "test_a_commented_out_invocation_fails",
+            "test_tools_gates.CiGateVerdictTests."
+            "test_zero_tests_fails_even_on_a_clean_exit",
+            "test_tools_gates.CiGateVerdictTests."
+            "test_a_skipped_test_is_not_a_pass",
+            "test_tools_gates.CiGateVerdictTests."
+            "test_one_failing_gate_fails_the_suite_and_no_gates_is_no_pass",
+        ),
+    ),
     "deletable-harness": (probe("deletable-harness"),),
     # The anchors are read first: a moved anchor is a table defect, and the
     # probe below would otherwise report it as a gate that caught nothing.

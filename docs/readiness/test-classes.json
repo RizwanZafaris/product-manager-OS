@@ -117,8 +117,14 @@
       "VerifierExecutionTests"
     ],
     "test_tools_gates": [
+      "CiGateVerdictTests",
+      "FrontmatterInitGateTests",
+      "GraphFreshnessGateTests",
+      "PmWorkingSetGateTests",
+      "ReadinessProbeCiWiringTests",
       "ReadinessProbeMutationAnchorTests",
-      "TemplateInventoryGateTests"
+      "TemplateInventoryGateTests",
+      "TemplateRubricGateTests"
     ]
   }
 }
