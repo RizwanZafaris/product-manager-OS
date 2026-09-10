@@ -19,6 +19,12 @@ to disk inside this repository, and are never logged or printed. Any deployment
 that can reach an OpenAI-compatible URL can use this path with no adapter code,
 which is why it is the default and the only path a deployment should use.
 
+Two things this path refuses. It does not follow a redirect: the credential
+goes to the host in OMNIROUTE_BASE_URL and to no host a response names, so a
+3xx is reported as a gateway failure and the run queues. And it folds a
+response under a byte bound derived from the tokens the call asked for, so a
+gateway that streams without end is refused rather than buffered.
+
 `--transport cli` is a local convenience and nothing more. It shells out to the
 `omniroute` binary, which authenticates itself against a local install. Reach
 for it only on a machine where the gateway is up, no client endpoint key
@@ -276,6 +282,32 @@ PROBE_MAX_TOKENS = 300
 BASE_URL_DEFAULT = "http://localhost:20128/v1"
 READ_TIMEOUT_S = 600
 OPEN_FORM = "[OPEN: "
+
+# The ceiling on a folded response body, whatever the tier asked for. A tier
+# that asks for a small answer gets a small bound; nothing gets more than this.
+SSE_MAX_BYTES = 2 * 1024 * 1024
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Refuse a redirect rather than carry the credential to a second host.
+
+    The default opener follows a 3xx and rebuilds the request with every
+    header intact, so a gateway that answers 302 with a Location on another
+    host is handed the Authorization header this runner attached. The gateway
+    is a local process an operator points OMNIROUTE_BASE_URL at, and the
+    default path is plain http over loopback, so both a compromised gateway
+    and anything on that path can name the second host. Returning None makes
+    urllib raise the 3xx as an HTTPError, which the caller already reports as
+    a gateway failure, and the key never leaves for the named host.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+# Bound once, at module scope, so every call on the http transport goes
+# through it. pmos/openrouter.py defends its own adapter the same way.
+_OPENER = urllib.request.build_opener(_NoRedirect()).open
 
 # The response header that names the concrete model that actually answered.
 # The config's requestHeaders doc says the response echoes it, and this runner
@@ -764,9 +796,33 @@ def _error_descriptor(obj):
             "is not persisted." % (kind or "unreported", code or "unreported"))
 
 
-def _fold_sse(stream):
+def stream_cap(max_tokens):
+    """The byte ceiling one call's response body is folded under.
+
+    Derived from what the call actually asked for, the way
+    pmos/openrouter.py derives its own limit, so a tier that asks for 4096
+    tokens cannot be answered with two megabytes. The hard ceiling applies
+    whatever the tier asks for, because max_tokens is a request the gateway
+    is free to ignore and this is the number the runner enforces.
+    """
+    try:
+        tokens = int(max_tokens)
+    except (TypeError, ValueError):
+        tokens = 0
+    return min(SSE_MAX_BYTES, max(4096, tokens * 64 + 16384))
+
+
+def _fold_sse(stream, max_bytes=SSE_MAX_BYTES):
     """Fold an SSE body into a Folded. Falls back to a plain JSON body when
     the gateway ignored stream, which some provider paths do.
+
+    max_bytes bounds the whole body, counted on the bytes as they arrive and
+    before anything is retained. Without it the loop below buffers every
+    frame twice, in text_parts and in raw_lines, for as long as the gateway
+    keeps sending: READ_TIMEOUT_S bounds one read rather than the stream, so
+    a gateway that never sends the terminal event can drive this process out
+    of memory and put an arbitrarily large file in the workspace behind it.
+    Over the bound is an error, not a truncation, so the run queues.
 
     Three things are checked here and nowhere else, because this is the only
     place that sees the frames:
@@ -787,7 +843,15 @@ def _fold_sse(stream):
     """
     out = Folded()
     text_parts, raw_lines = [], []
+    total = 0
     for raw in stream:
+        total += len(raw)
+        if total > max_bytes:
+            out.error = ("the stream exceeded the response size bound of %d "
+                         "bytes, so it was refused rather than buffered. "
+                         "Nothing folded before that point is a complete "
+                         "document." % max_bytes)
+            break
         line = raw.decode("utf-8", "replace").strip()
         raw_lines.append(line)
         if not line or line.startswith(":"):
@@ -930,7 +994,7 @@ def call_http(cfg, tier, messages, max_tokens=None, temperature=None,
         headers=headers, method="POST")
     started = time.monotonic()
     try:
-        with urllib.request.urlopen(request, timeout=READ_TIMEOUT_S) as resp:
+        with _OPENER(request, timeout=READ_TIMEOUT_S) as resp:
             reply.status = resp.status
             got = {k.lower(): v for k, v in resp.headers.items()}
             from_header = got.get(MODEL_HEADER, "").strip()
@@ -940,7 +1004,7 @@ def call_http(cfg, tier, messages, max_tokens=None, temperature=None,
             reply.provider = got.get("x-omniroute-provider", "")
             reply.cache = got.get("x-omniroute-cache", "")
             reply.compression = got.get("x-omniroute-compression", "")
-            folded = _fold_sse(resp)
+            folded = _fold_sse(resp, stream_cap(body["max_tokens"]))
             reply.text = folded.text
             reply.model = from_header or folded.model
             reply.terminal = folded.terminal

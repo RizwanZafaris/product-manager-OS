@@ -528,13 +528,13 @@ class RedactionTests(unittest.TestCase):
         cfg = {"tiers": {"drafting": {"model": "auto/coding"}},
                "endpoint": {"baseUrl": "http://localhost:20128/v1",
                             "requestHeaders": {"x-omniroute-compression": "off"}}}
-        real_open = runner.urllib.request.urlopen
-        runner.urllib.request.urlopen = boom
+        real_open = runner._OPENER
+        runner._OPENER = boom
         try:
             reply = runner.call_http(cfg, "drafting",
                                      [{"role": "user", "content": "hi"}])
         finally:
-            runner.urllib.request.urlopen = real_open
+            runner._OPENER = real_open
         self.assertEqual(reply.status, 401)
         self.assertNotIn("MARKER-9000", reply.error,
                          "the gateway's response body reached a logged field")
@@ -684,14 +684,14 @@ class CertificationTests(unittest.TestCase):
             sent["body"] = json.loads(request.data.decode("utf-8"))
             return _FakeResponse(body, headers)
 
-        real = runner.urllib.request.urlopen
-        runner.urllib.request.urlopen = fake_open
+        real = runner._OPENER
+        runner._OPENER = fake_open
         try:
             reply = runner.call_http(
                 self.cfg, "drafting", [{"role": "user", "content": "hi"}],
                 model_override=target, expect_model=expect)
         finally:
-            runner.urllib.request.urlopen = real
+            runner._OPENER = real
         return reply, sent["body"]
 
     def test_the_request_target_is_the_concrete_id_not_the_tier_alias(self):
@@ -1405,15 +1405,15 @@ class WholeRunTests(unittest.TestCase):
         return fake_open
 
     def _main(self, header_model="cheap-1"):
-        real = runner.urllib.request.urlopen
-        runner.urllib.request.urlopen = self._serve(header_model)
+        real = runner._OPENER
+        runner._OPENER = self._serve(header_model)
         try:
             with contextlib.redirect_stdout(io.StringIO()) as out:
                 code = runner.main(["--task", "gather-evidence",
                                     "--product", self.slug,
                                     "--input", "one line of evidence"])
         finally:
-            runner.urllib.request.urlopen = real
+            runner._OPENER = real
         return code, out.getvalue()
 
     def test_the_task_call_targets_the_model_the_probe_resolved(self):
@@ -1442,7 +1442,7 @@ class WholeRunTests(unittest.TestCase):
         # The probe resolves cheap-1, and the task call is answered by
         # something else. This is the defect Finding 3 describes, and the run
         # has to end with a queue row and no artifact.
-        real = runner.urllib.request.urlopen
+        real = runner._OPENER
 
         def switching(request, timeout=None):
             body = json.loads(request.data.decode("utf-8"))
@@ -1450,14 +1450,14 @@ class WholeRunTests(unittest.TestCase):
             model = "cheap-1" if probing else "someone-cheaper-2"
             return self._serve(model)(request, timeout)
 
-        runner.urllib.request.urlopen = switching
+        runner._OPENER = switching
         try:
             with contextlib.redirect_stdout(io.StringIO()) as out:
                 code = runner.main(["--task", "gather-evidence",
                                     "--product", self.slug,
                                     "--input", "one line of evidence"])
         finally:
-            runner.urllib.request.urlopen = real
+            runner._OPENER = real
         self.assertEqual(code, runner.EXIT_QUEUED,
                          "deferred work reported itself as a completed run")
         self.assertIn("WORK QUEUED", out.getvalue())
@@ -1932,6 +1932,222 @@ class WorkspaceEnumerationIgnoresSidecarsTests(unittest.TestCase):
 
         self.assertGreater(total, 0,
                            "a genuinely broken link stopped being reported")
+
+
+_GATEWAY_CFG = {"tiers": {"drafting": {"model": "auto/coding",
+                                       "temperature": 0.3,
+                                       "maxOutputTokens": 4096}},
+                "endpoint": {"baseUrl": "http://localhost:20128/v1",
+                             "requestHeaders": {
+                                 "x-omniroute-compression": "off"}}}
+
+
+class GatewayRedirectTests(unittest.TestCase):
+    """runner-follows-redirect-with-bearer-key: the gateway credential never
+    leaves for a second host.
+
+    call_http attaches `Authorization: Bearer <OMNIROUTE_API_KEY>`. The
+    default opener answers a 302 by rebuilding the request with every header
+    except content-length and content-type intact, so a gateway that names
+    another host in Location is handed the key and the run still reports a
+    success. The gateway is a local process an operator points
+    OMNIROUTE_BASE_URL at, over plain http by default, so both a compromised
+    gateway and anything on that path can name the second host.
+    """
+
+    CANARY = "sk-canary-do-not-leak"
+    ELSEWHERE = "https://attacker.example/v1/chat/completions"
+
+    def _gateway_request(self):
+        return runner.urllib.request.Request(
+            "http://localhost:20128/v1/chat/completions",
+            data=b"{}", method="POST",
+            headers={"Authorization": "Bearer " + self.CANARY,
+                     "Content-Type": "application/json"})
+
+    def test_the_default_handler_would_carry_the_key_to_the_named_host(self):
+        """What the runner did before: this is the leak, stated as a test so
+        the fix below is measured against it rather than against nothing."""
+        stock = runner.urllib.request.HTTPRedirectHandler()
+        follow = stock.redirect_request(
+            self._gateway_request(), None, 302, "Found", {}, self.ELSEWHERE)
+        self.assertIsNotNone(follow)
+        self.assertEqual(follow.host, "attacker.example")
+        self.assertEqual(follow.headers.get("Authorization"),
+                         "Bearer " + self.CANARY)
+
+    def test_the_runners_handler_builds_no_second_request(self):
+        follow = runner._NoRedirect().redirect_request(
+            self._gateway_request(), None, 302, "Found", {}, self.ELSEWHERE)
+        self.assertIsNone(
+            follow, "a follow-up request was built, so the credential is "
+                    "re-sent to whatever host the gateway named")
+
+    def test_the_opener_call_http_uses_carries_that_refusal(self):
+        handlers = runner._OPENER.__self__.handlers
+        self.assertTrue(
+            any(isinstance(h, runner._NoRedirect) for h in handlers),
+            "the http transport's opener has no redirect refusal on it")
+
+    def test_call_http_does_not_reach_for_the_default_opener(self):
+        """Reverting the call site to urllib.request.urlopen puts the default
+        redirect handler back in the path, which is the whole defect."""
+        body = (delta("a whole document") + delta("", finish="stop")
+                + "data: [DONE]\n\n")
+
+        def guarded(request, timeout=None):
+            return _FakeResponse(body, {"X-OmniRoute-Model": "test-model-1"})
+
+        def default_opener(*unused, **also_unused):
+            raise AssertionError(
+                "call_http used the default opener, which follows a redirect "
+                "and re-sends the Authorization header to the named host")
+
+        real_opener = runner._OPENER
+        real_urlopen = runner.urllib.request.urlopen
+        runner._OPENER = guarded
+        runner.urllib.request.urlopen = default_opener
+        try:
+            reply = runner.call_http(_GATEWAY_CFG, "drafting",
+                                     [{"role": "user", "content": "hi"}])
+        finally:
+            runner._OPENER = real_opener
+            runner.urllib.request.urlopen = real_urlopen
+        self.assertEqual(reply.text, "a whole document")
+
+    def test_a_redirecting_gateway_queues_the_run(self):
+        """With the refusal in place urllib raises the 3xx, which lands in the
+        HTTPError branch call_http already had, so the run queues."""
+        def refused(request, timeout=None):
+            raise urllib.error.HTTPError(
+                request.full_url, 302, "Found",
+                {"Location": self.ELSEWHERE}, io.BytesIO(b""))
+
+        real_opener = runner._OPENER
+        runner._OPENER = refused
+        try:
+            reply = runner.call_http(_GATEWAY_CFG, "drafting",
+                                     [{"role": "user", "content": "hi"}])
+        finally:
+            runner._OPENER = real_opener
+        self.assertEqual(reply.status, 302)
+        self.assertFalse(reply.ok)
+        self.assertIn("HTTP 302", reply.error)
+        self.assertNotIn("attacker.example", reply.error)
+
+
+class StreamBoundTests(unittest.TestCase):
+    """runner-unbounded-sse-buffer: a stream is folded under a byte ceiling,
+    not until it stops.
+
+    READ_TIMEOUT_S bounds one read, so every new byte resets it. Without a
+    ceiling a gateway that never sends the terminal event is buffered twice
+    over, in text_parts and in raw_lines, until the machine swaps, and a
+    stream that does end writes its whole size into the workspace.
+    """
+
+    def test_the_cap_is_derived_from_what_the_call_asked_for(self):
+        self.assertEqual(runner.stream_cap(0), 16384)
+        self.assertEqual(runner.stream_cap(4096), 4096 * 64 + 16384)
+        self.assertEqual(runner.stream_cap(10 ** 9), runner.SSE_MAX_BYTES)
+        self.assertEqual(runner.stream_cap(None), 16384)
+
+    def test_an_oversized_stream_is_an_error_not_a_long_answer(self):
+        frames = [delta("y" * 1000) for _ in range(400)]
+        folded = runner._fold_sse(sse(*frames), 20000)
+        self.assertIn("exceeded the response size bound", folded.error)
+        self.assertLessEqual(len(folded.text), 20000,
+                             "the fold kept buffering past its own bound")
+        self.assertFalse(folded.terminal)
+
+    def test_a_stream_inside_the_bound_still_folds(self):
+        folded = runner._fold_sse(
+            sse(delta("a whole document"), delta("", finish="stop"),
+                "data: [DONE]\n\n"), 20000)
+        self.assertEqual(folded.error, "")
+        self.assertEqual(folded.text, "a whole document")
+        self.assertTrue(folded.terminal)
+
+    def test_call_http_bounds_the_body_by_the_tier_budget(self):
+        body = "".join(delta("z" * 4000) for _ in range(200))
+        body += delta("", finish="stop") + "data: [DONE]\n\n"
+
+        def flood(request, timeout=None):
+            return _FakeResponse(body, {"X-OmniRoute-Model": "test-model-1"})
+
+        real_opener = runner._OPENER
+        runner._OPENER = flood
+        try:
+            reply = runner.call_http(_GATEWAY_CFG, "drafting",
+                                     [{"role": "user", "content": "hi"}])
+        finally:
+            runner._OPENER = real_opener
+        self.assertIn("exceeded the response size bound", reply.error)
+        self.assertFalse(reply.ok)
+        self.assertLessEqual(len(reply.text), runner.stream_cap(4096),
+                             "a body larger than the call's own budget was "
+                             "kept, and would have been written")
+
+
+class CliTransportTests(unittest.TestCase):
+    """runner-call-cli-has-no-test: the secondary transport fails closed on a
+    provider that died.
+
+    call_cli is not a deployment path, and until now no test executed it at
+    all: inverting its returncode test turned a crashed provider into a
+    successful reply carrying whatever partial stdout had been printed, and
+    both suites stayed green.
+    """
+
+    class _Finished:
+        def __init__(self, returncode, stdout, stderr):
+            self.returncode = returncode
+            self.stdout = stdout
+            self.stderr = stderr
+
+    def _call(self, returncode, stdout, stderr):
+        def fake_run(argv, **unused):
+            return self._Finished(returncode, stdout, stderr)
+
+        real = runner.subprocess.run
+        runner.subprocess.run = fake_run
+        try:
+            return runner.call_cli(_GATEWAY_CFG, "drafting",
+                                   [{"role": "user", "content": "hi"}])
+        finally:
+            runner.subprocess.run = real
+
+    def test_a_nonzero_exit_is_a_failure_not_a_partial_answer(self):
+        reply = self._call(3, "half a document, then the cli died",
+                           "omniroute: fatal: gateway refused")
+        self.assertFalse(reply.ok)
+        self.assertEqual(reply.status, 0)
+        self.assertIn("exit 3", reply.error)
+        self.assertEqual(reply.text, "",
+                         "stdout from a crashed provider became the answer")
+
+    def test_a_clean_exit_still_produces_an_uncertified_reply(self):
+        reply = self._call(0, "a whole document\n", "")
+        self.assertEqual(reply.error, "")
+        self.assertEqual(reply.status, 200)
+        self.assertEqual(reply.text, "a whole document")
+        self.assertFalse(reply.certification_verified,
+                         "the cli transport cannot prove which model answered")
+        self.assertFalse(reply.finish_verified)
+
+    def test_a_missing_binary_is_a_failure_and_names_the_contract_path(self):
+        def missing(argv, **unused):
+            raise FileNotFoundError(2, "no such file")
+
+        real = runner.subprocess.run
+        runner.subprocess.run = missing
+        try:
+            reply = runner.call_cli(_GATEWAY_CFG, "drafting",
+                                    [{"role": "user", "content": "hi"}])
+        finally:
+            runner.subprocess.run = real
+        self.assertFalse(reply.ok)
+        self.assertIn("not on PATH", reply.error)
 
 
 if __name__ == "__main__":
