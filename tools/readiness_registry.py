@@ -270,6 +270,11 @@ EVALUATOR_TESTS = (
     "test_readiness.VerifierExecutionTests.test_skip_evidence_fails",
     "test_readiness.VerifierExecutionTests.test_wrong_test_count_evidence_fails",
     "test_readiness.VerifierExecutionTests.test_zero_test_evidence_fails",
+    # The --category exit code, read in the fast suite rather than only through
+    # the two fresh-tree mutants under CI-3.
+    "test_tools_gates.ReadinessCategoryExitTests.test_a_failing_criterion_fails_the_category_run",
+    "test_tools_gates.ReadinessCategoryExitTests.test_a_rubric_error_fails_the_category_run",
+    "test_tools_gates.ReadinessCategoryExitTests.test_a_clean_category_passes_without_claiming_readiness",
 )
 
 CLI_TESTS = tuple(

@@ -638,5 +638,45 @@ class PmWorkingSetGateTests(unittest.TestCase):
         self.assertEqual(0, code, output)
 
 
+class ReadinessCategoryExitTests(unittest.TestCase):
+    """tools/readiness.py --category exits on its own verdict.
+
+    Criterion CI-3 pins this through two fresh-tree mutants, which means only a
+    full readiness run notices a regression. These read the same branch in the
+    fast suite, against a stubbed report, so the diagnostic a maintainer runs
+    on one category before a release cannot read green over a failing
+    criterion.
+    """
+
+    def report(self, **changes):
+        report = {"earned": 10, "possible": 10, "rubric_errors": [],
+                  "verified_criteria": 1, "failed_criteria": 0,
+                  "unbuilt_criteria": 0, "external_blockers": [],
+                  "hard_gates": {}, "verdict": "CATEGORY DIAGNOSTIC: fixture",
+                  "evaluated_commit": "d" * 40, "python": "3",
+                  "local_engineering_readiness": False,
+                  "complete_readiness": False}
+        report.update(changes)
+        return report
+
+    def category(self, report, name="workspace"):
+        with unittest.mock.patch.object(readiness, "score",
+                                        return_value=report) as scored:
+            code, _output = quietly(readiness.main, ["--category", name])
+        scored.assert_called_once_with(name)
+        return code
+
+    def test_a_failing_criterion_fails_the_category_run(self):
+        self.assertEqual(1, self.category(self.report(failed_criteria=1,
+                                                      earned=5)))
+
+    def test_a_rubric_error_fails_the_category_run(self):
+        self.assertEqual(1, self.category(self.report(
+            rubric_errors=["unknown verifier"])))
+
+    def test_a_clean_category_passes_without_claiming_readiness(self):
+        self.assertEqual(0, self.category(self.report()))
+
+
 if __name__ == "__main__":
     unittest.main()

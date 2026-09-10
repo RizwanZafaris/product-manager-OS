@@ -121,6 +121,7 @@
       "FrontmatterInitGateTests",
       "GraphFreshnessGateTests",
       "PmWorkingSetGateTests",
+      "ReadinessCategoryExitTests",
       "ReadinessProbeCiWiringTests",
       "ReadinessProbeMutationAnchorTests",
       "TemplateInventoryGateTests",
