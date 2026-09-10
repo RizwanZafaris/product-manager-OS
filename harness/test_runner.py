@@ -2150,5 +2150,63 @@ class CliTransportTests(unittest.TestCase):
         self.assertIn("not on PATH", reply.error)
 
 
+class StoryRouteStageTests(unittest.TestCase):
+    """write-stories-routed-to-wrong-gate: the route declared BUILD / Gate 4
+    and everything it names said DEFINE / Gate 2.
+
+    Nothing compared the two: tools/check_manifest.py resolves the template
+    paths without reading them, and lint.py compares a skill sidecar against
+    os/STAGE-GATES.md rather than against the manifest. So the generated
+    command told an agent to take a freshly written story set to the gate
+    that verifies test results against a running product, while Gate 2, the
+    one that signs the requirements those stories make testable, never saw
+    them. The route's own four declarations are the authority and they agree
+    with each other, so they are all asserted here rather than one of them.
+    """
+
+    LOOP_STAGES = ("DISCOVER", "DEFINE", "DESIGN", "BUILD", "DELIVER",
+                   "OPERATE")
+
+    @staticmethod
+    def _declared(path):
+        """The stage and gate a repository file declares about itself."""
+        text = (REPO / path).read_text(encoding="utf-8")
+        if text.startswith("---"):
+            text = text.split("---", 2)[1]
+        out = {}
+        for line in text.splitlines():
+            if line.startswith("#"):
+                break
+            if line.startswith(("stage:", "gate:")):
+                key, value = line.split(":", 1)
+                out[key.strip()] = value.strip().strip('"')
+        return out
+
+    def setUp(self):
+        self.tasks, _note = runner.load_manifest()
+        self.task = self.tasks["write-stories"]
+
+    def test_the_route_declares_the_stage_its_skill_declares(self):
+        sidecar = self._declared("skills/story-writer/SKILL.graph.yml")
+        self.assertEqual(sidecar["stage"], self.task["stage"])
+        self.assertEqual(sidecar["gate"], str(self.task["gate"]))
+
+    def test_the_route_declares_the_stage_its_templates_declare(self):
+        for path in self.task["templates"]:
+            declared = self._declared(path)
+            if declared.get("stage") not in self.LOOP_STAGES:
+                continue
+            self.assertEqual(
+                declared["stage"], self.task["stage"],
+                "%s belongs to another stage than the route filing it" % path)
+            self.assertEqual(declared["gate"], str(self.task["gate"]),
+                             "%s feeds another gate than the route's" % path)
+
+    def test_the_skill_prose_names_the_same_gate(self):
+        prose = (REPO / "skills/story-writer/SKILL.md").read_text(
+            encoding="utf-8")
+        self.assertIn("feed Gate %d" % self.task["gate"], prose)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

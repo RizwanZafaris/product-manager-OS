@@ -1,6 +1,6 @@
 ---
 name: write-stories
-description: "Router row: Epics, user stories, or acceptance criteria from a signed PRD. BUILD stage, Gate 4, drafting tier. Say: epics; user stories; acceptance criteria from a signed PRD."
+description: "Router row: Epics, user stories, or acceptance criteria from a signed PRD. DEFINE stage, Gate 2, drafting tier. Say: epics; user stories; acceptance criteria from a signed PRD."
 disable-model-invocation: true
 ---
 
@@ -12,8 +12,8 @@ GENERATED FILE. Do not hand-edit. Written by `harness/adapters/claude-code/gener
 |---|---|
 | Route id | `write-stories` |
 | Router row | Epics, user stories, or acceptance criteria from a signed PRD |
-| Stage | BUILD |
-| Gate | 4 |
+| Stage | DEFINE |
+| Gate | 2 |
 | Tier | drafting. A tier name, never a model. |
 | Kind | artifact. Fills one template and files it in the product workspace. |
 | Skill | `skills/story-writer/SKILL.md` |
@@ -29,7 +29,7 @@ The input is a signed PRD. Writing stories against an unsigned one jumps Gate 2,
 1. Read every file under Read first, in the order listed, before you produce anything.
 2. Follow `skills/story-writer/SKILL.md` end to end. It owns the workflow; this file only routes to it.
 3. Land the output in the template below that fits the request. One template, not all of them.
-4. Take the output to Gate 4 in `os/STAGE-GATES.md`. Report which boxes pass and which do not, then stop. A named human signs.
+4. Take the output to Gate 2 in `os/STAGE-GATES.md`. Report which boxes pass and which do not, then stop. A named human signs.
 5. Leave any unanswered field as `[OPEN: what is missing, who owns the answer]`. That is a valid value here.
 
 ## Read first

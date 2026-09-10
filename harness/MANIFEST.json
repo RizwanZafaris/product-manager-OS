@@ -1,6 +1,7 @@
 {
   "name": "product-manager-os-harness",
   "version": "0.7.0",
+  "version_note": "The route-contract version, and only that: the shape of the entries below and what an adapter reading them can rely on. It is not the package version in pyproject.toml and pmos/__init__.py, nothing holds the two equal, and they currently differ. That is the stated position rather than drift: harness/README.md states this directory's maturity apart from the document system's, on the ground that one number across both hides that the two are not at the same level of readiness, and CHANGELOG.md records the decision. The generated plugin manifest under harness/adapters/ copies this value; it is written from this file and is never edited by hand.",
   "doc": "The machine-readable face of the router table in CLAUDE.md. One entry per router row, in router order. The table is what a person reads; this file is what a CLI, an agent runtime, or a desktop adapter reads, so the routing, the tiering, and the invariants are executable instead of advisory. tools/check_manifest.py proves the two faces agree row for row and fails the build when they drift. Nothing here decides anything on its own: an entry names the skill to follow, the templates the output lands in, the files to read first, the gate the output must pass, and the invariants that bind the run.",
   "deletable": "The harness is deletable and stores no state of its own. Delete harness/ and the OS still runs exactly as AGENTS.md describes, because every entry here points at a file that already governs the work. No entry is a source of truth; each one is an index into one. Product state lives in the user's workspace per os/PRODUCT-WORKSPACE.md, model credentials live in the environment (OMNIROUTE_BASE_URL and OMNIROUTE_API_KEY, resolved at call time), and neither is ever written under harness/.",
   "entry_shape": {
@@ -384,8 +385,8 @@
       "id": "write-stories",
       "router_row": "Epics, user stories, or acceptance criteria from a signed PRD",
       "trigger": ["epics", "user stories", "acceptance criteria from a signed PRD"],
-      "stage": "BUILD",
-      "gate": 4,
+      "stage": "DEFINE",
+      "gate": 2,
       "tier": "drafting",
       "kind": "artifact",
       "skill": "skills/story-writer/SKILL.md",
