@@ -83,7 +83,20 @@ class _UnsafeAst(ast.NodeVisitor):
     must be reviewed rather than guessed safe by static analysis.
     """
 
-    _EXECUTION = frozenset({"builtins.eval", "builtins.exec", "os.system", "os.popen"})
+    # subprocess.getoutput and getstatusoutput belong here rather than in
+    # _SUBPROCESS: they take no shell= keyword to inspect and always run the
+    # command through /bin/sh -c, which is os.system with the output captured.
+    # The exec and spawn family replaces or forks the process with an argument
+    # vector the caller controls, so it is the same injection surface.
+    _EXECUTION = frozenset({
+        "builtins.eval", "builtins.exec", "os.system", "os.popen",
+        "subprocess.getoutput", "subprocess.getstatusoutput",
+        "os.execv", "os.execve", "os.execvp", "os.execvpe",
+        "os.execl", "os.execle", "os.execlp", "os.execlpe",
+        "os.spawnv", "os.spawnve", "os.spawnvp", "os.spawnvpe",
+        "os.spawnl", "os.spawnle", "os.spawnlp", "os.spawnlpe",
+        "os.posix_spawn", "os.posix_spawnp",
+    })
     _PICKLE_PREFIX = "pickle."
     _SUBPROCESS = frozenset({
         "subprocess.run", "subprocess.Popen", "subprocess.call",
@@ -527,7 +540,11 @@ def scan(root: Path) -> list[Finding]:
             line = text.count("\n", 0, match.start()) + 1
             findings.append(Finding("committed-secret", rel, line,
                                     "credential-shaped assignment"))
-        if path.suffix in SOURCE_SUFFIXES and not path.name.startswith("test_"):
+        # Every Python source file, tests included. A test module is executed
+        # by CI on every push like any other code, and a helper that happens to
+        # be named test_something.py is not a test at all, so a file-name
+        # convention is the wrong thing to hang an exemption on.
+        if path.suffix in SOURCE_SUFFIXES:
             try:
                 tree = ast.parse(text, filename=rel)
             except SyntaxError as exc:
