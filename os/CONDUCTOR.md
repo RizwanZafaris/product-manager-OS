@@ -144,11 +144,11 @@ One line, source cited, no ceremony. A skip that runs longer than one line is as
 
 On acceptance, in this order: write the STATE.md accepted-answers row, write the template field its `Lands in` column names, update `Next question`, then ask the next question. The `Landed in` value is a workspace-relative path plus a section, so every answer is auditable against the artifact it produced. The evidence ledger holds the load-bearing sentence of each source verbatim, in quotation marks, because paraphrase drifts across sessions and a quote is checkable later. Confidence is one of: verified (two or more independent sources), single-source, contested, unverified. Contested rows name what disagrees.
 
-**Worked landing.** The success-signal answer above produces one accepted-answers row and one evidence-ledger row:
+**Worked landing.** An accepted DISCOVER-7 answer, the Gate 6 success signal, produces one accepted-answers row and one evidence-ledger row:
 
 | ID | Answer | Class | Landed in |
 |---|---|---|---|
-| DISCOVER-9 | Success signal: an owner who sees a shortfall warning takes an action (chase, delay, or move money) within 48 hours | 1 | `discovery/discovery-document.md`, section 7 |
+| DISCOVER-7 | Success signal: an owner who sees a shortfall warning takes an action (chase, delay, or move money) within 48 hours | 1 | `discovery/discovery-document.md`, section 5 |
 
 | Source | Verbatim | Confidence |
 |---|---|---|
@@ -235,7 +235,7 @@ The spot check in step 2 exists because of a specific, observed failure: a sessi
 
 **Worked resume opening.**
 
-> Resuming Ledgerline at DEFINE. Spot-checked two rows: DISCOVER-9 matches `discovery/discovery-document.md` section 7. DEFINE-4 does not: STATE.md records an NFR freshness target of 90 minutes, and `definition/nfr.md` NFR-04 reads "based on recent bank data". The artifact wins, so I have added a correction row and reopened DEFINE-4. Next question is DEFINE-4, not DEFINE-7.
+> Resuming Ledgerline at DEFINE. Spot-checked two rows: DISCOVER-7 matches `discovery/discovery-document.md` section 5. DEFINE-5 does not: STATE.md records an NFR freshness target of 90 minutes, and `definition/nfr.md` NFR-04, which the bank's Gate 2 rendering table names as where DEFINE-5's NFR targets are checked, reads "based on recent bank data". The artifact wins, so I have added a correction row and reopened DEFINE-5. Next question is DEFINE-5, not DEFINE-7.
 
 That is the protocol paying for itself in one message. The mismatch is exactly the defect that returned Gate 2 attempt 1 in the walkthrough, found two weeks earlier by two file reads.
 
