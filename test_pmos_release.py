@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import subprocess
 import unittest
@@ -10,6 +11,13 @@ import pmos.release as release
 import pmos_build_backend
 from pmos.release import ProvenanceError, build_provenance, verify_provenance
 from pmos import __version__
+
+
+def _lowest_free_descriptor() -> int:
+    """Return the lowest unused descriptor number; it rises when fds leak."""
+    descriptor = os.open(os.devnull, os.O_RDONLY)
+    os.close(descriptor)
+    return descriptor
 
 
 class ReleaseProvenanceTests(unittest.TestCase):
@@ -162,6 +170,72 @@ class ReleaseProvenanceTests(unittest.TestCase):
                 with self.assertRaisesRegex(ProvenanceError, "symlink changed"):
                     build_provenance(root)
             self.assertTrue(swapped)
+
+    def test_file_replaced_between_stat_and_open_fails_closed(self):
+        with TemporaryDirectory() as folder:
+            root = Path(folder)
+            victim = root / "artifact.txt"
+            victim.write_text("original\n", encoding="utf-8")
+            replacement = root / "replacement.txt"
+            real_open = release.os.open
+            swapped = False
+
+            def swap_before_open(name, *args, **kwargs):
+                nonlocal swapped
+                if name == "artifact.txt" and not swapped:
+                    swapped = True
+                    replacement.write_text("substituted\n", encoding="utf-8")
+                    replacement.replace(victim)
+                return real_open(name, *args, **kwargs)
+
+            with patch.object(release.os, "open", side_effect=swap_before_open):
+                with self.assertRaisesRegex(ProvenanceError,
+                                            "release path changed while hashing"):
+                    build_provenance(root)
+            self.assertTrue(swapped)
+
+    def test_failed_build_does_not_leak_the_output_directory_descriptor(self):
+        with TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / "README.md").write_text("safe\n", encoding="utf-8")
+            (root / ".env.example").write_text("KEY=\n", encoding="utf-8")
+            output = root / release.DEFAULT_PROVENANCE
+            with self.assertRaises(ProvenanceError):
+                build_provenance(root, output=output)
+            baseline = _lowest_free_descriptor()
+            for _ in range(40):
+                with self.assertRaises(ProvenanceError):
+                    build_provenance(root, output=output)
+            self.assertEqual(_lowest_free_descriptor(), baseline)
+
+    def test_failed_provenance_write_leaves_no_temporary_in_the_tree(self):
+        with TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / "README.md").write_text("safe\n", encoding="utf-8")
+            output = root / release.DEFAULT_PROVENANCE
+            baseline = _lowest_free_descriptor()
+
+            def refuse_write(descriptor, payload):
+                raise OSError("disk full")
+
+            with patch.object(release.os, "write", side_effect=refuse_write):
+                with self.assertRaises(OSError):
+                    build_provenance(root, output=output)
+            self.assertEqual(sorted(item.name for item in output.parent.iterdir()), [])
+            self.assertEqual(_lowest_free_descriptor(), baseline)
+
+    def test_manifest_built_without_output_records_an_existing_provenance_file(self):
+        with TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / "README.md").write_text("safe\n", encoding="utf-8")
+            default = release.DEFAULT_PROVENANCE.as_posix()
+            written = build_provenance(root, output=root / release.DEFAULT_PROVENANCE)
+            self.assertEqual(written["provenance_path"], default)
+            self.assertNotIn(default, written["files"])
+            manifest = build_provenance(root)
+            self.assertNotIn("provenance_path", manifest)
+            self.assertIn(default, manifest["files"])
+            self.assertTrue(verify_provenance(root, manifest).ok)
 
     def test_output_is_json_without_content_or_secret(self):
         with TemporaryDirectory() as folder:
