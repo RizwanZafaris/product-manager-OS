@@ -23,6 +23,19 @@ FALSE_LIVE = re.compile(r"(?i)\b(?:100\s*/\s*100|all external gates are green|"
                         r"user validated)\b")
 REQUIRED_BOUNDARIES = ("local evidence", "external evidence", "does not prove",
                        "live sandbox", "provider", "user", "regulatory")
+# Which document has to carry each boundary phrase. The check used to test every
+# phrase against the five key documents concatenated and then report the miss
+# against docs/THREAT-MODEL.md whatever was actually missing, so six of the seven
+# clauses could not fail while any one document still carried the words, and the
+# one that could fail named a file that was not necessarily at fault. The threat
+# model and the accessibility statement are the two documents that state the
+# boundary; README.md has its own readme-boundary check below, and SECURITY.md
+# and docs/ARCHITECTURE.md are not boundary statements.
+BOUNDARY_OWNERS = {
+    "docs/THREAT-MODEL.md": REQUIRED_BOUNDARIES,
+    "docs/ACCESSIBILITY.md": tuple(phrase for phrase in REQUIRED_BOUNDARIES
+                                   if phrase != "does not prove"),
+}
 REQUIRED_PATHS = ("pmos/cli.py", "pmos/domain.py", "pmos/store.py", "pmos/hooks.py",
                   "pmos/openrouter.py")
 
@@ -60,7 +73,7 @@ def _local_target(root: Path, source: Path, raw: str) -> bool:
 def check(root: Path) -> list[Issue]:
     root = root.resolve()
     issues: list[Issue] = []
-    combined = []
+    lowered = {}
     for name in KEY_DOCS:
         path = root / name
         if not path.exists():
@@ -68,7 +81,7 @@ def check(root: Path) -> list[Issue]:
                                 "required operator document is missing"))
             continue
         text = path.read_text(encoding="utf-8")
-        combined.append(text.lower())
+        lowered[name] = text.lower()
         previous = 0
         for number, raw in enumerate(text.splitlines(), 1):
             heading = HEADING.match(raw)
@@ -94,11 +107,14 @@ def check(root: Path) -> list[Issue]:
         for match in FALSE_LIVE.finditer(text):
             issues.append(Issue("error", "overclaim", name, _line(text, match.start()),
                                 "operator docs must not claim unverified external evidence"))
-    all_text = "\n".join(combined)
-    for phrase in REQUIRED_BOUNDARIES:
-        if phrase not in all_text:
-            issues.append(Issue("error", "evidence-boundary", "docs/THREAT-MODEL.md", 1,
-                                "missing explicit boundary: %s" % phrase))
+    for name, phrases in BOUNDARY_OWNERS.items():
+        text = lowered.get(name)
+        if text is None:
+            continue
+        for phrase in phrases:
+            if phrase not in text:
+                issues.append(Issue("error", "evidence-boundary", name, 1,
+                                    "missing explicit boundary: %s" % phrase))
     for name in REQUIRED_PATHS:
         if not (root / name).is_file():
             issues.append(Issue("error", "missing-runtime-path", name, 1,

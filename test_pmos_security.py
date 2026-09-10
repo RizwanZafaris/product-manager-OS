@@ -317,6 +317,38 @@ class DocumentationContractFixtureTests(unittest.TestCase):
             warnings = check(root)
             self.assertTrue(any(item.code == "readme-boundary" for item in warnings))
 
+    def test_a_lost_boundary_is_reported_against_the_document_that_lost_it(self):
+        """Every phrase used to be tested against the five key documents
+        concatenated and reported against docs/THREAT-MODEL.md whatever was
+        missing. Dropping the whole evidence boundary from another document was
+        invisible, and a real miss named a file that was not at fault."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            secure_fixture(root)
+            self.assertFalse([item for item in check(root)
+                              if item.severity == "error"])
+            write(root / "docs" / "ACCESSIBILITY.md",
+                  "# Accessibility\n\nNothing about evidence at all.\n")
+            issues = [item for item in check(root)
+                      if item.code == "evidence-boundary"]
+            self.assertTrue(issues)
+            self.assertEqual({"docs/ACCESSIBILITY.md"},
+                             {item.path for item in issues})
+
+    def test_a_boundary_another_document_still_carries_is_not_masked(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            secure_fixture(root)
+            model = root / "docs" / "THREAT-MODEL.md"
+            write(model, model.read_text(encoding="utf-8")
+                  .replace("a live sandbox", "a live environment"))
+            issues = [item for item in check(root)
+                      if item.code == "evidence-boundary"]
+            self.assertEqual(
+                [("docs/THREAT-MODEL.md",
+                  "missing explicit boundary: live sandbox")],
+                [(item.path, item.message) for item in issues])
+
     def test_mutations_prove_heading_alt_link_boundary_and_claim_failures(self):
         mutations = {
             "heading": ("docs/ACCESSIBILITY.md", "# Accessibility\n\n### Skipped\n", "heading-order"),
