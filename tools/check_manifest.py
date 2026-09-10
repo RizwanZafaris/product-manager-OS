@@ -120,7 +120,13 @@ MODEL_PATTERNS = [
     (r"\bgemini-[0-9a-z]", "a Google gemini model id"),
     (r"\bllama-?[0-9]", "a Llama model id"),
     (r"\bmistral-[0-9a-z]", "a Mistral model id"),
-    (r"\b(?:qwen|deepseek|grok)-?[0-9]", "a third-party model id"),
+    # A separator followed by any id character, not a digit: the primary
+    # production ids of all three vendors are non-numeric (deepseek-chat,
+    # qwen-max, grok-beta) and the digit requirement let every one of them
+    # through the check that exists to keep model ids out of the manifest. The
+    # bare-digit alternative keeps qwen3-max, and requiring one of the two
+    # keeps the word "grok" in prose from matching.
+    (r"\b(?:qwen|deepseek|grok)(?:[-.][0-9a-z]|[0-9])", "a third-party model id"),
 ]
 
 

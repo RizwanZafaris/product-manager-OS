@@ -3,6 +3,10 @@
   "title": "Test classes shipped at the repository root",
   "note": "A floor and a ceiling at once: test_pmos_invariants asserts that the TestCase classes defined in each root test module are exactly these. A class cannot be deleted, renamed or added without editing this file in the same change, which is where a reviewer sees it. Written after commit a92cefa removed four tests from test_pmos_skills.py without any gate noticing; the loss was found by a grep five merges later.",
   "modules": {
+    "test_contract_gates": [
+      "ModelIdGateTests",
+      "WorkspaceContractGateTests"
+    ],
     "test_lint": [
       "GraphDeclarationTests",
       "GraphTruthTests",
