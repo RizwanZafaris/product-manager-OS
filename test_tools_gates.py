@@ -139,6 +139,26 @@ class TemplateInventoryGateTests(unittest.TestCase):
             self.assertEqual({self.CATALOG, "README.md",
                               "docs/ARCHITECTURE.md"}, reported)
 
+    def test_a_wrong_section_heading_is_reported_when_the_total_still_adds_up(self):
+        """Two headings wrong in opposite directions leave the total, every
+        link and the front door all correct, so no other reading can see
+        them. Only the heading counted against its own directory does, and
+        the stale-total test above cannot show that, because it also moves
+        the total."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            catalog = root / self.CATALOG
+            self.rewrite(catalog, "## discovery (16 templates)",
+                         "## discovery (15 templates)", 1)
+            self.rewrite(catalog, "## definition (11 templates)",
+                         "## definition (12 templates)", 1)
+            self.assertEqual(
+                sorted([(self.CATALOG, "the discovery section says 15 "
+                         "template(s) and the directory holds 16"),
+                        (self.CATALOG, "the definition section says 12 "
+                         "template(s) and the directory holds 11")]),
+                sorted(self.findings(root)))
+
     def test_a_catalog_row_pointing_at_no_file_is_reported(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = copy_tree(tmp)

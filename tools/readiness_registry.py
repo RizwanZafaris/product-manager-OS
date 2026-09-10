@@ -394,12 +394,15 @@ REGISTRY = {
     "docs-contract": (
         Step(("python3", "tools/docs_contract.py", "--strict")),
         # The template inventory is the one reading in that gate that counts
-        # against the tree, so a seeded stale total is its only evidence.
+        # against the tree, so a seeded wrong count is its only evidence: a
+        # stale total, and a wrong heading hidden inside a correct total.
         unit(
             "test_tools_gates.TemplateInventoryGateTests."
             "test_the_tree_as_it_stands_states_its_own_inventory",
             "test_tools_gates.TemplateInventoryGateTests."
             "test_a_self_consistent_stale_total_is_reported_everywhere_it_sits",
+            "test_tools_gates.TemplateInventoryGateTests."
+            "test_a_wrong_section_heading_is_reported_when_the_total_still_adds_up",
             "test_tools_gates.TemplateInventoryGateTests."
             "test_dropping_the_claim_is_not_a_way_to_pass",
             "test_tools_gates.TemplateInventoryGateTests."
