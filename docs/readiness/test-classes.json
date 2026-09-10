@@ -45,6 +45,12 @@
       "TestClassesCannotVanish",
       "TransportsShareOneContract"
     ],
+    "test_pmos_matrix": [
+      "GraderTests",
+      "RecordTests",
+      "SelectionTests",
+      "ShippedMatrixTests"
+    ],
     "test_pmos_operations": [
       "AdapterContractTests",
       "AdoptionTests",
