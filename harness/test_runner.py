@@ -1483,6 +1483,10 @@ class _FakeResponse:
         self._body = io.BytesIO(body.encode("utf-8"))
         self.headers = headers
         self.status = status
+        # Every byte handed to the caller, by either path. A fold that reads
+        # the whole body before its bound applies shows up here, whatever it
+        # did with the bytes afterwards.
+        self.consumed = 0
 
     def __enter__(self):
         return self
@@ -1490,8 +1494,15 @@ class _FakeResponse:
     def __exit__(self, *unused):
         return False
 
+    def readline(self, size=-1):
+        line = self._body.readline(size)
+        self.consumed += len(line)
+        return line
+
     def __iter__(self):
-        return iter(self._body)
+        # What iterating an http.client response does: readline() with no
+        # size, so one unterminated line is read in full.
+        return iter(lambda: self.readline(), b"")
 
 
 def _failed_reply(tier):
@@ -2099,6 +2110,77 @@ class StreamBoundTests(unittest.TestCase):
         self.assertLessEqual(len(reply.text), runner.stream_cap(4096),
                              "a body larger than the call's own budget was "
                              "kept, and would have been written")
+
+    # runner-unbounded-sse-buffer-newline-bypass: the bound has to hold on the
+    # read, not only on the count after it. Iterating a response calls
+    # readline() with no size, so a gateway that never sends a newline had its
+    # whole body buffered inside that one call before the counter ran. The
+    # refusal still happened, after the memory was spent: a 64 MB unterminated
+    # stream took peak RSS from 41 MB to 186 MB through call_http.
+
+    def test_an_unterminated_stream_is_not_read_past_the_bound(self):
+        stream = _FakeResponse("data: " + "x" * 200000, {})
+        folded = runner._fold_sse(stream, 20000)
+        self.assertIn("exceeded the response size bound", folded.error)
+        self.assertLessEqual(stream.consumed, 20001,
+                             "the fold read %d bytes of a stream bounded at "
+                             "20000 before refusing it" % stream.consumed)
+
+    def test_an_endless_unterminated_stream_is_refused(self):
+        class Endless:
+            """A gateway that sends bytes forever and never a newline."""
+
+            def __init__(self):
+                self.consumed = 0
+
+            def readline(self, size=-1):
+                if size is None or size < 0:
+                    raise AssertionError(
+                        "an unbounded readline on a stream that never ends "
+                        "is a read that never returns")
+                self.consumed += size
+                return b"x" * size
+
+            def __iter__(self):
+                return iter(lambda: self.readline(), b"")
+
+        stream = Endless()
+        folded = runner._fold_sse(stream, 20000)
+        self.assertIn("exceeded the response size bound", folded.error)
+        self.assertLessEqual(stream.consumed, 20001)
+
+    def test_call_http_does_not_read_an_unterminated_body_past_the_budget(self):
+        seen = {}
+
+        def flood(request, timeout=None):
+            seen["resp"] = _FakeResponse(
+                "data: " + "z" * 1000000, {"X-OmniRoute-Model": "test-model-1"})
+            return seen["resp"]
+
+        real_opener = runner._OPENER
+        runner._OPENER = flood
+        try:
+            reply = runner.call_http(_GATEWAY_CFG, "drafting",
+                                     [{"role": "user", "content": "hi"}])
+        finally:
+            runner._OPENER = real_opener
+        self.assertIn("exceeded the response size bound", reply.error)
+        self.assertFalse(reply.ok)
+        self.assertLessEqual(seen["resp"].consumed,
+                             runner.stream_cap(4096) + 1,
+                             "call_http read %d bytes of an unterminated body "
+                             "whose budget is %d"
+                             % (seen["resp"].consumed, runner.stream_cap(4096)))
+
+    def test_a_body_exactly_at_the_bound_folds_and_one_byte_over_does_not(self):
+        body = delta("a whole document") + delta("", finish="stop")
+        size = len(body.encode("utf-8"))
+        at_bound = runner._fold_sse(sse(body), size)
+        self.assertEqual(at_bound.error, "")
+        self.assertEqual(at_bound.text, "a whole document")
+        self.assertTrue(at_bound.terminal)
+        over = runner._fold_sse(sse(body), size - 1)
+        self.assertIn("exceeded the response size bound", over.error)
 
 
 class CliTransportTests(unittest.TestCase):

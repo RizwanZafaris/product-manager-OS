@@ -816,8 +816,10 @@ def _fold_sse(stream, max_bytes=SSE_MAX_BYTES):
     """Fold an SSE body into a Folded. Falls back to a plain JSON body when
     the gateway ignored stream, which some provider paths do.
 
-    max_bytes bounds the whole body, counted on the bytes as they arrive and
-    before anything is retained. Without it the loop below buffers every
+    max_bytes bounds the whole body, enforced on the read itself and counted
+    before anything is retained, so stream is anything with a readline(size)
+    that honours its size, which an http.client response does whether or not
+    the body is chunked. Without it the loop below buffers every
     frame twice, in text_parts and in raw_lines, for as long as the gateway
     keeps sending: READ_TIMEOUT_S bounds one read rather than the stream, so
     a gateway that never sends the terminal event can drive this process out
@@ -844,7 +846,16 @@ def _fold_sse(stream, max_bytes=SSE_MAX_BYTES):
     out = Folded()
     text_parts, raw_lines = [], []
     total = 0
-    for raw in stream:
+    while True:
+        # The read itself is bounded, not only the count after it. Iterating
+        # the response calls readline() with no size, which buffers a whole
+        # line before returning it, so a gateway that sends no newline byte
+        # would be read in full inside that call before any counter here ran.
+        # Asking for at most one byte past what is left means an overrun is
+        # seen after reading max_bytes + 1 bytes, whatever the framing.
+        raw = stream.readline(max_bytes - total + 1)
+        if not raw:
+            break
         total += len(raw)
         if total > max_bytes:
             out.error = ("the stream exceeded the response size bound of %d "
