@@ -525,11 +525,18 @@ def probe_mutation_checks():
         {
             "label": "queue integrity check bypassed before dispatch",
             "rel": "pmos/store.py",
+            # Anchored inside lease_next, which is the dispatch path. The
+            # two-line prefix on its own also opens heartbeat, recovery and
+            # other queue calls, so the third line is the comment that follows
+            # it here and nowhere else; the anchor has to match exactly once or
+            # the check reports itself as not caught rather than passing.
             "old": ("            self._assert_queue_verified()\n"
                     "            self._recover_expired_locked(stamp)\n"
-                    "            cancelling = self._conn.execute("),
+                    "            # A cancel request against a live lease "
+                    "belongs to its holder, so\n"),
             "new": ("            self._recover_expired_locked(stamp)\n"
-                    "            cancelling = self._conn.execute("),
+                    "            # A cancel request against a live lease "
+                    "belongs to its holder, so\n"),
             "argv": ["python3", "-m", "unittest", "discover", "-s", ".",
                      "-p", "test_pmos_store.py", "-v"],
             "diagnostic": "IntegrityError",
