@@ -21,6 +21,7 @@ SECRET_PATTERNS = (
     re.compile(r"\bAKIA[A-Z0-9]{16}\b"),
     re.compile(r"(?i)\b(?:api[_-]?key|secret|token|password)\s*[:=]\s*"
                r"[\"']?[A-Za-z0-9_+/=-]{20,}"),
+    re.compile(r"-{5}BEGIN (?:RSA |DSA |EC |OPENSSH |PGP )?PRIVATE KEY-{5}"),
 )
 WRITE_TOOLS = frozenset({"Write", "Edit", "NotebookEdit"})
 EVENTS = frozenset({
@@ -452,10 +453,15 @@ def decide(event, payload, repo_root=None, gate_runner=None):
             if not _inside(candidate, root):
                 return result("deny", "write destination is outside the project")
             rel = candidate.resolve().relative_to(root).as_posix()
-            protected = (rel == ".git" or rel.startswith(".git/") or
-                         rel == ".env" or rel.startswith(".env.") or
-                         rel.startswith("modules/regulated/") or
-                         rel.endswith((".pem", ".key", ".p12")))
+            # Case-insensitive filesystems (APFS, NTFS) resolve ``.GIT/config``
+            # and ``modules/Regulated/`` to the protected files, so the test is
+            # case-folded. On a case-sensitive filesystem this only widens the
+            # deny set, which is the direction a write boundary should err in.
+            lowered = rel.lower()
+            protected = (lowered == ".git" or lowered.startswith(".git/") or
+                         lowered == ".env" or lowered.startswith(".env.") or
+                         lowered.startswith("modules/regulated/") or
+                         lowered.endswith((".pem", ".key", ".p12")))
             if protected:
                 return result("deny", "destination is protected by repository policy")
             return result("allow")
@@ -556,11 +562,19 @@ class HookBus:
         if event not in EVENTS or not callable(callback) or not name:
             raise ValueError("hook registration is invalid")
         row = (int(priority), str(name), callback)
-        self._hooks.setdefault(event, []).append(row)
+        registered = self._hooks.setdefault(event, [])
+        if any(existing[:2] == row[:2] for existing in registered):
+            raise ValueError("hook registration is invalid")
+        registered.append(row)
 
     def emit(self, event, payload):
         decisions = []
-        for _priority, _name, callback in sorted(self._hooks.get(event, [])):
+        # Sort on (priority, name) only. Whole-tuple ordering falls through to
+        # comparing callables when two rows tie, which raises instead of
+        # deciding; register rejects that duplicate first, and this keeps emit
+        # total if a bus is ever populated another way.
+        for _priority, _name, callback in sorted(self._hooks.get(event, []),
+                                                 key=lambda row: row[:2]):
             decision = callback(event, payload)
             if not isinstance(decision, HookDecision):
                 raise TypeError("runtime hook must return HookDecision")
