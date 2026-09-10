@@ -41,19 +41,53 @@ def _dist_info() -> str:
     )
 
 
+def _license_files() -> tuple[str, ...]:
+    """The license paths ``pyproject.toml`` declares, read once.
+
+    Both the ``License-File`` headers in METADATA and the ``licenses/`` payload
+    inside the dist-info are built from this list, so the declared license and
+    the shipped license cannot drift apart.  Entries are literal repository
+    paths; this backend does not expand globs, and a path it cannot read is a
+    build failure rather than a silently missing license.
+    """
+    declared = _project().get("license-files", ["LICENSE"])
+    if not isinstance(declared, list) or not declared:
+        raise ValueError("project.license-files must be a non-empty list")
+    names = []
+    for entry in declared:
+        relative = Path(str(entry))
+        if relative.is_absolute() or ".." in relative.parts:
+            raise ValueError("license file path is unsafe: %s" % entry)
+        names.append(relative.as_posix())
+    return tuple(names)
+
+
 def _metadata() -> bytes:
     project = _project()
     authors = project.get("authors", [])
     author = authors[0].get("name", "") if isinstance(authors, list) and authors else ""
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    # Metadata 2.4 is the version that defines License-Expression and the
+    # .dist-info/licenses/ location this backend already writes to. Under 2.1
+    # the shipped LICENSE was undiscoverable and the distribution declared no
+    # license at all, so an installer reported the package as unlicensed.
     headers = [
-        "Metadata-Version: 2.1",
+        "Metadata-Version: 2.4",
         "Name: %s" % project["name"],
         "Version: %s" % project["version"],
         "Summary: %s" % project["description"],
         "Requires-Python: %s" % project["requires-python"],
         "Description-Content-Type: text/markdown",
     ]
+    expression = project.get("license")
+    if not isinstance(expression, str) or not expression.strip():
+        raise ValueError(
+            "project.license must be an SPDX expression string, for example "
+            "license = \"MIT\"; the deprecated table form cannot be expressed "
+            "as License-Expression")
+    headers.append("License-Expression: %s" % expression.strip())
+    for name in _license_files():
+        headers.append("License-File: %s" % name)
     if author:
         headers.append("Author: %s" % author)
     return ("\n".join(headers) + "\n\n" + readme + "\n").encode("utf-8")
@@ -117,8 +151,9 @@ def _dist_info_entries() -> dict[str, bytes]:
         prefix + "WHEEL": _wheel_metadata(),
         prefix + "entry_points.txt": _entry_points(),
         prefix + "top_level.txt": b"pmos\npmos_runtime_assets\n",
-        prefix + "licenses/LICENSE": _regular_bytes(ROOT / "LICENSE", "license"),
     }
+    for name in _license_files():
+        entries[prefix + "licenses/" + name] = _regular_bytes(ROOT / name, "license")
     return entries
 
 
@@ -145,8 +180,28 @@ def _write_metadata(directory: Path) -> str:
     return dist_info
 
 
+class UnsupportedOperation(Exception):
+    """The hook exists and this backend refuses it.
+
+    PEP 517 frontends catch ``backend.UnsupportedOperation`` by name and report
+    it as a build error with the message below.
+    """
+
+
 def get_requires_for_build_wheel(config_settings=None) -> list[str]:
     return []
+
+
+def build_sdist(sdist_directory, config_settings=None):
+    """Declared, and refused: the wheel is the one artifact this repo ships.
+
+    build_sdist is mandatory under PEP 517. Omitting it did not narrow the
+    backend to wheels; it made the ordinary ``python -m build`` die inside the
+    frontend's own subprocess with a raw AttributeError naming this module,
+    which says nothing about what to run instead.
+    """
+    raise UnsupportedOperation(
+        "this backend builds wheels only; run python -m build --wheel")
 
 
 def prepare_metadata_for_build_wheel(metadata_directory, config_settings=None) -> str:

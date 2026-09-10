@@ -8,6 +8,14 @@ node_modules/
 build/
 *.egg-info/
 
+# What the documented build commands actually drop. tools/review_gate.py skips
+# a dist/ directory but hashes a root-level .whl into the reviewable tree
+# digest, so a stray wheel from `python -m pip wheel` without --wheel-dir
+# silently changes the digest reviewers are asked to confirm.
+dist/
+wheelhouse/
+*.whl
+
 # Practice and product workspaces stay out of the repo
 learn/products/*/
 /products/

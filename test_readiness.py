@@ -3,14 +3,22 @@
 These tests use temporary JSON documents and mocks.  They deliberately never
 write a scorecard into the checkout and never allow a verifier subprocess to
 run while testing rubric validation.
+
+The release-surface classes near the end are about the tools rather than the
+evaluator: what the canonical gate suite covers, what the full-suite probe
+runs, and what the built wheel declares.  They live here because they are
+checks on tools, not on a product document, and because every one of them was
+written against a defect that shipped.
 """
 
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 import tempfile
 import unittest
+import zipfile
 from contextlib import nullcontext
 from pathlib import Path
 from types import SimpleNamespace
@@ -22,9 +30,11 @@ TOOLS = REPO / "tools"
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
+import pmos_build_backend  # noqa: E402
 import readiness  # noqa: E402
 import readiness_probe  # noqa: E402
 from readiness_registry import Step  # noqa: E402
+
 
 
 def valid_spec(*, verifier="os-tree", criterion_id="C-1", task=None):
@@ -424,6 +434,80 @@ class VerdictAndOutputTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             candidate = Path(directory) / "scorecard.json"
             self.assertEqual(readiness.output_path(candidate), candidate.resolve())
+
+
+class BuildArtifactIgnoreTests(unittest.TestCase):
+    """A build artifact left in the tree must not become repository content."""
+
+    def ignored(self, relative):
+        done = subprocess.run(["git", "check-ignore", "-q", relative],
+                              cwd=str(REPO), shell=False, capture_output=True,
+                              text=True, timeout=30)
+        return done.returncode
+
+    def test_the_documented_build_commands_drop_nothing_unignored(self):
+        # tools/review_gate.py skips a dist/ directory but hashes a
+        # root-level .whl into the reviewable tree digest, so an unignored
+        # wheel changes the digest reviewers are asked to confirm.
+        for relative in ("dist/product_manager_os-0.8.0-py3-none-any.whl",
+                         "product_manager_os-0.8.0-py3-none-any.whl",
+                         "wheelhouse/product_manager_os-0.8.0-py3-none-any.whl"):
+            if self.ignored(relative) == 128:
+                self.skipTest("git is unavailable here")
+            self.assertEqual(self.ignored(relative), 0, relative)
+
+    def test_no_tracked_file_became_ignored(self):
+        done = subprocess.run(["git", "ls-files", "-i", "-c",
+                               "--exclude-standard"], cwd=str(REPO),
+                              shell=False, capture_output=True, text=True,
+                              timeout=30)
+        if done.returncode != 0:
+            self.skipTest("git is unavailable here")
+        self.assertEqual(done.stdout.strip(), "")
+
+
+class DistributionMetadataTests(unittest.TestCase):
+    """What the wheel declares about itself, read out of the wheel."""
+
+    def built_wheel(self, directory):
+        name = pmos_build_backend.build_wheel(str(directory))
+        return zipfile.ZipFile(Path(directory) / name)
+
+    def headers(self, wheel):
+        name = next(entry for entry in wheel.namelist()
+                    if entry.endswith(".dist-info/METADATA"))
+        text = wheel.read(name).decode("utf-8").split("\n\n", 1)[0]
+        fields = {}
+        for line in text.splitlines():
+            key, _, value = line.partition(":")
+            fields.setdefault(key.strip(), []).append(value.strip())
+        return fields
+
+    def test_the_built_wheel_declares_its_license(self):
+        # pyproject declared a license and the wheel shipped the file, but the
+        # METADATA named neither, so pip show reported the package as
+        # unlicensed and a scanner had no field to read.
+        with tempfile.TemporaryDirectory() as directory:
+            with self.built_wheel(directory) as wheel:
+                fields = self.headers(wheel)
+                self.assertEqual(fields["License-Expression"], ["MIT"])
+                self.assertEqual(fields["License-File"], ["LICENSE"])
+                # License-Expression is defined by Metadata 2.4, which is also
+                # the version that defines the licenses/ path used below.
+                self.assertEqual(fields["Metadata-Version"], ["2.4"])
+                shipped = next(entry for entry in wheel.namelist()
+                               if entry.endswith(".dist-info/licenses/LICENSE"))
+                self.assertEqual(wheel.read(shipped),
+                                 (REPO / "LICENSE").read_bytes())
+
+    def test_build_sdist_refuses_in_the_way_a_frontend_can_report(self):
+        # PEP 517 makes the hook mandatory. Leaving it out did not narrow this
+        # backend to wheels; it made python -m build die with an
+        # AttributeError naming the module and nothing else.
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaises(pmos_build_backend.UnsupportedOperation) as raised:
+                pmos_build_backend.build_sdist(directory)
+        self.assertIn("--wheel", str(raised.exception))
 
 
 if __name__ == "__main__":

@@ -111,6 +111,8 @@
       "UseCaseMatrixTests"
     ],
     "test_readiness": [
+      "BuildArtifactIgnoreTests",
+      "DistributionMetadataTests",
       "ProbeMarkdownWalkIgnoresSidecarsTests",
       "RubricValidationTests",
       "VerdictAndOutputTests",
