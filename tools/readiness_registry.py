@@ -64,6 +64,7 @@ CONDUCTOR_TESTS = tuple(
         "test_gate_proof_requires_authority_independence_and_verified_hash",
         "test_question_bank_freezes_all_sequences",
         "test_evicted_turn_is_state_checked_and_window_does_not_permanently_block",
+        "test_parked_question_advances_the_cursor_and_only_blocks_the_gate",
     ))
 
 ROUTING_TESTS = tuple(

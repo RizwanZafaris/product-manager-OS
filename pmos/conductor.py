@@ -174,8 +174,10 @@ class Conductor:
                       expected_revision: str | int | ProductHead, turn_id: str) -> TurnOutcome:
         """Accept or challenge the currently offered question, atomically.
 
-        Invalid evidence consumes one of at most two challenges.  The third
-        invalid submission is blocked and leaves the cursor unchanged.
+        Invalid evidence consumes one of at most two challenges.  The second
+        invalid submission parks the question: the answer is filed as offered,
+        the cursor advances to the next question, and the bank's gate stays
+        unprovable while anything is parked.
         """
         _identifier(question_id, "question id")
         _identifier(turn_id, "turn id", MAX_TURN_ID_CHARS)
@@ -207,7 +209,18 @@ class Conductor:
             count = min(2, previous + 1)
             bank_state["challenges"][question.id] = count
             if count >= 2:
+                # Parking files the answer as offered and moves on, per the
+                # protocol in os/CONDUCTOR.md: the question becomes an open
+                # challenge, the cursor advances, and the bank's gate stays
+                # unprovable while anything is parked.
                 bank_state["parked"].append(question.id)
+                bank_state["answers"][question.id] = {
+                    "answer": _parked_answer_text(answer),
+                    "evidence": normalized_evidence,
+                    "evidence_class": question.required_evidence.value,
+                    "parked": True,
+                }
+                bank_state["cursor"] += 1
                 outcome = TurnOutcome("blocked", snapshot.head.token, bank_id=position.bank_id,
                                       question=question, message="question parked after two challenges: " + reason,
                                       challenge_count=count)
@@ -496,11 +509,11 @@ class Conductor:
             return TurnOutcome("completed", revision, message="all banks and gates are complete", completed=True)
         bank = self.banks[index]
         saved = state["banks"][bank.id]
-        if saved["parked"]:
-            return TurnOutcome("blocked", revision, bank_id=bank.id,
-                               message="a question is parked after two challenges")
         cursor = int(saved["cursor"])
         if cursor == len(bank.questions):
+            if saved["parked"]:
+                return TurnOutcome("blocked", revision, bank_id=bank.id,
+                                   message="a parked question is open; the gate cannot be proven while any answer is parked")
             return TurnOutcome("blocked", revision, bank_id=bank.id,
                                message="answers are complete; gate prerequisites still require proof")
         return TurnOutcome("question", revision, bank_id=bank.id, question=bank.questions[cursor])
@@ -546,6 +559,13 @@ def _bounded_text(value: Any, label: str, maximum: int) -> str:
     if not isinstance(value, str) or not value.strip() or "\x00" in value or len(value) > maximum:
         raise ValidationError("%s must be a bounded non-empty string" % label)
     return value
+
+
+def _parked_answer_text(value: Any) -> str:
+    """Record a parked answer as offered, bounded so state stays in budget."""
+    if not isinstance(value, str):
+        return ""
+    return value[:MAX_ANSWER_CHARS]
 
 
 def _truthy_text(value: Any) -> bool:

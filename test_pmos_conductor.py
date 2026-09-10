@@ -107,11 +107,42 @@ class ConductorTest(unittest.TestCase):
         one = conductor.submit_answer("discover.person", "Everyone needs it.", invalid,
                                       expected_revision=turn.revision, turn_id="bad-1")
         self.assertEqual((one.status, one.challenge_count), ("challenge", 1))
+        self.assertEqual(conductor.next_turn().question.id, "discover.person")
+        self.assertEqual(conductor.state()["banks"]["discover"]["cursor"], 0)
         two = conductor.submit_answer("discover.person", "Still vague.", invalid,
                                       expected_revision=one.revision, turn_id="bad-2")
         self.assertEqual((two.status, two.challenge_count), ("blocked", 2))
-        self.assertEqual(conductor.next_turn().status, "blocked")
-        self.assertEqual(conductor.state()["banks"]["discover"]["cursor"], 0)
+        # The cap holds: a parked question is no longer the offered question.
+        third = conductor.submit_answer("discover.person", "Still vague.", invalid,
+                                        expected_revision=two.revision, turn_id="bad-3")
+        self.assertEqual(third.status, "conflict")
+        self.assertEqual(conductor.state()["banks"]["discover"]["challenges"]["discover.person"], 2)
+        store.close()
+
+    def test_parked_question_advances_the_cursor_and_only_blocks_the_gate(self) -> None:
+        store, conductor = self.opening()
+        turn = conductor.next_turn()
+        invalid = {"class": "observed_behavior", "source": "heard it"}
+        one = conductor.submit_answer("discover.person", "Mina mentioned it once.", invalid,
+                                      expected_revision=turn.revision, turn_id="park-1")
+        self.assertEqual((one.status, one.challenge_count), ("challenge", 1))
+        two = conductor.submit_answer("discover.person", "Still only hearsay.", invalid,
+                                      expected_revision=one.revision, turn_id="park-2")
+        self.assertEqual((two.status, two.challenge_count), ("blocked", 2))
+        offered = conductor.next_turn()
+        self.assertEqual((offered.status, offered.question.id), ("question", "discover.cost"))
+        accepted = conductor.submit_answer("discover.cost", "The export reports the weekly cost.",
+                                           artifact(), expected_revision=offered.revision,
+                                           turn_id="park-3")
+        self.assertEqual(accepted.status, "accepted")
+        saved = conductor.state()["banks"]["discover"]
+        self.assertEqual((saved["cursor"], saved["parked"]), (2, ["discover.person"]))
+        self.assertTrue(saved["answers"]["discover.person"]["parked"])
+        self.assertEqual(saved["answers"]["discover.person"]["answer"], "Still only hearsay.")
+        refused = conductor.prove_gate("discover", gate_proof(),
+                                       expected_revision=accepted.revision, turn_id="park-gate")
+        self.assertEqual(refused.status, "blocked")
+        self.assertEqual(conductor.state()["gates"], {})
         store.close()
 
     def test_duplicate_turn_and_stale_revision_are_explicit(self) -> None:
