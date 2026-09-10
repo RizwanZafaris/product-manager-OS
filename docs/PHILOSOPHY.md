@@ -112,7 +112,7 @@ Every card and worksheet names its originator and year, in this repository's own
 
 ## 8. The system must survive its own AI
 
-Method one of four uses no model at all. Nothing in `knowledge/`, `frameworks/`, or `templates/` depends on any AI layer existing, the boot prompt assumes no file access, and the gates are checklists a human works through with a pencil. Graceful degradation is stated as structural, not aspirational.
+Method one of five uses no model at all. Nothing in `knowledge/`, `frameworks/`, or `templates/` depends on any AI layer existing, the boot prompt assumes no file access, and the gates are checklists a human works through with a pencil. Graceful degradation is stated as structural, not aspirational.
 
 **The counter-argument.** Designing for the free tier costs the frontier. Every mechanism that must also work on paper is a mechanism that cannot use tool calls, retrieval, or evaluation loops, so the pencil path drags the whole system down to the capability of its weakest runtime. And the hedge is self-defeating: if the AI layer is genuinely good, insisting it is optional signals that its author does not believe in it.
 

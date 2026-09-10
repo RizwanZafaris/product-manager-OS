@@ -168,7 +168,7 @@ In Method 2 (chat, no file access), the user pastes STATE.md at session start an
 
 ## 7. Model routing per stage
 
-Method 4 splits each stage across the three tiers from [../routing/README.md](../routing/README.md), by blast radius, never by convenience:
+Method 5 splits each stage across the three tiers from [../routing/README.md](../routing/README.md), by blast radius, never by convenience:
 
 | Work | Tier |
 |---|---|
