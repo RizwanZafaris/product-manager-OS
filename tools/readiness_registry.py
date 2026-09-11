@@ -53,6 +53,7 @@ DOMAIN_TESTS = tuple(
         "test_two_instances_conflict_rolls_back_then_refresh_retry_preserves_both",
         "test_tampered_hash_and_unknown_schema_fail_closed",
         "test_every_public_mutator_is_transactional",
+        "test_score_writes_to_the_allocation_row_for_the_named_period",
     ))
 
 CONDUCTOR_TESTS = tuple(
@@ -64,6 +65,7 @@ CONDUCTOR_TESTS = tuple(
         "test_gate_proof_requires_authority_independence_and_verified_hash",
         "test_question_bank_freezes_all_sequences",
         "test_evicted_turn_is_state_checked_and_window_does_not_permanently_block",
+        "test_parked_question_advances_the_cursor_and_only_blocks_the_gate",
     ))
 
 ROUTING_TESTS = tuple(
@@ -136,6 +138,11 @@ STORE_TESTS = tuple(
         "test_relative_and_uri_metacharacter_database_names_are_literal",
         "test_post_initialization_database_parent_swap_fails_before_operation",
         "test_forged_missing_or_cross_product_head_fails_closed",
+        "test_read_snapshot_serves_the_head_and_refuses_a_stale_revision",
+        "test_cancel_requested_live_lease_is_not_reaped_by_another_poll",
+        "test_heartbeat_past_the_deadline_reports_deadline_and_dead_letters",
+        "test_queue_admission_check_does_not_read_blob_payload_bytes",
+        "test_promotion_refuses_a_source_that_changed_after_it_was_reviewed",
     ))
 
 OPERATIONS_TESTS = (

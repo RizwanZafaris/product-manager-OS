@@ -610,7 +610,7 @@ class DomainTest(unittest.TestCase):
         with self.assertRaises(AllocationError):
             self.d.allocate_capacity(b.id, "Q1", 3, actor_id=self.actor)
         self.d.allocate_capacity(b.id, "Q1", 2, actor_id=self.actor)
-        self.d.score_initiative(a.id, 9, actor_id=self.actor)
+        self.d.score_initiative(a.id, 9, period="Q1", actor_id=self.actor)
         self.d.sequence_initiative(a.id, 1, period="Q1", actor_id=self.actor)
         self.d.add_dependency(a.id, b.id, actor_id=self.actor)
         self.d.add_dependency(b.id, c.id, actor_id=self.actor)
@@ -621,6 +621,22 @@ class DomainTest(unittest.TestCase):
         tampered = json.loads(exported)
         tampered["events"][0]["action"] = "tampered"
         self.assertFalse(self.d.verify_audit_export(tampered))
+
+    def test_score_writes_to_the_allocation_row_for_the_named_period(self):
+        a = self.d.create_initiative(self.product.id, "Multi period", actor_id=self.actor)
+        self.d.set_capacity(self.product.id, "Q1", 10, actor_id=self.actor)
+        self.d.set_capacity(self.product.id, "Q2", 5, actor_id=self.actor)
+        self.d.allocate_capacity(a.id, "Q1", 10, actor_id=self.actor)
+        self.d.allocate_capacity(a.id, "Q2", 5, actor_id=self.actor)
+        self.d.score_initiative(a.id, 8, period="Q2", actor_id=self.actor)
+        self.assertEqual(self.d.rollup(self.product.id, "Q2", actor_id=self.actor)["score"], 8.0)
+        self.assertEqual(self.d.rollup(self.product.id, "Q1", actor_id=self.actor)["score"], 0.0)
+        self.d.score_initiative(a.id, 3, period="Q1", actor_id=self.actor)
+        self.assertEqual(self.d.rollup(self.product.id, "Q1", actor_id=self.actor)["score"], 3.0)
+        self.assertEqual(self.d.rollup(self.product.id, "Q2", actor_id=self.actor)["score"], 8.0)
+        self.assertEqual(
+            len([allocation for allocation in self.d.list_entities("portfolio_allocation", actor_id=self.actor)
+                 if allocation.initiative_id == a.id]), 2)
 
     def test_full_aggregate_round_trip_rehydrates_every_state_family(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -681,7 +697,7 @@ class DomainTest(unittest.TestCase):
             )
             domain.set_capacity(product.id, "Q1", 5, actor_id=actor)
             domain.allocate_capacity(initiative.id, "Q1", 3, actor_id=actor)
-            domain.score_initiative(initiative.id, 9, actor_id=actor)
+            domain.score_initiative(initiative.id, 9, period="Q1", actor_id=actor)
             domain.sequence_initiative(initiative.id, 1, period="Q1", actor_id=actor)
             domain.add_dependency(initiative.id, dependency_target.id, actor_id=actor)
             expected_digest = domain.state_digest
