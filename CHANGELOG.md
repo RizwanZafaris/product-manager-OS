@@ -169,11 +169,14 @@ audit's own.
   `DataValidationError` is recorded under that name rather than as `invalid_external_id`.
   `hook-protected-paths-case-sensitive`: the write boundary compares case-folded paths, so a
   case variant of a protected destination is denied. `hooks-allow-reading-credential-files`:
-  private key blocks are blocked like other secrets. `hookbus-emit-sorts-callables`: registering
-  the same hook twice raises `ValueError`, and hooks of equal priority run in name order.
+  private key blocks are blocked like other secrets. `hookbus-emit-sorts-callables`: registering a second
+  hook with the same priority and name for one event raises `ValueError`, and hooks of equal
+  priority run in name order.
   `build-provenance-leaks-output-dir-fd`, `provenance-default-exclusion-breaks-verify` and
-  `release-dead-digest-helpers`: a failed build closes its output descriptor and the inventory
-  records what it excluded. `routing-aggregate-budget-postcheck-unreachable`: the guard stays
+  `release-dead-digest-helpers`: a failed build closes its output descriptor and removes its
+  temporary provenance file, the output path is excluded only when the call writes it so a
+  manifest built without output records an existing provenance file and verifies, and three
+  uncalled digest helpers are gone while the live stat-to-open guard gains a test. `routing-aggregate-budget-postcheck-unreachable`: the guard stays
   and a passing call now pins it. `hooks-wrapper-tests-cannot-fail` and
   `hooks-git-clean-deny-branch-untested` are test-only.
 - **Lint and the security gates.** `secret-gate-exempts-regulated-module` and
