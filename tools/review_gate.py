@@ -369,58 +369,213 @@ def tree_digest(root=REPO):
     return hashlib.sha256(encoded).hexdigest(), tuple(rows)
 
 
-def _read_attestation(path):
-    """Read the canonical attestation record, refusing to follow a symlink.
+def _read_attestation(path, root):
+    """Read the canonical attestation record, refusing to follow a symlink
+    anywhere on the path -- the file itself, or any directory above it.
 
-    ``Path.read_text`` follows symlinks like any other ``open(2)`` call. The
-    attestation path is a well-known, fixed location
-    (``docs/readiness/independent-review.json``) that ``tree_digest`` itself
-    deliberately excludes from the hash it binds a review to -- so a symlink
-    planted at that exact path is never caught by the reviewed-tree digest
-    either. Reading through it would validate whatever file the symlink
-    pointed to, inside the repository or outside it, as though it were the
-    record written to this path, defeating the point of pinning a review to
-    an exact file. ``O_NOFOLLOW`` on the open refuses that outright: if the
-    final path component is a symlink, the open fails instead of resolving
-    it.
+    ``Path.read_text``, and a bare ``os.open(str(path), O_NOFOLLOW)`` alike,
+    follow a symlink at every path component except the final one --
+    ``O_NOFOLLOW`` only refuses when the leaf itself is a symlink. The writer
+    had exactly this gap and was fixed for it (commit 2c3485f): a symlinked
+    ``docs`` or ``docs/readiness`` sent a write wherever it pointed while
+    ``record_review`` still reported success. The reader kept the
+    leaf-only version, so a symlinked ``docs`` or ``docs/readiness`` holding
+    an otherwise well-formed, digest-matching attestation would validate
+    cleanly even though the file actually read was never inside the reviewed
+    tree the digest is supposed to bind it to -- the writer refuses that
+    layout outright, but the gate would read and accept it.
+
+    Fixed the same way the writer was: ``path`` is required to resolve to a
+    real descendant of ``root`` with no ``..`` or ``.`` component (mirroring
+    ``_write_attestation``'s containment check, so ``--attestation`` cannot
+    point outside the tree at all, symlink or not), and the file is then
+    read through ``_read_relative`` -- a component-by-component walk from a
+    descriptor on ``root`` with ``dir_fd``-relative opens and ``O_NOFOLLOW``
+    throughout, so a symlink at any parent, or at the leaf, makes the open
+    fail instead of resolving it. Fails closed with a plain ``OSError`` in
+    every case; there is no fallback to pathname resolution.
     """
-    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
-    fd = os.open(str(path), flags)
+    path = Path(path)
+    root = Path(root)
     try:
-        info = os.fstat(fd)
-        if not stat.S_ISREG(info.st_mode):
-            raise OSError("attestation path %s is not a regular file" % path)
-        payload = b"".join(iter(lambda: os.read(fd, 65536), b""))
-        return payload.decode("utf-8")
+        relative = path.relative_to(root)
+    except ValueError:
+        raise OSError(
+            "attestation path %s is not inside root %s; refusing to read "
+            "it through pathname joining" % (path, root))
+    parts = relative.parts
+    if not parts:
+        raise OSError("attestation path %s is the root itself" % (path,))
+    if any(component in ("..", ".") for component in parts):
+        # Same reasoning as _write_attestation's identical check: relative_to
+        # is a string comparison of path segments, not a filesystem
+        # resolution, so a literal ".." segment survives it. Refusing it here
+        # keeps every component the walk below opens a real, named child of
+        # the descriptor already held.
+        raise OSError(
+            "attestation path %s contains a relative path component "
+            "('..' or '.'); refusing to walk it through the reviewed tree"
+            % (path,))
+    if not _dir_fd_operations_supported():
+        raise OSError(
+            "this platform lacks the dir_fd-relative filesystem operations "
+            "(O_NOFOLLOW/O_DIRECTORY) the attestation read path needs to "
+            "refuse a parent-directory symlink; refusing to fall back to "
+            "pathname resolution instead")
+    root_fd = os.open(str(root), os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        payload = _read_relative(root_fd, relative)
     finally:
-        os.close(fd)
+        os.close(root_fd)
+    return payload.decode("utf-8")
 
 
-def _write_attestation(path, contents):
-    """Write the attestation record, refusing to write through a symlink.
+def _dir_fd_operations_supported():
+    """Whether this platform can do every dir_fd-relative call the safe
+    attestation write needs, so the caller can refuse outright instead of
+    quietly falling back to pathname resolution.
 
-    ``Path.write_text`` follows symlinks the same way ``read_text`` does. If
-    the canonical attestation path had been replaced with a symlink -- to
-    another file inside the tracked tree, or to something outside the
-    repository entirely -- an unguarded write would silently overwrite
-    whatever that symlink pointed to instead of the attestation file itself,
-    while ``record_review`` went on to report success. ``O_NOFOLLOW`` on the
-    open refuses to resolve a symlink at that path; ``O_CREAT`` still creates
-    an ordinary new file when nothing exists there yet, because there is
-    nothing to follow in that case.
+    ``os.replace`` is checked via ``os.rename``: both wrap the same
+    ``renameat(2)`` on POSIX, but ``os.supports_dir_fd`` is only ever
+    populated for the name ``rename`` was registered under, so probing
+    ``os.replace`` directly under-reports support that is actually there.
     """
-    directory = os.path.dirname(str(path))
-    if directory:
-        os.makedirs(directory, exist_ok=True)
-    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
-    fd = os.open(str(path), flags, 0o644)
+    if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_DIRECTORY"):
+        return False
+    required = (os.open, os.stat, os.mkdir, os.rename, os.unlink)
+    return all(function in os.supports_dir_fd for function in required)
+
+
+def _replace_regular_file(dir_fd, name, contents):
+    """Atomically write ``contents`` to ``name`` inside ``dir_fd``.
+
+    Refuses before writing anything if ``name`` already exists as anything
+    other than a plain regular file -- a symlink included, which is the leaf
+    case commit a419774 closed and this keeps closed under the dir_fd
+    rewrite. The new content lands in a sibling temporary name first and is
+    moved onto ``name`` with ``os.replace(..., dir_fd=...)``: a rename inside
+    one directory, which POSIX guarantees is atomic, so nothing ever reads a
+    half-written attestation.
+    """
     try:
-        info = os.fstat(fd)
-        if not stat.S_ISREG(info.st_mode):
-            raise OSError("attestation path %s is not a regular file" % path)
+        existing = os.stat(name, dir_fd=dir_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        existing = None
+    if existing is not None and not stat.S_ISREG(existing.st_mode):
+        raise OSError("attestation path %r is not a regular file" % (name,))
+
+    tmp_name = ".%s.tmp-%d" % (name, os.getpid())
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
+    fd = os.open(tmp_name, flags, 0o644, dir_fd=dir_fd)
+    try:
         os.write(fd, contents.encode("utf-8"))
     finally:
         os.close(fd)
+    try:
+        os.replace(tmp_name, name, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
+    except BaseException:
+        try:
+            os.unlink(tmp_name, dir_fd=dir_fd)
+        except OSError:
+            pass
+        raise
+
+
+def _write_attestation(path, contents, root):
+    """Write the attestation record, refusing to write through a symlink
+    anywhere on the path -- the file itself, or any directory above it.
+
+    The leaf was closed first (commit a419774): opening the final file with
+    ``O_NOFOLLOW`` refuses if that last name is itself a symlink. But every
+    *parent* directory was still reached by pathname -- ``os.makedirs`` to
+    create a missing one, a plain ``os.open(str(path), ...)`` to reach the
+    file inside it -- and pathname resolution follows a symlink at any
+    component that is not the final one. Replacing ``docs`` or
+    ``docs/readiness`` itself with a symlink therefore sent the write
+    wherever that symlink pointed, inside the tree or outside it, while
+    ``record_review`` went on to report success.
+
+    Fixed by walking every parent component one at a time from a descriptor
+    on ``root``, using ``dir_fd``-relative opens with ``O_NOFOLLOW``
+    throughout: a missing component is created with
+    ``os.mkdir(component, dir_fd=...)``, which can only ever create a
+    directory inside the descriptor already held open, never through a
+    symlink planted at an earlier component; an existing component is
+    refused unless ``os.stat(..., follow_symlinks=False)`` says it is
+    positively a directory, which also refuses a symlink that happens to
+    point at one.
+
+    ``root`` is required, not defaulted. It used to be optional, with a
+    fallback branch for a caller that omitted it: that branch reached the
+    parent directory by plain pathname (``os.makedirs`` plus a bare
+    ``os.open(str(path), ...)``), which is exactly the unguarded resolution
+    this function exists to avoid -- the round-2 bug all over again, just
+    reachable through this helper's own default instead of through
+    ``record_review``. No production caller ever omitted ``root``; only the
+    direct unit test on this helper did, and that test now passes it
+    explicitly instead of exercising a fallback nothing else used.
+
+    Refuses outright, rather than falling back to pathname calls, on a
+    platform lacking the O_NOFOLLOW/O_DIRECTORY flags or the dir_fd support
+    this depends on.
+    """
+    if not _dir_fd_operations_supported():
+        raise OSError(
+            "this platform lacks the dir_fd-relative filesystem operations "
+            "(O_NOFOLLOW/O_DIRECTORY plus os.supports_dir_fd coverage for "
+            "open, stat, mkdir and rename) the attestation write path needs "
+            "to refuse a parent-directory symlink; refusing to fall back to "
+            "pathname resolution instead")
+
+    path = Path(path)
+    dir_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+
+    root = Path(root)
+    try:
+        parts = path.relative_to(root).parts
+    except ValueError:
+        raise OSError(
+            "attestation path %s is not inside root %s; refusing to write "
+            "it through pathname joining" % (path, root))
+    if not parts:
+        raise OSError("attestation path %s is the root itself" % (path,))
+    if any(component in ("..", ".") for component in parts):
+        # ``relative_to`` is a string comparison of path segments; it does
+        # not resolve ``..`` the way the filesystem does. A literal ``..``
+        # segment survives it -- ``root / ".." / "outside" / "x.json"`` is a
+        # valid child of ``root`` by that comparison alone -- and the walk
+        # below would then genuinely open ``..`` with ``dir_fd=parent_fd``:
+        # that entry always exists, is always a directory, and is never a
+        # symlink, so none of the checks in the loop catch it. Refusing any
+        # ``..`` or ``.`` component here, before the walk starts, is what
+        # keeps every component the loop opens a real, named child of the
+        # descriptor already held -- which is the guarantee the walk exists
+        # to provide in the first place.
+        raise OSError(
+            "attestation path %s contains a relative path component "
+            "('..' or '.'); refusing to walk it through the reviewed tree"
+            % (path,))
+
+    parent_fd = os.open(str(root), dir_flags)
+    try:
+        for component in parts[:-1]:
+            try:
+                info = os.stat(component, dir_fd=parent_fd, follow_symlinks=False)
+            except FileNotFoundError:
+                os.mkdir(component, dir_fd=parent_fd)
+                info = os.stat(component, dir_fd=parent_fd, follow_symlinks=False)
+            if not stat.S_ISDIR(info.st_mode):
+                raise OSError(
+                    "attestation path component %r is not a plain directory "
+                    "(refusing: a symlink or other non-directory here could "
+                    "redirect the write outside the reviewed tree)" %
+                    (component,))
+            child_fd = os.open(component, dir_flags, dir_fd=parent_fd)
+            os.close(parent_fd)
+            parent_fd = child_fd
+        _replace_regular_file(parent_fd, parts[-1], contents)
+    finally:
+        os.close(parent_fd)
 
 
 def validate_attestation(document, root=REPO):
@@ -622,7 +777,7 @@ def record_review(args, root=REPO):
     if not path.is_absolute():
         path = root / path
     try:
-        _write_attestation(path, json.dumps(document, indent=2) + "\n")
+        _write_attestation(path, json.dumps(document, indent=2) + "\n", root)
     except OSError as error:
         print("record: REFUSED. %s" % error)
         return 2
@@ -674,7 +829,7 @@ def main(argv=None):
     if not path.is_absolute():
         path = REPO / path
     try:
-        document = json.loads(_read_attestation(path))
+        document = json.loads(_read_attestation(path, REPO))
     except (OSError, json.JSONDecodeError) as error:
         print("independent review unavailable: %s" % error)
         return 1

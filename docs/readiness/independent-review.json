@@ -1,49 +1,36 @@
 {
   "schema": 1,
-  "reviewer_id": "OpenAI Codex (GPT-5)",
+  "reviewer_id": "Codex",
   "reviewer_kind": "independent-agent",
   "independent_implementation": true,
   "identity_assurance": "unauthenticated-local-claim",
-  "reviewed_at": "2026-09-09T12:32:25Z",
-  "reviewed_tree_sha256": "d7f251f0a60c88c9076fad6080eeef1a6977389b1daf3afb0eb5d6906bc8edab",
+  "reviewed_at": "2026-09-11T09:36:04Z",
+  "reviewed_tree_sha256": "8dc829d32da3966fd1927aa76e737bbdfe7f43bb81efbe46538d7a2f87f59530",
   "scope": [
-    "All twenty-eight new knowledge/domains sector cards: three-pass content review under the no-fabrication rule, including every Gatekeepers and Reading section and every dated, numbered, named-instrument, regulator, standard and case claim in orientation and metrics",
-    "Six final reworded card sentences in crypto-digital-assets.md, food-delivery-quick-commerce.md, insurance.md, islamic-finance.md, proptech-real-estate.md and public-sector-govtech.md; verified against the disclosed primary-source corrections and prior findings",
-    "Domain structure and routing: fixed section order, Conductor question ids, template links, README table coverage and scope, fintech fourteen-card pointer, knowledge index count, regulated-module handoffs, graph freshness and CHANGELOG accuracy",
-    "Repository release gates and exact-tree identity for commit 55b2c41f6a0c6b14fc672266e8e749e9f34d03bb"
+    "CI-6 exact-tree review of the two origin/main..HEAD hardening commits, tools/review_gate.py, docs/readiness criteria and review brief",
+    "Adversarial symlinked docs/ and docs/readiness/ write and validation paths, .. and outside-path refusal, and unsupported-dir_fd fail-closed behavior",
+    "Release gates and readiness score/hard-gate integrity; reviewer implemented none of the reviewed tree; model: GPT-5"
   ],
   "evidence": [
     {
-      "command": "git rev-parse HEAD",
-      "result": "55b2c41f6a0c6b14fc672266e8e749e9f34d03bb; exit 0"
+      "command": " /opt/homebrew/bin/python3.12 tools/review_gate.py --help ",
+      "result": " usage displayed; exit 0"
     },
     {
-      "command": "python3 tools/review_gate.py --digest",
-      "result": "523 files; sha256 d7f251f0a60c88c9076fad6080eeef1a6977389b1daf3afb0eb5d6906bc8edab; exit 0"
+      "command": " /opt/homebrew/bin/python3.12 tools/ci_gate.py ",
+      "result": " 20/21 release gates passed; only readiness-local/CI-6 red before recording; exit 1 as expected"
     },
     {
-      "command": "python3 tools/ci_gate.py",
-      "result": "18/19 release gates passed; 48 criteria, 1 failing, 0 not built; local exact-tree review record/CI-6 only red; exit 1 as expected before recording"
+      "command": " /opt/homebrew/bin/python3.12 tools/readiness.py ",
+      "result": " 99/100; only CI-6 failing and local_review_record_complete NOT GREEN before recording; exit 1 as expected"
     },
     {
-      "command": "python3 tools/graph.py --check",
-      "result": "docs/GRAPH.md up to date; 306 files scanned; exit 0"
+      "command": " /opt/homebrew/bin/python3.12 -m unittest test_pmos_review.AttestationParentSymlinkTests test_pmos_review.AttestationReadPathTests test_pmos_review.AttestationSymlinkTests test_pmos_review.IndependentReviewGateTests test_pmos_review.RecordReviewTests ",
+      "result": " 31 tests OK"
     },
     {
-      "command": "python3 lint.py --os",
-      "result": "OS tree mode, 11 checks passed; exit 0"
-    },
-    {
-      "command": "python3 tools/docs_contract.py",
-      "result": "0 errors, 0 warnings; exit 0"
-    },
-    {
-      "command": "git diff --check",
-      "result": "no output; exit 0"
-    },
-    {
-      "command": "git diff 70dda6a..HEAD",
-      "result": "six reworded sentences across six cards and two CHANGELOG paragraphs; 7 files changed, 13 insertions, 10 deletions"
+      "command": "focused unsupported-dir_fd write probe ",
+      "result": " refusal returned rc 2; no pathname fallback"
     }
   ],
   "findings": [],
