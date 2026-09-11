@@ -39,7 +39,7 @@ One role per run, from an instruction file in agents/, and every handoff carries
 - `agents/TEAM.md`
 - `agents/hermes-agent.md`
 
-## Templates the output lands in
+## Templates this route reads for context
 
 None. This route writes no template.
 

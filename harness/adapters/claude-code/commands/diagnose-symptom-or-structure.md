@@ -39,7 +39,7 @@ The router names worksheets rather than a skill, so skill is null. Sorting an ob
 - `frameworks/systems/leverage-points.md`
 - `frameworks/execution/five-whys-fishbone.md`
 
-## Templates the output lands in
+## Templates this route reads for context
 
 - `templates/discovery/problem-framing.md`
 - `templates/execution/decision-log.md`

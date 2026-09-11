@@ -38,7 +38,7 @@ Cross-examination and gate evaluation are the load-bearing calls, so the tier is
 - `os/OPERATING-LOOP.md`
 - `skills/conductor/questions/discover.md`
 
-## Templates the output lands in
+## Templates an accepted answer lands in later
 
 - `templates/execution/state.md`
 

@@ -39,7 +39,7 @@ These sheets score people and teams, so least-data binds: cite dated events and 
 - `frameworks/assessment/tech-debt-assessment.md`
 - `frameworks/assessment/westrum-culture-typology.md`
 
-## Templates the output lands in
+## Templates this route reads for context
 
 - `templates/planning/capacity-plan.md`
 - `templates/planning/product-strategy.md`

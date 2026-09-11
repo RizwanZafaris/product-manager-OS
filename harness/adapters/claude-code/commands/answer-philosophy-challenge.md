@@ -38,7 +38,7 @@ No skill and no artifact: these files produce none. Give the counter-argument th
 - `docs/FAQ.md`
 - `docs/COMPARISON.md`
 
-## Templates the output lands in
+## Templates this route reads for context
 
 None. This route writes no template.
 

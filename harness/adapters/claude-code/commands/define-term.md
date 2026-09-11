@@ -36,7 +36,7 @@ No skill: read the entry, then follow its link, because the governing file wins 
 
 - `GLOSSARY.md`
 
-## Templates the output lands in
+## Templates this route reads for context
 
 None. This route writes no template.
 

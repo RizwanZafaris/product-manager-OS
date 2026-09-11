@@ -37,7 +37,7 @@ No skill: read the index, open the named card, and follow the card's own Templat
 - `knowledge/domains/README.md`
 - `knowledge/domains/INDEX.md`
 
-## Templates the output lands in
+## Templates this route reads for context
 
 None. This route writes no template.
 

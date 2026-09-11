@@ -37,7 +37,7 @@ No skill: the role cards answer the question and the two templates are what a re
 - `knowledge/roles/README.md`
 - `knowledge/roles/INDEX.md`
 
-## Templates the output lands in
+## Templates this route reads for context
 
 - `templates/planning/first-90-days.md`
 - `templates/execution/stakeholder-map.md`

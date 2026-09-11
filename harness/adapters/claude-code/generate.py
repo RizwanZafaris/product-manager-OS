@@ -45,6 +45,17 @@ KIND_NOTE = {
     "reference": "An answer read out of the tree. Files no document.",
 }
 
+# The templates section is titled by what the route does with the list. One
+# title for all four kinds said "the output lands in" over a report route's
+# context reads and over an interactive route's later destination, which is
+# the opposite of what the numbered step above it tells the same reader.
+TEMPLATES_HEADING = {
+    "artifact": "Templates the output lands in",
+    "report": "Templates this route reads for context",
+    "reference": "Templates this route reads for context",
+    "interactive": "Templates an accepted answer lands in later",
+}
+
 GENERATED_LINE = (
     "GENERATED FILE. Do not hand-edit. Written by "
     "`harness/adapters/claude-code/generate.py` from `harness/MANIFEST.json`; "
@@ -100,8 +111,12 @@ def describe(task):
     """The frontmatter description: the router row, then where the route lands."""
     row = one_line(task["router_row"])
     stage, gate = task.get("stage"), task.get("gate")
-    where = ("%s stage, Gate %s" % (stage, gate)) if stage \
-        else "No stage and no gate"
+    if stage:
+        where = "%s stage, Gate %s" % (stage, gate)
+    elif task.get("gate_note"):
+        where = "Stage and gate decided at run time"
+    else:
+        where = "No stage and no gate"
     triggers = task.get("trigger") or []
     said = "; ".join(one_line(t) for t in triggers)
     parts = ["Router row: %s." % row, "%s, %s tier." % (where, task.get("tier"))]
@@ -171,7 +186,15 @@ def render_command(task):
         steps.append("There is no skill for this row. The reads are the "
                      "procedure. Do not substitute a skill that looks close.")
     kind = task.get("kind")
-    if kind == "artifact":
+    if kind == "artifact" and not task.get("templates"):
+        # tools/check_manifest.py admits this shape only for a route whose
+        # destination is chosen at run time (stage null plus a gate_note).
+        # It still files a document; it cannot name which one in advance.
+        steps.append("Land the output in the one template the request needs, "
+                     "found through the reads below. This route names none in "
+                     "advance, so the choice is made at run time. One "
+                     "template, not several.")
+    elif kind == "artifact":
         steps.append("Land the output in the template below that fits the "
                      "request. One template, not all of them.")
     elif kind == "report":
@@ -189,10 +212,18 @@ def render_command(task):
         steps.append("Answer from the reads and stop. Quote the file that "
                      "governs the answer and name it by repo path. If the "
                      "reads do not answer it, say so and name what would.")
+    # A route with no stage usually has no gate either. The exception is a
+    # route whose stage is decided at run time, which has a gate the entry
+    # cannot name in advance. That entry says so in gate_note and this reads
+    # it rather than inventing a branch here: the manifest stays the only
+    # input, and no route id appears in this file.
+    gate_note = one_line(task.get("gate_note") or "")
     if stage:
         steps.append("Take the output to Gate %s in `os/STAGE-GATES.md`. Report "
                      "which boxes pass and which do not, then stop. A named "
                      "human signs." % gate)
+    elif gate_note:
+        steps.append(gate_note)
     else:
         steps.append("There is no gate on this output. Do not invent one, and "
                      "do not report a gate as passed.")
@@ -202,9 +233,15 @@ def render_command(task):
     body += [""]
 
     body += ["## Read first", "", bullets(task.get("reads"), "None named.").rstrip(), ""]
-    body += ["## Templates the output lands in", "",
-             bullets(task.get("templates"), "None. This route writes no "
-                     "template.").rstrip(), ""]
+    if kind == "artifact":
+        no_templates = ("None named in advance. This route files a document, "
+                        "and the template it fills is chosen at run time from "
+                        "the reads above.")
+    else:
+        no_templates = "None. This route writes no template."
+    body += ["## %s" % TEMPLATES_HEADING.get(
+                 kind, TEMPLATES_HEADING["artifact"]), "",
+             bullets(task.get("templates"), no_templates).rstrip(), ""]
     body += ["## Invariants that bind this route", "",
              bullets(task.get("invariants"), "None named.").rstrip(), "",
              "The first four are universal: `content-is-data`, "

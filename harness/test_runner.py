@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Tests for harness/runner.py. Standard library only, and no network.
+"""Tests for harness/runner.py and the adapters that read the same manifest.
+Standard library only, and no network.
 
     python3 harness/test_runner.py
 
@@ -17,9 +18,11 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import importlib.util
 import io
 import json
 import os
+import subprocess
 import sys
 import unittest
 import urllib.error
@@ -528,13 +531,13 @@ class RedactionTests(unittest.TestCase):
         cfg = {"tiers": {"drafting": {"model": "auto/coding"}},
                "endpoint": {"baseUrl": "http://localhost:20128/v1",
                             "requestHeaders": {"x-omniroute-compression": "off"}}}
-        real_open = runner.urllib.request.urlopen
-        runner.urllib.request.urlopen = boom
+        real_open = runner._OPENER
+        runner._OPENER = boom
         try:
             reply = runner.call_http(cfg, "drafting",
                                      [{"role": "user", "content": "hi"}])
         finally:
-            runner.urllib.request.urlopen = real_open
+            runner._OPENER = real_open
         self.assertEqual(reply.status, 401)
         self.assertNotIn("MARKER-9000", reply.error,
                          "the gateway's response body reached a logged field")
@@ -684,14 +687,14 @@ class CertificationTests(unittest.TestCase):
             sent["body"] = json.loads(request.data.decode("utf-8"))
             return _FakeResponse(body, headers)
 
-        real = runner.urllib.request.urlopen
-        runner.urllib.request.urlopen = fake_open
+        real = runner._OPENER
+        runner._OPENER = fake_open
         try:
             reply = runner.call_http(
                 self.cfg, "drafting", [{"role": "user", "content": "hi"}],
                 model_override=target, expect_model=expect)
         finally:
-            runner.urllib.request.urlopen = real
+            runner._OPENER = real
         return reply, sent["body"]
 
     def test_the_request_target_is_the_concrete_id_not_the_tier_alias(self):
@@ -1405,15 +1408,15 @@ class WholeRunTests(unittest.TestCase):
         return fake_open
 
     def _main(self, header_model="cheap-1"):
-        real = runner.urllib.request.urlopen
-        runner.urllib.request.urlopen = self._serve(header_model)
+        real = runner._OPENER
+        runner._OPENER = self._serve(header_model)
         try:
             with contextlib.redirect_stdout(io.StringIO()) as out:
                 code = runner.main(["--task", "gather-evidence",
                                     "--product", self.slug,
                                     "--input", "one line of evidence"])
         finally:
-            runner.urllib.request.urlopen = real
+            runner._OPENER = real
         return code, out.getvalue()
 
     def test_the_task_call_targets_the_model_the_probe_resolved(self):
@@ -1442,7 +1445,7 @@ class WholeRunTests(unittest.TestCase):
         # The probe resolves cheap-1, and the task call is answered by
         # something else. This is the defect Finding 3 describes, and the run
         # has to end with a queue row and no artifact.
-        real = runner.urllib.request.urlopen
+        real = runner._OPENER
 
         def switching(request, timeout=None):
             body = json.loads(request.data.decode("utf-8"))
@@ -1450,14 +1453,14 @@ class WholeRunTests(unittest.TestCase):
             model = "cheap-1" if probing else "someone-cheaper-2"
             return self._serve(model)(request, timeout)
 
-        runner.urllib.request.urlopen = switching
+        runner._OPENER = switching
         try:
             with contextlib.redirect_stdout(io.StringIO()) as out:
                 code = runner.main(["--task", "gather-evidence",
                                     "--product", self.slug,
                                     "--input", "one line of evidence"])
         finally:
-            runner.urllib.request.urlopen = real
+            runner._OPENER = real
         self.assertEqual(code, runner.EXIT_QUEUED,
                          "deferred work reported itself as a completed run")
         self.assertIn("WORK QUEUED", out.getvalue())
@@ -1480,6 +1483,10 @@ class _FakeResponse:
         self._body = io.BytesIO(body.encode("utf-8"))
         self.headers = headers
         self.status = status
+        # Every byte handed to the caller, by either path. A fold that reads
+        # the whole body before its bound applies shows up here, whatever it
+        # did with the bytes afterwards.
+        self.consumed = 0
 
     def __enter__(self):
         return self
@@ -1487,8 +1494,15 @@ class _FakeResponse:
     def __exit__(self, *unused):
         return False
 
+    def readline(self, size=-1):
+        line = self._body.readline(size)
+        self.consumed += len(line)
+        return line
+
     def __iter__(self):
-        return iter(self._body)
+        # What iterating an http.client response does: readline() with no
+        # size, so one unterminated line is read in full.
+        return iter(lambda: self.readline(), b"")
 
 
 def _failed_reply(tier):
@@ -1932,6 +1946,614 @@ class WorkspaceEnumerationIgnoresSidecarsTests(unittest.TestCase):
 
         self.assertGreater(total, 0,
                            "a genuinely broken link stopped being reported")
+
+
+def _load_by_path(name, path):
+    """Import one file by path, for the tools and adapters that are scripts
+    rather than modules on sys.path."""
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+_GATEWAY_CFG = {"tiers": {"drafting": {"model": "auto/coding",
+                                       "temperature": 0.3,
+                                       "maxOutputTokens": 4096}},
+                "endpoint": {"baseUrl": "http://localhost:20128/v1",
+                             "requestHeaders": {
+                                 "x-omniroute-compression": "off"}}}
+
+
+class GatewayRedirectTests(unittest.TestCase):
+    """runner-follows-redirect-with-bearer-key: the gateway credential never
+    leaves for a second host.
+
+    call_http attaches `Authorization: Bearer <OMNIROUTE_API_KEY>`. The
+    default opener answers a 302 by rebuilding the request with every header
+    except content-length and content-type intact, so a gateway that names
+    another host in Location is handed the key and the run still reports a
+    success. The gateway is a local process an operator points
+    OMNIROUTE_BASE_URL at, over plain http by default, so both a compromised
+    gateway and anything on that path can name the second host.
+    """
+
+    CANARY = "sk-canary-do-not-leak"
+    ELSEWHERE = "https://attacker.example/v1/chat/completions"
+
+    def _gateway_request(self):
+        return runner.urllib.request.Request(
+            "http://localhost:20128/v1/chat/completions",
+            data=b"{}", method="POST",
+            headers={"Authorization": "Bearer " + self.CANARY,
+                     "Content-Type": "application/json"})
+
+    def test_the_default_handler_would_carry_the_key_to_the_named_host(self):
+        """What the runner did before: this is the leak, stated as a test so
+        the fix below is measured against it rather than against nothing."""
+        stock = runner.urllib.request.HTTPRedirectHandler()
+        follow = stock.redirect_request(
+            self._gateway_request(), None, 302, "Found", {}, self.ELSEWHERE)
+        self.assertIsNotNone(follow)
+        self.assertEqual(follow.host, "attacker.example")
+        self.assertEqual(follow.headers.get("Authorization"),
+                         "Bearer " + self.CANARY)
+
+    def test_the_runners_handler_builds_no_second_request(self):
+        follow = runner._NoRedirect().redirect_request(
+            self._gateway_request(), None, 302, "Found", {}, self.ELSEWHERE)
+        self.assertIsNone(
+            follow, "a follow-up request was built, so the credential is "
+                    "re-sent to whatever host the gateway named")
+
+    def test_the_opener_call_http_uses_carries_that_refusal(self):
+        handlers = runner._OPENER.__self__.handlers
+        self.assertTrue(
+            any(isinstance(h, runner._NoRedirect) for h in handlers),
+            "the http transport's opener has no redirect refusal on it")
+
+    def test_call_http_does_not_reach_for_the_default_opener(self):
+        """Reverting the call site to urllib.request.urlopen puts the default
+        redirect handler back in the path, which is the whole defect."""
+        body = (delta("a whole document") + delta("", finish="stop")
+                + "data: [DONE]\n\n")
+
+        def guarded(request, timeout=None):
+            return _FakeResponse(body, {"X-OmniRoute-Model": "test-model-1"})
+
+        def default_opener(*unused, **also_unused):
+            raise AssertionError(
+                "call_http used the default opener, which follows a redirect "
+                "and re-sends the Authorization header to the named host")
+
+        real_opener = runner._OPENER
+        real_urlopen = runner.urllib.request.urlopen
+        runner._OPENER = guarded
+        runner.urllib.request.urlopen = default_opener
+        try:
+            reply = runner.call_http(_GATEWAY_CFG, "drafting",
+                                     [{"role": "user", "content": "hi"}])
+        finally:
+            runner._OPENER = real_opener
+            runner.urllib.request.urlopen = real_urlopen
+        self.assertEqual(reply.text, "a whole document")
+
+    def test_a_redirecting_gateway_queues_the_run(self):
+        """With the refusal in place urllib raises the 3xx, which lands in the
+        HTTPError branch call_http already had, so the run queues."""
+        def refused(request, timeout=None):
+            raise urllib.error.HTTPError(
+                request.full_url, 302, "Found",
+                {"Location": self.ELSEWHERE}, io.BytesIO(b""))
+
+        real_opener = runner._OPENER
+        runner._OPENER = refused
+        try:
+            reply = runner.call_http(_GATEWAY_CFG, "drafting",
+                                     [{"role": "user", "content": "hi"}])
+        finally:
+            runner._OPENER = real_opener
+        self.assertEqual(reply.status, 302)
+        self.assertFalse(reply.ok)
+        self.assertIn("HTTP 302", reply.error)
+        self.assertNotIn("attacker.example", reply.error)
+
+
+class StreamBoundTests(unittest.TestCase):
+    """runner-unbounded-sse-buffer: a stream is folded under a byte ceiling,
+    not until it stops.
+
+    READ_TIMEOUT_S bounds one read, so every new byte resets it. Without a
+    ceiling a gateway that never sends the terminal event is buffered twice
+    over, in text_parts and in raw_lines, until the machine swaps, and a
+    stream that does end writes its whole size into the workspace.
+    """
+
+    def test_the_cap_is_derived_from_what_the_call_asked_for(self):
+        self.assertEqual(runner.stream_cap(0), 16384)
+        self.assertEqual(runner.stream_cap(4096), 4096 * 64 + 16384)
+        self.assertEqual(runner.stream_cap(10 ** 9), runner.SSE_MAX_BYTES)
+        self.assertEqual(runner.stream_cap(None), 16384)
+
+    def test_an_oversized_stream_is_an_error_not_a_long_answer(self):
+        frames = [delta("y" * 1000) for _ in range(400)]
+        folded = runner._fold_sse(sse(*frames), 20000)
+        self.assertIn("exceeded the response size bound", folded.error)
+        self.assertLessEqual(len(folded.text), 20000,
+                             "the fold kept buffering past its own bound")
+        self.assertFalse(folded.terminal)
+
+    def test_a_stream_inside_the_bound_still_folds(self):
+        folded = runner._fold_sse(
+            sse(delta("a whole document"), delta("", finish="stop"),
+                "data: [DONE]\n\n"), 20000)
+        self.assertEqual(folded.error, "")
+        self.assertEqual(folded.text, "a whole document")
+        self.assertTrue(folded.terminal)
+
+    def test_call_http_bounds_the_body_by_the_tier_budget(self):
+        body = "".join(delta("z" * 4000) for _ in range(200))
+        body += delta("", finish="stop") + "data: [DONE]\n\n"
+
+        def flood(request, timeout=None):
+            return _FakeResponse(body, {"X-OmniRoute-Model": "test-model-1"})
+
+        real_opener = runner._OPENER
+        runner._OPENER = flood
+        try:
+            reply = runner.call_http(_GATEWAY_CFG, "drafting",
+                                     [{"role": "user", "content": "hi"}])
+        finally:
+            runner._OPENER = real_opener
+        self.assertIn("exceeded the response size bound", reply.error)
+        self.assertFalse(reply.ok)
+        self.assertLessEqual(len(reply.text), runner.stream_cap(4096),
+                             "a body larger than the call's own budget was "
+                             "kept, and would have been written")
+
+    # runner-unbounded-sse-buffer-newline-bypass: the bound has to hold on the
+    # read, not only on the count after it. Iterating a response calls
+    # readline() with no size, so a gateway that never sends a newline had its
+    # whole body buffered inside that one call before the counter ran. The
+    # refusal still happened, after the memory was spent: a 64 MB unterminated
+    # stream took peak RSS from 41 MB to 186 MB through call_http.
+
+    def test_an_unterminated_stream_is_not_read_past_the_bound(self):
+        stream = _FakeResponse("data: " + "x" * 200000, {})
+        folded = runner._fold_sse(stream, 20000)
+        self.assertIn("exceeded the response size bound", folded.error)
+        self.assertLessEqual(stream.consumed, 20001,
+                             "the fold read %d bytes of a stream bounded at "
+                             "20000 before refusing it" % stream.consumed)
+
+    def test_an_endless_unterminated_stream_is_refused(self):
+        class Endless:
+            """A gateway that sends bytes forever and never a newline."""
+
+            def __init__(self):
+                self.consumed = 0
+
+            def readline(self, size=-1):
+                if size is None or size < 0:
+                    raise AssertionError(
+                        "an unbounded readline on a stream that never ends "
+                        "is a read that never returns")
+                self.consumed += size
+                return b"x" * size
+
+            def __iter__(self):
+                return iter(lambda: self.readline(), b"")
+
+        stream = Endless()
+        folded = runner._fold_sse(stream, 20000)
+        self.assertIn("exceeded the response size bound", folded.error)
+        self.assertLessEqual(stream.consumed, 20001)
+
+    def test_call_http_does_not_read_an_unterminated_body_past_the_budget(self):
+        seen = {}
+
+        def flood(request, timeout=None):
+            seen["resp"] = _FakeResponse(
+                "data: " + "z" * 1000000, {"X-OmniRoute-Model": "test-model-1"})
+            return seen["resp"]
+
+        real_opener = runner._OPENER
+        runner._OPENER = flood
+        try:
+            reply = runner.call_http(_GATEWAY_CFG, "drafting",
+                                     [{"role": "user", "content": "hi"}])
+        finally:
+            runner._OPENER = real_opener
+        self.assertIn("exceeded the response size bound", reply.error)
+        self.assertFalse(reply.ok)
+        self.assertLessEqual(seen["resp"].consumed,
+                             runner.stream_cap(4096) + 1,
+                             "call_http read %d bytes of an unterminated body "
+                             "whose budget is %d"
+                             % (seen["resp"].consumed, runner.stream_cap(4096)))
+
+    def test_a_body_exactly_at_the_bound_folds_and_one_byte_over_does_not(self):
+        body = delta("a whole document") + delta("", finish="stop")
+        size = len(body.encode("utf-8"))
+        at_bound = runner._fold_sse(sse(body), size)
+        self.assertEqual(at_bound.error, "")
+        self.assertEqual(at_bound.text, "a whole document")
+        self.assertTrue(at_bound.terminal)
+        over = runner._fold_sse(sse(body), size - 1)
+        self.assertIn("exceeded the response size bound", over.error)
+
+
+class CliTransportTests(unittest.TestCase):
+    """runner-call-cli-has-no-test: the secondary transport fails closed on a
+    provider that died.
+
+    call_cli is not a deployment path, and until now no test executed it at
+    all: inverting its returncode test turned a crashed provider into a
+    successful reply carrying whatever partial stdout had been printed, and
+    both suites stayed green.
+    """
+
+    class _Finished:
+        def __init__(self, returncode, stdout, stderr):
+            self.returncode = returncode
+            self.stdout = stdout
+            self.stderr = stderr
+
+    def _call(self, returncode, stdout, stderr):
+        def fake_run(argv, **unused):
+            return self._Finished(returncode, stdout, stderr)
+
+        real = runner.subprocess.run
+        runner.subprocess.run = fake_run
+        try:
+            return runner.call_cli(_GATEWAY_CFG, "drafting",
+                                   [{"role": "user", "content": "hi"}])
+        finally:
+            runner.subprocess.run = real
+
+    def test_a_nonzero_exit_is_a_failure_not_a_partial_answer(self):
+        reply = self._call(3, "half a document, then the cli died",
+                           "omniroute: fatal: gateway refused")
+        self.assertFalse(reply.ok)
+        self.assertEqual(reply.status, 0)
+        self.assertIn("exit 3", reply.error)
+        self.assertEqual(reply.text, "",
+                         "stdout from a crashed provider became the answer")
+
+    def test_a_clean_exit_still_produces_an_uncertified_reply(self):
+        reply = self._call(0, "a whole document\n", "")
+        self.assertEqual(reply.error, "")
+        self.assertEqual(reply.status, 200)
+        self.assertEqual(reply.text, "a whole document")
+        self.assertFalse(reply.certification_verified,
+                         "the cli transport cannot prove which model answered")
+        self.assertFalse(reply.finish_verified)
+
+    def test_a_missing_binary_is_a_failure_and_names_the_contract_path(self):
+        def missing(argv, **unused):
+            raise FileNotFoundError(2, "no such file")
+
+        real = runner.subprocess.run
+        runner.subprocess.run = missing
+        try:
+            reply = runner.call_cli(_GATEWAY_CFG, "drafting",
+                                    [{"role": "user", "content": "hi"}])
+        finally:
+            runner.subprocess.run = real
+        self.assertFalse(reply.ok)
+        self.assertIn("not on PATH", reply.error)
+
+
+class StoryRouteStageTests(unittest.TestCase):
+    """write-stories-routed-to-wrong-gate: the route declared BUILD / Gate 4
+    and everything it names said DEFINE / Gate 2.
+
+    Nothing compared the two: tools/check_manifest.py resolves the template
+    paths without reading them, and lint.py compares a skill sidecar against
+    os/STAGE-GATES.md rather than against the manifest. So the generated
+    command told an agent to take a freshly written story set to the gate
+    that verifies test results against a running product, while Gate 2, the
+    one that signs the requirements those stories make testable, never saw
+    them. The route's own four declarations are the authority and they agree
+    with each other, so they are all asserted here rather than one of them.
+    """
+
+    LOOP_STAGES = ("DISCOVER", "DEFINE", "DESIGN", "BUILD", "DELIVER",
+                   "OPERATE")
+
+    @staticmethod
+    def _declared(path):
+        """The stage and gate a repository file declares about itself."""
+        text = (REPO / path).read_text(encoding="utf-8")
+        if text.startswith("---"):
+            text = text.split("---", 2)[1]
+        out = {}
+        for line in text.splitlines():
+            if line.startswith("#"):
+                break
+            if line.startswith(("stage:", "gate:")):
+                key, value = line.split(":", 1)
+                out[key.strip()] = value.strip().strip('"')
+        return out
+
+    def setUp(self):
+        self.tasks, _note = runner.load_manifest()
+        self.task = self.tasks["write-stories"]
+
+    def test_the_route_declares_the_stage_its_skill_declares(self):
+        sidecar = self._declared("skills/story-writer/SKILL.graph.yml")
+        self.assertEqual(sidecar["stage"], self.task["stage"])
+        self.assertEqual(sidecar["gate"], str(self.task["gate"]))
+
+    def test_the_route_declares_the_stage_its_templates_declare(self):
+        for path in self.task["templates"]:
+            declared = self._declared(path)
+            if declared.get("stage") not in self.LOOP_STAGES:
+                continue
+            self.assertEqual(
+                declared["stage"], self.task["stage"],
+                "%s belongs to another stage than the route filing it" % path)
+            self.assertEqual(declared["gate"], str(self.task["gate"]),
+                             "%s feeds another gate than the route's" % path)
+
+    def test_the_skill_prose_names_the_same_gate(self):
+        prose = (REPO / "skills/story-writer/SKILL.md").read_text(
+            encoding="utf-8")
+        self.assertIn("feed Gate %d" % self.task["gate"], prose)
+
+
+class GeneratedCommandTests(unittest.TestCase):
+    """The claude-code adapter reads the same manifest, so its wording is
+    part of the route contract and is pinned here.
+
+    report-routes-contradict-their-own-templates-heading: it titled every
+    route's template list "Templates the output lands in", including the
+    report routes whose own numbered step says the opposite one line above.
+    fallback-route-forbids-its-own-job: it read a null stage as no gate,
+    which is right for a reference read and wrong for the catch-all row whose
+    whole procedure ends at a gate, and it told that row to report rather
+    than fill a template.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.generate = _load_by_path(
+            "_generate",
+            REPO / "harness" / "adapters" / "claude-code" / "generate.py")
+        _data, tasks = cls.generate.load_manifest()
+        cls.tasks = {task["id"]: task for task in tasks}
+
+    def _render(self, route):
+        return self.generate.render_command(self.tasks[route])
+
+    def test_a_report_route_does_not_call_its_reads_a_destination(self):
+        task = self.tasks["diagnose-symptom-or-structure"]
+        self.assertEqual(task["kind"], "report")
+        self.assertTrue(task["templates"])
+        body = self._render("diagnose-symptom-or-structure")
+        self.assertIn("## Templates this route reads for context", body)
+        self.assertNotIn("## Templates the output lands in", body,
+                         "the section title contradicts the step above it")
+
+    def test_an_artifact_route_still_titles_its_templates_as_the_destination(self):
+        body = self._render("write-stories")
+        self.assertIn("## Templates the output lands in", body)
+        self.assertIn("Take the output to Gate 2 in", body)
+
+    def test_an_interactive_route_says_the_answer_lands_there_later(self):
+        body = self._render("conduct-product-journey")
+        self.assertIn("## Templates an accepted answer lands in later", body)
+
+    def test_a_route_whose_stage_is_decided_at_run_time_names_its_gate(self):
+        task = self.tasks["fallback-stage-loop"]
+        self.assertIsNone(task["stage"], "this route declares no stage")
+        body = self._render("fallback-stage-loop")
+        self.assertIn("Take the output to the gate of the stage you placed "
+                      "the request in", body)
+        self.assertNotIn("There is no gate on this output", body,
+                         "the catch-all row's procedure ends at a gate and "
+                         "the command told the agent it does not")
+        self.assertNotIn("No stage and no gate", body)
+
+    def test_the_catch_all_is_told_to_fill_a_template_not_to_report(self):
+        body = self._render("fallback-stage-loop")
+        self.assertIn("Land the output in the one template the request needs",
+                      body)
+        self.assertNotIn("Report what you found", body,
+                         "the catch-all fills a stage template; it judges "
+                         "nothing supplied")
+        self.assertIn("None named in advance", body)
+        self.assertNotIn("This route writes no template", body,
+                         "an artifact route was told it writes nothing")
+
+    def test_a_stage_less_route_with_no_gate_note_still_denies_a_gate(self):
+        task = self.tasks["explain-role-scope"]
+        self.assertIsNone(task["stage"])
+        self.assertNotIn("gate_note", task)
+        body = self._render("explain-role-scope")
+        self.assertIn("There is no gate on this output", body,
+                      "the denial is not blanket and must survive for the "
+                      "routes that really end at no gate")
+
+
+class CliPlanGateTests(unittest.TestCase):
+    """The cli adapter reads the same manifest and carried the same defect.
+
+    It printed "no gate applies, never that a gate was skipped" over the
+    catch-all row, whose own note ends at a gate. Fixing only the generated
+    plugin would have left two adapters answering the same question two ways.
+    """
+
+    ADAPTER = REPO / "harness" / "adapters" / "cli" / "pmos.py"
+
+    def _plan(self, route):
+        done = subprocess.run([sys.executable, str(self.ADAPTER), route],
+                              capture_output=True, text=True, cwd=str(REPO))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        return done.stdout
+
+    def test_a_route_whose_stage_is_decided_at_run_time_names_its_gate(self):
+        plan = self._plan("fallback-stage-loop")
+        self.assertIn("Take the output to the gate of the stage you placed "
+                      "the request in", plan)
+        self.assertNotIn("No gate applies to this row", plan)
+        self.assertNotIn("no gate applies, never that a gate was skipped", plan)
+        self.assertNotIn("This row produces no artifact", plan,
+                         "the catch-all files a document")
+
+    def test_a_reference_route_still_reports_that_no_gate_applies(self):
+        plan = self._plan("explain-role-scope")
+        self.assertIn("No gate applies to this row", plan)
+        self.assertIn("no gate applies, never that a gate was skipped", plan)
+
+
+class DesktopRouteGateTests(unittest.TestCase):
+    """The desktop adapter is the third reader of the same entry, and it read
+    a null stage as no gate and no template as no artifact."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tools = _load_by_path(
+            "_manifest_tools",
+            REPO / "harness" / "adapters" / "desktop" / "manifest_tools.py")
+        cls.tasks, _note = runner.load_manifest()
+
+    def test_the_catch_all_has_a_gate_and_files_a_document(self):
+        entry = self.tasks["fallback-stage-loop"]
+        stage = self.tools.stage_line(entry)
+        self.assertIn("Take the output to the gate of the stage you placed "
+                      "the request in", stage)
+        self.assertNotIn("null means no gate applies", stage)
+        self.assertNotEqual("no artifact", self.tools.landing_line(entry))
+
+    def test_a_route_that_files_nothing_still_says_so(self):
+        quiet = [task for task in self.tasks.values()
+                 if task.get("kind") in ("reference", "report")
+                 and not task.get("templates") and task.get("stage") is None]
+        self.assertTrue(quiet, "the manifest has no stage-less, template-less "
+                               "non-artifact route to control against")
+        entry = quiet[0]
+        self.assertIn("null means no gate applies",
+                      self.tools.stage_line(entry))
+        self.assertEqual("no artifact", self.tools.landing_line(entry))
+
+
+class CatchAllRouteTests(unittest.TestCase):
+    """fallback-route-forbids-its-own-job, the kind half.
+
+    The catch-all fills whatever stage template the request needs and takes
+    it to that stage's gate, which is kind artifact by this runner's own
+    definition, but it can name no template in advance. It carried kind
+    report and named templates/README.md, the catalog, as its destination,
+    so the generated command told the agent to report rather than fill a
+    template. tools/check_manifest.py failed the honest shape, kind artifact
+    with no template, although this runner already implements it by refusing
+    a run that passed no --template. The checker now admits that one shape,
+    stage null plus a gate_note, and these tests keep the exemption that
+    narrow.
+    """
+
+    CATCH_ALL = "fallback-stage-loop"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.checker = _load_by_path("_check_manifest",
+                                    REPO / "tools" / "check_manifest.py")
+        cls.tasks, _note = runner.load_manifest()
+
+    def test_the_catch_all_files_a_document_and_names_no_template(self):
+        entry = self.tasks[self.CATCH_ALL]
+        self.assertEqual("artifact", entry["kind"])
+        self.assertEqual([], entry["templates"],
+                         "the destination is decided at run time")
+        self.assertIsNone(entry["stage"])
+        self.assertTrue(entry.get("gate_note"))
+        self.assertIn("templates/README.md", entry["reads"],
+                      "the template catalog is read, never written into")
+
+    def test_the_manifest_gate_passes_the_tree(self):
+        self.assertEqual([], self.checker.check_manifest(REPO))
+
+    def test_the_exemption_reaches_that_route_and_no_other(self):
+        exempt = sorted(task_id for task_id, task in self.tasks.items()
+                        if task.get("kind") == "artifact"
+                        and not task.get("templates"))
+        self.assertEqual([self.CATCH_ALL], exempt)
+
+    def test_the_predicate_needs_both_declarations(self):
+        chosen_later = self.checker.destination_chosen_at_run_time
+        self.assertTrue(chosen_later({"stage": None,
+                                      "gate_note": "ends at a gate"}))
+        for entry in ({"stage": None},
+                      {"stage": None, "gate_note": ""},
+                      {"stage": None, "gate_note": "   "},
+                      {"stage": None, "gate_note": True},
+                      {"stage": "DEFINE", "gate_note": "ends at a gate"},
+                      {}):
+            with self.subTest(entry=entry):
+                self.assertFalse(chosen_later(entry))
+
+    # gate-note-exemption-unenforced: the exemption is read off gate_note, so
+    # gate_note itself is held to the one shape entry_shape documents. Before
+    # this, a second stage-null route could add a note and escape the
+    # artifact-needs-a-template rule with no finding.
+
+    def _gate_note_findings(self, entries):
+        found = []
+        self.checker.check_gate_notes(
+            entries, lambda entry: 1,
+            lambda line_no, code, message: found.append((code, message)))
+        return found
+
+    def test_the_real_manifest_carries_one_well_formed_gate_note(self):
+        self.assertEqual([], self._gate_note_findings(
+            list(self.tasks.values())))
+
+    def test_a_second_carrier_is_failed(self):
+        found = self._gate_note_findings([
+            {"id": "catch-all", "stage": None, "gate": None,
+             "gate_note": "ends at the stage's gate"},
+            {"id": "second-route", "stage": None, "gate": None,
+             "gate_note": "also ends at a gate"}])
+        self.assertEqual(["GATE"], [code for code, _ in found])
+        self.assertIn("second-route", found[0][1])
+
+    def test_a_gate_note_on_a_staged_route_is_failed(self):
+        found = self._gate_note_findings([
+            {"id": "staged", "stage": "DEFINE", "gate": 2,
+             "gate_note": "Take it to the gate for its stage."}])
+        self.assertEqual(["GATE"], [code for code, _ in found])
+        self.assertIn("staged", found[0][1])
+
+    def test_an_empty_or_non_string_gate_note_is_failed(self):
+        for note in ("", "   ", True, None, ["a gate"]):
+            with self.subTest(note=note):
+                found = self._gate_note_findings([
+                    {"id": "catch-all", "stage": None, "gate": None,
+                     "gate_note": note}])
+                self.assertEqual(["SHAPE"], [code for code, _ in found])
+
+    def test_the_manifest_gate_runs_the_gate_note_check(self):
+        """The rule above is only a rule if check_manifest calls it."""
+        seen = []
+        real = self.checker.check_gate_notes
+        self.checker.check_gate_notes = (
+            lambda entries, line_of, fail: seen.append(len(entries)))
+        try:
+            self.checker.check_manifest(REPO)
+        finally:
+            self.checker.check_gate_notes = real
+        self.assertEqual([len(self.tasks)], seen)
+
+    def test_a_run_of_it_with_no_template_is_refused(self):
+        with self.assertRaises(runner.RunnerError) as caught:
+            runner.template_for(self.tasks[self.CATCH_ALL], None)
+        self.assertIn("--template", str(caught.exception))
+
+    def test_a_run_of_it_names_its_template_with_the_flag(self):
+        path = runner.template_for(self.tasks[self.CATCH_ALL],
+                                   "templates/definition/prd.md")
+        self.assertEqual(REPO / "templates" / "definition" / "prd.md", path)
 
 
 if __name__ == "__main__":

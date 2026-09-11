@@ -38,7 +38,7 @@ The router names a protocol inside os/CONDUCTOR.md, not a skill, so skill is nul
 - `os/PRODUCT-WORKSPACE.md`
 - `skills/conductor/SKILL.md`
 
-## Templates the output lands in
+## Templates an accepted answer lands in later
 
 - `templates/execution/state.md`
 
