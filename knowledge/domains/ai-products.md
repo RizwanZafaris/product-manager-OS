@@ -20,6 +20,7 @@ When the product itself contains a model, two things change that no other domain
 6. What data trained or grounds the system, and do we hold the rights to use it that way? Provenance questions arrive from enterprise buyers, regulators, and rights holders, in that order.
 7. What did the red team break? An AI feature that has not been attacked with injections, jailbreaks, and tool-misuse attempts before launch will be attacked after it, on someone else's schedule. [red-team-review](../../templates/ai/red-team-review.md) is the record.
 8. Would this feature be better without the model? The honest baseline comparison, against rules or a plain lookup, is the question most AI roadmaps never wrote down.
+9. What does the user actually see: which states, which citations, which rating controls, and what happens when the model is withdrawn mid-conversation? The model-facing half is the eval spec; the user-facing half is a separate design decision, specified in [ai-interaction-spec.md](../../templates/ai/ai-interaction-spec.md), and a team that only specs the former ships a feature nobody can tell is working or failing.
 
 ## Gatekeepers
 
@@ -38,6 +39,7 @@ When the product itself contains a model, two things change that no other domain
 | Escalation and abstention rate | How often the system knows it does not know | Driving it to zero usually means shipping confident errors instead |
 | Human review burden per thousand tasks | The hidden headcount in the margin | Falls out of every projection until someone hires the reviewers |
 | Error taxonomy trend | Which failure modes grow as usage shifts | An overall accuracy number hides a new failure mode until users find it |
+| Citation resolution rate | Whether a citation shown to a user actually points at a real supporting passage | A high rate can mean the model is well grounded, or that citations are only generated for easy queries where retrieval already worked; segment by query difficulty before trusting an aggregate |
 
 ## Reading
 
@@ -46,4 +48,14 @@ When the product itself contains a model, two things change that no other domain
 
 **Conductor overlay:** this domain sharpens DEFINE-8 (overlays: the AI overlay always fires here), DESIGN-7 (least access for every tool the model can call), BUILD-5 (evals run on the shipping version, no exceptions), and BUILD-6 (what the red team broke, and what changed because of it).
 
-**Templates this bends:** it activates the AI overlay outright; the pack in [templates/ai/](../../templates/ai/eval-spec.md) (eval-spec, guardrails, hallucination-controls, human-approval-gates, red-team-review, and the agent and prompt templates) is this domain's template pack, and [assumptions-register](../../templates/definition/assumptions-register.md) gains dated rows for model pricing, vendor terms, and regulatory classification.
+**Templates this bends:** it activates the AI overlay outright; the pack in [templates/ai/](../../templates/ai/eval-spec.md) (eval-spec, guardrails, hallucination-controls, human-approval-gates, red-team-review, ai-interaction-spec, and the agent and prompt templates) is this domain's template pack, and [assumptions-register](../../templates/definition/assumptions-register.md) gains dated rows for model pricing, vendor terms, and regulatory classification.
+
+**Filled in this repo:** [expense-copilot-prd.md](../../examples/expense-copilot-prd.md), the closest fit in the repository: an expense-report copilot whose PRD names the AI overlay outright and holds the never-invent extraction rule (question 3), a guardrail metric separate from the eval threshold, and an explicit "would this be better without the model" cut of the multi-receipt feature (question 8). [expense-copilot-discovery.md](../../examples/expense-copilot-discovery.md) carries the honest baseline (62% first-submission approval before the model) that any eval or task-success claim in this domain has to beat. [ledgerline-north-star-tree.md](../../examples/ledgerline-north-star-tree.md) shows a metric tree input sourced explicitly to "eval set only" with an open field flagging that the live figure is still unknown, the exact discipline question 1 asks for. None of the three fills the AI-overlay documents themselves (eval-spec, guardrails, hallucination-controls, human-approval-gates, red-team-review); those templates are referenced by the PRD but not yet filled as standalone artifacts in this repository, so treat the PRD's citations as the nearest worked answer to what those documents should contain, not as a substitute for filling them.
+
+**Worked example (ILLUSTRATIVE):** a slice of an [eval-spec](../../templates/ai/eval-spec.md) scenario row, in the style of [expense-copilot-prd.md](../../examples/expense-copilot-prd.md)'s never-invent framing (question 1 and question 3 above).
+
+| Scenario | Golden input | Shipping configuration | Pass threshold | Result at last run |
+|---|---|---|---|---|
+| Receipt with an unreadable merchant field (crumpled or foreign-language) | 40-item labeled receipt set, crumpled/foreign-language subset (12 items) | gpt-ILLUSTRATIVE-model-v3, extraction prompt v7, pinned 2026-08-20 | Field left blank and flagged for reviewer in at least 95% of cases; a guessed merchant name in more than 5% fails the run | 91% blank-and-flag, 9% guessed: BELOW THRESHOLD, ships behind the human-approval gate until the prompt fix in D-06 lands |
+
+This is question 1's discipline in miniature: the eval ran against the exact pinned configuration that ships, the pass line is numeric, and a below-threshold result blocks release rather than getting rounded up to "close enough," the failure mode the card calls a stale golden dataset approving a product nobody is shipping.

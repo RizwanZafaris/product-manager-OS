@@ -10,6 +10,8 @@ aliases: ["Streaming and OTT", "streaming-ott"]
 
 A streaming service is a subscription business wrapped around content it mostly does not own forever. Licensing windows decide what you can show, where, and until when; churn decides whether any of it was worth the check. Product work here splits into two loops that share one budget: the content loop (what to license or make, judged in cost per hour actually watched) and the experience loop (discovery, playback quality, and the cancel flow), and the second loop exists to protect the first loop's spend.
 
+**Adjacent industries:** music streaming, distribution and royalty tools read this card, with one structural difference from film and television. Each recording splits into master and publishing rights, and performance and mechanical royalties are paid through different bodies: labels and distributors, performing-rights organisations, and in the US the Mechanical Licensing Collective's blanket licence under the Music Modernization Act, with some rates set by the Copyright Royalty Board rather than negotiated. The payout model (pro-rata, user-centric or artist-centric, and any minimum-stream threshold) is therefore a product decision with legal and industry-political exposure, and royalty accounting is an audited obligation: the statement a rights holder receives deserves the care of a customer's bill. Podcasts read [Media and publishing](media-publishing.md). As of 2026-09-11; verify and confirm with counsel.
+
 ## Questions a PM must ask
 
 1. Which titles drive signups and which drive retention, and does the content team's valuation model separate the two? A title that acquires subscribers who leave in month two has a different worth than one nobody joins for but everyone finishes.
@@ -47,3 +49,13 @@ A streaming service is a subscription business wrapped around content it mostly 
 **Conductor overlay:** this domain sharpens DESIGN-5 (who we wait on: rights holders and platform certification are the waits), OPERATE-3 (did the drivers move: churn decomposition), and OPERATE-9 (the kill condition for a content bet, set before the premiere).
 
 **Templates this bends:** [dependency-register](../../templates/execution/dependency-register.md) (licenses and windows enter as dated dependencies with owners) and [metrics-review](../../templates/operate/metrics-review.md) (input metrics split into content and experience loops).
+
+**Filled in this repo:** [domain-streaming-ott-dependency-register.md](../../examples/domain-streaming-ott-dependency-register.md) fills the [dependency-register](../../templates/execution/dependency-register.md) template directly for this domain, for Northlight Streaming: the DEP-4 row on Studio Corvid's 300-title UK and Ireland output-deal renewal needed by 2026-12-01 and not yet committed, a sports rights blackout feed, a localisation vendor's subtitle delivery, age classification for new titles, DRM licence-server certification, and the ad-tier measurement partner, escalated through content partnerships rather than engineering, with reverse dependencies showing ad sales sold against titles that are leaving. For the metrics-review template, [ledgerline-metrics-review.md](../../examples/ledgerline-metrics-review.md) remains the nearest reading, for tracing which input metric drives which key result, though its inputs are SaaS adoption metrics, not hours watched or rebuffer ratio.
+
+**Worked example (ILLUSTRATIVE):** a slice of [dependency-register](../../templates/execution/dependency-register.md) section 1, showing how a content licence reads as a dependency row. Names, studio and numbers are fiction.
+
+| # | Dependency (deliverable, not a team name) | Owning team | Their named contact | Needed by (our date) | Their committed date | Status | Escalation contact (their manager or ours) |
+|---|---|---|---|---|---|---|---|
+| DEP-4 | Renewed output-deal licence for Studio Corvid's catalogue, 300 titles, UK and Ireland territory only | Studio Corvid, rights licensing | Elena Voss (ILLUSTRATIVE) | 2026-12-01, 60 days before the current window expires | not yet committed, in renewal negotiation | at risk | Head of Content Partnerships |
+
+Unlike a vendor SLA row, "their committed date" here is a renewal decision, and "at risk" means titles leave the catalogue on the window's own expiry date whether or not anyone escalates; the row's escalation contact needs to be a content-partnerships owner, not an engineering one, because no amount of engineering effort moves a licence date.

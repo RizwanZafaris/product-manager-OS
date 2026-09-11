@@ -10,6 +10,8 @@ aliases: ["Ecommerce"]
 
 Selling goods per order means every feature decision lands on a contribution margin waterfall: revenue, minus cost of goods, minus fulfillment and shipping, minus payment costs and returns, minus the marketing that produced the order. A product that grows top-line GMV while the waterfall leaks at returns or last-mile shipping is a product that scales losses. The PM's job in this domain is to know which layer of the waterfall each initiative touches before anyone celebrates a conversion win.
 
+**Adjacent industries:** four neighbours read this card with one change each. Consumer brands selling through retailers (CPG) do not own the customer or the data, so retail-media networks and clean rooms are the channel (see [Marketing and advertising technology](martech-adtech.md)) and trade-promotion spend is the real P&L lever; food and household goods add labelling, recall and traceability duties such as the FDA's FSMA 204 food traceability rule (verify its compliance date). Fashion and beauty add fit and sizing as the returns driver, cosmetics rules that bound claims copy and listings (US MoCRA registration and adverse-event duties, the EU Cosmetics Regulation), and virtual try-on that captures face geometry biometric-privacy law such as Illinois BIPA regulates. B2B and wholesale commerce replaces the funnel with a procurement integration: contract pricing per customer, EDI and punchout into the buyer's system (cXML, OCI), net-terms credit (see [Lending and credit](lending-credit.md)) and approval workflows, because the purchaser is not the user. Age-restricted goods (alcohol, tobacco and vapes, cannabis) need age checks at checkout and again at hand-off, legality that varies by state, the alcohol three-tier system, mandated seed-to-sale tracking for cannabis, shipping limits on vapes (the PACT Act and the USPS mailing ban), and payment access that card networks and banks may refuse while cannabis remains federally illegal in the US. As of 2026-09-11; verify and confirm with counsel.
+
 ## Questions a PM must ask
 
 1. Which layer of the contribution margin waterfall does this initiative move, and has finance agreed on that waterfall's definitions? Two teams with two definitions of CM2 will approve opposite roadmaps.
@@ -47,3 +49,16 @@ Selling goods per order means every feature decision lands on a contribution mar
 **Conductor overlay:** this domain sharpens DISCOVER-3 (the workaround is the current buying path), DELIVER-4 (the first cohort is a channel decision), and OPERATE-2 and OPERATE-4 (outcome versus target and cost to run are the waterfall, per order).
 
 **Templates this bends:** [gtm-plan](../../templates/planning/gtm-plan.md) (channel economics per cohort) and [metrics-review](../../templates/operate/metrics-review.md) (input metrics become waterfall layers).
+
+**Filled in this repo:** [domain-ecommerce-metrics-review.md](../../examples/domain-ecommerce-metrics-review.md) fills the [metrics-review](../../templates/operate/metrics-review.md) template directly for this domain, for Threadmere Apparel: checkout step 3 conversion at 3.10% target against 3.42% actual and free-returns-eligible SKU share at 18% against 31%, walked through a per-order contribution-margin waterfall (CM1, CM2, CM3) that shows conversion rising while CM2 fell as return rates rose on the widened free-returns SKUs, with return rate by size band added as the fit counter-metric. Nothing filled here bends [gtm-plan](../../templates/planning/gtm-plan.md) with an ecommerce channel-economics table specifically; [ledgerline-gtm-plan.md](../../examples/ledgerline-gtm-plan.md) is the nearest reading, only near because it sequences a B2B SaaS cohort, not a retail channel mix.
+
+**Worked example (ILLUSTRATIVE):** a `metrics-review.md` input-metrics row, filled the way this card's contribution-margin waterfall would bend it. All names and figures invented.
+
+| Input metric | Target (signed) | Actual | Read |
+|---|---|---|---|
+| Conversion rate, checkout step 3 | 3.10% | 3.42% | Up, but see CM2 below before calling this a win |
+| Free-returns eligible SKU share | 18% | 31% | The merchandising team widened eligibility to chase the conversion number above; not on this review's original target list, added because it explains the SKU-level CM2 drop |
+| CM2 per order, free-returns-eligible SKUs | $6.40 | $2.15 | Return processing and re-shipment ate two-thirds of the margin the conversion gain bought; this line is why the input metric above is on this review at all |
+| CM2 per order, whole store | $5.90 | $5.55 | Blended number moves less than either row above; reading it alone would have hidden the trade entirely |
+
+Note in the review: the conversion win is real and the waterfall says it is not yet worth its return cost on this SKU set; owner to bring a category-level cap or a restocking fee to next cycle's review rather than rolling the eligibility change back blind.

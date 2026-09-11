@@ -10,6 +10,8 @@ aliases: ["Edtech"]
 
 Edtech's founding tension is that engagement is easy to measure and learning is not, and the two part company exactly where product decisions get made. A feature that raises minutes-per-day can lower learning-per-minute, and only one of those numbers appears on the growth dashboard by default. The domain's second structural fact mirrors healthtech: the buyer is not the user. In K-12, districts purchase on procurement cycles and evidence claims; teachers decide daily whether the tool actually gets used; students experience it. A product that wins any one of the three and loses the others churns at renewal.
 
+**Adjacent industries:** childcare software (centre management, parent communication and subsidy billing) reads this card for its COPPA and parent-as-stakeholder material and adds four duties. State licensing sets staff-to-child ratios and check-in and check-out records that inspectors audit, so attendance data is a compliance record. Staff background checks are statutory. Subsidy programmes funded under the federal Child Care and Development Fund set attendance-based billing rules. And photos and daily reports of very young children are among the most sensitive data a product can hold, so sharing defaults and retention belong at the strictest setting in the product. As of 2026-09-11; verify and confirm with counsel.
+
 ## Questions a PM must ask
 
 1. What is the efficacy claim, stated as a learning outcome against a comparison, and what tier of evidence backs it? US federal law (ESSA) defines tiers from promising rationale up to strong experimental evidence, and district buyers increasingly ask which tier you hold.
@@ -48,3 +50,14 @@ Edtech's founding tension is that engagement is easy to measure and learning is 
 **Conductor overlay:** this domain sharpens DISCOVER-1 (name the person: district, teacher, and student are three answers), DELIVER-4 (the first cohort is a pilot district chosen for evidence value, not logo value), and OPERATE-1 (the promised signal must be a learning outcome, and it was promised at Gate 1).
 
 **Templates this bends:** [compliance-impact-assessment](../../templates/operate/compliance-impact-assessment.md) (FERPA/COPPA rows, the district DPA as evidence) and [gtm-plan](../../templates/planning/gtm-plan.md) (the launch sequence is a procurement calendar, and the channel evidence names a buying window).
+
+**Filled in this repo:** [domain-edtech-compliance-impact-assessment.md](../../examples/domain-edtech-compliance-impact-assessment.md) fills the [compliance-impact-assessment](../../templates/operate/compliance-impact-assessment.md) template directly for this domain, for Brightpath Learning: FERPA school-official use and date of birth for under-13s with school consent under the district's DPA, working through COPPA's amended rule, state student-privacy laws such as California's SOPIPA, a processor list including a model vendor contractually barred from training on student data, and one district's DPA addendum left open with counsel, moving launch to the next semester. For the gtm-plan template, [ledgerline-gtm-plan.md](../../examples/ledgerline-gtm-plan.md) remains the nearest reading, for sequencing a beachhead cohort by segment size and evidence value, though its launch window is a sales quarter, not a procurement RFP and a summer implementation window.
+
+**Worked example (ILLUSTRATIVE):** a `compliance-impact-assessment.md` data-inventory row, filled the way this card's student-privacy regimes would bend it. All names, figures and the district invented.
+
+| Data element | Regime | Basis for collecting it | Retention | Gatekeeper sign-off |
+|---|---|---|---|---|
+| Student name, grade, assignment scores | FERPA (education record) | District's own instructional use, under the district's FERPA "school official" exception, named in the DPA | Deleted or returned to the district within 30 days of contract end, per the DPA | District data-privacy officer, DPA countersigned before pilot start |
+| Student date of birth, collected at account creation for a student under 13 | COPPA | Verifiable parental or school consent; the district's own consent-on-behalf-of-parents clause in the DPA stands in for direct parental consent | Deleted at account closure, not retained for analytics | District data-privacy officer; [OPEN: written confirmation the district's DPA clause satisfies COPPA's school-consent exception, counsel to confirm before the pilot's first under-13 account is created] |
+
+Note against the row above: this is the row that decides whether the pilot can start in September or slips a semester waiting on the open item, which is the procurement-calendar fact this card's question 3 is naming.

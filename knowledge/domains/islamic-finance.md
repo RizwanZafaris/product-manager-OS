@@ -57,3 +57,19 @@ The second distinctive fact is that a ruling from one board does not travel. A s
 **Conductor overlay:** this domain sharpens DEFINE-3 (a contract-structure change after launch may need a fresh fatwa cycle measured in months, not a flag), DEFINE-8 (the overlay question extends to whether a Shariah board governs this market alongside any financial or AI regulator), DESIGN-1 (the rejected alternative is usually the conventional-equivalent structure, rejected on legal form, not economics), and OPERATE-8 (the counter-metric behind a smooth profit rate usually sits in the profit-equalization reserve).
 
 **Templates this bends:** [business-rules](../../templates/definition/business-rules.md) (the contract structure is the business rule, and its Shariah sign-off belongs recorded beside it), [decision-log](../../templates/execution/decision-log.md) (a board approval or rejection is a decision worth logging with its reasoning attached), [compliance-impact-assessment](../../templates/operate/compliance-impact-assessment.md) (a Shariah gate runs parallel to a legal and privacy sign-off, not instead of one), and [personas](../../templates/discovery/personas.md) (a customer choosing Islamic finance for faith and one choosing it for price are different personas, and conflating them misreads the complaint rate).
+
+**Filled in this repo:** [domain-islamic-finance-decision-log.md](../../examples/domain-islamic-finance-decision-log.md) fills the [decision-log](../../templates/execution/decision-log.md) template directly for this domain, for Nakhla Wallet: the Shariah board rejecting a late fee that scales with lateness as disguised riba and replacing it with a fixed charitable donation, citing AAOIFI Shariah Standard No. 8, a sequencing decision that the wallet takes ownership of the commodity before selling it, and a copy decision to show a profit rate, never 'interest', with one reversal logged and both entries kept. For the other three bent templates, [harbourgate-business-rules.md](../../examples/harbourgate-business-rules.md), [harbourgate-compliance-impact-assessment.md](../../examples/harbourgate-compliance-impact-assessment.md) and [sahulat-personas.md](../../examples/sahulat-personas.md) remain the nearest reading for a rule's source-of-truth row, a parallel-gate compliance shape, and an interest-split persona pair, though none carries a fatwa cycle, a Shariah sign-off, or a faith-driven persona.
+
+**Worked example (ILLUSTRATIVE):** a decision-log entry for a fictional wallet's Murabaha-based financing feature, in the indexed, newest-first shape [sahulat-decision-log.md](../../examples/sahulat-decision-log.md) uses for product pivots.
+
+| Field | Value |
+|---|---|
+| Decision ID | D-SF-03 |
+| Date | 2026-05-11 |
+| Title | Shariah board rejects the proposed fee-on-delay structure for Murabaha financing |
+| What was proposed | A late-payment fee on deferred Murabaha instalments, sized to match the conventional product's penalty-interest rate |
+| Board finding | Rejected. A fee that scales with lateness functions as disguised riba regardless of label; the board approved a fixed, cost-recovery-only late fee instead, donated to charity if it exceeds actual recovery cost |
+| Business rule affected | BR-SF-07, the instalment-schedule enforcement rule, re-versioned same day |
+| Re-approval trigger | Any future change to the late-fee amount or its basis requires a fresh board sitting, not a product sign-off alone |
+| Owner | Product Manager, with the Shariah board secretary as co-signer |
+| Status | Closed. BR-SF-07 shipped 2026-06-02 with the fixed fee; no reversal logged |

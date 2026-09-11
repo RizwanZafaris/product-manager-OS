@@ -59,3 +59,24 @@ The third is that regulation here typically follows the product rather than prec
 **Conductor overlay:** this domain sharpens DISCOVER-1 (the person is often unbanked and reachable only through USSD or an agent, not the researcher's own channels), DISCOVER-3 (an informal, cash-based workaround is not a free one, and pricing it is evidence this domain most often skips), DESIGN-2 (the agent network and the national switch are integrations with an SLA, not a partnership), and OPERATE-2 (active wallets against registered wallets is this domain's clearest number-versus-number gap).
 
 **Templates this bends:** [personas](../../templates/discovery/personas.md) (the agent is a persona alongside the wallet holder), [journey-map](../../templates/discovery/journey-map.md) (a cash-in or cash-out journey includes a human agent step no screenshot can show), [integrations](../../templates/architecture/integrations.md) (the agent network's float logistics and the national switch both need an owner and an SLA), and [north-star-metric](../../templates/planning/north-star-metric.md) (active, on-ledger balance belongs at the root, not registration counts).
+
+**Filled in this repo:** this is the one sector with a filled journey built for it. Sahulat Bill Pay is a fictional mobile-money wallet in Pakistan, carrying this card's own sector tag:
+- [sahulat-journey.md](../../examples/sahulat-journey.md) is the index and data sheet for the whole Sahulat journey; start here for the shared facts (the agent network, the KYC tiers, the cash-out pattern) every other Sahulat artifact reconciles against.
+- [sahulat-personas.md](../../examples/sahulat-personas.md) fills the personas template this card bends, and already carries the agent as a named persona alongside the wallet holder, exactly the substitution this card's questions ask for.
+- [sahulat-north-star-metric.md](../../examples/sahulat-north-star-metric.md) fills the north-star-metric template this card bends; read it for a metric built on active, on-ledger balance rather than a registration count.
+- [sahulat-opportunity-assessment.md](../../examples/sahulat-opportunity-assessment.md) carries this card's own sector tag and the [payments acquiring](payments-acquiring.md) tag together; read it for how the ten discovery questions get answered when cash-workaround cost and tiered KYC are live constraints, not afterthoughts.
+- [harbourgate-integrations.md](../../examples/harbourgate-integrations.md) fills the integrations template this card bends, but only near: Harbourgate is a retailer's payment-provider register, useful for the owner-plus-SLA pattern, but its rows are card acquirers, not an agent network's float logistics or a national instant-payment switch.
+- [sahulat-journey-map.md](../../examples/sahulat-journey-map.md) fills the journey-map template this card bends directly: Shazia's five-stage bill-pay journey, including the branch-or-shop trip this card's agent-network point is about, and a backstage note naming the exact reconciliation gap between the branch/shop till and the biller's system that the [payments acquiring](payments-acquiring.md) card's post-authorisation question also raises.
+
+**Worked example (ILLUSTRATIVE):** a journey-map stage this card's agent-persona and USSD-timeout questions would add, for the fictional wallet holder persona from sahulat-personas.md, none of it real:
+
+| | Stage 2: Cash-in at the agent |
+|---|---|
+| **User actions** | Hands the agent 2,000 rupees and their phone number; waits while the agent keys the deposit into the agent app |
+| **Touchpoints and tools** | Agent's smartphone app (not the customer's own phone); customer's feature phone receives an SMS confirmation only, no USSD prompt at this step |
+| **Thoughts** | "Did that actually go through, or do I need to ask him to check again?" |
+| **Emotion (high / neutral / low)** | Low, session INT-011 (ILLUSTRATIVE): agent app froze mid-transaction and the customer left without a confirmation SMS, unsure if the deposit posted |
+| **Pain and friction** | The customer has no direct visibility into the transaction; if the agent's session times out silently, there is no receipt independent of what the agent chooses to say |
+| **Moments of truth** | Customer decides whether to trust this agent again, or walk to a competing agent's shop next time, a decision made on this one interaction, not on the app's uptime dashboard |
+
+**Backstage note:** the agent's float balance at the moment of this transaction decides whether the cash-in even completes; a backend that is fully up produces this exact failure mode when the agent ran out of float, which is why the fix here is a float-replenishment SLA, not a retry button.
