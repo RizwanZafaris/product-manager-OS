@@ -113,7 +113,7 @@
       "aliased": {},
       "workflow_steps": 13,
       "exit_gate_boxes": 0,
-      "exit_gate_words": 44,
+      "exit_gate_words": 60,
       "failure_modes": 7,
       "links": 16,
       "lines": 81
@@ -213,9 +213,9 @@
       "workflow_steps": 3,
       "exit_gate_boxes": 0,
       "exit_gate_words": 53,
-      "failure_modes": 5,
+      "failure_modes": 6,
       "links": 7,
-      "lines": 100
+      "lines": 102
     },
     {
       "path": "skills/product-review/SKILL.md",
