@@ -33,6 +33,7 @@ This file is a hub node. Its job is to give the graph one place per stage to fan
 | [tech-debt-register.md](../../templates/execution/tech-debt-register.md) | What the shortcut costs per quarter and what removing it costs once |
 | [status-report.md](../../templates/execution/status-report.md) | The weekly written record, where amber carries a date and red carries a decision |
 | [retrospective.md](../../templates/execution/retrospective.md) | The previous cycle's actions checked first, then two or three new ones with owners |
+| [design-review-record.md](../../templates/architecture/design-review-record.md) | Owned at DESIGN; its live-build section is walked again here, on the running build, before a user-facing change reaches Gate 4 |
 
 The AI overlay runs the eval sets in [eval-spec.md](../../templates/ai/eval-spec.md) against the version that will ship, and the breaks from [red-team-review.md](../../templates/ai/red-team-review.md) earn permanent eval rows.
 
@@ -46,6 +47,8 @@ The AI overlay runs the eval sets in [eval-spec.md](../../templates/ai/eval-spec
 | [dora-four-keys.md](../../frameworks/metrics/dora-four-keys.md) | Read delivery health without turning velocity into a target | Nicole Forsgren, Jez Humble, and Gene Kim, Accelerate (2018) |
 | [risk-matrix.md](../../frameworks/execution/risk-matrix.md) | Re-score the risks the build just changed | The defense standard MIL-STD-882 (1969) and later ISO 31000; no single author |
 | [theory-of-constraints.md](../../frameworks/execution/theory-of-constraints.md) | Name the one station setting the pace of the line, when cycle time climbed and every function reports itself busy | Eliyahu Goldratt, taught as a factory novel in The Goal (1984) |
+| [ux-scorecard.md](../../frameworks/design/ux-scorecard.md) | Score a usability round on SUS, UMUX-LITE, a post-task ease item, and task success | John Brooke's SUS (1986), Lewis and Sauro's UMUX-LITE (2013) |
+| [choice-symmetry-audit.md](../../frameworks/design/choice-symmetry-audit.md) | Count effort both ways for every consent, decline, opt-out, downgrade, and cancel flow before it ships | Harry Brignull's deceptive-pattern taxonomy |
 
 Knowledge behind the methods: [shape-up.md](../../knowledge/shape-up.md) for appetite and the scope hammer, and [cagan-product-teams.md](../../knowledge/cagan-product-teams.md) for what an empowered team is accountable for. The full index is [knowledge/README.md](../../knowledge/README.md).
 
@@ -81,9 +84,9 @@ Wikilinks below are additive: they exist so the Obsidian graph draws the edges. 
 
 - Loop and gates: [[os/OPERATING-LOOP.md]] · [[os/STAGE-GATES.md]] · [[os/PRODUCT-WORKSPACE.md]]
 - Neighbor hubs: [[os/maps/design.md]] · [[os/maps/deliver.md]] · [[os/maps/README.md]]
-- Templates: [[templates/delivery/testing-strategy.md]] · [[templates/delivery/edge-cases.md]] · [[templates/delivery/failure-scenarios.md]] · [[templates/delivery/analytics-instrumentation-spec.md]] · [[templates/definition/acceptance-criteria.md]] · [[templates/execution/backlog.md]] · [[templates/execution/decision-log.md]] · [[templates/execution/change-request.md]] · [[templates/execution/tech-debt-register.md]] · [[templates/execution/status-report.md]] · [[templates/execution/retrospective.md]]
+- Templates: [[templates/delivery/testing-strategy.md]] · [[templates/delivery/edge-cases.md]] · [[templates/delivery/failure-scenarios.md]] · [[templates/delivery/analytics-instrumentation-spec.md]] · [[templates/definition/acceptance-criteria.md]] · [[templates/execution/backlog.md]] · [[templates/execution/decision-log.md]] · [[templates/execution/change-request.md]] · [[templates/execution/tech-debt-register.md]] · [[templates/execution/status-report.md]] · [[templates/execution/retrospective.md]] · [[templates/architecture/design-review-record.md]]
 - Overlay templates: [[templates/ai/eval-spec.md]] · [[templates/ai/red-team-review.md]]
-- Frameworks: [[frameworks/execution/estimation-sheet.md]] · [[frameworks/execution/five-whys-fishbone.md]] · [[frameworks/execution/retrospective-formats.md]] · [[frameworks/metrics/dora-four-keys.md]] · [[frameworks/execution/risk-matrix.md]] · [[frameworks/execution/theory-of-constraints.md]]
+- Frameworks: [[frameworks/execution/estimation-sheet.md]] · [[frameworks/execution/five-whys-fishbone.md]] · [[frameworks/execution/retrospective-formats.md]] · [[frameworks/metrics/dora-four-keys.md]] · [[frameworks/execution/risk-matrix.md]] · [[frameworks/execution/theory-of-constraints.md]] · [[frameworks/design/ux-scorecard.md]] · [[frameworks/design/choice-symmetry-audit.md]]
 - Knowledge: [[knowledge/shape-up.md]] · [[knowledge/cagan-product-teams.md]] · [[knowledge/README.md]]
 - Skills: [[skills/story-writer/SKILL.md]] · [[skills/spec-review/SKILL.md]] · [[skills/product-review/SKILL.md]] · [[skills/escalation/SKILL.md]] · [[skills/decision-memo/SKILL.md]] · [[skills/conductor/questions/build.md]]
 - Agents: [[agents/TEAM.md]] · [[agents/acceptance-agent.md]] · [[agents/drafting-agent.md]] · [[agents/validation-agent.md]] · [[agents/estimator-agent.md]]

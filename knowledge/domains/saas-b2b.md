@@ -10,6 +10,8 @@ aliases: ["B2B SaaS", "saas-b2b"]
 
 Selling software to companies means the person who feels the pain, the person who signs the contract, and the person who can veto the deal are usually three different people, and your product has to satisfy all of them in different documents. The economics are subscription economics: what you spend to land a customer against what that customer's revenue does after landing, which is why net revenue retention and CAC payback, not signups, are the numbers a board reads first.
 
+**Adjacent industries:** a data or analytics platform reads [Developer tools and APIs](devtools-api.md) alongside this card, for consumption pricing and silent correctness failure. Collaboration and UCaaS tools, field-service management and SMB booking software read this card as written, adding [Telecom](telecom.md) where they carry phone numbers or emergency calling and [Payments acquiring](payments-acquiring.md) where they take their customers' money.
+
 ## Questions a PM must ask
 
 1. Who is the user, who is the economic buyer, and who is the blocker, by name and role in a real target account? A roadmap built for the user alone dies in procurement; one built for the buyer alone dies in adoption.
@@ -47,3 +49,14 @@ Selling software to companies means the person who feels the pain, the person wh
 **Conductor overlay:** this domain sharpens DISCOVER-1 (name the person: you must name three), DEFINE-2 (the audience includes procurement and the admin), DESIGN-2 (integrations: identity and provisioning are entry criteria), and OPERATE-5 (the next bet is usually an NRR driver).
 
 **Templates this bends:** [nfr](../../templates/definition/nfr.md) (security, audit, and residency targets become contract-driven, with the buyer's compliance calendar as the deadline) and [gtm-plan](../../templates/planning/gtm-plan.md) (the first cohort is an account profile, and the channel evidence includes a procurement path).
+
+**Filled in this repo:** [ledgerline-gtm-plan.md](../../examples/ledgerline-gtm-plan.md) is a direct sector match, the repo's own B2B SaaS company; read section 1 for a beachhead named as six specific accounts with signed pilot agreements, not a title like "enterprise admins." [ledgerline-pricing-packaging.md](../../examples/ledgerline-pricing-packaging.md) is a direct match; read section 1 for a seat-based value metric scored, and shown failing its own scoring rule, against two rejected alternatives, and section 3 for the good-better-best worksheet it was checked against and not followed. [ledgerline-metrics-review.md](../../examples/ledgerline-metrics-review.md) is a direct match; read the KR1/KR4 rows for how a pipeline stalled in a security review shows up as a missed revenue target, not just a missed activation count. [harbourgate-nfr.md](../../examples/harbourgate-nfr.md) is only near: a retail-payments NFR, not a SaaS one; read the header metadata line and the closing signature paragraph for how a reliability baseline that is returned at a gate gets re-signed with a date and a source rather than silently folded into the original sign-off, since nothing filled in this repo yet carries a SaaS NFR with SOC 2, SSO or residency rows tied to a named buyer's contract calendar.
+
+**Worked example (ILLUSTRATIVE):** a slice of [nfr](../../templates/definition/nfr.md) section 2, showing the row this sector adds that a generic reliability target would not. Names and dates are fiction.
+
+| Requirement | Target (number) or owner for the number | Measured how and where | Verified by |
+|---|---|---|---|
+| SSO (SAML 2.0) configurable by the buyer's IT admin before contract signature | Owner: Priya Raman, Security Engineering, by 2026-11-01 (ILLUSTRATIVE), the date Northwind Corp's procurement review closes | Admin-console config check against the buyer's IdP in a sandbox tenant | Northwind Corp's vendor risk questionnaire response, section 4 |
+| SCIM provisioning deprovisions a removed IdP user within | 15 minutes (ILLUSTRATIVE target) | Scheduled sync job plus webhook on IdP deprovision event | SOC 2 Type II report, control CC6.2 |
+
+The row exists because the buyer's procurement gauntlet, the card's own Q2 and Q5, put a hard date on it; the number that matters here is a contract-close date, not a latency budget, which is exactly the shape the template's own "owner for the number" column exists to hold.

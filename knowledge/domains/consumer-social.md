@@ -47,3 +47,13 @@ A social product's value is other people, which produces the domain's two perman
 **Conductor overlay:** this domain sharpens DISCOVER-5 (conversation count: talk to lurkers and creators separately), DESIGN-6 (seeing it misbehave means abuse rehearsal, not just error states), OPERATE-7 (the loop behind the metric is the growth loop itself), and OPERATE-8 (the counter-metric is mandatory in spirit).
 
 **Templates this bends:** [failure-scenarios](../../templates/delivery/failure-scenarios.md) (abuse and moderation-overload scenarios join the outage scenarios) and [compliance-impact-assessment](../../templates/operate/compliance-impact-assessment.md) (minors, DSA duties, and data-of-children rows).
+
+**Filled in this repo:** [domain-consumer-social-failure-scenarios.md](../../examples/domain-consumer-social-failure-scenarios.md) fills the [failure-scenarios](../../templates/delivery/failure-scenarios.md) template directly for this domain, for Driftcast, a photo and short-video sharing app: a coordinated harassment raid backing up the report queue, a failed age-assurance vendor (fail closed for new sign-ups), a broken hash-matching pipeline with its NCMEC reporting duty, and a recommendation-surface outage, run as a tabletop exercise led by the trust and safety lead. For the compliance-impact-assessment template, [harbourgate-compliance-impact-assessment.md](../../examples/harbourgate-compliance-impact-assessment.md) remains the nearest reading, for its DPIA-flag section, though it answers PCI DSS and UK GDPR for a payments service, not a minors or DSA row.
+
+**Worked example (ILLUSTRATIVE):** a filled failure-scenarios row for a fictional photo-sharing app, Loop, showing a moderation-overload scenario sitting beside the outage scenarios the template expects by default.
+
+| Scenario | Trigger | Detection | Blast radius | Response | Owner |
+|---|---|---|---|---|---|
+| Moderation queue backs up past 6 hours during a coordinated harassment raid | A single piece of content draws more than 10 times normal report volume inside 30 minutes | Open-report-queue depth alert crosses 500 cases | Every reported user, including the person being targeted, sees no visible action for hours | Auto-throttle the reported account's reply rate once reports cross 200; page the on-call trust and safety lead, not only engineering on-call | Trust and Safety Lead |
+
+An outage template asks what breaks when a server goes down. This row is the domain's own kind of outage: the servers stay up, and the failure is a queue of humans falling behind a growth loop that keeps feeding it.

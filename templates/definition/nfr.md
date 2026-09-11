@@ -31,6 +31,12 @@ Skill: [write-prd](../../skills/write-prd/SKILL.md)
 
 ## 1. Performance and latency
 
+<!-- The response-time thresholds worth citing (0.1s feels instant, 1s keeps
+     flow, 10s is the edge of attention) are a research finding with named
+     conditions attached, not a folk rule; see the response-time row of
+     [knowledge/design/ux-laws-evidence.md](../../knowledge/design/ux-laws-evidence.md)
+     before quoting one as if it always holds. -->
+
 | Requirement | Target (number) or owner for the number | Measured how and where | Verified by |
 |---|---|---|---|
 | [interaction] completes in | [n ms at p95, or "owner: name, by date"] | [APM, synthetic check] | [test or artifact] |
@@ -78,15 +84,25 @@ Skill: [write-prd](../../skills/write-prd/SKILL.md)
 
 | Requirement | Target or owner | Verified by |
 |---|---|---|
-| Conformance level | [e.g. WCAG 2.2 AA, or owner and date] | [audit artifact] |
+| Conformance level | [e.g. WCAG 2.2 AA, or owner and date] | [audit artifact: [accessibility-checklist.md](../architecture/accessibility-checklist.md)] |
 | Keyboard-only operation of core flows | [yes / no per flow] | |
 | Localization and language support | [languages, or "single language, revisit at [date]"] | |
+| Colour-scheme support | [light only / dark only / follows OS / user toggle; if toggled, whether the choice persists and what the default is; whether a first-load flash of the wrong scheme is acceptable] | |
+| Text direction | [LTR only / RTL only / bidirectional; see [localisation-rtl-checklist.md](../architecture/localisation-rtl-checklist.md)] | |
+| Reduced motion honoured | [yes / no; which animations are cut when the OS setting is on] | |
+| Focus visible required | [yes / no per surface; a custom focus style, if any, and its contrast] | |
+| Minimum target size | [size and the authority it is measured against, for example WCAG 2.5.8 at 24 by 24 CSS px] | |
+| Density | [comfortable / compact, and who may switch it] | |
 
 <!-- A buyer or agency asking for a VPAT/ACR wants the Accessibility Conformance
      Report per Section508.gov; that is a compliance-team output built from this
      table's audit artifact, not a template here. The market and locale list that
      drives the localization row lives in the discovery document's target market
-     fields: ../discovery/discovery-document.md. -->
+     fields: ../discovery/discovery-document.md. The conformance level and every
+     row here is walked in detail, component by component, in
+     [accessibility-checklist.md](../architecture/accessibility-checklist.md);
+     the dated regulatory floor for the conformance level is
+     [knowledge/design/accessibility-regulation.md](../../knowledge/design/accessibility-regulation.md), not legal advice. -->
 
 ## 6. Data retention
 

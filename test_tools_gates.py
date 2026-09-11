@@ -130,10 +130,10 @@ class TemplateInventoryGateTests(unittest.TestCase):
             self.rewrite(catalog, "(16 templates)", "(15 templates)", 1)
             self.rewrite(catalog, "(11 templates)", "(10 templates)", 1)
             for name, before, after in (
-                    (self.CATALOG, "100 templates", "98 templates"),
-                    ("README.md", "all 100 blanks", "all 98 blanks"),
-                    ("docs/ARCHITECTURE.md", "all 100 templates",
-                     "all 98 templates")):
+                    (self.CATALOG, "107 templates", "105 templates"),
+                    ("README.md", "all 107 blanks", "all 105 blanks"),
+                    ("docs/ARCHITECTURE.md", "all 107 templates",
+                     "all 105 templates")):
                 self.rewrite(root / name, before, after)
             reported = {path for path, _message in self.findings(root)}
             self.assertEqual({self.CATALOG, "README.md",
@@ -150,13 +150,13 @@ class TemplateInventoryGateTests(unittest.TestCase):
             catalog = root / self.CATALOG
             self.rewrite(catalog, "## discovery (16 templates)",
                          "## discovery (15 templates)", 1)
-            self.rewrite(catalog, "## definition (11 templates)",
-                         "## definition (12 templates)", 1)
+            self.rewrite(catalog, "## definition (13 templates)",
+                         "## definition (14 templates)", 1)
             self.assertEqual(
                 sorted([(self.CATALOG, "the discovery section says 15 "
                          "template(s) and the directory holds 16"),
-                        (self.CATALOG, "the definition section says 12 "
-                         "template(s) and the directory holds 11")]),
+                        (self.CATALOG, "the definition section says 14 "
+                         "template(s) and the directory holds 13")]),
                 sorted(self.findings(root)))
 
     def test_a_catalog_row_pointing_at_no_file_is_reported(self):
@@ -171,9 +171,9 @@ class TemplateInventoryGateTests(unittest.TestCase):
     def test_dropping_the_claim_is_not_a_way_to_pass(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = copy_tree(tmp)
-            self.rewrite(root / "README.md", "all 100 blanks", "the blanks")
+            self.rewrite(root / "README.md", "all 107 blanks", "the blanks")
             self.rewrite(root / "docs" / "ARCHITECTURE.md",
-                         "all 100 templates", "the templates")
+                         "all 107 templates", "the templates")
             messages = [message for _path, message in self.findings(root)]
             self.assertTrue(any(message.startswith("no operator document "
                                                    "states the template "
@@ -188,7 +188,7 @@ class TemplateInventoryGateTests(unittest.TestCase):
             root = copy_tree(tmp)
             self.assertEqual([], [item for item in check_docs(root)
                                   if item.severity == "error"])
-            self.rewrite(root / "README.md", "all 100 blanks", "all 98 blanks")
+            self.rewrite(root / "README.md", "all 107 blanks", "all 98 blanks")
             codes = {item.code for item in check_docs(root)
                      if item.severity == "error"}
             self.assertIn("inventory-count", codes)

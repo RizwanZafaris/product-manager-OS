@@ -32,6 +32,8 @@ Coase asked why a firm makes some things itself and buys others through the mark
 
 ## The worksheet
 
+**Before scoring, a licence veto question:** for a "buy" option that is a UI library or component set, does its licence actually permit how this product ships it (server-side, JavaScript sent to browsers, a mobile binary, or internal-only)? A licence that forbids the shipping model rules the option out before it earns a score, whatever its other numbers would read; see [knowledge/design/ui-dependency-licensing.md](../../knowledge/design/ui-dependency-licensing.md). This question changes which options reach the table, never the arithmetic below.
+
 ### Part 1: score each option
 
 <!-- Score 1 to 5, higher always better, so totals compare directly across options. Strategic core: 5, this is what customers pick us for; 1, a commodity any vendor sells the same way. Time to value: 5, usable inside the horizon's first slice; 1, nothing usable until the whole thing is done. Total cost, over the stated horizon: 5, lowest total cost; 1, highest. Control: 5, we set the roadmap, own the data, can change vendors at will; 1, a vendor can deprecate, reprice, or use our data on its terms. Exit cost: 5, cheap and fast to unwind; 1, locked in by data, contract, or retraining. -->

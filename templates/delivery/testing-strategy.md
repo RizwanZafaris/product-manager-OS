@@ -33,19 +33,31 @@ aliases: ["Testing Strategy", "testing-strategy"]
 
 <!-- Every level gets an owner and a blocking rule. A level marked non-blocking is a
      deliberate risk acceptance, not a default. Delete rows that truly do not apply
-     and say why in the scope section. The italic row shows a completed entry. -->
+     and say why in the scope section. The italic row shows a completed entry.
+     The four UI component sub-levels come from named, rendered UI states
+     carrying the acceptance criteria, per
+     [knowledge/design/component-driven-development.md](../../knowledge/design/component-driven-development.md);
+     their state list is the single one in
+     [ui-state-inventory.md](../definition/ui-state-inventory.md), never
+     restated here. A visual baseline is accepted by a role that is not the
+     component's author, and the acceptance is traced to a decision-log entry,
+     not to a click on "approve" in a tool with no record. -->
 
-| Level | What it proves | Owner | Where it runs | Blocks release? |
-|---|---|---|---|---|
-| Unit | | | | |
-| Integration | | | | |
-| Contract (API) | | | | |
-| End to end | | | | |
-| Performance and load | | | | |
-| Security | | | | |
-| Accessibility | | | | |
-| Model evals (AI features, see [eval spec](../ai/eval-spec.md)) | | | | |
-| *Example: Contract (API)* | *provider and consumer schemas still agree* | *A. Rivera* | *CI, every merge* | *yes* |
+| Level | What it proves | Owner | Where it runs | Maintenance cost | Blocks release? |
+|---|---|---|---|---|---|
+| Unit | | | | | |
+| Integration | | | | | |
+| Contract (API) | | | | | |
+| End to end | | | | | |
+| Performance and load | | | | | |
+| Security | | | | | |
+| Accessibility | | | | | |
+| UI component: render (mounts without error, against every state in the UI state inventory) | | | | low, cheap to keep green | |
+| UI component: interaction (a named user action produces its stated outcome) | | | | medium | |
+| UI component: accessibility (role, name, and state exposed per state) | | | | medium | |
+| UI component: visual (a screenshot diff against an accepted baseline) | | | | high, baselines rot fast; accepted only by a non-author role, traced to [decision-log.md](../execution/decision-log.md) | |
+| Model evals (AI features, see [eval spec](../ai/eval-spec.md)) | | | | | |
+| *Example: Contract (API)* | *provider and consumer schemas still agree* | *A. Rivera* | *CI, every merge* | *low* | *yes* |
 
 ## 3. Coverage targets
 

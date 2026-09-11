@@ -66,6 +66,19 @@ before anyone read the data.
 - Versioned alongside the model version: [yes or no]
 - Refresh cadence, and who adds production failures back in: [cadence, name]
 
+### In-product feedback signal
+
+<!-- The rating control a user sees (thumbs, stars) feeds this dataset; it
+     never substitutes for it. See
+     ../architecture/ai-interaction-spec.md for the control's own spec. -->
+
+- **Rating schema:** [rating value, reason code from a fixed list, optional free text, model and prompt version at time of rating, trace id]
+- **Who may rate:** [end user / internal reviewer / both, and whether an anonymous session may rate]
+- **Attribution:** taken from the authenticated session at rating time, never trusted from a client-supplied payload field; a payload can claim any user id.
+- **Export and egress:** [where rated data may leave the product, and what is stripped before it does]
+- **How a rated failure enters the golden dataset:** [the review step between a raw rating and a labeled case; a rating is a signal to investigate, not a pre-labeled row]
+- **The rule:** in-product ratings never gate a release in place of the validated graders in section 3. A rating count is a volume signal, not a pass condition; a release ships against thresholds run by the metrics and thresholds this file names, not against a satisfaction average.
+
 ## 3. Metrics and thresholds
 
 <!-- Every threshold is either labeled ILLUSTRATIVE or cites the agreement that set it,

@@ -10,6 +10,8 @@ aliases: ["Logistics"]
 
 Logistics products make promises about atoms: this thing, there, by then, intact. The economics concentrate brutally at the last mile, the leg where density collapses and a driver meets one door at a time, which is why cost per delivery and route density govern more product decisions than any feature request. The other defining fact is that the exception path IS the product: anyone can track a package that arrives; the failed delivery attempt, the damaged pallet, the missed dock window, and the customs hold are where software either earns its keep or gets replaced by a phone call.
 
+**Adjacent industries:** maritime and port software reads this card with four additions. Sanctions screening is a live product duty, because gaps and spoofing in AIS position data are how evasive vessels hide. Electronic bills of lading only recently gained legal equivalence to paper in some jurisdictions (the UK Electronic Trade Documents Act 2023, and states adopting UNCITRAL's MLETR). Emissions regimes (IMO carbon-intensity rules, the EU ETS for shipping, FuelEU Maritime) create reporting obligations. And connectivity at sea is intermittent. Rail freight reads this card as written, with paths and timetables controlled by rail regulators and infrastructure managers; signalling software reads [Automotive and mobility](automotive-mobility.md) for functional safety. As of 2026-09-11; verify and confirm with counsel.
+
 ## Questions a PM must ask
 
 1. What is the cost per delivery at current density, and what does the model say it becomes if volume doubles in the same zones versus new zones? Density, not volume, is the lever; growth that spreads thin makes every stop more expensive.
@@ -48,3 +50,13 @@ Logistics products make promises about atoms: this thing, there, by then, intact
 **Conductor overlay:** this domain sharpens DEFINE-5 (how requirements fail: enumerate the exception paths, they are the requirements), DESIGN-2 (integrations: carriers, WMS, customs, and the customer's scorecard system), and OPERATE-4 (cost to run is cost per delivery, split by zone).
 
 **Templates this bends:** [failure-scenarios](../../templates/delivery/failure-scenarios.md) (exception types become scenarios with detection and recovery owners) and [integrations](../../templates/architecture/integrations.md) (carrier and customs interfaces carry SLAs and failure behavior as first-class rows).
+
+**Filled in this repo:** [domain-logistics-failure-scenarios.md](../../examples/domain-logistics-failure-scenarios.md) fills the [failure-scenarios](../../templates/delivery/failure-scenarios.md) template directly for this domain, for Fernrow Logistics: the FS-4 row on a customs broker's filing API timing out mid cross-border batch with a manual-portal fallback, carrier capacity collapse on a peak day, bad address data causing failed deliveries, proof-of-delivery disputes, a courier app offline in dead zones, and a depot sort-machine outage, each with an operations owner and a manual fallback, using [harbourgate-failure-scenarios.md](../../examples/harbourgate-failure-scenarios.md) as its shape reference. For the integrations template, [harbourgate-integrations.md](../../examples/harbourgate-integrations.md) remains the nearest reading, for the SLA-and-failure-behavior row format, though it registers payment providers, not a carrier or customs interface.
+
+**Worked example (ILLUSTRATIVE):** a failure-scenarios row (fills [failure-scenarios](../../templates/delivery/failure-scenarios.md) section 1) for a last-mile courier network:
+
+| ID | Scenario | Blast radius | Detection | Recovery | Data loss risk |
+|---|---|---|---|---|---|
+| FS-4 | Customs broker's entry-filing API times out during a cross-border batch | All shipments in that day's cross-border batch sit uncleared at the border, no delivery-window promise possible | Filing-success rate alert below 90% over 15 minutes | Fail over to the broker's manual portal for the batch; owner: cross-border ops lead; expected 45 minutes to re-file | None, filed data is durable; delivery-window promises already sent to customers are stale and must be reissued |
+
+The card's own claim, that the exception path is the product, is why this row exists at all: the happy path needs no scenario, and the top five exceptions by cost are exactly where this table's rows should concentrate.

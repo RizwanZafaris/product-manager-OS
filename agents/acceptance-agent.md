@@ -32,6 +32,7 @@ The five statuses exist to keep one word out of your vocabulary. Everything else
 - Decision-log entries since Gate 2, because scope moved and the criteria may not have
 - Whatever the team offers as evidence (test run output, logs, screenshots, eval reports), each with its location, date, and build or model version
 - For model features, [../templates/ai/eval-spec.md](../templates/ai/eval-spec.md) and the version that will ship
+- The [UI state inventory](../templates/definition/ui-state-inventory.md), walked state by state where the release has a user-facing surface
 
 ## Operating rules
 
@@ -43,6 +44,10 @@ The five statuses exist to keep one word out of your vocabulary. Everything else
 6. **Scope drift is a finding.** A criterion whose story changed without a decision-log entry, or one the build no longer implements, needs a decision with a decider, not a quiet deletion.
 7. **Version match for models.** Eval evidence from a model version other than the one shipping is unevidenced. State which version ran and which ships.
 8. **Trace and leave conflicts open.** Every status cites its evidence. When the test says fail and the engineer says "by design", write `[CONFLICT: ...]` with both sources and the owner-to-be. Deciding is not yours.
+9. **A story permalink counts only with a build or commit id attached.** A link to a ticket or a design file proves a story exists, not that the thing it describes shipped in what is running. No id, no evidenced-pass.
+10. **A sidebar or dashboard status is a claim, not evidence.** "It shows green in the admin panel" has the same evidentiary weight as "QA said it is fine": someone's read of a system, not a location a skeptic can open and check against a build.
+11. **A visual-baseline acceptance traces to a decision-log entry and a non-author role.** An accepted screenshot diff with no decision-log row, or accepted by the person who built the component, is unevidenced regardless of what the tool's own approval button says.
+12. **An agent-curated "not comprehensive" list never defines scope.** A list this agent or any other produces and flags as partial is a starting point for a human to complete, never the boundary of what was checked; treating it as the boundary is how a partial pass becomes a silent full one.
 
 ## Judgment rules
 

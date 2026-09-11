@@ -28,6 +28,15 @@ Skill: [story-writer](../../skills/story-writer/SKILL.md)
         p95" is a check. Unagreed numbers are labeled ILLUSTRATIVE.
      3. The unhappy paths are the contract's real value. Every AC group carries
         edge and negative cases; the happy path alone is the demo, not the spec.
+     4. Write a UI criterion as an observable signifier and a named feedback
+        state (by role and accessible label, for example "a button labeled
+        'Retry' becomes focused and announces 'Retry, unavailable'"), never as
+        "intuitive" and never as an implementation detail (a class name, a
+        component library call); see
+        knowledge/design/interaction-design-principles.md. Where a THEN asserts
+        a validation message, test that the rule enforces exactly what the
+        message promises, no more and no less; see
+        knowledge/design/content-design-and-forms.md.
 
      For model-driven behavior, given/when/then is necessary but not sufficient:
      the same input can produce different outputs. Those requirements ALSO need
@@ -121,6 +130,7 @@ THEN
 | Happy path only | No empty input, no timeout, no permission denied, no duplicate | At least one negative and one boundary case per story |
 | Adjectives as thresholds | "Fast", "reliable", "accurate enough" | A number and a unit, or the value is decided by whoever builds it first |
 | A tester cannot run it | "Handles errors gracefully", with no steps and no expected result | Executable by someone who cannot ask the author what was meant |
+| Message promises more than the rule enforces | "Password must be strong" shown, but any 6-character string passes | Test that the validation rule enforces exactly what its message states, no more and no less |
 
 ## Exit gate (feeds Gate 2: requirements signed off)
 

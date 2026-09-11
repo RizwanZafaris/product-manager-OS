@@ -27,7 +27,9 @@ Skill: ../../skills/ai-prd/SKILL.md
 |---|---|---|---|---|---|---|
 | 1 | [e.g. any irreversible action: payment, send, deletion, filing] | [the action] | [role] | [queue or channel, n minutes] | deny and notify | [test ID] |
 | 2 | [e.g. output value above threshold n] | [release of the output] | [role] | [channel, SLA] | deny and notify | [test ID] |
-| 3 | [add] | | | | | |
+| 3 | An agent proposes a tool call inside the live conversation (file write, code execution, an external API call) | The tool call, shown to the user with its parameters before it runs | The user in the conversation, in-line | Synchronous, blocks the turn until answered | deny, tool call not made | [test ID] |
+| 4 | A design agent with write access to design files proposes a change (for example, a Penpot MCP integration editing a shared file, paraphrased as the pattern, not a specific vendor's exact behaviour) | The write to the shared design file | Design lead, or the named owner of that file | [channel, SLA] | deny and notify | [test ID] |
+| 5 | [add] | | | | | |
 
 <!-- On timeout the default is deny. If a gate must fail open for operational reasons,
      write the reason, the risk owner's name, and the compensating control in section 3.
@@ -50,6 +52,7 @@ Every gate decision writes a record with, at minimum:
 | Gate # | Why it fails open | Compensating control | Risk owner | Review date |
 |---|---|---|---|---|
 | [none is the right answer until proven otherwise] | | | | |
+| *Example: an automation that posts a channel reply to a routine, low-stakes question (ILLUSTRATIVE)* | *A queue-blocking approval on every reply would defeat the automation's purpose; the volume makes a human-in-the-loop gate impractical at this trigger* | *Replies are logged and sampled for review after the fact; any reply flagged by the sampling or by a recipient escalates to a real gate on the next occurrence of that pattern* | *[name]* | *[date]* |
 
 ## Worked micro-example
 

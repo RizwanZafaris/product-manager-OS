@@ -14,7 +14,7 @@ Two frontmatter fields and no more, which is a constraint rather than a preferen
 
 Nothing in a skill triggers itself. Triggering lives outside the skill, in [CLAUDE.md](../CLAUDE.md) and [AGENTS.md](../AGENTS.md), so that the procedure and the routing can be reviewed separately.
 
-## The twenty-eight skills
+## The twenty-nine skills
 
 | Skill | What it does | Use when | Entry point |
 |---|---|---|---|
@@ -46,6 +46,7 @@ Nothing in a skill triggers itself. Triggering lives outside the skill, in [CLAU
 | Postmortem facilitator | Facilitates a blameless postmortem: reconstructs the timeline from recorded sources, quantifies impact, runs five whys and a fishbone to reach causes the team can change, and leaves with corrective actions that carry owners, dates, and verification | An incident qualifies for review under your severity policy, a postmortem draft reads as a list of what people did wrong, the same class of incident has recurred, or a launch review found an operational failure it cannot explain | [postmortem-facilitator/SKILL.md](postmortem-facilitator/SKILL.md) |
 | Launch readiness | Walks the eight Gate 5 items one at a time against evidence in the release candidate rather than slides, and turns "mostly ready" into a conditional go whose conditions each carry an owner and a close-by date, or the no-go it actually is | A release is inside two weeks of its target date, a readiness document is being filled for the first time, a launch slipped and the checklist needs re-running, or someone wants to ship on a feeling | [launch-readiness/SKILL.md](launch-readiness/SKILL.md) |
 | PM hiring | Writes the scorecard before any candidate exists, runs the same structured loop with a work sample for everyone at the rung, and reaches a decision on evidence rows rather than the most senior voice in the debrief | A PM req opens, a loop keeps advancing confident storytellers who underperform in the job, interviewers disagree and the debate gets settled by seniority, or a senior hire is really a stage mismatch | [pm-hiring/SKILL.md](pm-hiring/SKILL.md) |
+| Design review | Runs, as one evaluator against the design brief's own objectives, whichever mode fits: critique prep, a Gate 3 design review, a live-build check before Gate 4, an accessibility pass walked in full, a content or localisation pass, or a deceptive-design pass on a consent or cancellation flow; routes every finding by severity and never issues a sign-off | A screen or flow is heading to Gate 3, a shipped build needs checking against its design before Gate 4, a critique room needs objectives pasted in before the opinions start, or a flow touches consent, cancellation, subscription, or a jurisdiction with an accessibility or dark-pattern regulator | [design-review/SKILL.md](design-review/SKILL.md) |
 
 The Conductor is the one skill with a directory of its own beyond the SKILL.md: its six question banks and their format live in [conductor/questions/](conductor/questions/README.md), one bank per stage, each question carrying an evidence class, a cross-examination trigger, and the template field the answer lands in. The normative protocol behind the skill is [os/CONDUCTOR.md](../os/CONDUCTOR.md), and where the two disagree, that file wins.
 

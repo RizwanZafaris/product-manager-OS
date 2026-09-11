@@ -28,7 +28,21 @@ Skill: ../../skills/ai-prd/SKILL.md
 | [e.g. system prompt] | [role, rails, output contract] | [versioned, see prompt-structure.md] | none | [n/a] |
 | [e.g. retrieval index] | [top k passages] | [re-indexed weekly] | [personal] | [PII scrub, see section 4] |
 | [e.g. conversation history] | [last n turns] | [live] | [personal] | [truncation + scrub] |
+| `products/<name>/DESIGN.md`, for an agent that generates or edits UI | [tokens, components, content and accessibility rules] | [versioned with the product] | none | [n/a] |
 | [add] | | | | |
+
+### Memory, attachments and ephemeral mode
+
+<!-- Persistent memory, uploaded attachments, and an ephemeral-mode toggle
+     are all context sources with their own revocation and disclosure rules,
+     separate from the row-per-source table above because each carries a
+     lifecycle the table's columns do not capture. See
+     ../../knowledge/design/ai-interaction-patterns.md. -->
+
+- **Memory:** [what is written to persistent memory, by what trigger, and where a user reviews or deletes it]
+- **Revocation test:** deleting a memory item, or turning memory off, is proven by inspecting the next request's actual context window, not by trusting a settings toggle; the test is: [describe how to verify the deleted item is absent from the next call, not merely marked deleted in a database]
+- **Attachments:** [what file types are accepted, size limits, and what happens to an attachment after the session ends]
+- **Ephemeral mode:** default is [on / off]; when on, [state exactly what is and is not retained, and whether the default can be changed per session or only at the account level]
 
 ## 2. Token budget and priority order
 

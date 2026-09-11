@@ -76,6 +76,15 @@ Cross-examine when: any agent holds access "for flexibility", or any guardrail's
 Accept when: every agent's access is the minimum its task needs, and every guardrail row names an owner and a test. Skip this entry with a cited source when STATE.md says the AI overlay is not active.
 Lands in: `definition/ai/agent-architecture.md` permission table and `definition/ai/guardrails.md` guardrail table, and STATE.md accepted answers.
 
+### DESIGN-8: user-facing surface
+
+Ask: Does this change have a user-facing surface? If so, where is the design review record, and which accessibility checklist evidence cells are filled?
+Wrong costs: A product with a UI ships without a walked design review or without accessibility evidence because no gate asked for either.
+Evidence class: 2, the record.
+Cross-examine when: the answer is "no UI" without a stated reason, or the record exists but section 6 is undecided. Move: interest to behavior, show the checklist cells.
+Accept when: a record with section 6 decided, or a stated reason the product has no UI.
+Lands in: `architecture/design-review-record.md` and STATE.md accepted answers.
+
 ## Forced pair
 
 On "advance anyway": DESIGN-4, then DESIGN-5. The unasked premortem and the unconfirmed dependency are the two failures Gate 3's own skip warning names.

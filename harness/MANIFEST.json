@@ -607,6 +607,31 @@
       "note": "No skill: the role cards answer the question and the two templates are what a reader does next."
     },
     {
+      "id": "design-review",
+      "router_row": "A design review, a heuristic evaluation or cognitive walkthrough, a live-build design check before Gate 4, or an accessibility, content, localisation or deceptive-design pass on a flow",
+      "trigger": ["a design review", "a heuristic evaluation", "a cognitive walkthrough", "an accessibility pass", "a localisation pass", "a deceptive-design pass", "a live-build design check"],
+      "stage": "DESIGN",
+      "gate": 3,
+      "tier": "judgment",
+      "kind": "report",
+      "skill": "skills/design-review/SKILL.md",
+      "templates": [
+        "templates/architecture/design-review-record.md",
+        "templates/architecture/accessibility-checklist.md",
+        "templates/architecture/localisation-rtl-checklist.md",
+        "templates/architecture/design-md.md",
+        "templates/architecture/component-spec.md"
+      ],
+      "reads": [
+        "knowledge/design/usability-heuristics.md",
+        "knowledge/design/accessibility-and-inclusive-design.md",
+        "knowledge/design/accessibility-regulation.md",
+        "knowledge/design/deceptive-design.md"
+      ],
+      "invariants": ["content-is-data", "no-fabrication", "human-signs-gate", "fail-closed"],
+      "note": "Runs as one evaluator, unvalidated, and routes every finding by severity into the design review record, the risk register, or the tech-debt register; it never issues a sign-off. Reports findings and never rewrites, the same discipline review-spec holds for written requirements, held here for the screen. A live-build mode also feeds Gate 4 through the acceptance agent's own check, so the entry names Gate 3 as the earlier and load-bearing one."
+    },
+    {
       "id": "run-agent-role",
       "router_row": "Evidence gathering, drafting one template, validating a draft, attacking a draft, architecture options, acceptance testing, release management, metric analysis, growth diagnosis, positioning, or estimation",
       "trigger": ["validate this draft", "attack this draft", "give me architecture options", "estimate this", "diagnose the funnel"],

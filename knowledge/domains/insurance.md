@@ -59,3 +59,19 @@ The second distinctive fact is distribution: most policies reach the customer th
 **Conductor overlay:** this domain sharpens DISCOVER-1 (name the policyholder and the claimant separately, since a product built for the buyer can still fail the person it pays out to), DEFINE-5 (a requirement fails here as a wrongful denial or an unfiled rate, categories a generic bug tracker has no field for), DESIGN-3 (health and claims data retention has a named regulatory period, not a default), and OPERATE-8 (the counter-metric behind a falling denial rate or a rising retention rate usually sits in appeal-overturn or reserve-development numbers, reported later).
 
 **Templates this bends:** [business-rules](../../templates/definition/business-rules.md) (underwriting eligibility and claims-adjudication logic are literally the business rules, versioned like code), [nfr](../../templates/definition/nfr.md) (claims cycle time and reserve-reporting cadence are regulatory requirements, not target SLAs), [compliance-impact-assessment](../../templates/operate/compliance-impact-assessment.md) (a rate change or a new underwriting data source triggers this before it triggers a release), and [personas](../../templates/discovery/personas.md) (claimant and policyholder need separate persona treatment even when they share a name on the policy).
+
+**Filled in this repo:** [domain-insurance-business-rules.md](../../examples/domain-insurance-business-rules.md) fills the [business-rules](../../templates/definition/business-rules.md) template directly for this domain, for Cobalt Assurance: the BR-INS-04 fast-track triage rule, a fraud-indicator referral to the special investigations unit, a total-loss threshold, claim acknowledgement and decision time limits under state unfair-claims-settlement-practices acts, versioned underwriting eligibility tied to its rate-filing reference, held by the Chief Claims Officer, with actuarial and compliance sign-off required for any threshold change. For the other three bent templates, [harbourgate-nfr.md](../../examples/harbourgate-nfr.md), [harbourgate-compliance-impact-assessment.md](../../examples/harbourgate-compliance-impact-assessment.md) and [sahulat-personas.md](../../examples/sahulat-personas.md) remain the nearest reading for revision-log discipline, an update-note pattern, and a two-person opposed-interest split, though none carries a claims-cycle figure, a rate-filing question, or a claimant persona.
+
+**Worked example (ILLUSTRATIVE):** a business-rules row for a fictional motor-claims triage feature, in the register shape [harbourgate-business-rules.md](../../examples/harbourgate-business-rules.md) uses for payment declines.
+
+| Field | Value |
+|---|---|
+| ID | BR-INS-04 |
+| Rule statement | WHEN a first-notice-of-loss claim's estimated value is below USD 2,500 AND the policy is within its first 90 days of no prior claims THEN route to fast-track adjudication, else route to a licensed human adjuster |
+| Trigger point | Claims intake, on FNOL submission |
+| Source of truth | Claims-handling manual v4, held by the Chief Claims Officer |
+| Business owner | Chief Claims Officer, not engineering |
+| Exceptions | None on the USD 2,500 threshold. A policy already flagged for a prior denial in the last 12 months is excluded from fast-track regardless of value, and routes to a human adjuster |
+| Regulatory tie-in | A pattern of fast-track denials above this threshold is exactly what a market-conduct exam under the market's unfair-claims-practices rule would sample; changing the cutoff without re-documenting the rationale is the kind of undocumented change that turns one bad denial into a pattern, so it needs more than a product sign-off |
+| Enforced by | FR-CLM-12 |
+| Test traceability | AC-CLM-03: appeal-overturn rate on fast-track denials tracked separately from the manual-review appeal-overturn rate, since a rising fast-track figure is the signal the card's gatekeepers watch for |

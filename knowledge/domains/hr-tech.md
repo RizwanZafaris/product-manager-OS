@@ -59,3 +59,19 @@ Every other domain's product decides what a customer buys. This one decides who 
 **Conductor overlay:** this domain sharpens DISCOVER-1 (the person affected is often not the buyer, so name both), DISCOVER-5 (conversation count: the count has to include applicants and hourly workers, who are the hardest population to reach and the one the product acts on), DEFINE-2 (the audience includes counsel, the works council and the accommodations team), and DELIVER-4 (go-live is gated on a parallel run and on artifacts the customer must hold, not on your readiness).
 
 **Templates this bends:** [prd](../../templates/definition/prd.md) (section 10's four risks acquire a fifth in practice, which is whether the customer can lawfully switch the feature on), [eval-spec](../../templates/ai/eval-spec.md) (subgroup and intersectional slices are the acceptance criteria, not a fairness appendix), [human-approval-gates](../../templates/ai/human-approval-gates.md) (the override has to carry authority, time and source information, or it is decoration), and [release-readiness](../../templates/delivery/release-readiness.md) (the readiness table gains a row per jurisdiction the customer operates in).
+
+**Filled in this repo:** [domain-hr-tech-eval-spec.md](../../examples/domain-hr-tech-eval-spec.md) fills the [eval-spec](../../templates/ai/eval-spec.md) template directly for this domain, for Northline Talent: the advance-to-interview rate for women against men held at or above a 0.80 adverse-impact ratio, recomputed weekly, error analysis on 100 reviewed decisions, intersectional slices (race by gender, and age 40 and over under the ADEA), and a sample-size floor that blocks release rather than passing a thin slice, citing NYC Local Law 144, the EU AI Act Annex III employment obligations, and the Colorado AI Act. [ledgerline-human-approval-gates.md](../../examples/ledgerline-human-approval-gates.md) exists and fills the human-approval-gates template this card also bends, correcting the earlier claim that no standalone example exists; read it for the gate shape an override needs. For the other two bent templates, [expense-copilot-prd.md](../../examples/expense-copilot-prd.md) and [harbourgate-release-readiness.md](../../examples/harbourgate-release-readiness.md) remain the nearest reading, though neither is a hiring or scoring decision about a person.
+
+**Worked example (ILLUSTRATIVE):** an eval-spec acceptance row and a human-approval-gates row for a fictional resume-screening feature, in the shape [expense-copilot-prd.md](../../examples/expense-copilot-prd.md) names but does not itself contain.
+
+| Field | Value |
+|---|---|
+| eval-spec slice | Advance-to-interview rate, women vs. men applicants, US-remote req pool |
+| Threshold | Adverse-impact ratio at or above 0.80, four-fifths rule, recomputed weekly |
+| Sample size floor | Slice blocked from reporting a pass below n=30 per group; shown as INSUFFICIENT DATA, not a pass |
+| Intersectional slice | Same ratio, Black women vs. all men, since the aggregate gender slice above can pass while this one fails |
+| Result this run | 0.71, aggregate gender slice; 0.58, intersectional slice; both below threshold (ILLUSTRATIVE numbers) |
+| Gate outcome | BLOCKED. Feature cannot enable the ranking step for this req pool until re-scored or the ranking weight is revised |
+| human-approval-gates row | Recruiter must open every candidate the model ranked outside the top decile before rejecting; system logs recruiter ID, timestamp and the model's original rank alongside the override |
+| Override rate this week | 41% of top-decile rejections overridden to "advance" (ILLUSTRATIVE) |
+| What that overrides tells you | Not near-zero and not near-total: the review reads as live rather than a rubber stamp, one signal among several the card's gatekeepers would still want before sign-off |

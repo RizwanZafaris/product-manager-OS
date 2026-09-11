@@ -14,7 +14,7 @@ Skill: [the Conductor](../skills/conductor/SKILL.md) fills these by interview; i
 
 A template is the blank a stage produces and a gate reads. Every one opens with the same three-line header this page carries, naming the stage it serves and the gate it feeds, the knowledge card behind it, and the skill or agent that drives it, so a copy you fill in still knows where it came from and which checklist will judge it. Nothing here needs a model: the blanks are fields, the gates are checklists, and a pencil finishes the job. Before some of these blanks get filled, a worksheet in [frameworks/](../frameworks/README.md) has often done the arithmetic that lands in them, the reconciled TAM/SAM/SOM a business case argues from, the RICE score a roadmap sequences by.
 
-Eight directories, 100 templates. Six carry stage work: `discovery` and `definition` sit under DISCOVER and DEFINE, `architecture` holds the DESIGN artifacts while `execution` holds the registers and logs that open early and stay open, `delivery` carries BUILD through DELIVER, and `operate` closes the loop at Gate 6. The last two, `planning` and `ai`, are the tracks that run across every stage rather than inside one. The stage definitions are in [os/OPERATING-LOOP.md](../os/OPERATING-LOOP.md); the checklists these feed are in [os/STAGE-GATES.md](../os/STAGE-GATES.md).
+Eight directories, 107 templates. Six carry stage work: `discovery` and `definition` sit under DISCOVER and DEFINE, `architecture` holds the DESIGN artifacts while `execution` holds the registers and logs that open early and stay open, `delivery` carries BUILD through DELIVER, and `operate` closes the loop at Gate 6. The last two, `planning` and `ai`, are the tracks that run across every stage rather than inside one. The stage definitions are in [os/OPERATING-LOOP.md](../os/OPERATING-LOOP.md); the checklists these feed are in [os/STAGE-GATES.md](../os/STAGE-GATES.md).
 
 ## discovery (16 templates)
 
@@ -39,7 +39,7 @@ DISCOVER, feeding Gate 1: problem worth solving. A no-go here is a success, beca
 | [service-blueprint.md](discovery/service-blueprint.md) | One scenario across frontstage, backstage, and support systems, with line-of-visibility failure points, each owned | The product is a service and the failure happens behind the counter |
 | [evidence-note.md](discovery/evidence-note.md) | One note per source: claim, verbatim load-bearing quote, source, dates, confidence | Any claim is about to enter a template and would not survive the question "says who" |
 
-## definition (11 templates)
+## definition (13 templates)
 
 DEFINE, feeding Gate 2: requirements signed off. Pick the weight before you pick the template; the gate asks the same questions either way.
 
@@ -56,8 +56,10 @@ DEFINE, feeding Gate 2: requirements signed off. Pick the weight before you pick
 | [user-stories.md](definition/user-stories.md) | The canonical story register: ids defined once, epics, the release slice, the INVEST check with its six letters and no seventh, six splitting patterns, and traceability run in both directions | Stories change every sprint and a signed PRD must not be edited to hold them |
 | [acceptance-criteria.md](definition/acceptance-criteria.md) | Given, when, then blocks with edge and negative cases and measurable thresholds | A requirement has to be able to fail before anyone builds against it |
 | [prfaq.md](definition/prfaq.md) | Mock press release, customer quote, external and internal FAQ, availability | Working backwards from the launch is cheaper than arguing forward from a feature list |
+| [ui-state-inventory.md](definition/ui-state-inventory.md) | The single owner of the list of states a screen or component must render, across empty, loading, populated, error, offline and permission-denied | A component spec, content audit, review record or localisation checklist needs that list and would otherwise each restate it differently |
+| [ux-writing-guide.md](definition/ux-writing-guide.md) | The product's own voice, terminology and message patterns, so every string is audited against one standard instead of reinvented per squad | Written with the design brief, before Gate 2, and kept current through OPERATE |
 
-## architecture (11 templates)
+## architecture (15 templates)
 
 DESIGN, feeding Gate 3: architecture and risks reviewed. Alternatives get considered on paper here, while changing your mind is still free.
 
@@ -74,6 +76,10 @@ DESIGN, feeding Gate 3: architecture and risks reviewed. Alternatives get consid
 | [security-architecture.md](architecture/security-architecture.md) | A STRIDE walk per component: trust boundaries, risk score, mitigation owner | Before Gate 3, and again whenever a trust boundary moves |
 | [accessibility-checklist.md](architecture/accessibility-checklist.md) | A component-by-component walk against the WCAG guideline families at the conformance level the NFR already set, each check carrying evidence a skeptic could open | Before Gate 3, and again at Gate 4 once the evidence column can be filled from a real keyboard and screen-reader pass |
 | [observability.md](architecture/observability.md) | SLOs, logs, traces, alert thresholds, dashboard owner, a synthetic failure check | Deciding what "working" means while you can still instrument for it |
+| [component-spec.md](architecture/component-spec.md) | One shared component's specification: props, states, content, accessibility and a11y gaps imported from its source | A component two or more surfaces share needs one owned definition instead of drifting copies |
+| [design-md.md](architecture/design-md.md) | The product's DESIGN.md: tokens, components, content and accessibility rules an agent or a human can read in one sitting | The filled copy lives at `products/<name>/DESIGN.md`, the workspace root beside STATE.md |
+| [design-review-record.md](architecture/design-review-record.md) | The one signed record of an experience-design review, across the Gate 3 critique and the Gate 4 live-build check | Before Gate 3, and again in BUILD once the evidence column can be filled from the shipped surface |
+| [localisation-rtl-checklist.md](architecture/localisation-rtl-checklist.md) | The walkable localisation and bidi checklist behind the one-line RTL row in edge-cases.md, market by market | The product ships into a right-to-left or multi-script market and direction needs to be proven, not assumed |
 
 ## execution (11 templates)
 
@@ -155,7 +161,7 @@ The PLANNING track. Most of these feed every stage and are reviewed on their own
 | [decision-memo.md](planning/decision-memo.md) | One decision stated as a question, options priced with the door type named, one recommendation, and the dissent on the record | A question has been debated twice by the same people, or a reversible call is getting one-way-door treatment |
 | [exec-update.md](planning/exec-update.md) | The one-page monthly read for whoever funds and unblocks the work, ending in asks rather than activity | A decision is needed from a room this week and the honest answer to "where are we" is longer than a sentence |
 
-## ai (10 templates)
+## ai (11 templates)
 
 The AI OVERLAY, active whenever the product itself contains a model. It attaches to DEFINE and DESIGN, and its thresholds become blocking checks at Gate 4 and Gate 5.
 
@@ -171,6 +177,7 @@ The AI OVERLAY, active whenever the product itself contains a model. It attaches
 | [multi-agent-workflow.md](ai/multi-agent-workflow.md) | Handoff sequence, shared state, escalation, termination, cost cap | Two or more agents cooperate on one task |
 | [red-team-review.md](ai/red-team-review.md) | Entry points, attack scenarios (injection, jailbreak, leak, tool misuse), a break-fix log, re-test sign-off | Before Gate 5, or whenever the feature has only been read by people who want it to succeed |
 | [model-card.md](ai/model-card.md) | Intended use and explicit out-of-scope uses, known limitations citing the eval spec and red-team review, performance with segment variance, data provenance, update policy and contact | Someone outside the building team needs to know what this is, what it is for, and where it breaks |
+| [ai-interaction-spec.md](ai/ai-interaction-spec.md) | The user-facing half of the AI overlay: how generation is disclosed, loading versus wrong states, where a claim's source shows, and how the user pulls the plug | Guardrails and hallucination-controls.md say what the model may do; this says what the user sees while it does it |
 
 ## Which of these do you actually need
 

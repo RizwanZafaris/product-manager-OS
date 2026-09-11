@@ -59,6 +59,18 @@
       "lines": 83
     },
     {
+      "path": "skills/design-review/SKILL.md",
+      "sections_present": 7,
+      "missing": [],
+      "aliased": {},
+      "workflow_steps": 7,
+      "exit_gate_boxes": 0,
+      "exit_gate_words": 132,
+      "failure_modes": 8,
+      "links": 40,
+      "lines": 88
+    },
+    {
       "path": "skills/escalation/SKILL.md",
       "sections_present": 7,
       "missing": [],

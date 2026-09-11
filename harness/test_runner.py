@@ -1624,6 +1624,25 @@ class AuditRegressionTests(unittest.TestCase):
         self.assertEqual("products/p/STATE.md",
                          got.relative_to(REPO).as_posix())
 
+    def test_design_md_lands_at_the_workspace_root(self):
+        """templates/architecture/design-md.md is the second file that lands
+        at the workspace root under its own name, beside STATE.md, because
+        agent tooling looks for DESIGN.md there. Both the runner and the
+        initializer route through tools/workspace.py, so both are checked."""
+        got = runner.artifact_path("p", REPO / "templates" / "architecture"
+                                   / "design-md.md")
+        self.assertEqual("products/p/DESIGN.md",
+                         got.relative_to(REPO).as_posix())
+
+        sys.path.insert(0, str(REPO / "tools"))
+        import init_product
+
+        text = (REPO / "templates" / "architecture"
+                / "design-md.md").read_text(encoding="utf-8")
+        dest = init_product.destination_for(
+            "templates/architecture/design-md.md", "p", text)
+        self.assertEqual("products/p/DESIGN.md", dest)
+
     def test_the_ai_overlay_lands_inside_the_stage_that_produced_it(self):
         got = runner.artifact_path("p", REPO / "templates" / "ai"
                                    / "eval-spec.md")

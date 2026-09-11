@@ -1,0 +1,6 @@
+layer: skills
+stage: DESIGN
+gate: 3
+feeds: ["templates/architecture/design-review-record.md", "templates/architecture/accessibility-checklist.md", "templates/architecture/localisation-rtl-checklist.md"]
+method: "knowledge/design/pm-design-collaboration.md"
+aliases: ["Design Review Skill", "design-review"]

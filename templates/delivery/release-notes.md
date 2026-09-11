@@ -93,11 +93,20 @@ Skill: [release-manager-agent](../../agents/release-manager-agent.md)
 <!-- Anything that changes an API, an export format, an integration contract, or a
      workflow a customer has automated around. One row each, with the migration
      path and the date the old behavior stops. Cross-check against
-     ../architecture/api-contract.md and ../architecture/integrations.md. -->
+     ../architecture/api-contract.md and ../architecture/integrations.md.
+     Change type covers the four shapes this section actually carries:
+     Deprecated (still works, replacement named, removal date set); Removed
+     or breaking (already gone or changed); New check or stricter rule (used
+     to pass, now does not); Correction to a previous release (an earlier
+     note was wrong, said here rather than quietly edited). A design-system
+     component or token follows the same deprecated-then-removed shape as an
+     API: it passes a warning-only phase before removal, never a silent
+     breaking swap, on the pattern of React's 18.3 bridge release and the
+     Svelte 5 migration guide (patterns cited, not their text). -->
 
-| Change | Who it affects | Migration path | Old behavior ends | Notice sent (date, channel) |
-|---|---|---|---|---|
-| | | | | |
+| Change type | Change | Who it affects | Migration path | Old behavior ends | Notice sent (date, channel) |
+|---|---|---|---|---|---|
+| | | | | | |
 
 ## 6. Distribution
 

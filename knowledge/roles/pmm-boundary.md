@@ -34,7 +34,11 @@ Concentrated is not confined. The failure this framing warns against is the laun
 
 The PM side of the boundary lives in this repository: the [discovery document](../../templates/discovery/discovery-document.md), [PRD](../../templates/definition/prd.md), [roadmap](../../templates/planning/roadmap.md), and the [GTM plan](../../templates/planning/gtm-plan.md), which is deliberately a product document: first cohort, channel evidence, launch metric, stop condition.
 
+**Filled examples at this level:** the [Expense Copilot discovery document](../../examples/expense-copilot-discovery.md), the frontloaded problem case a PM defends before PMM has a positioning opinion; the [Expense Copilot PRD](../../examples/expense-copilot-prd.md), the four-risk scope contract PMM's messaging must stay inside; the [Sahulat vision](../../examples/sahulat-vision.md), the product's own narrative rather than the market's; the [Ledgerline GTM plan](../../examples/ledgerline-gtm-plan.md), the launch document that stays product's precisely because it carries a stop condition.
+
 The PMM side produces the positioning document, the messaging guide, the sales enablement one-pager, and the launch communications plan. This repository ships the first and last as [positioning](../../templates/planning/positioning.md) and the [launch comms plan](../../templates/delivery/launch-comms-plan.md); [os/WHICH-DOCUMENT.md](../../os/WHICH-DOCUMENT.md) routes the rest. A PMM document that contradicts the PRD's stated scope is a defect, and lint will not catch it; only the standing-presence habit above does.
+
+**Filled examples at this level:** the [Ledgerline positioning](../../examples/ledgerline-positioning.md), the market category and competitive frame PMM owns outright; the [Sahulat launch comms plan](../../examples/sahulat-launch-comms-plan.md), the sequenced narrative the PM reviews for accuracy, not taste; the [Ledgerline sales enablement one-pager](../../examples/ledgerline-sales-enablement-one-pager.md), the seller-facing leave-behind whose claims trace back to the PM's substance; the [Ledgerline win-loss review](../../examples/ledgerline-win-loss-review.md), the analysis PMM runs that the PM consumes as discovery evidence, not the other way round.
 
 ## The boundary is fuzzy, and that is not the problem
 

@@ -1,0 +1,119 @@
+---
+layer: knowledge
+stage: DEFINE
+gate: 2
+feeds: ["templates/definition/acceptance-criteria.md", "templates/definition/design-brief.md", "frameworks/design/heuristic-evaluation.md"]
+method: ""
+aliases: ["Interaction Design Principles", "interaction-design-principles"]
+---
+# Interaction Design Principles
+
+Norman's vocabulary for experience design, based on the ideas of Donald Norman in The Design of Everyday Things (1988, first published as The Psychology of Everyday Things; revised and expanded 2013) and in "Signifiers, not affordances" (ACM Interactions, 2008), with the concept of affordance traced to J. J. Gibson (The Senses Considered as Perceptual Systems, 1966; fully defined in The Ecological Approach to Visual Perception, 1979). Explained here in this repository's own words.
+
+## The essence
+
+Norman's argument, repeated across three decades of the same book: an interaction is a channel of communication between an object and the person using it, and most of what gets filed as user error is a design that failed to communicate what was possible, what to do next, and what had just happened. That is not a style position. It is a claim that a specific, small vocabulary can locate exactly where a given interaction stopped communicating, so the fix targets that gap instead of a request to make the thing "more intuitive," a phrase this card exists to make unnecessary.
+
+The vocabulary organizes around two moments Norman calls the seven stages of action: one stage for the goal, three stages of execution, forming an intention, specifying an action, and performing it, then three stages of evaluation, perceiving the resulting state, interpreting it, and comparing it against the goal. Between the goal and the actions a system actually allows sits the gulf of execution. Between the action and the person's understanding of its result sits the gulf of evaluation. Every other term below, affordance, signifier, mapping, constraint, feedback, conceptual model, names a specific lever for narrowing one gulf or the other. None of them is a synonym for polish, and none of them describes a preference about how something looks; each names whether a specific person, at a specific screen, can tell what to do and whether it worked.
+
+Discoverability is the outcome all of those levers serve jointly, not a separate mechanism to add on top of them: whether a person with no manual can work out, from what is perceivable right now, which actions are possible and how to perform them. It either survives contact with a first-time user or it does not, and the point of naming the levers separately is to say precisely which one failed when it does not.
+
+## Where it came from
+
+Two threads get told as one story and are worth separating. James J. Gibson, an ecological psychologist studying perception rather than design, coined "affordance" in The Senses Considered as Perceptual Systems (1966) and gave it a fuller statement in The Ecological Approach to Visual Perception (1979): the affordances of an environment are what it offers a given animal, a fact about the fit between that animal's capabilities and the environment's properties. To Gibson an affordance did not have to be perceived, known, or even beneficial to exist; a set of stairs affords climbing to an adult and not to a crawling infant regardless of whether either one has noticed.
+
+Donald Norman, a cognitive scientist, worked out the gulfs framing first, in his own chapter "Cognitive Engineering" in User Centered System Design (1986, co-edited with Stephen Draper), separate from the direct-manipulation-interfaces chapter in the same volume that he wrote with Edwin Hutchins and James Hollan, then imported Gibson's word into design in The Psychology of Everyday Things (1988), narrowing it in practice to perceived affordances: the action possibilities an actor can readily perceive, which is the version a designer can actually act on, because it depends on the actor's goals, prior experience and what is currently visible, not on a fact about the world that may never be noticed. Norman later said this narrowing had not been fully deliberate, and by 2008 he judged the word itself too contested to keep using, writing in ACM Interactions that "affordance" had become widely used and misused, a goldmine for academic disputes about its true meaning rather than a working tool for practitioners. His replacement was signifiers, introduced in that 2008 essay and developed into social signifiers, cues that arise from other people's presence or traces rather than from an object's own design, in their own chapter of Living with Complexity (MIT Press, 2010); the 2013 revised and expanded edition of the book made signifier a core term throughout, without itself introducing the social variant.
+
+That lineage is why this card's own vocabulary carries two competing meanings of "affordance," Gibson's original agent-environment relation and Norman's design-usable narrowing to what is perceived, and why citing the word without saying which one, and ideally which year of Norman, invites exactly the confusion the trap below describes.
+
+## When to use it
+
+- When writing acceptance criteria for anything with a visible interface, so a reviewer can point at the missing signifier or feedback event instead of arguing about whether something feels intuitive.
+- When drafting a design brief's constraints section, to separate a genuine constraint, something the interface must rule out or a platform pattern it must follow, from an unstated preference wearing the word constraint.
+- When running a structured walkthrough of a flow before a usability test is scheduled, to find the cheap gulf-of-execution failures, a hidden action, a missing signifier, an unmapped control, without spending a moderator's afternoon finding them one at a time.
+
+**Skip it when:** the thing being built has no perceivable surface for a person to read: a batch job, an internal data pipeline, an API with no console a human ever looks at. Affordance, signifier, mapping and feedback are all properties of a perceivable exchange between an artifact and a person; where nothing is ever perceived, none of these terms has anything to attach to, and the requirement belongs in the [NFR template](../../templates/definition/nfr.md) rather than a UI vocabulary stretched past its reach.
+
+## The vocabulary
+
+### Discoverability
+
+Whether a person, with no manual and no prior exposure, can tell what actions are possible on an object or a screen and how to perform them, using nothing but what is visible at the moment of use. It is the shared outcome of the five levers below, not a sixth lever: an interface can fail at discoverability because an action's cue is missing (a signifier problem), because the cue points at the wrong control (a mapping problem), because too many actions are left available at once (a constraint problem), because the result of acting is silent (a feedback problem), or because the person's running theory of how the thing works has already gone wrong (a conceptual-model problem). Naming which of those failed is the entire practical value of keeping the terms separate.
+
+### Affordance: a relationship, not a look
+
+Gibson's affordance is a fact about fit between an agent's capabilities and an environment's properties, and it does not require anyone to perceive it. Norman's perceived affordance, the version usable in design, is the subset an actor can actually notice, given their goals, capabilities and past experience. A flat, unmarked panel affords pushing in Gibson's sense whether or not anyone has worked that out; it has no perceived affordance for pushing until something about it, its shape, its position, a label, makes that possible action visible to a specific person. The design question is never whether an affordance exists in the abstract; it is whether the specific person in front of the screen can perceive it. Confusing the two registers, treating a merely possible action as though its visibility were guaranteed, is the seed of the trap below.
+
+### Signifier: what a designer can actually put there
+
+By 2008 Norman had concluded that "affordance" was the wrong word for designers to keep reaching for, precisely because it had drifted into meaning too many different things to too many people, and proposed replacing it for design purposes with signifier: any perceivable cue, in the physical or social world, that a person can interpret meaningfully, whether a designer placed it on purpose or it is an accidental byproduct of something else. A flat push-plate on a door and a small finger-sized button both signify push; a long curved bar read as a handle signifies pull: two different actions on the same underlying affordance, a door that opens, each correctly signified. A signifier does not have to be intentional to work: an empty train platform signifies that the train has already gone, and a crowded one signifies that it has not, even though nobody engineered either state as a message. As Norman put it, in this repository's one permitted quote from the essay: "Designers of the world: Forget affordances. Provide signifiers."
+
+Social signifiers are the subset that arise from other people's presence, absence, or traces rather than from an object's own design: a worn path across grass, a queue outside a door, a crowded or empty waiting area. They matter for a product because most software now shows the traces of other users, activity indicators, a full or empty queue, a last-edited timestamp, and those traces function as signifiers whether or not the team designed them to, so an unreviewed one can mislead as easily as a deliberate one can guide.
+
+### Mapping
+
+Whether a person can determine, before or immediately after acting, which control did what: does a given action line up with its effect, and does what is currently on screen match the system's real state. A natural mapping needs no separate signifier, because the layout itself carries the meaning, a row of switches arranged in the same order as the lights they control. An arbitrary mapping, switches in one row and lights in an unrelated grid, forces the person to memorize a lookup table or hunt by trial, and no amount of visual polish repairs that; only a better layout, a label, or a different control repairs it.
+
+### Feedback
+
+A steady stream of signals telling the person that their action registered and what came of it, not a one-time notice. Feedback is the system's half of the conversation Norman treats an interaction as being, and it fails less often by being absent than by being late or unclear: a person who receives no signal within the window they are willing to wait has usually already started guessing and re-acting before the real feedback arrives, which compounds rather than resolves the original gulf of evaluation.
+
+### Constraints
+
+Properties of an object or interface that make some actions impossible or clearly absurd, leaving a small, sensible set available, so the person does not have to remember everything they must not do because the design has already removed those options from consideration. A disabled control that stays visibly disabled until its precondition is met, a field that refuses an eleventh digit, a modal that must be answered before anything else responds, are all constraints doing the work an instruction manual would otherwise have to do. A constraint that removes an option without any visible reason stops being a constraint and becomes an unlabeled trap of its own, indistinguishable from a bug to the person who hits it.
+
+### Conceptual model and system image
+
+A conceptual model is the mental picture a person builds of how a system works. Nobody hands that picture to the user directly; it is built entirely from the system image, the labels, icons, documentation and observed behavior the artifact actually presents. The designer has a model in mind, the artifact presents an image, and the user infers their own model from whatever that image offers, correctly or not. Good design keeps how operations and their results are shown consistent enough that the model the user infers converges with the one the designer intended; when the system image contradicts itself, two screens naming the same object differently, or one icon performing different actions in different places, the user's model diverges from the designer's, and every subsequent action confirms the wrong theory instead of correcting it, because the person has no other evidence to work from.
+
+## The seven stages of action and the two gulfs
+
+Norman frames any interaction as a cycle of seven stages: one for the goal, three for execution, three for evaluation, his own split in both the 1988 and 2013 editions (the "four stages of execution" count sometimes attached to this framework is how the Wikipedia article groups the stages, not Norman's own wording). A person starts with a goal, the state they want, one stage; forms an intention to act, specifies a concrete action sequence, and performs it, the three stages of execution (named plan, specify and perform in the 2013 edition); then perceives the resulting state of the world, interprets what that state means, and compares it against the original goal, the three stages of evaluation. He traced the framework to watching a conference speaker struggle for fourteen minutes to thread a film projector he had never used before, joined by a growing group of helpers before the organizer sent for an expert and a technician arrived: the difficulty was not one missing instruction, it was that neither half of the interaction, what to do or whether it had worked, gave the group a usable signal at any point.
+
+The gulf of execution is the gap between what a person wants and the sequence of operations a system actually demands to get it, illustrated by a VCR that needs several separate steps, press record, set the time, pick the channel, confirm, to do what the person experiences as a single intention: record this show. The gulf of evaluation is the gap between the system's actual state and what the interface lets the person perceive and correctly interpret about that state, relative to what they were trying to do; it narrows when the state is visible without digging, readable without translation, and framed in the user's terms, not the system's.
+
+Experience design work, in this frame, is the work of narrowing both gulfs. Signifiers, mapping and constraints act mainly on the execution side, helping a person find and perform the right action; feedback and a coherent conceptual model act mainly on the evaluation side, helping a person tell that it worked. A flow that is failing tends to be failing on one side specifically, and naming which side is more useful than a general complaint that it is confusing.
+
+## Writing it into criteria
+
+A conceptual model cannot be specified as a requirement, and nobody can test directly for one being good. What a PM can specify, and what a tester can verify, is the signifier or the feedback event a given conceptual model depends on existing. The [acceptance criteria template](../../templates/definition/acceptance-criteria.md) already refuses a criterion like "the flow is intuitive," for exactly the reason this vocabulary makes explicit: intuitive is a claim that a gulf is narrow, and a claim about a gulf is not itself observable. What is observable is the signifier or the feedback event that narrows it.
+
+The rewrite discipline: name the role, which user, which permission or account state; name the signifier or feedback event as a concrete, perceivable thing, a label, a state change, a sound, an announced live region; name its accessible label where one exists; and put a number on the timing. "The user sees that the flow is easy to use" becomes "the signed-in rep sees a check icon labeled 'Receipt accepted' within 2 seconds (ILLUSTRATIVE) of capturing a legible photo." The first sentence describes a gulf; the second describes what closes it, and only the second can fail a test. The same rewrite works for the gulf of execution: "the button is easy to find" becomes "the unregistered visitor sees a button labeled 'Start free trial', the only enabled call to action above the fold, on first page load."
+
+The same discipline applies upstream of any single criterion, as a walkthrough of a flow before requirements get written down. Read each screen against four questions built directly from the two gulfs: arriving with their goal, will the person know which action to try; once decided, can they find and perform it from what is visible; after acting, does something perceivable change; and can they correctly read that change against the goal they started with. The first two questions are the gulf of execution; the last two are the gulf of evaluation. A step that fails question one or two needs a signifier, a better mapping, or a narrower set of options; a step that fails question three or four needs feedback or a clearer system image. A walkthrough that finds nothing wrong across every step for one reviewer is not evidence the flow works, only evidence that one reviewer could not find where it does not; see [How it lies](#how-it-lies).
+
+Two practitioner adages sit on the same DEFINE-stage territory as this vocabulary and are not re-explained here, because they already have a home: matching the conventions users already carry in from every other site and product they use is [Jakob's law](ux-laws-evidence.md), and the fact that complexity removed from an interface has to land somewhere else, on the user, the product, or operations, is [Tesler's law](ux-laws-evidence.md). Each gets one row in that ledger rather than a second explanation here.
+
+## The trap: "affordance" as "looks clickable"
+
+The single most common misuse collapses affordance into looks clickable, a purely visual property of one element, discarding both Gibson's relational meaning and Norman's perceived-possibility meaning in favor of something neither of them meant. The tell is a review comment like "this needs more affordance," meaning give it a shadow. That sentence quietly swaps two more precise words, signifier, the cue itself, and mapping, whether the cue points at the correct action, for one vaguer one, and it skips the real question, which is whether the cue is accurate, not merely present. A flat, shadowless control that always does what it implies is fine; a heavily shadowed, clearly "clickable" control that opens a form nobody expected has plenty of affordance by the popular usage and is still a bad design, because the perceived promise and the actual result do not match. Norman's own 2008 essay says the term had already become widely used and misused among practitioners before this particular flattening set in, which is the reason he replaced it with signifier for design purposes rather than trying to rescue the older word.
+
+## How it lies
+
+This vocabulary names a target, discoverable, well-mapped, well-signified, but supplies no instrument for measuring whether a specific interface actually reaches it. Calling a cue "a good signifier" in a review is itself a judgment call by the person making it, exactly the kind of claim the walkthrough above exists to force into something checkable, and a checked claim can still be wrong, because the reviewer is one person predicting how other people will perceive something. Heuristic and vocabulary-based inspection is a cheap first pass, not a substitute for watching a real person try the flow.
+
+It also lies through its own instability. Norman revised his central term twice within one career, Gibson's 1966 and 1979 relational affordance, narrowed in 1988 to perceived affordance, then set aside in 2008 in favor of signifier and folded into the 2013 revised edition, and every version is still in active use somewhere, so a claim that cites "affordance" with no year is citing three different things depending on who is listening. DOET's worked examples lean heavily on single physical objects operated by one person at a time, doors, teapots, thermostats, a film projector, even though the gulfs themselves trace to Norman's earlier work on computer interfaces; the reach into busy, ambiguous social settings needed a dedicated essay, the 2008 piece introducing social signifiers, because the physical-object examples did not obviously extend that far on their own. A product with genuinely multi-party or ambient interaction, a shared queue, an activity feed other people can see, should treat that extension as a seam patched later (2008, 2010), not as settled ground.
+
+## Where it sits in the loop
+
+- Stage: DEFINE, gate 2, written into the [design brief](../../templates/definition/design-brief.md)'s constraints and success sections and the [acceptance criteria](../../templates/definition/acceptance-criteria.md) that follow it.
+- Upstream: the job and the persona a screen serves, from [jobs to be done](../jobs-to-be-done.md) and the persona work it feeds, which settle whose perception counts before this card asks what that person can perceive.
+- Downstream: every acceptance criterion that names a signifier or a feedback event instead of an adjective, and the `frameworks/design/heuristic-evaluation.md` worksheet, whose section 5 runs a related but differently worded four-question cognitive walkthrough (Lewis, Polson, Wharton and Rieman, 1990, three questions on the gulf of execution and one on the gulf of evaluation) across a whole flow with more than one reviewer.
+- On trial at [Gate 2: requirements signed off](../../os/STAGE-GATES.md), where a criterion built on this vocabulary either names an observable signifier or gets sent back as an adjective, and again informally whenever a usability test finds a gulf the walkthrough missed.
+
+## Used by
+
+- [Acceptance criteria](../../templates/definition/acceptance-criteria.md)
+- [Design brief](../../templates/definition/design-brief.md)
+
+**Run it:** the walkthrough form of this vocabulary lives in the frameworks layer.
+
+- `frameworks/design/heuristic-evaluation.md`, the worksheet that runs a structured walkthrough, in its own four-question cognitive-walkthrough wording (a related but distinct split of the same two gulfs, see [Where it sits in the loop](#where-it-sits-in-the-loop)), alongside the named usability heuristics
+
+## Reading
+
+- Donald Norman, The Design of Everyday Things (Basic Books, 1988, first published as The Psychology of Everyday Things; revised and expanded edition, MIT Press, 2013). Reuse class: cite only. All rights reserved; this card paraphrases throughout and does not quote the book directly.
+- Donald Norman, Living with Complexity (MIT Press, 2010), ch. 4, "Social Signifiers." Reuse class: cite only, not quoted here. All rights reserved.
+- Donald Norman, "Signifiers, not affordances," ACM Interactions 15(6), 2008, read via the Wayback Machine copy of jnd.org: https://web.archive.org/web/2020/https://jnd.org/signifiers_not_affordances/. Reuse class: cite only, paraphrase; at most one attributed quote under fifteen words. All rights reserved, ACM and author; the archived page states it is posted by permission of ACM for personal use and may be redistributed for non-commercial use only with its attribution paragraph included, which this card does not reproduce beyond the single short quote above.
+- "The Design of Everyday Things," Wikipedia: https://en.wikipedia.org/wiki/The_Design_of_Everyday_Things. Reuse class: fact-check only, paraphrase. Licensed CC BY-SA 4.0; not copied, because its share-alike terms would attach to a file this repository ships under MIT.
+- "Affordance," Wikipedia: https://en.wikipedia.org/wiki/Affordance. Reuse class: fact-check only, paraphrase. Licensed CC BY-SA 4.0, same caution as above; used here to verify the Gibson-to-Norman lineage and the 1988-to-2013 dating.

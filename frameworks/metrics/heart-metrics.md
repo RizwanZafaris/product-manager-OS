@@ -44,7 +44,7 @@ Pick two or three categories for a feature, up to five for a product. A metric n
 | Retention | | | | | | |
 | Task success | | | | | | |
 
-Rules: happiness comes from an attitude measure (survey, rating), never from behaviour. Task success names the task's end state and its error definition. Engagement is a goal only when more use means more value; for a tool meant to disappear, more use is a cost. A category with a goal and no observable signal gets a research task, not an invented metric.
+Rules: happiness comes from an attitude measure (survey, rating), never from behaviour, using an instrument named in [frameworks/design/ux-scorecard.md](../design/ux-scorecard.md) and the evidence in [knowledge/design/ux-measurement.md](../../knowledge/design/ux-measurement.md). Task success names the task's end state and its error definition. Engagement is a goal only when more use means more value; for a tool meant to disappear, more use is a cost. A category with a goal and no observable signal gets a research task, not an invented metric. Assistive-technology users and RTL-locale users are cut as their own segments wherever the category applies to them, never folded into the general average.
 
 ### Step 2: definition card per chosen metric
 
