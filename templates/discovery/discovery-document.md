@@ -67,9 +67,13 @@ Skill: [feedback-synthesis](../../skills/feedback-synthesis/SKILL.md)
 | 1 | [what was seen or said, in your words] | [type] | [ID or link] | [date] |
 | 2 | | | | |
 | 3 | | | | |
+| 4 | | | | |
+| 5 | | | | |
 
-<!-- Three or more independent items before Gate 1. One loud customer is an
-     anecdote. Anecdotes start discovery; they do not finish it. -->
+<!-- Gate 1 asks for at least five real user conversations or equivalent
+     primary data, cited by source; this table is where that count lives.
+     One loud customer is an anecdote. Anecdotes start discovery; they do
+     not finish it. -->
 
 ## 4. Hypothesis
 
@@ -93,7 +97,7 @@ Skill: [feedback-synthesis](../../skills/feedback-synthesis/SKILL.md)
 - **Decision:** GO / NO-GO / MORE DISCOVERY
 - **Decided by:** [name] · **Date:** [YYYY-MM-DD]
 - **Rationale:** [two or three sentences: which evidence carried the decision]
-- **If GO:** the next artifact is [problem-framing.md](problem-framing.md), then the DEFINE stage.
+- **If GO:** the next stage is DEFINE; [problem-framing.md](problem-framing.md) is already rolled up above, and [Gate 1](../../os/STAGE-GATES.md) closes DISCOVER.
 - **If MORE DISCOVERY:** the open questions go into [user-research-plan.md](user-research-plan.md) with a revisit date: [date]
 
 ---
@@ -116,7 +120,7 @@ Skill: [feedback-synthesis](../../skills/feedback-synthesis/SKILL.md)
 - [ ] Trigger is named, with a date, including any political trigger
 - [ ] Target user is specific enough that a stranger could find five of them
 - [ ] Markets and jurisdictions are named, and the regulated-overlay question is answered either way
-- [ ] Three or more independent evidence items, each with a source ID
+- [ ] At least five real user conversations or equivalent primary data, each with a source ID
 - [ ] Hypothesis is falsifiable and carries a baseline and a target
 - [ ] A kill signal is written down
 - [ ] The go or no-go decision has a name and a date on it

@@ -84,9 +84,17 @@ cat os/OPERATING-LOOP.md            # the six stages and what each gate demands
 cat os/WHICH-DOCUMENT.md            # how much document this decision deserves
 
 python3 tools/init_product.py my-product
+python3 tools/init_product.py my-product --add templates/discovery/problem-framing.md
+python3 tools/init_product.py my-product --add templates/discovery/user-research-plan.md
+python3 tools/init_product.py my-product --add templates/discovery/interview-notes.md
+python3 tools/init_product.py my-product --add templates/discovery/personas.md
+python3 tools/init_product.py my-product --add templates/discovery/journey-map.md
 python3 tools/init_product.py my-product --add templates/discovery/discovery-document.md
 # Fill every field with any editor. Square-bracket fields are the blanks.
 # Delete any section you do not need; an empty section is worse than no section.
+# Roll the research above into discovery-document.md, then copy the Gate 1
+# section of os/STAGE-GATES.md into products/my-product/gates/gate-1-attempt-1.md
+# and fill it.
 
 python3 tools/init_product.py my-product --check   # every link still resolves
 cat os/STAGE-GATES.md                              # take the filled document to Gate 1
@@ -197,7 +205,7 @@ This is all stated because the failure is common enough to plan for: systems in 
 - **Not legal or regulatory advice.** The regulated module tells you which questions to answer and where the primary text sits, never what the answer is in your entity or license class.
 - **Not an external-readiness certificate.** This repository cannot self-attest a hosted run, a live provider, a vendor sandbox, a non-maintainer journey, an independent team review, a regulated deployment, or a published release.
 
-Each of those four refusals comes from a belief, and the beliefs are argued rather than asserted in [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md): nine of them, each carrying the best counter-argument against it, the mechanism that enforces it, and the failure mode that shows up when the mechanism is present but hollow.
+Each of those five refusals comes from a belief, and the beliefs are argued rather than asserted in [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md): nine of them, each carrying the best counter-argument against it, the mechanism that enforces it, and the failure mode that shows up when the mechanism is present but hollow.
 
 ## Scope and sunset
 
