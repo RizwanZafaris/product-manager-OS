@@ -174,10 +174,10 @@ class Conductor:
                       expected_revision: str | int | ProductHead, turn_id: str) -> TurnOutcome:
         """Accept or challenge the currently offered question, atomically.
 
-        Invalid evidence consumes one of at most two challenges.  The second
-        invalid submission parks the question: the answer is filed as offered,
-        the cursor advances to the next question, and the bank's gate stays
-        unprovable while anything is parked.
+        Invalid evidence earns one of at most two challenges the user can
+        answer.  A third invalid submission parks the question: the answer
+        is filed as offered, the cursor advances to the next question, and
+        the bank's gate stays unprovable while anything is parked.
         """
         _identifier(question_id, "question id")
         _identifier(turn_id, "turn id", MAX_TURN_ID_CHARS)
@@ -206,13 +206,14 @@ class Conductor:
         bank_state = state["banks"][position.bank_id]
         if not valid:
             previous = int(bank_state["challenges"].get(question.id, 0))
-            count = min(2, previous + 1)
-            bank_state["challenges"][question.id] = count
-            if count >= 2:
-                # Parking files the answer as offered and moves on, per the
-                # protocol in os/CONDUCTOR.md: the question becomes an open
-                # challenge, the cursor advances, and the bank's gate stays
-                # unprovable while anything is parked.
+            if previous >= 2:
+                # Two pushes are spent; this third invalid submission parks
+                # the question, per the protocol in os/CONDUCTOR.md: the
+                # answer files as offered, the cursor advances, and the
+                # bank's gate stays unprovable while anything is parked.
+                # The stored challenge count stays at 2 (already recorded
+                # by the second push), so the saved-state check that a
+                # parked question carries exactly two challenges holds.
                 bank_state["parked"].append(question.id)
                 bank_state["answers"][question.id] = {
                     "answer": _parked_answer_text(answer),
@@ -221,10 +222,12 @@ class Conductor:
                     "parked": True,
                 }
                 bank_state["cursor"] += 1
-                outcome = TurnOutcome("blocked", snapshot.head.token, bank_id=position.bank_id,
+                outcome = TurnOutcome("parked", snapshot.head.token, bank_id=position.bank_id,
                                       question=question, message="question parked after two challenges: " + reason,
-                                      challenge_count=count)
+                                      challenge_count=2)
             else:
+                count = previous + 1
+                bank_state["challenges"][question.id] = count
                 outcome = TurnOutcome("challenge", snapshot.head.token, bank_id=position.bank_id,
                                       question=question, message=reason, challenge_count=count)
             return self._record(snapshot, state, turn_id, request_hash, outcome)
@@ -615,7 +618,7 @@ def _outcome_from_data(data: Any) -> TurnOutcome:
         outcome = TurnOutcome(**copied)
     except (TypeError, ValueError) as exc:
         raise ValidationError("stored turn result is invalid") from exc
-    if (outcome.status not in {"question", "challenge", "blocked", "accepted",
+    if (outcome.status not in {"question", "challenge", "blocked", "parked", "accepted",
                               "advanced", "completed", "conflict"} or
             not isinstance(outcome.challenge_count, int) or
             isinstance(outcome.challenge_count, bool) or

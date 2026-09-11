@@ -111,12 +111,31 @@ class ConductorTest(unittest.TestCase):
         self.assertEqual(conductor.state()["banks"]["discover"]["cursor"], 0)
         two = conductor.submit_answer("discover.person", "Still vague.", invalid,
                                       expected_revision=one.revision, turn_id="bad-2")
-        self.assertEqual((two.status, two.challenge_count), ("blocked", 2))
-        # The cap holds: a parked question is no longer the offered question.
-        third = conductor.submit_answer("discover.person", "Still vague.", invalid,
+        self.assertEqual((two.status, two.challenge_count), ("challenge", 2))
+        self.assertEqual(conductor.next_turn().question.id, "discover.person")
+        self.assertEqual(conductor.state()["banks"]["discover"]["cursor"], 0)
+        three = conductor.submit_answer("discover.person", "Still vague.", invalid,
                                         expected_revision=two.revision, turn_id="bad-3")
-        self.assertEqual(third.status, "conflict")
+        self.assertEqual((three.status, three.challenge_count), ("parked", 2))
+        # The cap holds: a parked question is no longer the offered question.
+        four = conductor.submit_answer("discover.person", "Still vague.", invalid,
+                                       expected_revision=three.revision, turn_id="bad-4")
+        self.assertEqual(four.status, "conflict")
         self.assertEqual(conductor.state()["banks"]["discover"]["challenges"]["discover.person"], 2)
+        store.close()
+
+    def test_park_is_preceded_by_exactly_two_challenges(self) -> None:
+        store, conductor = self.opening()
+        turn = conductor.next_turn()
+        invalid = {"class": "observed_behavior", "source": "heard it"}
+        revision = turn.revision
+        statuses = []
+        for index in range(3):
+            outcome = conductor.submit_answer("discover.person", "Still vague.", invalid,
+                                              expected_revision=revision, turn_id="cap-%d" % index)
+            statuses.append((outcome.status, outcome.challenge_count))
+            revision = outcome.revision
+        self.assertEqual(statuses, [("challenge", 1), ("challenge", 2), ("parked", 2)])
         store.close()
 
     def test_parked_question_advances_the_cursor_and_only_blocks_the_gate(self) -> None:
@@ -128,12 +147,15 @@ class ConductorTest(unittest.TestCase):
         self.assertEqual((one.status, one.challenge_count), ("challenge", 1))
         two = conductor.submit_answer("discover.person", "Still only hearsay.", invalid,
                                       expected_revision=one.revision, turn_id="park-2")
-        self.assertEqual((two.status, two.challenge_count), ("blocked", 2))
+        self.assertEqual((two.status, two.challenge_count), ("challenge", 2))
+        three = conductor.submit_answer("discover.person", "Still only hearsay.", invalid,
+                                        expected_revision=two.revision, turn_id="park-3")
+        self.assertEqual((three.status, three.challenge_count), ("parked", 2))
         offered = conductor.next_turn()
         self.assertEqual((offered.status, offered.question.id), ("question", "discover.cost"))
         accepted = conductor.submit_answer("discover.cost", "The export reports the weekly cost.",
                                            artifact(), expected_revision=offered.revision,
-                                           turn_id="park-3")
+                                           turn_id="park-4")
         self.assertEqual(accepted.status, "accepted")
         saved = conductor.state()["banks"]["discover"]
         self.assertEqual((saved["cursor"], saved["parked"]), (2, ["discover.person"]))

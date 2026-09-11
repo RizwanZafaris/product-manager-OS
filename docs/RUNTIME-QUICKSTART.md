@@ -56,7 +56,7 @@ anything is committed), or, for a rejection that wrote a record, from that
 rejection's own `revision` field. After a rejection that wrote a record, the
 revision `answer` returned is stale and retrying with it is refused as a
 conflict; `pmos status` is current either way.
-A second rejected submission of the same question parks it: the answer is
+A third rejected submission, after two challenges, parks it: the answer is
 filed as offered and marked parked, the cursor moves on, and the bank's
 remaining questions can still be answered. The bank's gate proof is refused
 while any of its answers is parked, and no command clears a park yet, so a
