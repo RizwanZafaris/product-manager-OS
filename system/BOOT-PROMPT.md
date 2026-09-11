@@ -94,7 +94,9 @@ those files arrive:
 
 FILE MANIFEST
 Every file this session can ask the user to paste. Name a file by its exact
-path, and never invent a path that is not on this list. Two layers are easy
+path, and never invent a path that is not on this list. A file's exact path
+is the directory in the left column followed by the name on its line, so the
+tutor listed under learn/ is learn/skills/tutor/SKILL.md. Two layers are easy
 to confuse: templates/ holds the artifact a gate reads, frameworks/ holds the
 worksheet that produces a number the artifact needs. When a field wants a
 score, a size, or a classification, ask for the worksheet first.
