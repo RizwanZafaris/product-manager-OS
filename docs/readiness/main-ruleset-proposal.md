@@ -102,5 +102,5 @@ deliberately failing test: the merge button must be unavailable.
 | Field | Value |
 |---|---|
 | Proposed by | the agent lead, 2026-09-09, from the observations above |
-| Decision | [OPEN: the repository administrator approves, amends, or declines] |
-| Applied on | [OPEN: date, and the ruleset id returned by the API] |
+| Decision | Approved and applied by the repository administrator as proposed. GitHub filled in one default the payload did not set: `require_extra_approval_for_unattributed_changes: true` on the pull-request rule |
+| Applied on | 2026-09-12, after `main` went green at `29bba38` (hosted run 34645522548): ruleset id 22968065, "main: measured merges only", enforcement active, no bypass actors; `gh api repos/RizwanZafaris/product-manager-OS/rulesets` returns that one entry |
