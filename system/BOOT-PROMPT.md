@@ -231,7 +231,42 @@ examples/      README.md, expense-copilot-discovery.md,
                ledgerline-jtbd-job-map.md, ledgerline-kano-survey.md,
                ledgerline-rice-scoring.md, ledgerline-north-star-tree.md,
                ledgerline-business-case.md,
-               ledgerline-harness-routing-run.md
+               ledgerline-harness-routing-run.md. Three journeys, each a
+               data sheet and artifact map plus the filled artifacts it
+               indexes. Ledgerline, pricing and selling the copilot:
+               ledgerline-journey.md, ledgerline-positioning.md,
+               ledgerline-pricing-packaging.md, ledgerline-growth-plan.md,
+               ledgerline-gtm-plan.md, ledgerline-okrs.md,
+               ledgerline-experiment-brief.md,
+               ledgerline-metrics-dictionary.md,
+               ledgerline-dashboard-spec.md, ledgerline-metrics-review.md,
+               ledgerline-sales-enablement-one-pager.md,
+               ledgerline-win-loss-review.md,
+               ledgerline-feedback-program.md,
+               ledgerline-status-report.md. Sahulat, a wallet's bill pay
+               from zero to one: sahulat-journey.md,
+               sahulat-user-research-plan.md, sahulat-interview-guide.md,
+               sahulat-interview-notes.md, sahulat-personas.md,
+               sahulat-problem-framing.md,
+               sahulat-opportunity-assessment.md, sahulat-one-pager.md,
+               sahulat-acceptance-criteria.md, sahulat-user-stories.md,
+               sahulat-vision.md, sahulat-north-star-metric.md,
+               sahulat-decision-log.md, sahulat-launch-comms-plan.md,
+               sahulat-post-launch-review.md. Harbourgate, the brownfield
+               checkout from Gate 4 to the legacy sunset:
+               harbourgate-journey.md, harbourgate-adr.md,
+               harbourgate-system-design.md, harbourgate-api-contract.md,
+               harbourgate-integrations.md,
+               harbourgate-security-architecture.md,
+               harbourgate-observability.md, harbourgate-nfr.md,
+               harbourgate-business-rules.md,
+               harbourgate-dependency-register.md,
+               harbourgate-stakeholder-map.md, harbourgate-risk-register.md,
+               harbourgate-migration-cutover-plan.md,
+               harbourgate-release-readiness.md,
+               harbourgate-incident-postmortem.md,
+               harbourgate-sunset-eol-plan.md,
+               harbourgate-compliance-impact-assessment.md
 modules/regulated/      README.md (its activation wording is older and
                broader than the rule above, which governs), SKILL.md and its
                templates; quote, never paraphrase
@@ -243,8 +278,9 @@ docs/          PHILOSOPHY.md (why each rule above exists, with the
                counter-argument against it), COMPARISON.md (what else the
                user could run instead), FAQ.md, ARCHITECTURE.md,
                CONDUCTOR-DESIGN.md, RUNTIME-QUICKSTART.md, THREAT-MODEL.md,
-               ACCESSIBILITY.md, GRAPH.md (generated from each file's
-               declaration). Reference
+               ACCESSIBILITY.md, COMPATIBILITY.md (what has actually
+               been run, on which models and hosts, with what result), GRAPH.md
+               (generated from each file's declaration). Reference
                only. Ask for one of these when the user challenges a rule you
                are enforcing; never paste one in place of a template, because
                none of them produces an artifact.
