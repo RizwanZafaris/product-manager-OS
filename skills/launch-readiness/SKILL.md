@@ -62,7 +62,7 @@ Decision log entry with the decider named. Accepted known issues become risk reg
 
 1. Item table: | # | Gate 5 item | Evidence seen | Verdict (pass / condition / fail) | Condition owner | Close-by date |
 2. Rollback line: trigger, owner, time to roll back, rehearsal date and environment
-3. Decision: GO / NO-GO / CONDITIONAL GO, the decider's name, the reason paragraph, and for a conditional go the numbered conditions with owners and dates
+3. Recommendation for the decider: GO / NO-GO / CONDITIONAL GO from the step 4 rules, the reason paragraph, and for a conditional go the numbered conditions with owners and dates; the decision line is left blank for the named decider
 4. Sign-off table copied from the readiness document, every row named and dated
 5. The decision log entry and any risk register rows
 
@@ -78,4 +78,4 @@ Decision log entry with the decider named. Accepted known issues become risk reg
 
 ## Exit gate
 
-This skill runs Gate 5 in [../../os/STAGE-GATES.md](../../os/STAGE-GATES.md), closing DELIVER and feeding OPERATE. It is done when the readiness document's exit gate boxes are honestly checkable, the decision is recorded with the decider's name, and every condition has an owner and a date.
+This skill walks Gate 5 in [../../os/STAGE-GATES.md](../../os/STAGE-GATES.md), feeding OPERATE once DELIVER closes. It is done when every item has a verdict with evidence, the recommendation follows the step 4 rules, every condition has an owner and a date, and the decision line is left for the named decider; the decision log entry is written after they record it.

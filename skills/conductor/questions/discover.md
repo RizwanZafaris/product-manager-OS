@@ -88,6 +88,15 @@ Cross-examine when: a domain is claimed but no gatekeeper from its card can be n
 Accept when: one card from the domain index named, or "none", either way recorded.
 Lands in: STATE.md position block, `Domain:` line.
 
+### DISCOVER-9: the problem statement
+
+Ask: In one sentence, with no solution words, what is the problem?
+Wrong costs: With no accepted sentence in this exact form, every later reader states the problem differently, and DEFINE-4 traces objectives to a sentence nobody agreed on.
+Evidence class: every clause traces to an accepted DISCOVER-1, DISCOVER-2, or DISCOVER-3 answer; this entry composes them, it does not gather new evidence.
+Cross-examine when: the sentence names a feature, a solution, or needs two sentences to say. Move: banned openers, then: state it as a person, a circumstance, and a consequence, nothing else.
+Accept when: one sentence in the section 3 form, each clause citing the accepted answer ID it comes from.
+Lands in: `discovery/problem-framing.md` section 3, and STATE.md accepted answers.
+
 ## Forced pair
 
 On "advance anyway": DISCOVER-1, then DISCOVER-5. A team that cannot name one person or count its conversations is the gate's own skip warning in progress.
@@ -96,7 +105,7 @@ On "advance anyway": DISCOVER-1, then DISCOVER-5. A team that cannot name one pe
 
 | Gate 1 checklist line | Evidenced by |
 |---|---|
-| Problem statement one sentence, stated the same way | DISCOVER-1, DISCOVER-2, rolled into `discovery/problem-framing.md` section 3 |
+| Problem statement one sentence, stated the same way | DISCOVER-9, built on DISCOVER-1 and DISCOVER-2 |
 | Five or more real conversations, cited by source | DISCOVER-5 |
 | Personas under five cited interviews marked as assumptions | DISCOVER-5 |
 | Cost of inaction written down, calculation shown | DISCOVER-3, DISCOVER-4 |

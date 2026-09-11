@@ -51,6 +51,8 @@ The Conductor is the one skill with a directory of its own beyond the SKILL.md: 
 
 One more skill ships outside this directory. The tutor at [learn/skills/tutor/SKILL.md](../learn/skills/tutor/SKILL.md) teaches the OS on fictional products and reuses the Conductor's question banks read-only. It lives under `learn/` because that whole layer is deletable without touching the OS.
 
+`skills/runtime/` holds seven machine-facing contracts (`contract.json`, `SKILL.graph.yml`, a one-paragraph `SKILL.md`, `template.md`) loaded by `pmos/skills.py` only when `skills/runtime-manifest.json` matches every hash; see [docs/RUNTIME-QUICKSTART.md](../docs/RUNTIME-QUICKSTART.md). They are not procedures, no router row routes to them, and for the same jobs follow the full skills above instead (for example `lifecycle-conductor` -> [conductor/SKILL.md](conductor/SKILL.md)).
+
 ## How these load
 
 **In an agent CLI.** Claude Code reads [CLAUDE.md](../CLAUDE.md), Codex and other agent runtimes read [AGENTS.md](../AGENTS.md), and both map a request to a skill through the router table in those files. The runtime then follows the named `SKILL.md` exactly, reading the template and knowledge files the skill names as it goes. You do not invoke a skill by name; you ask for the artifact or say the trigger word, and the router picks.

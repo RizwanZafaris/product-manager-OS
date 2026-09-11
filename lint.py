@@ -129,6 +129,12 @@ import sys
 import urllib.parse
 from pathlib import Path
 
+_REPO_ROOT = Path(__file__).resolve().parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from pmos.sidecars import SidecarFilter                              # noqa: E402
+
 STALE_AFTER_DAYS = 180
 
 # The numbers the worked example uses. A filled document that still carries

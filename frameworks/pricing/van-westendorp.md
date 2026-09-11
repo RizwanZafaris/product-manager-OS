@@ -46,7 +46,7 @@ Each answer is an open numeric amount in the stated unit.
 
 | Check | Rule |
 |---|---|
-| Ordering | Drop respondents whose too cheap is at or above their too expensive, or whose cheap is above their expensive; report the count dropped |
+| Ordering | Keep only respondents with too cheap < cheap < expensive < too expensive (every adjacent pair checked, strict, as in the pricesensitivitymeter validate rule); report the count dropped |
 | Unit | Drop answers in the wrong unit (annual where monthly was asked) unless the respondent stated the unit |
 | Segment | Tabulate segments separately; never pool company sizes |
 

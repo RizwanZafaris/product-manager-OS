@@ -20,8 +20,9 @@ Skill: [acceptance-agent](../../agents/acceptance-agent.md)
      test levels and who runs them in ../delivery/testing-strategy.md. This file
      is the walk: component by component, against the WCAG guideline families,
      with evidence a skeptic could open. Families are cited by guideline number
-     (1.1, 2.4, 3.3 and so on) because they are stable across WCAG versions;
-     look up the exact success criteria for your level at the link above. A
+     (1.1, 2.4, 3.3 and so on) because they are stable across WCAG 2.x
+     (guideline 2.5 arrived in 2.1); look up the exact success criteria for
+     your level at the link above. A
      checked box with an empty evidence cell is a claim, not a check. Fill
      section 1 and the component inventory first; then walk one table at a time
      with a keyboard, a screen reader, and the contrast tool named in section 1. -->
@@ -38,6 +39,7 @@ Skill: [acceptance-agent](../../agents/acceptance-agent.md)
 | Automated checker | [tool, version; it finds a share of issues, never all of them] |
 | Contrast tool | [tool] |
 | Who walks the checklist | [name; not the author of the component] |
+| Criteria mapping | [every success criterion at the target level, each mapped to a row below or marked N/A with a reason; criteria no row covers get an added row] |
 
 ## 2. Component inventory
 
@@ -66,6 +68,8 @@ Skill: [acceptance-agent](../../agents/acceptance-agent.md)
 | Submissions with legal or financial effect can be reviewed or reversed | 3.3 | walk the submit path | | | |
 | Input purpose is exposed where a field collects personal data | 1.3 | inspect the field attributes | | | |
 | Information entered earlier in the flow is not demanded again | 3.3 | walk a multi-step flow | | | |
+| Sign-in has no cognitive-function test without an alternative | 3.3 | inspect the sign-in mechanism | | | |
+| Errors suggest a correction when one is known | 3.3 | submit each known-bad input | | | |
 
 ## 4. Controls: buttons, links, menus
 
@@ -81,6 +85,9 @@ Skill: [acceptance-agent](../../agents/acceptance-agent.md)
 | Link text makes sense out of context | 2.4 | list all links with a screen reader | | | |
 | Targets meet the size minimum for the level, and dragging has a non-drag alternative | 2.5 | measure; operate with a pointer only | | | |
 | Name, role, and state are exposed for custom controls | 4.1 | inspect the accessibility tree | | | |
+| Single-character key shortcuts can be turned off or remapped | 2.1 | check the shortcut settings | | | |
+| Multipoint and path-based gestures have a single-pointer alternative, and actions fire on release | 2.5 | operate with a single pointer; check down-event does not fire the action | | | |
+| Motion-triggered functions have an equivalent UI control | 2.5 | disable device motion and retry | | | |
 
 ## 5. Page structure and navigation
 
@@ -96,6 +103,12 @@ Skill: [acceptance-agent](../../agents/acceptance-agent.md)
 | Navigation and help sit in consistent places across screens | 3.2 | compare screens | | | |
 | Content reflows at high zoom without horizontal scrolling or loss | 1.4 | zoom to the level's reflow point | | | |
 | Nothing changes context on focus or on input alone | 3.2 | tab and type through selects and fields | | | |
+| Content works in both orientations, unless a specific orientation is essential | 1.3 | rotate the device | | | |
+| Text resizes to 200 percent and survives text-spacing overrides without loss | 1.4 | zoom to 200 percent; apply the text-spacing bookmarklet | | | |
+| More than one way exists to reach each page | 2.4 | check for search, sitemap, or related-page links | | | |
+| Same-function components are identified consistently across screens | 3.2 | compare identical controls across screens | | | |
+| Instructions do not rely on shape, position, or sound alone | 1.3 | read instructions with visuals and sound removed | | | |
+| Headings and labels describe their topic or purpose | 2.4 | read headings and labels out of context | | | |
 
 ## 6. Images, icons, charts
 
@@ -142,6 +155,7 @@ Skill: [acceptance-agent](../../agents/acceptance-agent.md)
 | Moving, blinking, or auto-updating content can be paused, stopped, or hidden | 2.2 | find the control | | | |
 | Nothing flashes above the threshold the standard sets | 2.3 | inspect animations | | | |
 | Time limits can be extended or turned off | 2.2 | trigger the timeout | | | |
+| Auto-playing audio can be paused or muted | 1.4 | trigger the audio and locate the control | | | |
 
 ## 10. Findings routed onward
 
@@ -154,6 +168,7 @@ Skill: [acceptance-agent](../../agents/acceptance-agent.md)
 Filled tables are the audit artifact [nfr.md](../definition/nfr.md) section 5 names; open failures become rows in [risk-register.md](../execution/risk-register.md), and the evidence column is what the acceptance agent verifies at [Gate 4](../../os/STAGE-GATES.md).
 
 - [ ] The conformance target is copied from the NFR, not chosen here
+- [ ] Every success criterion at the target level is mapped in section 1 to a row, or is N/A with a reason
 - [ ] Every component type in the inventory has its table walked, or is deleted with a reason
 - [ ] Every row has a result, and every pass has evidence a reviewer could open
 - [ ] Every fail has a row in section 10 with an owner and a date

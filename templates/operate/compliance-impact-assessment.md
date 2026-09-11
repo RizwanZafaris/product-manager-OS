@@ -45,9 +45,9 @@ aliases: ["Compliance Impact Assessment", "compliance-impact-assessment"]
 
 ## 3. Data categories
 
-| Data category | Personal data? | Special or sensitive category? | Stored where | Retention period | Lawful basis or ground |
-|---|---|---|---|---|---|
-| | yes / no | yes / no | | | |
+| Data category | Personal data? | Special or sensitive category? | Additional condition for special-category or criminal-offence data (entered by counsel or DPO) | Stored where | Retention period | Lawful basis or ground |
+|---|---|---|---|---|---|---|
+| | yes / no | yes / no | [condition, or N/A if not special] | | | |
 
 ## 4. DPIA flag
 

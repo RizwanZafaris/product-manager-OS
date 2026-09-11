@@ -9,7 +9,7 @@ aliases: ["DESIGN bank"]
 # DESIGN bank
 
 Stage: DESIGN, feeds Gate 3 (architecture and risks reviewed) in [../../../os/STAGE-GATES.md](../../../os/STAGE-GATES.md).
-Working handoffs: [../../../agents/drafting-agent.md](../../../agents/drafting-agent.md) in the Architect role for the `templates/architecture/` set; [../../program-premortem/SKILL.md](../../program-premortem/SKILL.md) for the failure pass.
+Working handoffs: [../../../agents/architect-agent.md](../../../agents/architect-agent.md) for the option set, draft ADRs, the NFR challenge, and the trust-boundary walk against the `templates/architecture/` set; [../../../agents/drafting-agent.md](../../../agents/drafting-agent.md) fills a named architecture template only after the deciders have chosen; [../../program-premortem/SKILL.md](../../program-premortem/SKILL.md) for the failure pass.
 Applies: the premortem method, Gary Klein's entry in [../../../knowledge/README.md](../../../knowledge/README.md), assume the failure has happened, then explain it while being right is still cheap. The Conductor names this method aloud when DESIGN-4 runs.
 Format and ladder: [README.md](README.md).
 
@@ -74,7 +74,7 @@ Wrong costs: An over-permissioned agent is a breach with a project plan; an unte
 Evidence class: 2, the permission table and the guardrail table, each row owned and tested.
 Cross-examine when: any agent holds access "for flexibility", or any guardrail's test is a design review. Move: interest to behavior, show the test that exercised it.
 Accept when: every agent's access is the minimum its task needs, and every guardrail row names an owner and a test. Skip this entry with a cited source when STATE.md says the AI overlay is not active.
-Lands in: filled copies of `templates/ai/agent-architecture.md` and `templates/ai/guardrails.md` in the workspace, and STATE.md accepted answers.
+Lands in: `definition/ai/agent-architecture.md` permission table and `definition/ai/guardrails.md` guardrail table, and STATE.md accepted answers.
 
 ## Forced pair
 
@@ -87,7 +87,7 @@ On "advance anyway": DESIGN-4, then DESIGN-5. The unasked premortem and the unco
 | At least one rejected alternative recorded as an ADR | DESIGN-1 |
 | Every integration names owner, protocol, SLA, failure behavior | DESIGN-2 |
 | Data model classifies PII with retention per class | DESIGN-3 |
-| Security walk per component with mitigation owners | DESIGN-3, plus the Architect-role handoff against `architecture/security-architecture.md` |
+| Security walk per component with mitigation owners | DESIGN-3, plus the architect-agent trust-boundary walk against `architecture/security-architecture.md` |
 | Observability names SLOs, thresholds, dashboard owner | DESIGN-6 |
 | A premortem ran and the risk register absorbed it | DESIGN-4, plus the program-premortem handoff |
 | High risks have named owners and review dates | DESIGN-4 |

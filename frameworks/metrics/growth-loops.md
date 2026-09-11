@@ -51,10 +51,10 @@ The last row's output must be the first row's input. If it is not, you have draw
 | Cycle time | t | | | median days from a user's activation to the activation of a user they generated |
 | Users from one cycle | N1 | N0 x k | | |
 | Long-run amplification (k under 1) | A | 1 / (1 minus k) | | total users per externally acquired user, over many cycles |
-| Cycles per quarter | c | 90 / t | | |
-| Users in a quarter | | N0 x (1 + k + k^2 + ... + k^c) | | |
+| Cycles per quarter | c | floor(90 / t), completed cycles only | | |
+| Users in a quarter | | N0 x (1 + k + k^2 + ... + k^c) = N0 x (1 minus k^(c+1)) / (1 minus k), with c the whole number of completed cycles | | |
 
-Rules: k at or above 1 means the loop grows without external input, which is rare and should be re-measured before anyone repeats it in a board deck. k under 1 is still valuable; it multiplies every externally acquired user by A. k and t matter together: k of 0.5 with a one-week cycle beats k of 0.8 with a two-month cycle over a quarter. Recompute k per cohort, because it decays as the loop reaches people with less fit.
+Rules: k at or above 1 means the loop grows without external input, which is rare and should be re-measured before anyone repeats it in a board deck. k under 1 is still valuable; it multiplies every externally acquired user by A. k and t matter together: k of 0.5 with a one-week cycle beats k of 0.8 with a two-month cycle over a quarter. Recompute k per cohort, because it decays as the loop reaches people with less fit. Count only cycles that complete inside the period: a cycle whose median lands after the period end does not contribute, even partially, to that period's total.
 
 ### Step 3: loop or funnel
 
@@ -81,9 +81,9 @@ Invented figures for Ledgerline's expense-report copilot. The loop is the manage
 | 2 | Manager who saw the prompt | Enables the copilot for the team | Team enabled | 0.18 | 6.5 invites |
 | 3 | Invited employee | Activates (first matched draft submitted) | Activated submitter, back to step 1 | 0.45 | |
 
-k = 0.9 x 0.18 x 6.5 x 0.45 = 0.474. Cycle time t = 24 days, so about 3.75 cycles per quarter. Amplification A = 1 / (1 minus 0.474) = 1.9.
+k = 0.9 x 0.18 x 6.5 x 0.45 = 0.474. Cycle time t = 24 days, so 3 completed cycles per quarter (the fourth lands on day 96, after quarter end). Amplification A = 1 / (1 minus 0.474) = 1.9.
 
-Worked cycle from a rollout wave of N0 = 1,000: cycle 1 adds 474, cycle 2 adds 225, cycle 3 adds 106, cycle 4 adds 50, so about 1,855 activated submitters by quarter end, approaching 1,900 in the limit. The weakest controllable step is the manager enable rate at 0.18. Raising it to 0.28 gives k = 0.74 and A = 3.8; the same wave would approach 3,800 users. That step, not more invite email, is the growth bet.
+Worked cycle from a rollout wave of N0 = 1,000: cycle 1 adds 474, cycle 2 adds 225, cycle 3 adds 106, so about 1,805 activated submitters by quarter end, approaching 1,900 in the limit. The weakest controllable step is the manager enable rate at 0.18. Raising it to 0.28 gives k = 0.74 and A = 3.8; the same wave would approach 3,800 users. That step, not more invite email, is the growth bet.
 
 ## The trap
 

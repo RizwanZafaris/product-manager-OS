@@ -108,6 +108,7 @@ before anyone read the data.
 - Evals run at: [CI / pre-release / production sampling, and the sample rate]
 - What blocks: [which rows above are hard gates vs monitored]
 - Model or prompt upgrade policy: any change to the pinned model or prompt version re-runs the full set before it ships; [name] owns the re-run
+- Population and drift triggers: the full set also re-runs, and the release decision is re-recorded by [name], before the feature reaches a new market, language, user segment, or input source, and whenever production sampling shows [metric] moving past [threshold, ILLUSTRATIVE] from the last recorded run; a failed re-run invokes the kill switch in guardrails.md section 4 or holds the rollout
 - Where results are recorded (dated, retrievable): [location]
 
 ## Worked micro-example
@@ -142,3 +143,4 @@ never averaged into one flattering number.
 - [ ] The dataset location, size, and labeling method are stated, not implied
 - [ ] Someone is named for feeding production failures back into the dataset
 - [ ] The upgrade re-run rule is written and owned
+- [ ] Re-run triggers independent of model or prompt changes (new population, drift threshold) are written and owned

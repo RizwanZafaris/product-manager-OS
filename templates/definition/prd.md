@@ -318,6 +318,7 @@ Full register: [nfr.md](nfr.md) · Accessibility: [accessibility-checklist.md](.
 | Product owner | | | The problem, the objectives, and the scope boundary |
 | Engineering lead | | | Feasibility, the non-functional register, and the estimate |
 | Design lead | | | Usability evidence and the accessibility position |
+| Business sponsor | | | The business case this PRD spends: the objectives, the ROI logic, and the budget behind them |
 | Gate 2 approver | | | That Gate 2 in [os/STAGE-GATES.md](../../os/STAGE-GATES.md) is met |
 
 <!-- The Gate 2 approver is a named person, and it is not the person who wrote this

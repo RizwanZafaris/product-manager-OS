@@ -1,6 +1,6 @@
 ---
 name: strategy-critic
-description: Stress-test a product strategy with two explicit checks, Rumelt's kernel test and the Playing-to-Win "what would have to be true" test, plus a durability check against the seven powers. Use when a strategy draft needs review before signature, when leadership suspects it is a goals slide, when the roadmap contains bets the strategy cannot explain, or before annual planning copies last year's strategy forward. Takes the strategy document and its evidence links; returns a verdict per check, the conditions that would have to be true with their evidence status, and the rewrites needed, in the product strategy template.
+description: Stress-test a product strategy with two explicit checks, Rumelt's kernel test and the Playing-to-Win "what would have to be true" test, plus a durability check against the seven powers. Use when a strategy draft needs review before signature, when leadership suspects it is a goals slide, when the roadmap contains bets the strategy cannot explain, or before annual planning copies last year's strategy forward. Takes the strategy document and its evidence links; returns a verdict per check, the conditions that would have to be true with their evidence status, and the rewrites needed as proposals, in the product strategy template.
 ---
 
 # Strategy Critic: strategy or slogan, decided in writing
@@ -59,9 +59,9 @@ Three outcomes. Strategy: all three kernel parts pass, the conditions are mostly
 1. Kernel table: | Part | Pass or fail | The sentence tested | What is missing |
 2. Cascade table: | Choice | What would have to be true | Evidence in hand / cheap test (owner, date) / untestable |
 3. Power line: the named power and its barrier, or "execution speed only"
-4. Bets table with the refused column filled, and the roadmap reconciliation
+4. Bets table as the document states it; an empty refused cell is marked as a finding, never filled by the critic; and the roadmap reconciliation
 5. Verdict: strategy / bet dressed as strategy / goals slide, with the reason in one paragraph
-6. Rewrites, section by section, in the product strategy template, and the risk register rows for unevidenced conditions
+6. Proposed rewrites for the sections that failed a check, each labelled PROPOSED for the authors to accept or reject; bets and their refused column are marked, never rewritten; and the risk register rows for unevidenced conditions
 
 ## Failure modes this skill guards against
 
