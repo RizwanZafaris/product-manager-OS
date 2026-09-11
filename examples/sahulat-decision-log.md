@@ -61,10 +61,10 @@ ADR-2 (the USSD payment as a two-phase state machine with an idempotency key, 20
 
 - **Date:** 2026-07-10 · **Decider:** Zainab Qureshi, named halt-caller on the M3 guardrail
 - **Type:** other
-- **Context:** in launch week, USSD bill-pay session completion fell to 87 percent against the 90 percent floor, with a 2026-07-09 timeout spike and 61 duplicate-payment tickets that week.
+- **Context:** in launch week, a 2026-07-09 timeout spike took LD-1's daily USSD bill-pay session completion reading below the 90 percent floor (N67), with duplicate-payment tickets already arriving.
 - **Options considered:** A. continue toward the planned 2026-07-20 nationwide date; B. pause nationwide until the timeout fix ships and completion recovers; C. roll back Rel-1 from the 600 pilot agents entirely.
 - **Decision and rationale:** B. The floor and Zainab's name against it existed so this call would not need a meeting. Continuing risked carrying the dropped-session defect, the AC-8 resume half already accepted as a Gate 4 miss, onto the whole network; a full rollback discarded four days of pilot behavior over a fix already in progress. Given up: the 2026-07-20 nationwide date, moved four days to 2026-07-24.
-- **Evidence it rested on:** the Falak Telecom gateway logs (87 percent against 90 percent), the 61 duplicate tickets, and the Gate 4 attempt 1 record naming the AC-8 miss.
+- **Evidence it rested on:** the Falak Telecom gateway logs on dashboard LD-1 (N67, below 90 percent), duplicate-payment tickets already arriving, and the Gate 4 attempt 1 record naming the AC-8 miss. Later (2026-07-12): the week closed at 87 percent with 61 duplicate-payment tickets (N46, N47).
 - **What would change our mind:** completion back above 90 percent for a full week with the timeout fix verified. Later (2026-07-24): the fix shipped 2026-07-14, completion held above the floor for the week that followed, and nationwide proceeded 2026-07-24 as this entry's condition closed.
 - **Reverses or is reversed by:** none; delays but does not reverse D6.
 - **Who was told:** the on-call channel and Tariq Sohail, owner of the Gate 5 float-hotline condition, both 2026-07-10; Faisal Mirza, who approved the pause message; and agents, via the pause message Zainab derived from the comms plan's holding statement, 2026-07-10; logged against the guardrail row in the north star sheet.
@@ -87,7 +87,7 @@ ADR-2 (the USSD payment as a two-phase state machine with an idempotency key, 20
 - **Type:** scope
 - **Context:** on 2026-05-19, three of ten Mehran Water test bills failed reference validation, about three weeks before Gate 4, while Ravi Power and Chenab Gas passed the same suite cleanly.
 - **Options considered:** A. ship Rel-1 on schedule with water included; B. delay all three billers until Mehran Water's format is fixed; C. drop water from Rel-1, ship electricity and gas, return water once fixed.
-- **Decision and rationale:** C. A 30 percent failure rate on a live payment path was not something to carry into Gate 4; delaying all three held two working billers hostage to one broken one. SAHULAT-S7 was killed, its id spent, and the affected scope row and criterion were re-signed against Gate 2 rather than folded quietly into Gate 4. Given up: the all three household bills in one channel promise (N22). Later (2026-08-17): 6 tickets asking where water went arrived in the six weeks after the 2026-07-06 launch (N59).
+- **Decision and rationale:** C. A 30 percent failure rate on a live payment path was not something to carry into Gate 4; delaying all three held two working billers hostage to one broken one. SAHULAT-S7 was killed, its id spent, and the affected scope row and criterion were re-reviewed against Gate 2 rather than folded quietly into Gate 4. Given up: the all three household bills in one channel promise (N22). Later (2026-08-17): 6 tickets asking where water went arrived in the six weeks after the 2026-07-06 launch (N59).
 - **Evidence it rested on:** the 2026-05-19 test log: three of ten failures against zero on the same suite for the other two billers.
 - **What would change our mind:** Mehran Water's reference format passing the suite the other two billers cleared.
 - **Reverses or is reversed by:** none.
@@ -101,7 +101,7 @@ ADR-2 (the USSD payment as a two-phase state machine with an idempotency key, 20
 - **Options considered:** A. integrate Darya BillLink; B. integrate BillBridge directly; C. run both, routed by bill type.
 - **Decision and rationale:** B. Darya's revenue share took 60 percent of the biller-paid fee, netting Sahulat PKR 4 a bill against BillBridge's PKR 7; Darya's 15:00 weekday cutoff would post a weekend-due bill the next working day, reproducing the surcharge this feature exists to remove, since three of eight customers' most recent due dates fell on a weekend and six of eight pay on the due date itself. Option C doubled integration surface for a fraction of the catalogue gain. Given up: about nine weeks to launch, and 210 billers against 160.
 - **Evidence it rested on:** Darya's term sheet against BillBridge's rate card and posting SLA, and the interview sample's due-date and payment-timing counts.
-- **What would change our mind:** Darya's cutoff moving past 20:00, seven days a week.
+- **What would change our mind:** Darya's cutoff moving past 20:00, seven days a week; this makes specific the vision's section 5 bank-rail revisit condition (same-day posting seven days a week).
 - **Reverses or is reversed by:** none. The structural half of this call is filed once as ADR-1, filed in the product workspace's `architecture/` folder using [templates/architecture/adr.md](../templates/architecture/adr.md), linked rather than duplicated here.
 - **Who was told:** engineering standup and the sponsor sync, both 2026-04-03. Later (2026-05-21): folded into the one-pager's not-doing list at its amendment.
 
@@ -121,9 +121,9 @@ ADR-2 (the USSD payment as a two-phase state machine with an idempotency key, 20
 
 - **Date:** 2026-03-05 · **Decider:** Hira Baig
 - **Type:** other
-- **Context:** at DEFINE's start, the stakes-audience-reversibility test that picks document weight was run; Amna Rasheed argued for the full BRD/FRD stack, since a regulator, the State Bank of Pakistan's EMI framework, is in scope for money settled to a biller.
+- **Context:** at DEFINE's start, the stakes-audience-reversibility test that picks document weight was run; Amna Rasheed argued for the full BRD/FRD stack, since a regulator, the State Bank of Pakistan's EMI framework, is in scope for money settled to a biller. The tree in WHICH-DOCUMENT itself routes a sponsor-signed, regulator-in-scope decision to the full stack; option A overrides it.
 - **Options considered:** A. one-pager weight with stories and acceptance criteria; B. the full BRD/FRD stack; C. a middle PRD weight without the regulatory annex.
-- **Decision and rationale:** A, decided by Hira Baig as document owner, with Amna's objection recorded rather than resolved by vote. One squad, one release, and no new ledger expected argued for the lighter weight; the regulatory question was resolved separately, by a compliance memo rather than by promoting the whole document. Given up: the fuller audit trail a BRD/FRD pair would have produced, for reaching Gate 2 sooner without one.
+- **Decision and rationale:** A, decided by Hira Baig as document owner, with Amna's objection recorded rather than resolved by vote. One squad, one release, and no new ledger expected argued for the lighter weight; the regulatory question was routed to a separate compliance memo (DEP-3, needed by 2026-05-29) rather than to promoting the whole document. Given up: the fuller audit trail a BRD/FRD pair would have produced, for reaching Gate 2 sooner without one.
 - **Evidence it rested on:** the stakes-audience-reversibility test: stakes bounded, since the regulatory question was routed to a compliance memo rather than carried by document weight; audience limited to one squad and one release; reversibility high, since no new ledger was expected. No data resolves this against Amna's live objection, so it is judgment under a standing dissent.
 - **What would change our mind:** the compliance memo finding bill pay outside the licence's permitted activities.
 - **Reverses or is reversed by:** none.
@@ -167,10 +167,10 @@ Run at every stage gate, dated to the day the gate itself was attempted or, wher
 | Gate 1 attempt 2: GO | 2026-02-27 | 1 (D1) | 0 | 0 |
 | Gate 2 attempt 1: RETURNED | 2026-03-18 | 2 (D1, D2) | 0 | 0 |
 | Gate 2 attempt 2: SIGNED | 2026-03-25 | 3 (D1, D2, D4) | 0 | 0 |
-| Gate 3: Architecture and risks reviewed | 2026-04-15 | 4 (D1 to D4) | 0 | 0 |
-| Gate 4: Acceptance criteria met | 2026-06-10 | 5 (D1 to D5) | 0 | 0 |
-| Gate 5: Release readiness green | 2026-07-01 | 6 (D1 to D6) | 0 | 0 |
-| Gate 6: Outcomes verified | 2026-08-28 | 8 (D1 to D8) | 0 | 0 |
+| Gate 3 attempt 1: REVIEWED AND ACCEPTED | 2026-04-15 | 4 (D1 to D4) | 0 | 0 |
+| Gate 4 attempt 1: MET, one listed miss (AC-8 resume half) | 2026-06-10 | 5 (D1 to D5) | 0 | 0 |
+| Gate 5 attempt 1: CONDITIONAL GO (float hotline, Tariq Sohail, by 2026-07-17) | 2026-07-01 | 6 (D1 to D6) | 0 | 0 |
+| Gate 6 attempt 1: PIVOT (Gate 1 signal line unticked; Open: Sara Lodhi, by 2026-09-21) | 2026-08-28 | 8 (D1 to D8) | 0 | 0 |
 
 No entry has been marked superseded by circumstance, and the pivot is checked against each of D1 to D7 rather than assumed clear of all of them. D1 holds: bill pay remains the product bet after the pivot, and D8 says so explicitly. D2 holds: the document-weight test turned on squad size, release count and the regulatory question, already resolved by Amna's memo; none of those three changed with the pivot, so the one-pager weight still fits the Rel-2 proposal. D3 holds: the vendor and revenue-share call was independent of which funding path a bill moves through; BillBridge still posts the bill either way. D4 holds: the PKR 0 launch-fee argument, removing the trip-and-surcharge cost in one visit, applies to agent-assisted pay as much as to balance-first pay. D5 holds: dropping Mehran Water was a data-quality call about one biller's reference format, unrelated to the funding hypothesis the pivot replaces. D6 holds: the staged-rollout sequencing had already run its course by 2026-07-24, before the pivot, and is not reopened by it. D7 holds: the guardrail pause is a closed, dated event that the pivot does not touch. D8 explicitly does not reverse D1: bill pay remains the product bet, only its funding mechanism changes.
 

@@ -71,7 +71,7 @@ Three lines are generalizations, not dated facts, so none is counted as a FACT r
 |---|---|---|---|---|
 | Let Usman Javed observe her cash in at her usual agent's counter and then pay next month's electricity bill wherever she pays it (the bill shop) | Her time, and letting someone outside the household watch an errand she normally does alone | Usman Javed | 2026-02-09 | Pending |
 
-This file is signed 2026-02-03, six days before the observation date; the data sheet carries no record of what the 2026-02-09 observation of C-04 specifically found (the separate field observation at 12 counters, N45, is dated 2026-08-11 to 2026-08-12 and is not this commitment's follow-up), so Done is marked Pending here rather than Yes.
+This file is signed 2026-02-03, six days before the observation date; the data sheet carries no record of what the 2026-02-09 observation of C-04 specifically found, so Done is marked Pending here rather than Yes. Added 2026-08-28: the separate field observation at 12 counters, N45, is dated 2026-08-11 to 2026-08-12 and is not this commitment's follow-up.
 
 ## 6. Forces observed
 
@@ -90,7 +90,7 @@ Interpretation: Hira Baig, 2026-02-03. At this date only INT-001 to INT-003 had 
 - What it might mean for the research questions, marked as interpretation, not fact:
   - RQ1: a due date landing on a weekend looks like it turns a free trip into a paid one and adds a fine on top. This is the sector card's point that an informal cash workaround is not a free one ([mobile money and wallets](../knowledge/domains/mobile-money-wallets.md), question 2); the trip, the shop fee and the fine are exactly that cost, priced. No weekend-surcharge comparison across sessions exists yet at this date; worth checking against later sessions with a Saturday or Sunday due date before treating it as a pattern rather than one household's bad month. A bill-specific reason, not carrying-cost aversion alone, might explain why she would rather pay at the counter (21:50) and found the idea useful (40:50); a later reader is free to disagree with this reading, since both lines are parked hypotheticals in section 4.
   - RQ2: a wallet balance that empties the same day it is funded, said at 18:35, is one data point against a pay-from-balance design, though that line is a generalization rather than a dated fact (section 3). INT-003 (a salary balance, E5) still stands on the other side of it, so this reads as an open question the personas will have to carry, not a verdict this session can settle on its own.
-  - RQ4: a dropped session produced a repeat attempt within minutes, not a wait for a status message.
+  - RQ4: a dropped session produced a repeat attempt after a short wait with no status message.
 - Contradicts or confirms earlier sessions: confirms the trip-and-fee pattern from INT-001 and INT-002. On whether customers hold a wallet balance, this session sits against INT-003, where the participant described keeping a salary balance for a different reason; the split is not resolved by one more session on either side.
 - What we still could not learn from this participant: whether she would actually leave money sitting in the wallet once a bill-pay flow exists, since the interviewer's description of the idea came late (38:05) and the two lines after it, including her "I would probably try it," are weaker for that reason. Also did not learn how she would react to a wallet-only payment record in place of the paper bills she keeps in a folder; that question was not on the v2 guide and was not improvised.
 
@@ -117,4 +117,4 @@ Tagged notes feed section 6 of [templates/discovery/user-research-plan.md](../te
 - [x] At least one claim is handed off as an evidence note, or the session is marked as producing none
 - [x] Signed by Usman Javed, 2026-02-03
 
-The post-launch review of 2026-08-21 quoted section 2's 18:35 line unchanged (E2, R6 row); it did not quote section 7.
+Added 2026-08-28: the post-launch review of 2026-08-21 quoted section 2's 18:35 line unchanged (E2, R6 row); it did not quote section 7.

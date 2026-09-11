@@ -19,7 +19,7 @@ Fills [templates/architecture/system-design.md](../templates/architecture/system
 
 - The guest checkout redesign is out. Design has wanted it for two years, it is unrelated to the decline problem this system exists to fix, and it stays with Ines Castellanos as a Gate 5 design line, not a Quay deliverable.
 - Reworking the order-history page is out. It reads the legacy payment table shape today and keeps doing so; Quay's obligation is to keep writing that shape (ADR-0002), not to rebuild the reader.
-- Modifying the contractor's Tidewater wrapper is out. ADR-0003 retires it rather than repairing or re-owning it permanently. At Gate 3 the wrapper had no named owner; Tomasz Wierzbicki was asked to name one by 2026-04-24 (R2), and Bea Lindqvist filled that caretaker role on that date, for the length of the drain.
+- Modifying the contractor's Tidewater wrapper is out, except the 2026-05-08 log-scrubbing patch (G2). ADR-0003 retires it rather than repairing or re-owning it permanently. At Gate 3 the wrapper had no named owner; Tomasz Wierzbicki was asked to name one by 2026-04-24 (R2), and Bea Lindqvist filled that caretaker role on that date, for the length of the drain.
 - Migrating reporting off the legacy table shape is out of this design's scope; it is DEP-4, owned by Grace Mbeki, due 2027-02-27, and its completion is what lets ADR-0002's removal date (2027-03-31, N65) hold.
 
 ## 3. Context and constraints
@@ -27,7 +27,7 @@ Fills [templates/architecture/system-design.md](../templates/architecture/system
 | Constraint | Type | Source |
 |---|---|---|
 | Quay must keep writing the legacy payment table shape until at least 2027-03-31; reporting, finance reconciliation and the order-history page all read it today | technical | ADR-0002; N65 |
-| A per-provider routing flag change needs two named approvers, logged with both names, while any legacy flag remains live | organizational | BR-007; HARBOURGATE-S4, AC-6 |
+| A routing flag change needs two named approvers, logged with both names, while any legacy flag remains live (per-provider since D-017, 2026-05-21) | organizational | BR-007; HARBOURGATE-S4, AC-6 |
 | Kestrel's per-account authorisation rate is capped at 50 req/s under the Kestrel master services agreement, schedule 2; the payment table's write path breaks at 80 req/s, per the load test of 2026-06-05 | technical | Kestrel MSA schedule 2; load test 2026-06-05 (N24) |
 | Kestrel carries a 99.9% monthly availability commitment; Marlowe carried 99.5%; Tidewater's 2021 contract carries no SLA clause at all | technical (contractual) | N26 to N28 |
 | Seven systems sit inside PCI DSS assessment scope while the Marlowe path still carries a card number through Harbourgate's own servers; the target is 3 after sunset, not yet assessor-evidenced | regulatory | N55; DEP-7 |
@@ -68,7 +68,7 @@ flowchart LR
 | Settlement file ingestion | Pulls the daily or weekly settlement files from each live rail: Kestrel, Marlowe, Tidewater | Bea Lindqvist | New | I-4, I-6, I-8 |
 | Decline event stream | Carries every decline from every live rail with provider, reason class and trace id | Bea Lindqvist | New | Kestrel connector, legacy adapter |
 | Reconciliation service | Matches settlement files against the ledger across both paths, classifying the straddle set until it drains, and exports nightly to the finance ERP (I-11) | Bea Lindqvist | New (ADR-0004, 2026-06-19, after Gate 3) | Settlement file ingestion, Quay ledger; finance close |
-| Fraud rules engine | Consumes the decline event stream to score risk and set the step-up threshold (BR-005) | Saoirse Whelan's team | Existing, re-pointed | Decline event stream (DEP-6) |
+| Fraud rules engine | Consumes the decline event stream to score risk and flag orders for step-up; the £250 threshold itself is fixed by Fraud policy v6 (BR-005, N57), not by the engine | Saoirse Whelan's team | Existing, re-pointed | Decline event stream (DEP-6) |
 | Quay ledger | Legacy table shape written on every order, so the order-history page and reporting continue to read unchanged rows (ADR-0002, AC-9); removal date 2027-03-31 (N65) | Tomasz Wierzbicki | New | Quay core service |
 | Order service / order-history page | Reads the legacy table shape Quay continues to write | Grace Mbeki | Existing, unchanged | Quay ledger (ADR-0002) |
 
@@ -84,7 +84,7 @@ Story trace: S1 (hosted fields, AC-1) and S2 (kiosk SDK) map to the Kestrel conn
 
 ## 7. Tradeoffs accepted
 
-- We chose one provider, one contract, one on-call surface over redundancy across acquirers, because R4 (a Kestrel outage stops every card payment) is cheaper to operate against, with a named fallback and a quarterly review, than three integrations forever; Rohan Iyer accepted R4 by name in D-022 (2026-08-24, after Gate 3).
+- We chose one provider, one contract, one on-call surface over redundancy across acquirers, because R4 (a Kestrel outage stops every card payment) is cheaper to operate against, with a named fallback and a review on 2027-01-31, then quarterly, than three integrations forever; Rohan Iyer accepted R4 by name in D-022 (2026-08-24, after Gate 3).
 - We chose, in the revisions since Gate 3, a phased cohort migration (D-021, 2026-06-18) with no freeze over both the percentage ramp of D-011 (2026-04-14) and the cleaner freeze-move-switch weekend of D-019 (2026-06-02), because rehearsal 1 (2026-06-13) proved a payment provider has no instant with nothing settling or refunding in flight; the price is six weeks on the completion date (N43) and the reconciliation service this design carries for the length of the drain (ADR-0004).
 - We chose to keep writing the legacy table shape from Quay over a clean data model, because the order-history page and finance reporting read it today and rebuilding both inside this migration would have added scope Gate 2 never scoped; the price is a coupling that outlives the migration itself, with a stated removal date (2027-03-31, N65) rather than an open-ended one.
 - We chose to retire the wrapper rather than find it a permanent owner, because Kestrel's terminal SDK was expected to cover the kiosk PIN pad model, pending certification (DEP-1, delivered 2026-07-09) and the firmware update it required across the 61 shops (DEP-5, delivered 2026-07-30); the price is that the caretaker role Tomasz Wierzbicki was asked to find an owner for by 2026-04-24 (R2), taken up by Bea Lindqvist that date, is a bridge, not a role Quay's design gives a long-term home to.
@@ -106,6 +106,6 @@ Story trace: S1 (hosted fields, AC-1) and S2 (kiosk SDK) map to the Kestrel conn
 - [x] At least two real alternatives are recorded with reasons and reversal conditions: the wrapper-over-three (reopens if Kestrel's SLA is breached often enough) and fix-the-logging-only (reopens if migration cost ever outran consolidation's value), plus do-nothing as the measured baseline
 - [ ] Every component has an owner who knows they own it: Tomasz Wierzbicki, Saoirse Whelan's team and Grace Mbeki are named at Gate 3; the wrapper-facing legacy adapter had no named owner at Gate 3 (R2); Tomasz Wierzbicki was asked to name one by 2026-04-24, and Bea Lindqvist was named that date
 - [x] The cross-cutting links in section 8 resolve to filled documents, not blank templates: api-contract, integrations, security-architecture and observability are this journey's own filled siblings; a stand-alone data-model.md is outside this journey's sixteen artifacts, and that gap is named, pointing instead to the product's data model, section 6, rather than hidden behind an invented link
-- [x] New risks from this design are rows in the risk register with owners: R4, R5, R8 and R13 all carry owners and are register rows as of the 2026-04-09 premortem
+- [x] New risks from this design are rows in the risk register with owners: R5, R8 and R13 carry owners as register rows from the 2026-04-09 premortem; R4 was a register row with no named acceptor until D-022 (Rohan Iyer, 2026-08-24)
 
 Reviewed at [Gate 3: architecture and risks reviewed](../os/STAGE-GATES.md), accepted 2026-04-10 alongside ADR-0003, with one miss recorded against this document: the contractor's wrapper had no named owner; Tomasz Wierzbicki was asked to name one by 2026-04-24, and it closed that date when Bea Lindqvist was named caretaker (R2). Signed off by Tomasz Wierzbicki, Engineering Lead and design owner. See the [Harbourgate journey](harbourgate-journey.md) for how this design reached Gate 3 and for the revisions recorded above since that date, and [harbourgate-adr.md](harbourgate-adr.md) for the routing decision this design fixes the shape around.

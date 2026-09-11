@@ -27,7 +27,7 @@ Shazia dials Sahulat's USSD short code, looks up her Ravi Power or Chenab Gas bi
 | 8 | Offer the same lookup-and-pay flow on the smartphone app (balance-first) | Should | SAHULAT-S10 |
 | 9 | Send a reminder SMS three days before a saved bill's due date (balance-first) | Should | SAHULAT-S11 |
 
-At Gate 2 attempt 2 this table also carried paying a Mehran Water bill (SAHULAT-S7). Decision D5 dropped it on 2026-05-21, after three of ten test bills failed Mehran Water's reference validation, and the affected criterion was re-signed against this gate rather than absorbed quietly; see section 5.
+At Gate 2 attempt 2 this table also carried paying a Mehran Water bill (SAHULAT-S7). Decision D5 dropped it on 2026-05-21, after three of ten test bills failed Mehran Water's reference validation, and the affected criterion was re-reviewed against this gate rather than absorbed quietly; see section 5.
 
 ## 4. How we will know it worked
 
@@ -37,14 +37,16 @@ Targets below are ILLUSTRATIVE, agreed with the metric owner named in each row; 
 
 | Metric | Baseline | Target | Measured where | Owner |
 |---|---|---|---|---|
-| M1: bills paid per month | 0 bills a month; the feature does not exist yet | 40,000 bills paid in the four weeks ending launch plus six weeks (2026-08-16, N42) | Core ledger, query M1 | Hira Baig |
+| M1: bills paid per month | 0 bills a month; the feature does not exist yet | 40,000 bills paid in the four weeks ending launch plus six weeks (N42) | Core ledger, query BL-01 | Hira Baig |
 | M2: share of bill payments funded from a balance held more than 48 hours, the balance-first hypothesis | 0 percent; the feature does not exist yet | 50 percent of bill payments, same four-week window | Core ledger, query FP-01 | Hira Baig |
 | Guardrail: USSD bill-pay session completion (M3) | Not yet measured; no bill-pay session exists yet | Must not fall below 90 percent | Falak Telecom USSD gateway logs | Zainab Qureshi (halt-caller) |
 | Guardrail: pass-through share, cash-in fully cashed out within 48 hours (M4) | 61 percent, measured, Q4 2025, query PT-01 | Must not rise above 61 percent | Core ledger, query PT-01 | Hira Baig (halt-caller) |
 
-Annotation, 2026-07-01: Gate 5 later fixed the M1 and M2 review window as the four weeks ending 2026-08-17 (N55); this document, signed before Gate 5, states the window relative to launch instead.
+Annotation, 2026-07-01: Gate 5 set the review window as launch plus six weeks, closing 2026-08-17 (N55); M1 and M2 are measured over the last four full weeks inside it, 2026-07-20 to 2026-08-16.
 
 M2 is the balance-first assumption written as a number so it can fail: if fewer than half of bill payments are funded from a balance held more than two days, the design bet behind SAHULAT-S5, S10 and S11 does not hold. Fifty percent is double what the sample shows: 2 of 8 held a balance for more than two days (N26), and 6 of 8 moved money out the same day (T2). The target is set where the design bet has to be true, so the review can falsify it; a target the sample already cleared would prove nothing. If M2 is under 50 percent at review, the balance-first work (SAHULAT-S5, S10, S11) stops. Decider Faisal Mirza at Gate 6. That work draws against the squad's full BUILD capacity of 28 engineer-weeks (N8, estimate, noted at this amendment).
+
+[The vision](sahulat-vision.md)'s non-goal against designing a flow that only pays off if customers hold a balance conditions that work on a later DISCOVER pass finding three of eight or more customers holding a balance, a bar N26 (2 of 8) does not clear. This document commits SAHULAT-S5, S10 and S11 as shoulds, not musts, against that unmet bar: M2 is the mechanism that makes the bet falsifiable rather than assumed, and the work stops at Gate 6 if the sample still does not support it. The gap between the vision's stated condition and scoping the work as should-priority ahead of it was not reconciled at sign-off; it is recorded here at this amendment rather than left silent.
 
 ## 5. Not doing
 
@@ -54,7 +56,7 @@ Charging the customer a fee to pay a bill. Faisal Mirza's early framing leaned t
 
 Building the smartphone app as the lead channel, a non-goal carried from [the vision](sahulat-vision.md). Most Sahulat customers reach the wallet over USSD on a feature phone, not the app, so USSD carries the walking skeleton and the app flow (SAHULAT-S10) ships as a should, not the primary surface. Reopens once the app becomes the majority channel for active bill-pay usage, sustained across two consecutive quarters.
 
-Integrating through Darya Bank's BillLink rail instead of BillBridge. Darya's catalogue and API were more ready and would have shipped roughly nine weeks sooner, but its 15:00 weekday settlement cutoff would have posted a Sunday-due bill the next working day, reproducing the surcharge this feature exists to remove, and its 60 percent revenue share left Sahulat PKR 4 a bill against PKR 7 through BillBridge. Given up: nine weeks and a 210-biller catalogue against BillBridge's 160. Decision D3 on 2026-04-03 chose BillBridge instead; D3 postdates this document's original sign-off and is folded in at the 2026-05-21 amendment. Reopens if Darya's cutoff moves past 20:00, seven days a week.
+Integrating through Darya Bank's BillLink rail instead of BillBridge, the same bank-rail non-goal [the vision](sahulat-vision.md) carries in section 5. Darya's catalogue and API were more ready and would have shipped roughly nine weeks sooner, but its 15:00 weekday settlement cutoff would have posted a Sunday-due bill the next working day, reproducing the surcharge this feature exists to remove, and its 60 percent revenue share left Sahulat PKR 4 a bill against PKR 7 through BillBridge. Given up: nine weeks and a 210-biller catalogue against BillBridge's 160. Decision D3 on 2026-04-03 chose BillBridge instead; D3 postdates this document's original sign-off and is folded in at the 2026-05-21 amendment. Reopens if Darya's cutoff moves past 20:00, seven days a week.
 
 Any merchant-facing QR code or point-of-sale acceptance, a non-goal carried from [the vision](sahulat-vision.md). This feature pays a fixed household biller, not a merchant at a till; merchant acquiring is out of the product's current horizon there.
 
@@ -66,7 +68,7 @@ All thresholds below are ILLUSTRATIVE, agreed at Gate 2 attempt 2.
 |---|---|---|
 | AC-1 | Given a customer dials the USSD short code and enters a valid Ravi Power reference number, when Sahulat queries BillBridge, then the amount and due date return within 8 seconds at the 95th percentile | Zainab Qureshi |
 | AC-3 | Given a looked-up Ravi Power bill and a wallet balance at or above the amount due, when the customer confirms payment, then the wallet debits once, BillBridge is called, and an SMS carrying the payment reference arrives within 60 seconds | Zainab Qureshi |
-| AC-8 | Given a USSD session drops before the debit is confirmed, when the customer dials again, then Sahulat resumes the same attempt against its idempotency key rather than starting a new one, and a status SMS arrives within 2 minutes either way | Zainab Qureshi |
+| AC-8 | Given a USSD session drops before the debit call is made, when the customer dials again, then Sahulat resumes the same attempt against its idempotency key rather than starting a new one, and a status SMS arrives within 2 minutes either way | Zainab Qureshi |
 
 The full pass-or-fail contract, AC-1 through AC-13, including the duplicate-payment block, the tier-limit refusal, and the 24-hour reversal when a biller posting fails after debit, is in [the Sahulat acceptance criteria](sahulat-acceptance-criteria.md). AC-8's resume half was later accepted as the Gate 4 miss (2026-06-10).
 
@@ -108,4 +110,4 @@ Rows 2 through 7 are the DESIGN-stage premortem's six risks, dated 2026-04-08, f
 - [ ] Every risk and open question has an owner and a date. Rows 2 and 7 (R1 and R6) carry an owner but a marked-Open date, since Gate 5 had not yet set the nationwide-rollout and review-window dates at this amendment; every other row carries both.
 - [ ] It still fits on one page, or it has been promoted to prd.md. No: about 1,970 words after the 2026-05-21 amendment and the post-Gate-5 annotations. Gate 2 accepted the one-pager weight under decision D2, over Amna Rasheed's objection, but that decision was about document weight, not page count. Not promoted to prd.md. Open: Hira Baig decides trim vs promote.
 
-Signed at Gate 2 attempt 2, 2026-03-25: Hira Baig, product owner; Faisal Mirza, sponsor. The 2026-05-21 amendment under D5 was re-reviewed by the same three reviewers named above rather than re-signed at a new gate attempt, since it removed scope rather than adding it.
+Signed at Gate 2 attempt 2, 2026-03-25: Hira Baig, product owner; Zainab Qureshi, engineering lead; Faisal Mirza, sponsor; Amna Rasheed, regulatory owner (per STAGE-GATES: regulated, no model), signed with her D2 objection noted. The 2026-05-21 amendment under D5 was re-reviewed by the same three reviewers named above rather than re-signed at a new gate attempt, since it removed scope rather than adding it.

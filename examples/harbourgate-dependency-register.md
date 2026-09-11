@@ -2,10 +2,12 @@
 
 Fills [templates/execution/dependency-register.md](../templates/execution/dependency-register.md). Part of the [Harbourgate journey](harbourgate-journey.md): a fictional mid-market retailer replacing a nine-year-old checkout with a single-provider payment service, Quay. Everything here is invented: Harbourgate, Kestrel, Marlowe and Tidewater are fictional, every person is fictional, and every number, date and status is ILLUSTRATIVE, drawn from the journey's data sheet and identifier table, never to be copied as a target. See the [examples index](README.md).
 
+Stage: DESIGN, feeds [Gate 3: architecture and risks reviewed](../os/STAGE-GATES.md), first filled 2026-04-10 ahead of the gate, governed weekly through DELIVER
+Knowledge: [knowledge index](../knowledge/INDEX.md)
+Skill: [program-premortem](../skills/program-premortem/SKILL.md)
+
 **Initiative:** Quay (checkout-pay replacement) · **Register owner:** Ife Adeyemi, Product Manager · **Review cadence:** weekly, Thursday engineering sync
 **Last reviewed:** 2026-10-16
-
-Stage: DESIGN, feeds [Gate 3: architecture and risks reviewed](../os/STAGE-GATES.md), first filled 2026-04-10 ahead of the gate, governed weekly through DELIVER
 
 ## 1. The register
 
@@ -44,20 +46,20 @@ DEP-2 never reached rung 3 through the ladder itself; nobody raised it, because 
 
 | Date | Rows that changed status | Escalations opened or closed |
 |---|---|---|
-| 2026-04-10 (opened at Gate 3, before the first Thursday review) | Register opened at Gate 3; DEP-1, DEP-3, DEP-4, DEP-5, DEP-6, DEP-7, DEP-8 logged at committed, each against the committed date the owning team gave (section 1) | none |
-| 2026-04-16 | No change to DEP-1, DEP-3, DEP-5, DEP-6, DEP-8; DEP-4 and DEP-7 moved from committed to in progress; DEP-2 not yet requested | none |
+| 2026-04-10 (opened at Gate 3, before the first Thursday review) | Register opened at Gate 3; DEP-1, DEP-4 and DEP-5 logged at committed, each against the committed date the owning team gave (section 1). Their needed-by dates shown in section 1 were re-baselined to plan v2 after D-021 (2026-06-18); the dates logged at this opening matched the schedule assumed at Gate 3 (completion 2026-06-30, N44), and were re-baselined to plan v1 (D-019, 2026-06-02) and then to plan v2 (D-021, 2026-06-18) | none |
+| 2026-04-16 | No change to DEP-1, DEP-5; DEP-4 moved from committed to in progress; DEP-2 not yet requested | none |
 | 2026-04-23 | DEP-2 logged at requested (asked of Marlowe 2026-04-20, no committed date offered); its needed-by of 2026-06-05 was set to leave time before the rehearsal and cutover then planned for June | none |
 | 2026-05-21 | DEP-2 still requested, 4 weeks elapsed, no named contact and no committed date | none opened; the ladder's rung 3 existed but nothing in the register yet triggered it automatically |
 | 2026-06-11 | DEP-2 still requested, 7 weeks elapsed; its needed-by of 2026-06-05 had already passed with no committed date, which the template's own arithmetic should have read as at risk. In hindsight, once D-019 set Marlowe's cutover for 2026-06-27 and 28 (N70), DEP-2 was still the only route to a non-production file for rehearsal 1 on 2026-06-13 (N37), then two days away | none |
 | 2026-06-16 (ad hoc, called after Gate 5 attempt 1's NO-GO, outside the weekly cadence) | Rehearsal 1 (2026-06-13) failed its verify phase against production-shaped Marlowe data, and HG-INC-14 (2026-06-15) followed; the review named DEP-2's eight weeks at requested as a contributing gap, R9 and R14 were added to the risk register, and R3, open since the 2026-04-09 premortem and re-scored to 9 on 2026-06-15, was recorded here; Gate 5 attempt 1 returned NO-GO | escalation opened: DEP-2 to Bea Lindqvist, then Tomasz Wierzbicki |
 | 2026-06-19 (ad hoc, the corrective action's own due date, outside the weekly cadence) | Corrective action A6 added from the postmortem: a dependency at requested for more than 4 weeks is escalated automatically at the weekly review, owner Ife Adeyemi | none open; A6 not yet verified against a live review |
-| 2026-07-02 | A6 verified for the first time at a regular review: no row at requested past 4 weeks | none open |
+| 2026-07-02 | A6 verified for the first time at a regular review: no row at requested past 4 weeks. DEP-3 and DEP-6 logged at committed, their needed-by dates set against plan v2 (D-021, 2026-06-18) | none open |
 | 2026-07-03 (ad hoc, the day the need was actually removed) | DEP-2 withdrawn: ADR-0004 reconciles both paths from one ledger with a classified straddle set, using D-021's phased cohorts to verify reconciliation against real settlement files at 5% exposure and A2's separated SFTP drops to keep pre-production off the production drop, removing the need for Marlowe sandbox files entirely | escalation on DEP-2 closed |
 | 2026-07-09 | DEP-1 delivered 2026-07-09; DEP-3 delivered 2026-07-08; DEP-6 recorded delivered 2026-07-06 | none open |
 | 2026-07-30 | DEP-5 delivered 2026-07-30, two days past its committed date of 2026-07-28 but still two days inside the 2026-08-01 needed-by; the slip triggered rung 1 and closed without an at-risk flag; R12 (kiosk firmware update) closed on delivery | none open |
-| 2026-08-13 | DEP-4 and DEP-7 tracking against their committed dates; no change | none open |
-| 2026-08-27 | DEP-4 and DEP-7 tracking against their committed dates; no change | none open |
-| 2026-09-17 | DEP-8 delivered 2026-09-14; DEP-7's committed date of 2026-11-20 confirmed with the external assessor | none open |
+| 2026-08-13 | DEP-4 tracking against its committed date; no change | none open |
+| 2026-08-27 | DEP-4 tracking against its committed date; no change; DEP-8 logged at committed (needed by 2026-09-15, committed 2026-09-14) | none open |
+| 2026-09-17 | DEP-8 delivered 2026-09-14; DEP-7 logged at committed following D-023 (2026-09-14), which fixed the 2026-12-15 sunset date; DEP-7's committed date of 2026-11-20 confirmed with the external assessor | none open |
 | 2026-10-15 | DEP-4 and DEP-7 remain in progress, both tracking against their committed dates | none open |
 
 ## How this register fails

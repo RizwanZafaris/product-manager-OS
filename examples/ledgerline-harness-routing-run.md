@@ -2,7 +2,7 @@
 
 This is not a filled template. It is the record of `harness/runner.py` running two manifest tasks against a real OmniRoute gateway on one developer machine, on 2026-09-03. It exists because the routing layer makes claims that are cheap to write and easy to fake: that tiers resolve to real models, that the three headers go out, that judgment work queues rather than downgrading. A transcript is the only thing that turns those claims into facts.
 
-Read it for the mechanics, not for the product content. The product is Ledgerline, the fictional expense-report copilot the other examples use, and the input was invented for this run. Every ticket, name, customer and number in the source document is **ILLUSTRATIVE**. The gateway behavior, the model ids, the headers and the wall-clock times are real.
+Read it for the mechanics, not for the product content. The product is the Expense Copilot at Ledgerline, the fictional company the other examples use, and the input was invented for this run. Every ticket, name, customer and number in the source document is **ILLUSTRATIVE**. The gateway behavior, the model ids, the headers and the wall-clock times are real.
 
 The honest headline is at the bottom of the probe table: the judgment tier answered, and the runner queued the judgment work anyway. That is the interesting part of this transcript, and it is the reason a transcript beats an assertion.
 

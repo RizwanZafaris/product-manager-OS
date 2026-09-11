@@ -70,6 +70,16 @@ Any resolution must sit inside the scope of activities permitted under Sahulat D
 - **Ask:** fund definition, that is, carry this problem from DISCOVER into DEFINE rather than returning to more discovery or retiring it.
 - **From:** Faisal Mirza · **By:** 2026-02-20
 
+## How this framing fails
+
+| Failure mode | What it looks like | The rule that stops it |
+|---|---|---|
+| A solution in disguise | "Sahulat needs a bill-pay feature" names the fix in the phrasing | State what someone is trying to do and what stops them, naming no product and no feature: section 3 names the branch and the bill shop only as how the household pays today, not as what it should get instead |
+| Too broad to disagree with | "Paying bills is inconvenient", which rejects nothing and directs nothing | If nobody could argue with it, it is an observation rather than a problem: section 3 names the due date, the business hours, the trip, and the surcharge, a statement a sponsor could reject on any one of those particulars |
+| Nobody is shown to have it | A memorable anecdote, and no interview, ticket or log behind it | Cite one observed case before the document is written, or mark the framing an assumption: every evidence row in section 4 carries a source ID and a strength label, and E1 to E4 are marked weak rather than presented as settled |
+| Never sized | "This happens a lot", with no count and no cost | A number: how often, to how many, costing what. Rough and sourced beats precise and invented: Gate 1 attempt 1 on 2026-02-20 returned this document on exactly this point, a cost of inaction with no arithmetic behind it, which is why section 5 now carries the household and business tables rather than a sentence |
+| The person is not named | "Users" and "stakeholders" throughout | One role, one job they are trying to get done, one situation where it fails: section 3 names the household paying a recurring electricity or gas bill, not "users," and section 6 splits that household from the agent rather than merging them |
+
 ## Exit gate
 
 (feeds Gate 1: problem worth solving)

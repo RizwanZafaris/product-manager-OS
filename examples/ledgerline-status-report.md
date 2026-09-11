@@ -81,7 +81,7 @@ R4 went red on 2026-11-23; last week's report showed it GREEN in error, correcte
 
 | Item | First reported red | Escalated to | On | Response due |
 |---|---|---|---|---|
-| R4, customer DPA subprocessor gap (DEP3) | 2026-11-23 (last week's report showed GREEN; corrected here) | Isabel Ferreira | 2026-11-30 | 2026-12-03 |
+| R4, customer DPA subprocessor gap (DEP3) | Went red 2026-11-23; first reported red 2026-11-30 (the 2026-11-23 report showed GREEN in error) | Isabel Ferreira | 2026-11-30 | 2026-12-03 |
 
 ---
 

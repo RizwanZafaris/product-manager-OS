@@ -12,7 +12,7 @@ Fills [templates/discovery/personas.md](../templates/discovery/personas.md). Eve
 
 - **Role and context:** Runs the household's utility bills, electricity, gas and water, on a feature phone over USSD, or at her agent's counter; not an app-first user.
 - **Segment size:** 246,000 wallets, a proxy count of wallets with a cash-in on the 5th to 10th in two of the last three months (N64, estimate, query BP-01, February 2026); a behavioral proxy, not a direct count, since nothing in the ledger names "who runs the household bills" today.
-- **Frequency of contact with the problem:** Monthly, three separate due dates: the sample's households carry three bills a month, electricity, gas and water (N22, measured, bills shown in all 8 customer sessions).
+- **Frequency of contact with the problem:** Monthly: the sample's households carry three bills a month, electricity, gas and water, usually carried in one monthly trip (N22, measured, bills shown in all 8 customer sessions; N27).
 
 ### The job
 
@@ -76,7 +76,7 @@ Leaving money sitting in a wallet she cannot picture spending that day (E2). A U
 ### Goals and success
 
 - **They consider the day won when:** A bill question that walks in becomes a transaction at his counter, not a referral out the door. (Inference from the job statement and E3; no session states this directly, see the unevidenced-claims line below.)
-- **They are measured or judged by:** His daily commission, PKR 15 per cash-in and PKR 20 per cash-out today (N29, N30, commission schedule v6, measured); bill pay carries no commission line yet. Blocks C and E of the interview guide did ask whether an agent would rather perform a customer's bill payment and what they would expect to be paid, but no session produced a figure and the six answers were not tallied this round. Open: Hira Baig, next DISCOVER pass (research plan, RQ3 remainder).
+- **They are measured or judged by:** His daily commission, PKR 15 per cash-in and PKR 20 per cash-out today (N29, N30, commission schedule v6, measured); bill pay carries no commission line yet. Blocks C and E of the interview guide asked where agents send bill customers, what that shop charges and what he earned from his last referral; Block D asked what stopped an agent from doing a bill himself, but no session produced an answer, and what commission he would expect was not asked. Open: Hira Baig, next DISCOVER pass (research plan, RQ3 remainder).
 
 ### Pains and workarounds
 
@@ -95,7 +95,7 @@ Leaving money sitting in a wallet she cannot picture spending that day (E2). A U
 
 ### What they distrust
 
-Whether a customer blames him when a bill payment for a customer he referred goes wrong, a wrong reference or a late posting: Block D of the interview guide asks this ("who does the customer blame? what do you do about it?"), but the guide's own revision note says this agent-track question was added only in this pass, so it is not certain every one of the six sessions in this persona's evidence table ran it. INT-012 (T4) is the one answer the agent failed-payment block produced, and it speaks to the dropped-session pattern, not to blame; the blame question itself stays Open. Open: Tariq Sohail, next agent debrief round.
+Whether a customer blames him when a bill payment for a customer he referred goes wrong, a wrong reference or a late posting: Block D of the interview guide asks this ("who does the customer blame? what do you do about it?") in v2, but no agent session produced an answer about blame; INT-012's dropped-session line (T4) came from the Block B question, not this one. Open: Tariq Sohail, next agent debrief round.
 
 ### Evidence (mandatory)
 
@@ -118,7 +118,7 @@ Whether a customer blames him when a bill payment for a customer he referred goe
 
 ## Persona: Kamran, the Salaried Balance-Keeper (ASSUMPTION)
 
-**Validate by:** No date on the label; owner Hira Baig; clears when three more sessions cite this persona, meeting the five-session evidence bar this template sets for every named persona above. This is the gap [sahulat-post-launch-review.md](sahulat-post-launch-review.md) names twice (line 39 and the R6 row): the label carried no validate-by date, and a premortem risk was scored against it anyway.
+**Validate by:** No date on the label; owner Hira Baig; clears when three more sessions cite this persona, meeting the five-session evidence bar this template sets for every named persona above. Added 2026-08-28 (after D8): this is the gap [sahulat-post-launch-review.md](sahulat-post-launch-review.md) names twice (section 3 and the R6 row): the label carried no validate-by date, and a premortem risk was scored against it anyway.
 
 ### Snapshot
 

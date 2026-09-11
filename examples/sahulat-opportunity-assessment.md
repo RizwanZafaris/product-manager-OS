@@ -27,7 +27,7 @@ Every figure below is ILLUSTRATIVE, drawn from the [Sahulat journey's data sheet
 | 1, 6 | 412 helpline calls in the four weeks to 2026-01-09 asked whether Sahulat could pay a bill | Agent helpline, tag BILL-ASK; N13, measured | high |
 | 3, 6, 9 | 61 percent of cash-ins are fully cashed out again within 48 hours | Core ledger, query PT-01, Q4 2025; N10, measured | high |
 | 3 | 246,000 wallets show a cash-in on the 5th to 10th of the month in two of the last three months | Ledger cut run for this assessment; N64, estimate | medium, one query, not yet checked against real bill-paying behavior |
-| 3 | BillBridge would post at PKR 10 a bill, Sahulat net PKR 7 | BillBridge rate card; N31, N32, quoted | medium, not yet a signed rate card |
+| 3 | BillBridge would post at PKR 10 a bill, Sahulat net PKR 7 | BillBridge indicative quote, 2026-01-13; N31, N32, quoted | medium, not yet a signed rate card |
 | 3, 6 | Board key result is 520,000 30-day active wallets by 2026-12-31, against 410,000 today | Board OKR sheet, December 2025; core ledger; N4 target, N2 measured | high |
 | 3 | The 5th to 10th is a "bill-peak window", when most bills fall due | None yet; N57 measures bill-peak days only in July and August 2026, after this assessment | assumption |
 | 4 | Customers pay today at a bank branch, a bill shop, another wallet or bank app, or pay late | None yet; the team's own market knowledge | assumption |
@@ -41,7 +41,7 @@ Every figure below is ILLUSTRATIVE, drawn from the [Sahulat journey's data sheet
 | Field | Answer |
 |---|---|
 | Recommendation | Go to discovery on bill pay, not on the cashback-for-balance promotion Faisal Mirza first raised |
-| The riskiest assumption if we proceed | Customers will keep a balance in order to pay from it, rather than cashing in and paying the same day the way N10's 61 percent pass-through pattern suggests they already treat the wallet. Test: the research plan to follow, with a stated bar (if fewer than three of eight customers held a balance over two days, balance-first work leaves scope); owner Hira Baig; feeds the assumptions register at DEFINE |
+| The riskiest assumption if we proceed | Customers will keep a balance in order to pay from it, rather than cashing in and paying the same day the way N10's 61 percent pass-through pattern suggests they already treat the wallet. Test: the research plan to follow, with a falsification bar the research plan will set before fielding; owner Hira Baig; feeds the assumptions register at DEFINE |
 | Decided by | Faisal Mirza, Chief Executive |
 | Logged | D1, 2026-01-16, [decision log](sahulat-decision-log.md#d1-enter-discover-on-bill-pay-not-a-keep-balance-cashback-promotion) |
 
