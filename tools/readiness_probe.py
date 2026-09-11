@@ -290,22 +290,40 @@ def probe_compile_all():
     return 0
 
 
+# A floor, not the list. The criterion this probe verifies (CI-1) says every
+# shipped root test runs, and until 2026-09-10 this tuple was also the list of
+# what ran: test_pmos_probe, test_pmos_matrix and test_pmos_invariants were
+# shipped, run by tools/ci_gate.py, and never run here, so the criterion
+# counted 371 root tests against the release gate's 516. The floor still
+# fails the probe when a named module disappears; whatever else is on disk
+# runs as well.
+REQUIRED_ROOT_TESTS = (
+    "test_lint.py", "test_readiness.py", "test_pmos_routing.py",
+    "test_pmos_store.py", "test_pmos_domain.py",
+    "test_pmos_operations.py", "test_pmos_hooks.py",
+    "test_pmos_usecases.py", "test_pmos_conductor.py",
+    "test_pmos_skills.py", "test_pmos_cli.py",
+    "test_pmos_release.py", "test_pmos_security.py",
+    "test_pmos_review.py", "test_pmos_probe.py",
+    "test_pmos_matrix.py", "test_pmos_invariants.py",
+)
+
+
+def root_test_modules(root=REPO):
+    """Every root test module by module name: the floor plus what is on disk."""
+    found = {path.stem for path in Path(root).glob("test_*.py")
+             if path.is_file()}
+    return sorted(found | {Path(name).stem for name in REQUIRED_ROOT_TESTS})
+
+
 def probe_full_suite():
     """Root, harness and regulated suites, with the counts printed."""
-    required_root = (
-        "test_lint.py", "test_readiness.py", "test_pmos_routing.py",
-        "test_pmos_store.py", "test_pmos_domain.py",
-        "test_pmos_operations.py", "test_pmos_hooks.py",
-        "test_pmos_usecases.py", "test_pmos_conductor.py",
-        "test_pmos_skills.py", "test_pmos_cli.py",
-        "test_pmos_release.py", "test_pmos_security.py",
-        "test_pmos_review.py",
-    )
-    missing = [name for name in required_root if not (REPO / name).is_file()]
+    missing = [name for name in REQUIRED_ROOT_TESTS
+               if not (REPO / name).is_file()]
     if missing:
         say("required root test modules missing: %s" % ", ".join(missing))
         return 1
-    root_modules = [Path(name).stem for name in required_root]
+    root_modules = root_test_modules()
     total, failed = 0, 0
     for label, command, cwd in (
             ("root", ["python3", "-m", "unittest", *root_modules, "-v"],
