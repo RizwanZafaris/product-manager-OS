@@ -835,6 +835,97 @@ class ReadinessRecordCommitFieldTests(unittest.TestCase):
         self.assertFalse(self.COMMIT_FIELD_RE.search(safe))
 
 
+class AttestationSymlinkTests(unittest.TestCase):
+    """A symlink at the canonical attestation path must never be followed.
+
+    ``tree_digest`` deliberately excludes ``docs/readiness/independent-review.json``
+    from the hash a review is bound to -- it is the record, not reviewed
+    content -- so a symlink planted at exactly that path is invisible to the
+    digest that is supposed to catch tampering. Reading or writing through it
+    with a symlink-following API (``Path.read_text`` / ``Path.write_text``)
+    would let an attacker substitute an attestation written for a different
+    tree, or clobber an arbitrary file the symlink points at, without either
+    ever showing up as a stale digest.
+    """
+
+    def test_record_review_refuses_to_write_through_a_symlink(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.md").write_text("content\n", encoding="utf-8")
+            outside = root.parent / ("attn-target-%d" % os.getpid())
+            outside.write_text("do not touch\n", encoding="utf-8")
+            try:
+                canonical = root / review_gate.ATTESTATION
+                canonical.parent.mkdir(parents=True, exist_ok=True)
+                canonical.symlink_to(outside)
+
+                import argparse
+                args = argparse.Namespace(
+                    record=True, attestation=str(canonical),
+                    reviewer="A. Reviewer", reviewer_kind="human",
+                    scope=["templates/"],
+                    evidence=["python3 tools/ci_gate.py|17/18"],
+                    finding=None, verdict="accepted", digest=False)
+                code = review_gate.record_review(args, root)
+
+                self.assertEqual(2, code)
+                self.assertEqual(
+                    "do not touch\n", outside.read_text(encoding="utf-8"),
+                    "a refused record write still clobbered the symlink target")
+                self.assertTrue(
+                    canonical.is_symlink(),
+                    "the refusal should leave the symlink in place, not replace it")
+            finally:
+                outside.unlink(missing_ok=True)
+
+    def test_validation_flow_refuses_to_read_through_a_symlink(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.md").write_text("content\n", encoding="utf-8")
+            outside = root.parent / ("attn-planted-%d" % os.getpid())
+            outside.write_text(json.dumps(attestation(root)), encoding="utf-8")
+            try:
+                canonical = root / review_gate.ATTESTATION
+                canonical.parent.mkdir(parents=True, exist_ok=True)
+                canonical.symlink_to(outside)
+
+                # An absolute --attestation path is used as-is (main() only
+                # joins REPO for a relative one), so this exercises the read
+                # path without touching the real repository tree.
+                code = review_gate.main(["--attestation", str(canonical)])
+
+                self.assertEqual(1, code)
+            finally:
+                outside.unlink(missing_ok=True)
+
+    def test_write_attestation_helper_rejects_a_symlink_directly(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            outside = root.parent / ("attn-helper-target-%d" % os.getpid())
+            outside.write_text("do not touch\n", encoding="utf-8")
+            try:
+                canonical = root / "independent-review.json"
+                canonical.symlink_to(outside)
+                with self.assertRaises(OSError):
+                    review_gate._write_attestation(canonical, "{}\n")
+                self.assertEqual("do not touch\n", outside.read_text(encoding="utf-8"))
+            finally:
+                outside.unlink(missing_ok=True)
+
+    def test_read_attestation_helper_rejects_a_symlink_directly(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            outside = root.parent / ("attn-helper-source-%d" % os.getpid())
+            outside.write_text("{}\n", encoding="utf-8")
+            try:
+                canonical = root / "independent-review.json"
+                canonical.symlink_to(outside)
+                with self.assertRaises(OSError):
+                    review_gate._read_attestation(canonical)
+            finally:
+                outside.unlink(missing_ok=True)
+
+
 class RecordReviewTests(unittest.TestCase):
     """The gate had no way to close it except hand-writing JSON.
 

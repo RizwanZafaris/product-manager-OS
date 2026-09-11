@@ -369,6 +369,60 @@ def tree_digest(root=REPO):
     return hashlib.sha256(encoded).hexdigest(), tuple(rows)
 
 
+def _read_attestation(path):
+    """Read the canonical attestation record, refusing to follow a symlink.
+
+    ``Path.read_text`` follows symlinks like any other ``open(2)`` call. The
+    attestation path is a well-known, fixed location
+    (``docs/readiness/independent-review.json``) that ``tree_digest`` itself
+    deliberately excludes from the hash it binds a review to -- so a symlink
+    planted at that exact path is never caught by the reviewed-tree digest
+    either. Reading through it would validate whatever file the symlink
+    pointed to, inside the repository or outside it, as though it were the
+    record written to this path, defeating the point of pinning a review to
+    an exact file. ``O_NOFOLLOW`` on the open refuses that outright: if the
+    final path component is a symlink, the open fails instead of resolving
+    it.
+    """
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(str(path), flags)
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode):
+            raise OSError("attestation path %s is not a regular file" % path)
+        payload = b"".join(iter(lambda: os.read(fd, 65536), b""))
+        return payload.decode("utf-8")
+    finally:
+        os.close(fd)
+
+
+def _write_attestation(path, contents):
+    """Write the attestation record, refusing to write through a symlink.
+
+    ``Path.write_text`` follows symlinks the same way ``read_text`` does. If
+    the canonical attestation path had been replaced with a symlink -- to
+    another file inside the tracked tree, or to something outside the
+    repository entirely -- an unguarded write would silently overwrite
+    whatever that symlink pointed to instead of the attestation file itself,
+    while ``record_review`` went on to report success. ``O_NOFOLLOW`` on the
+    open refuses to resolve a symlink at that path; ``O_CREAT`` still creates
+    an ordinary new file when nothing exists there yet, because there is
+    nothing to follow in that case.
+    """
+    directory = os.path.dirname(str(path))
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(str(path), flags, 0o644)
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode):
+            raise OSError("attestation path %s is not a regular file" % path)
+        os.write(fd, contents.encode("utf-8"))
+    finally:
+        os.close(fd)
+
+
 def validate_attestation(document, root=REPO):
     errors = []
     fields = {
@@ -567,7 +621,11 @@ def record_review(args, root=REPO):
     path = Path(args.attestation)
     if not path.is_absolute():
         path = root / path
-    path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+    try:
+        _write_attestation(path, json.dumps(document, indent=2) + "\n")
+    except OSError as error:
+        print("record: REFUSED. %s" % error)
+        return 2
     print("recorded review of %d files at %s" % (len(rows), digest[:12]))
     print("  reviewer : %s (%s, identity not authenticated)"
           % (reviewer, args.reviewer_kind))
@@ -616,7 +674,7 @@ def main(argv=None):
     if not path.is_absolute():
         path = REPO / path
     try:
-        document = json.loads(path.read_text(encoding="utf-8"))
+        document = json.loads(_read_attestation(path))
     except (OSError, json.JSONDecodeError) as error:
         print("independent review unavailable: %s" % error)
         return 1

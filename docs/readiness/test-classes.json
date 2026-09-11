@@ -93,6 +93,7 @@
     ],
     "test_pmos_review": [
       "AppleDoubleSidecarTests",
+      "AttestationSymlinkTests",
       "DamagedRepositoryTests",
       "GitDiscoveryConservatismTests",
       "GitDiscoveryFailureFailsClosedTests",
