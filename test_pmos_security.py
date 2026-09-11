@@ -71,6 +71,107 @@ class SecurityGateFixtureTests(unittest.TestCase):
                     self.assertTrue(any(item.path == name for item in findings), findings)
                     path.unlink()
 
+    # Every credential below is assembled from fragments, so this file carries
+    # no credential-shaped literal of its own and stays clean under the two
+    # gates that read it.
+    AWS_ID = "AKIA" + "ABCDEFGHIJKLMNOP"
+    AWS_TEMP_ID = "ASIA" + "ABCDEFGHIJKLMNOP"
+    GITHUB_TOKEN = "ghp_" + "abcdefghij0123456789"
+    ANTHROPIC_KEY = "sk-ant-" + "abcdefghijklmnopqrstuvwx"
+    OPENAI_KEY = "sk-" + "abcdefghijklmnopqrstuvwx"
+    PEM_HEADER = "-" * 5 + "BEGIN RSA PRIVATE KEY" + "-" * 5
+    ASSIGNED_VALUE = "Ab3" + "cdefghijklmnopqrstuvwxyz"
+
+    def test_every_credential_detector_has_a_fixture_that_names_it(self):
+        """One synthetic credential per detector, asserted against the detector
+        that should catch it. The suite used to supply an OpenRouter key alone
+        and to assert on the file path only, so five of the six patterns could
+        be deleted or narrowed with every test still green."""
+        cases = {
+            "aws-id.py": ('ID = "%s"\n' % self.AWS_ID,
+                          "credential-shaped aws value"),
+            "aws-temp-id.py": ('ID = "%s"\n' % self.AWS_TEMP_ID,
+                               "credential-shaped aws value"),
+            "github.py": ('T = "%s"\n' % self.GITHUB_TOKEN,
+                          "credential-shaped github value"),
+            "anthropic.py": ('K = "%s"\n' % self.ANTHROPIC_KEY,
+                             "credential-shaped anthropic value"),
+            "openai.py": ('K = "%s"\n' % self.OPENAI_KEY,
+                          "credential-shaped openai value"),
+            "private-key.md": "%s\n" % self.PEM_HEADER,
+            "assignment.py": ('api_key = "%s"\n' % self.ASSIGNED_VALUE,
+                              "credential-shaped assignment"),
+        }
+        cases["private-key.md"] = (cases["private-key.md"],
+                                   "credential-shaped private-key value")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            secure_fixture(root)
+            self.assertEqual(scan(root), [])
+            for name, (body, message) in cases.items():
+                with self.subTest(name=name):
+                    path = root / name
+                    write(path, body)
+                    findings = scan(root)
+                    self.assertTrue(
+                        any(item.path == name and item.code == "committed-secret"
+                            and item.message == message for item in findings),
+                        findings)
+                    path.unlink()
+
+    def test_a_test_named_file_is_not_exempt_from_the_source_scan(self):
+        """The AST pass skipped every file whose name began with test_, so a
+        shell, an eval or a pickle could be committed there and run by CI with
+        the gate green. The same hole covered any helper that happened to carry
+        the prefix. A naming convention is not a safety property."""
+        cases = {
+            "test_shell.py": ("import subprocess\n"
+                              "subprocess.run(['x'], shell=True)\n", "unsafe-shell"),
+            "test_eval.py": ("eval('1 + 1')\n", "unsafe-execution"),
+            "test_pickle.py": ("from pickle import loads\nloads(b'x')\n",
+                               "unsafe-pickle"),
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            secure_fixture(root)
+            for name, (body, code) in cases.items():
+                with self.subTest(name=name):
+                    path = root / name
+                    write(path, body)
+                    findings = scan(root)
+                    self.assertTrue(
+                        any(item.path == name and item.code == code
+                            for item in findings), findings)
+                    path.unlink()
+
+    def test_shell_and_process_replacement_primitives_are_rejected(self):
+        """getoutput and getstatusoutput take no shell= keyword to inspect and
+        always run the command through /bin/sh -c, and the exec and spawn
+        family hands the process an argument vector the caller controls. Both
+        passed the gate while subprocess.run(shell=True) beside them failed."""
+        cases = {
+            "getoutput.py": "import subprocess\nsubprocess.getoutput('git ' + a)\n",
+            "getstatusoutput.py": ("import subprocess\n"
+                                   "subprocess.getstatusoutput('git ' + a)\n"),
+            "execv.py": "import os\nos.execv('/bin/sh', ['sh', '-c', a])\n",
+            "spawnv.py": ("import os\n"
+                          "os.spawnv(os.P_WAIT, '/bin/sh', ['sh', '-c', a])\n"),
+            "posix-spawn.py": ("import os\n"
+                               "os.posix_spawn('/bin/sh', ['sh', '-c', a], os.environ)\n"),
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            secure_fixture(root)
+            for name, body in cases.items():
+                with self.subTest(name=name):
+                    path = root / name
+                    write(path, body)
+                    findings = scan(root)
+                    self.assertTrue(
+                        any(item.path == name and item.code == "unsafe-execution"
+                            for item in findings), findings)
+                    path.unlink()
+
     def test_threat_model_and_dependency_exceptions_are_required(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -215,6 +316,38 @@ class DocumentationContractFixtureTests(unittest.TestCase):
             (root / "README.md").write_text("# PM OS\n", encoding="utf-8")
             warnings = check(root)
             self.assertTrue(any(item.code == "readme-boundary" for item in warnings))
+
+    def test_a_lost_boundary_is_reported_against_the_document_that_lost_it(self):
+        """Every phrase used to be tested against the five key documents
+        concatenated and reported against docs/THREAT-MODEL.md whatever was
+        missing. Dropping the whole evidence boundary from another document was
+        invisible, and a real miss named a file that was not at fault."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            secure_fixture(root)
+            self.assertFalse([item for item in check(root)
+                              if item.severity == "error"])
+            write(root / "docs" / "ACCESSIBILITY.md",
+                  "# Accessibility\n\nNothing about evidence at all.\n")
+            issues = [item for item in check(root)
+                      if item.code == "evidence-boundary"]
+            self.assertTrue(issues)
+            self.assertEqual({"docs/ACCESSIBILITY.md"},
+                             {item.path for item in issues})
+
+    def test_a_boundary_another_document_still_carries_is_not_masked(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            secure_fixture(root)
+            model = root / "docs" / "THREAT-MODEL.md"
+            write(model, model.read_text(encoding="utf-8")
+                  .replace("a live sandbox", "a live environment"))
+            issues = [item for item in check(root)
+                      if item.code == "evidence-boundary"]
+            self.assertEqual(
+                [("docs/THREAT-MODEL.md",
+                  "missing explicit boundary: live sandbox")],
+                [(item.path, item.message) for item in issues])
 
     def test_mutations_prove_heading_alt_link_boundary_and_claim_failures(self):
         mutations = {
