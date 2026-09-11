@@ -2117,11 +2117,63 @@ class StreamBoundTests(unittest.TestCase):
     stream that does end writes its whole size into the workspace.
     """
 
-    def test_the_cap_is_derived_from_what_the_call_asked_for(self):
-        self.assertEqual(runner.stream_cap(0), 16384)
-        self.assertEqual(runner.stream_cap(4096), 4096 * 64 + 16384)
+    def test_the_content_cap_is_derived_from_what_the_call_asked_for(self):
+        self.assertEqual(runner.content_cap(0), 16384)
+        self.assertEqual(runner.content_cap(4096), 4096 * 64 + 16384)
+        self.assertEqual(runner.content_cap(None), 16384)
+
+    def test_the_stream_cap_covers_frame_overhead_not_just_content(self):
+        # The raw SSE ceiling has to be well above content_cap: every token
+        # arrives in its own frame envelope, so the bytes read are far more
+        # than the text they carry.
+        self.assertEqual(runner.stream_cap(0), 65536)
+        self.assertEqual(runner.stream_cap(4096), 4096 * 512 + 65536)
         self.assertEqual(runner.stream_cap(10 ** 9), runner.SSE_MAX_BYTES)
-        self.assertEqual(runner.stream_cap(None), 16384)
+        self.assertEqual(runner.stream_cap(None), 65536)
+        self.assertGreater(runner.stream_cap(4096), runner.content_cap(4096))
+
+    def test_a_realistic_stream_folds_within_each_tiers_own_budget(self):
+        # Finding H1: a stream_cap copied from a non-streaming JSON body's
+        # bound refused ordinary long answers well inside the tier's own
+        # maxOutputTokens, because each token's frame envelope (id, object,
+        # created, model, system_fingerprint, choices[].delta,
+        # finish_reason, ...) costs far more than the token itself. Fold one
+        # token per frame, at each configured tier's own maxOutputTokens, and
+        # require it to complete rather than be refused.
+        config = json.loads(
+            (REPO / "routing" / "omniroute.config.json").read_text(
+                encoding="utf-8"))
+        tiers = config["tiers"]
+        self.assertTrue(tiers, "no tiers configured to test against")
+
+        def realistic_frame(piece, finish=None):
+            choice = {"index": 0, "delta": {"content": piece},
+                     "finish_reason": finish}
+            payload = {
+                "id": "chatcmpl-8Xy9Zabc123def456ghi789jkl",
+                "object": "chat.completion.chunk",
+                "created": 1730000000,
+                "model": "test-model-1",
+                "system_fingerprint": "fp_44709d6fcb",
+                "choices": [choice],
+            }
+            return "data: %s\n\n" % json.dumps(payload)
+
+        for name, tier in tiers.items():
+            max_tokens = tier["maxOutputTokens"]
+            with self.subTest(tier=name, max_tokens=max_tokens):
+                frames = [realistic_frame(" word") for _ in range(max_tokens)]
+                frames.append(realistic_frame("", finish="stop"))
+                frames.append("data: [DONE]\n\n")
+                folded = runner._fold_sse(
+                    sse(*frames), runner.stream_cap(max_tokens),
+                    runner.content_cap(max_tokens))
+                self.assertEqual(
+                    folded.error, "",
+                    "a %d-token realistic stream for tier %r was refused: %s"
+                    % (max_tokens, name, folded.error))
+                self.assertTrue(folded.terminal)
+                self.assertEqual(folded.text, " word" * max_tokens)
 
     def test_an_oversized_stream_is_an_error_not_a_long_answer(self):
         frames = [delta("y" * 1000) for _ in range(400)]
@@ -2155,7 +2207,7 @@ class StreamBoundTests(unittest.TestCase):
             runner._OPENER = real_opener
         self.assertIn("exceeded the response size bound", reply.error)
         self.assertFalse(reply.ok)
-        self.assertLessEqual(len(reply.text), runner.stream_cap(4096),
+        self.assertLessEqual(len(reply.text), runner.content_cap(4096),
                              "a body larger than the call's own budget was "
                              "kept, and would have been written")
 
@@ -2201,8 +2253,11 @@ class StreamBoundTests(unittest.TestCase):
         seen = {}
 
         def flood(request, timeout=None):
+            # Comfortably past stream_cap(4096) (~2.06 MB with the frame-
+            # overhead formula), so the raw-byte refusal is still exercised
+            # rather than the whole unterminated line being read in one go.
             seen["resp"] = _FakeResponse(
-                "data: " + "z" * 1000000, {"X-OmniRoute-Model": "test-model-1"})
+                "data: " + "z" * 5000000, {"X-OmniRoute-Model": "test-model-1"})
             return seen["resp"]
 
         real_opener = runner._OPENER
@@ -2402,6 +2457,19 @@ class GeneratedCommandTests(unittest.TestCase):
                          "the catch-all row's procedure ends at a gate and "
                          "the command told the agent it does not")
         self.assertNotIn("No stage and no gate", body)
+        # H2: the summary table opened by stating there is no gate on the one
+        # route whose output always goes to one, contradicting step 4 in the
+        # same file ("Take the output to the gate of the stage you placed the
+        # request in"). Both rows must say the stage and gate are decided at
+        # run time, not "None".
+        self.assertNotIn("| Gate | None", body,
+                         "the table says this route has no gate, but step 4 "
+                         "sends its output to one")
+        self.assertNotIn("| Stage | None", body)
+        self.assertIn("| Stage | Decided at run time: see the note and step "
+                      "4 below. |", body)
+        self.assertIn("| Gate | Decided at run time: see the note and step "
+                      "4 below. |", body)
 
     def test_the_catch_all_is_told_to_fill_a_template_not_to_report(self):
         body = self._render("fallback-stage-loop")

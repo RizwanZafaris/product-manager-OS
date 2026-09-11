@@ -12,8 +12,8 @@ GENERATED FILE. Do not hand-edit. Written by `harness/adapters/claude-code/gener
 |---|---|
 | Route id | `fallback-stage-loop` |
 | Router row | Anything else in the product loop |
-| Stage | None. See the note below. |
-| Gate | None. See the note below. |
+| Stage | Decided at run time: see the note and step 4 below. |
+| Gate | Decided at run time: see the note and step 4 below. |
 | Tier | drafting. A tier name, never a model. |
 | Kind | artifact. Fills one template and files it in the product workspace. |
 | Skill | None. This row names no skill; the reads below carry the procedure. |

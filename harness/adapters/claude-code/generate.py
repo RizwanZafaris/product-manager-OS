@@ -150,8 +150,19 @@ def render_command(task):
         "",
     ]
 
-    no_stage = "None. See the note below." if task.get("note") else \
-        "None. This row produces no gated artifact."
+    # A route with a gate_note has a stage and a gate; it just cannot name
+    # either in advance, because they are decided at run time (the catch-all
+    # picks its stage from the request). "None" on that row would say there
+    # is no gate on a route whose output always goes to one, contradicting
+    # the "Take the output to the gate..." instruction gate_note itself
+    # carries and step 4 below repeats. That row gets its own wording instead
+    # of falling into the true no-stage-no-gate case.
+    if task.get("gate_note"):
+        no_stage = "Decided at run time: see the note and step 4 below."
+    elif task.get("note"):
+        no_stage = "None. See the note below."
+    else:
+        no_stage = "None. This row produces no gated artifact."
     rows = [
         ("Route id", "`%s`" % route),
         ("Router row", one_line(task["router_row"])),

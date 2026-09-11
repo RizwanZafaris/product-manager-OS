@@ -283,9 +283,16 @@ BASE_URL_DEFAULT = "http://localhost:20128/v1"
 READ_TIMEOUT_S = 600
 OPEN_FORM = "[OPEN: "
 
-# The ceiling on a folded response body, whatever the tier asked for. A tier
-# that asks for a small answer gets a small bound; nothing gets more than this.
-SSE_MAX_BYTES = 2 * 1024 * 1024
+# The ceiling on the raw SSE body read for one call, whatever the tier asked
+# for. A tier that asks for a small answer gets a small bound; nothing gets
+# more than this. On the SSE path every token arrives in its own frame
+# envelope (id, object, created, model, choices[].delta, ...), so this has to
+# cover frame overhead, not just the content the frames carry: at
+# routing/omniroute.config.json's highest maxOutputTokens (16384, drafting
+# and judgment), stream_cap(16384) is ~8.45 MB. This stays comfortably above
+# that so the ceiling never becomes the reason a tier's own budget cannot be
+# honoured.
+SSE_MAX_BYTES = 10 * 1024 * 1024
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -796,35 +803,67 @@ def _error_descriptor(obj):
             "is not persisted." % (kind or "unreported", code or "unreported"))
 
 
-def stream_cap(max_tokens):
-    """The byte ceiling one call's response body is folded under.
+def content_cap(max_tokens):
+    """The byte ceiling on the text this runner actually keeps.
 
-    Derived from what the call actually asked for, the way
-    pmos/openrouter.py derives its own limit, so a tier that asks for 4096
-    tokens cannot be answered with two megabytes. The hard ceiling applies
-    whatever the tier asks for, because max_tokens is a request the gateway
-    is free to ignore and this is the number the runner enforces.
+    Derived from what the call asked for, the way pmos/openrouter.py derives
+    its own limit for one non-streaming JSON body, so a tier that asks for
+    4096 tokens cannot be answered with two megabytes of folded content. This
+    bounds text_parts, not the raw SSE body: see stream_cap for that.
     """
     try:
         tokens = int(max_tokens)
     except (TypeError, ValueError):
         tokens = 0
-    return min(SSE_MAX_BYTES, max(4096, tokens * 64 + 16384))
+    return max(4096, tokens * 64 + 16384)
 
 
-def _fold_sse(stream, max_bytes=SSE_MAX_BYTES):
+def stream_cap(max_tokens):
+    """The byte ceiling one call's raw SSE body is read under.
+
+    This is not content_cap: on the SSE path every token arrives in its own
+    frame envelope (id, object, created, model, choices[].delta,
+    finish_reason, ...), so the raw body is far larger than the content it
+    carries. Bounding the raw read at content_cap's formula refused ordinary
+    long answers well inside the tier's own maxOutputTokens, because a
+    realistic ~220-290 byte per-token frame blows past tokens*64+16384 long
+    before the answer does. This is instead derived from frame overhead
+    (tokens*512 + 65536, roughly double the observed worst case), and
+    content_cap still bounds the text actually folded out of those frames.
+    The hard ceiling (SSE_MAX_BYTES) applies whatever the tier asks for,
+    because max_tokens is a request the gateway is free to ignore and this is
+    the number the runner enforces.
+    """
+    try:
+        tokens = int(max_tokens)
+    except (TypeError, ValueError):
+        tokens = 0
+    return min(SSE_MAX_BYTES, max(65536, tokens * 512 + 65536))
+
+
+def _fold_sse(stream, max_bytes=SSE_MAX_BYTES, max_content_bytes=None):
     """Fold an SSE body into a Folded. Falls back to a plain JSON body when
     the gateway ignored stream, which some provider paths do.
 
-    max_bytes bounds the whole body, enforced on the read itself and counted
-    before anything is retained, so stream is anything with a readline(size)
-    that honours its size, which an http.client response does whether or not
-    the body is chunked. Without it the loop below buffers every
-    frame twice, in text_parts and in raw_lines, for as long as the gateway
-    keeps sending: READ_TIMEOUT_S bounds one read rather than the stream, so
-    a gateway that never sends the terminal event can drive this process out
-    of memory and put an arbitrarily large file in the workspace behind it.
-    Over the bound is an error, not a truncation, so the run queues.
+    max_bytes bounds the whole raw body, enforced on the read itself and
+    counted before anything is retained, so stream is anything with a
+    readline(size) that honours its size, which an http.client response does
+    whether or not the body is chunked. Without it the loop below buffers
+    every frame twice, in text_parts and in raw_lines, for as long as the
+    gateway keeps sending: READ_TIMEOUT_S bounds one read rather than the
+    stream, so a gateway that never sends the terminal event can drive this
+    process out of memory and put an arbitrarily large file in the workspace
+    behind it. Over the bound is an error, not a truncation, so the run
+    queues.
+
+    max_content_bytes bounds a different thing: the text actually folded out
+    of those frames (text_parts), not the frame envelopes around it. On the
+    SSE path max_bytes has to be generous with per-frame overhead (see
+    stream_cap) so an ordinary long answer is never refused inside its own
+    tier budget; max_content_bytes is what still stops a stream that packs
+    far more content than max_tokens asked for into frames with unusually
+    little overhead. Defaults to max_bytes, so a caller reasoning about only
+    one bound keeps the older single-ceiling behaviour.
 
     Three things are checked here and nowhere else, because this is the only
     place that sees the frames:
@@ -843,9 +882,12 @@ def _fold_sse(stream, max_bytes=SSE_MAX_BYTES):
     on an artifact's face where the audit trail belongs, so it is never
     accepted as a model id.
     """
+    if max_content_bytes is None:
+        max_content_bytes = max_bytes
     out = Folded()
     text_parts, raw_lines = [], []
     total = 0
+    content_total = 0
     while True:
         # The read itself is bounded, not only the count after it. Iterating
         # the response calls readline() with no size, which buffers a whole
@@ -902,7 +944,17 @@ def _fold_sse(stream, max_bytes=SSE_MAX_BYTES):
             if piece is None:
                 piece = (choice.get("message") or {}).get("content")
             if isinstance(piece, str):
+                content_total += len(piece.encode("utf-8"))
+                if content_total > max_content_bytes:
+                    out.error = (
+                        "the stream's folded content exceeded the response "
+                        "size bound of %d bytes, so it was refused rather "
+                        "than buffered. Nothing folded before that point is "
+                        "a complete document." % max_content_bytes)
+                    break
                 text_parts.append(piece)
+        if out.error:
+            break
     out.text = "".join(text_parts)
     if out.error or text_parts:
         return out
@@ -1015,7 +1067,8 @@ def call_http(cfg, tier, messages, max_tokens=None, temperature=None,
             reply.provider = got.get("x-omniroute-provider", "")
             reply.cache = got.get("x-omniroute-cache", "")
             reply.compression = got.get("x-omniroute-compression", "")
-            folded = _fold_sse(resp, stream_cap(body["max_tokens"]))
+            folded = _fold_sse(resp, stream_cap(body["max_tokens"]),
+                               content_cap(body["max_tokens"]))
             reply.text = folded.text
             reply.model = from_header or folded.model
             reply.terminal = folded.terminal
