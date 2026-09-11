@@ -34,7 +34,7 @@ Skill: [drafting agent](../../agents/drafting-agent.md) for the first draft; [us
 
 ## 1. The problem
 
-[Two to four sentences copied from the problem framing, not restated: who is stuck, at what moment, and what progress they are trying to make. State the evidence weight behind it. If a solution guess already exists, write it on its own line and label it a guess, so the brief does not smuggle it in as the problem.]
+[Two to four sentences copied from the problem framing, not restated: who is stuck, at what moment, and what progress they are trying to make. State the evidence weight behind it. If a solution guess already exists, write it on its own line, label it a guess, and check it against the [assumptions register](assumptions-register.md): a guess with no confidence, validation method, and validate-by date there is a solution smuggled in as a problem, however it reads on the page.]
 
 ## 2. Users
 
@@ -56,7 +56,14 @@ Skill: [drafting agent](../../agents/drafting-agent.md) for the first draft; [us
 | Constraint | Type (platform / design system / accessibility / localization / legal / brand / technical / time) | Hard or soft | Source |
 |---|---|---|---|
 | Uses the design system's components unless a gap is logged | design system | | |
-| Meets [WCAG level] with evidence in the accessibility checklist | accessibility | hard | |
+| Design system and version in use: [name and version, pointed at `products/<name>/DESIGN.md`]; gaps against it are logged in that file's Known gaps section, not here | design system | | [DESIGN.md](../architecture/design-md.md) |
+| Meets [WCAG level] with evidence in the accessibility checklist; the level itself is copied from [nfr.md](nfr.md) section 5, not chosen here | accessibility | hard | |
+| Locales and text direction: [languages in scope; LTR / RTL / bidirectional] | localization | | |
+| Reduced motion is honoured per the platform preference | accessibility | | |
+| Supported breakpoints: [named widths or device classes] | platform | | |
+| Conventions kept rather than deliberately broken: a familiar pattern used because users already know it, per the Jakob's Law row of [ux-laws-evidence.md](../../knowledge/design/ux-laws-evidence.md); a deliberate break is named and defended here, not discovered in critique | design system | | |
+| Where complexity lives when it cannot be removed: pushed to the system rather than the user, per the Tesler's Law row of [ux-laws-evidence.md](../../knowledge/design/ux-laws-evidence.md) | technical | | |
+| Third-party UI components carry licence clearance recorded in the [dependency register](../execution/dependency-register.md) before use | legal | hard | |
 | | | | |
 
 ## 4. Success
@@ -78,10 +85,15 @@ Skill: [drafting agent](../../agents/drafting-agent.md) for the first draft; [us
 ## 6. Deliverables
 
 <!-- Fidelity matches the decision the deliverable informs. A high-fidelity mock
-     to settle a flow question is a week spent on the wrong variable. -->
+     to settle a flow question is a week spent on the wrong variable. The
+     states a screen or component must render belong in
+     [ui-state-inventory.md](ui-state-inventory.md), listed once there and
+     referenced by every deliverable that depends on it, rather than
+     restated per deliverable. -->
 
 | Deliverable | Fidelity (sketch / wireframe / prototype / final) | Decision it informs | Due | Reviewers (roles) |
 |---|---|---|---|---|
+| [ui-state-inventory.md](ui-state-inventory.md) copy | n/a, a state list | Which states exist before any screen is designed against them | | |
 | | | | | |
 
 ## 7. Review dates
@@ -93,6 +105,7 @@ Skill: [drafting agent](../../agents/drafting-agent.md) for the first draft; [us
 | Review | Date | Attendees (roles) | Decision expected | Input needed by |
 |---|---|---|---|---|
 | Problem and direction | | | | |
+| Critique, run per [design-critique.md](../../frameworks/design/design-critique.md) | | | Improves the work; grants no approval | |
 | Solution | | | | |
 | Handoff to engineering | | | | |
 

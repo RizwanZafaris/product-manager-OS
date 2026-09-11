@@ -13,6 +13,7 @@ A step that says "read the card, then fill the template" leaves the largest gap 
 | [Foundations](path-foundations.md) | New to product management, or want one structured pass through the basics | 6 + capstone | Streakline, a mobile habit tracker | Gate 1: problem worth solving |
 | [Transitioning](path-transitioning.md) | Moving into a PM seat from engineering, design, data, delivery, or support | 7 + capstone | Restow, a returns portal for a furniture retailer | Gate 2: requirements signed off |
 | [Senior sharpening](path-senior.md) | A practicing PM or Director sharpening strategy, GTM, growth, and the honest ending | 6 + capstone | Meterly, usage metering for a developer API platform | Gate 6: outcomes verified, learn or sunset |
+| [Design fundamentals](path-design.md) | Already running a product through DEFINE and into DESIGN, wanting the experience-design vocabulary underneath a screen | 6 + capstone | Kerbline, a council resident portal | Gate 3: architecture and risks reviewed, via a scored design review record |
 
 Paths are sequences, not menus: each step builds on the artifacts of the last, because that is how the loop itself works. A step you can already pass is still worth the hour; write the exercise anyway and let the tutor find out.
 

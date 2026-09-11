@@ -9,7 +9,7 @@ aliases: ["Accessibility Checklist", "accessibility-checklist"]
 # Accessibility Checklist: [product or feature name]
 
 Stage: DESIGN, feeds [Gate 3: architecture and risks reviewed](../../os/STAGE-GATES.md); the evidence column is completed in BUILD and checked at Gate 4
-Knowledge: [Knowledge index](../../knowledge/INDEX.md); the standard itself is [WCAG 2.2](https://www.w3.org/TR/WCAG22/)
+Knowledge: [Knowledge index](../../knowledge/INDEX.md); the standard itself is [WCAG 2.2](https://www.w3.org/TR/WCAG22/); practice and evidence in [knowledge/design/accessibility-and-inclusive-design.md](../../knowledge/design/accessibility-and-inclusive-design.md); the dated legal map in [knowledge/design/accessibility-regulation.md](../../knowledge/design/accessibility-regulation.md)
 Skill: [acceptance-agent](../../agents/acceptance-agent.md)
 
 > **Delete any section you do not need.** Delete the component tables for components the feature does not contain, and say so; keep every table for a component it does. Weight rules are in [WHICH-DOCUMENT.md](../../os/WHICH-DOCUMENT.md).
@@ -22,10 +22,17 @@ Skill: [acceptance-agent](../../agents/acceptance-agent.md)
      with evidence a skeptic could open. Families are cited by guideline number
      (1.1, 2.4, 3.3 and so on) because they are stable across WCAG 2.x
      (guideline 2.5 arrived in 2.1); look up the exact success criteria for
-     your level at the link above. A
+     your level at the link above. 4.1.1 Parsing was removed in WCAG 2.2; do
+     not cite it, and delete any row that still does. A
      checked box with an empty evidence cell is a claim, not a check. Fill
      section 1 and the component inventory first; then walk one table at a time
-     with a keyboard, a screen reader, and the contrast tool named in section 1. -->
+     with a keyboard, a screen reader, and the contrast tool named in section 1.
+     Responsibility says who can fix a failing row: a library component the
+     product did not author, a shared internal component, or code this team
+     owns outright. Evidence status says whether the evidence cell was tested
+     directly or assessed from the vendor's or maintainer's own conformance
+     statement, which is weaker and should be re-tested before Gate 4 for
+     anything load-bearing. -->
 
 **Owner:** [name] · **Date:** [YYYY-MM-DD] · **Status:** Draft / In review / Approved
 
@@ -40,6 +47,12 @@ Skill: [acceptance-agent](../../agents/acceptance-agent.md)
 | Contrast tool | [tool] |
 | Who walks the checklist | [name; not the author of the component] |
 | Criteria mapping | [every success criterion at the target level, each mapped to a row below or marked N/A with a reason; criteria no row covers get an added row] |
+| Sample | [a structured sample plus a random sample, across every distinct page or screen template AND state, including error, empty, loading, timeout, and third-party or embedded content such as a payment iframe; name the sampling method, for example WCAG-EM (named and linked only: https://www.w3.org/WAI/eval/conformance/) |
+| Partial conformance | [pages or hosted third-party fields not fully in scope carry a partial-conformance statement naming which fields and why, per WCAG's own partial-conformance clause] |
+| Automated ruleset configured | [ruleset name and version, and confirmation it is set to the NFR's WCAG 2.2 target level, not the tool's own default; a per-component rule left in warn-only or not-yet-enforced mode does not fail CI and is silent by design, so list which rules run that way here] |
+| User-preference standard | [EN 301 549 v4.1.1 clause 9.7 covers user-preference support (reduced motion, contrast, colour scheme); v4.1.1, aligned to WCAG 2.2, published Sep 2026 and is pending OJEU citation, as of 2026-09-10, confirm with counsel] |
+
+Automated results marked "incomplete" or "needs review" are not evidence; each becomes its own manual row in the tables below before this checklist can pass.
 
 ## 2. Component inventory
 
@@ -60,106 +73,144 @@ Skill: [acceptance-agent](../../agents/acceptance-agent.md)
      dated test note; "looks fine" is not evidence. Result is pass, fail, or
      "N/A because". -->
 
-| Check | Family | How to verify | Evidence | Result | Owner |
-|---|---|---|---|---|---|
-| Every input has a visible label programmatically associated with it | 1.3, 3.3 | screen reader announces the label with the field | | | |
-| Required fields and formats are stated before an error occurs | 3.3 | read the form without submitting | | | |
-| Errors are identified in text, next to the field, and announced | 3.3, 4.1 | submit an invalid form with a screen reader running | | | |
-| Submissions with legal or financial effect can be reviewed or reversed | 3.3 | walk the submit path | | | |
-| Input purpose is exposed where a field collects personal data | 1.3 | inspect the field attributes | | | |
-| Information entered earlier in the flow is not demanded again | 3.3 | walk a multi-step flow | | | |
-| Sign-in has no cognitive-function test without an alternative | 3.3 | inspect the sign-in mechanism | | | |
-| Errors suggest a correction when one is known | 3.3 | submit each known-bad input | | | |
+| Check | Family | Responsibility | How to verify | Evidence | Evidence status | Result | Owner |
+|---|---|---|---|---|---|---|---|
+| Every input has a visible label programmatically associated with it | 1.3, 3.3 | | screen reader announces the label with the field | | | | |
+| Required fields and formats are stated before an error occurs | 3.3 | | read the form without submitting | | | | |
+| Errors are identified in text, next to the field, and announced | 3.3, 4.1 | | submit an invalid form with a screen reader running | | | | |
+| Submissions with legal or financial effect can be reviewed or reversed | 3.3 | | walk the submit path | | | | |
+| Input purpose is exposed where a field collects personal data | 1.3 | | inspect the field attributes | | | | |
+| Information entered earlier in the flow is not demanded again (3.3.7 Redundant Entry) | 3.3.7 | | walk a multi-step flow | | | | |
+| Sign-in has no cognitive-function test without an alternative (3.3.8 Accessible Authentication, Minimum) | 3.3.8 | | inspect the sign-in mechanism | | | | |
+| Errors suggest a correction when one is known | 3.3 | | submit each known-bad input | | | | |
+| On a failed submit, focus moves to the first error, or to an error summary that links to each one | 3.3 | | submit an invalid form and watch focus | | | | |
+| Pending and result states of an asynchronous action are announced (loading, saved, failed) | 4.1 | | submit with a screen reader running and a throttled connection | | | | |
+| An error clears once the field is corrected, without requiring a resubmission | 3.3 | | fix a flagged field and watch the error state | | | | |
 
 ## 4. Controls: buttons, links, menus
 
 <!-- Families: 2.1 Keyboard Accessible, 2.4 Navigable, 2.5 Input Modalities,
      4.1 Compatible. -->
 
-| Check | Family | How to verify | Evidence | Result | Owner |
-|---|---|---|---|---|---|
-| Every control is reachable and operable by keyboard alone, with no trap | 2.1 | tab through the whole flow; escape from every widget | | | |
-| Focus is visible and not hidden behind sticky elements | 2.4 | tab with a sticky header or footer present | | | |
-| Focus order follows the reading order | 2.4 | tab and compare with the visual order | | | |
-| The accessible name contains the visible label | 2.5, 4.1 | inspect the name; try voice control by label | | | |
-| Link text makes sense out of context | 2.4 | list all links with a screen reader | | | |
-| Targets meet the size minimum for the level, and dragging has a non-drag alternative | 2.5 | measure; operate with a pointer only | | | |
-| Name, role, and state are exposed for custom controls | 4.1 | inspect the accessibility tree | | | |
-| Single-character key shortcuts can be turned off or remapped | 2.1 | check the shortcut settings | | | |
-| Multipoint and path-based gestures have a single-pointer alternative, and actions fire on release | 2.5 | operate with a single pointer; check down-event does not fire the action | | | |
-| Motion-triggered functions have an equivalent UI control | 2.5 | disable device motion and retry | | | |
+| Check | Family | Responsibility | How to verify | Evidence | Evidence status | Result | Owner |
+|---|---|---|---|---|---|---|---|
+| Every control is reachable and operable by keyboard alone, with no trap | 2.1 | | tab through the whole flow; escape from every widget | | | | |
+| Focus is visible, and no author-created content (sticky header, cookie banner, chat widget) hides the focused element entirely | 2.4.11 | | tab with a sticky header or footer present | | | | |
+| Focus order follows the reading order | 2.4 | | tab and compare with the visual order | | | | |
+| The accessible name contains the visible label | 2.5, 4.1 | | inspect the name; try voice control by label | | | | |
+| Link text makes sense out of context | 2.4 | | list all links with a screen reader | | | | |
+| Targets are at least 24 by 24 CSS pixels, or meet a listed exception (inline, equivalent spacing, essential) | 2.5.8 | | measure with a pointer only | | | | |
+| Dragging movements have a single-pointer, non-drag alternative | 2.5.7 | | operate the drag interaction with a pointer only | | | | |
+| Name, role, and state are exposed for custom controls | 4.1 | | inspect the accessibility tree | | | | |
+| Single-character key shortcuts can be turned off or remapped | 2.1 | | check the shortcut settings | | | | |
+| Multipoint and path-based gestures have a single-pointer alternative, and actions fire on release | 2.5 | | operate with a single pointer; check down-event does not fire the action | | | | |
+| Motion-triggered functions have an equivalent UI control | 2.5 | | disable device motion and retry | | | | |
 
 ## 5. Page structure and navigation
 
 <!-- Families: 1.3 Adaptable, 1.4 Distinguishable, 2.4 Navigable, 3.1 Readable,
      3.2 Predictable. -->
 
-| Check | Family | How to verify | Evidence | Result | Owner |
-|---|---|---|---|---|---|
-| Headings form an outline; landmarks mark regions | 1.3, 2.4 | headings and landmarks list in a screen reader | | | |
-| The page title states the page and the product | 2.4 | read the title | | | |
-| A skip mechanism bypasses repeated blocks | 2.4 | first tab stop | | | |
-| Language of the page, and of any foreign passages, is set | 3.1 | inspect attributes | | | |
-| Navigation and help sit in consistent places across screens | 3.2 | compare screens | | | |
-| Content reflows at high zoom without horizontal scrolling or loss | 1.4 | zoom to the level's reflow point | | | |
-| Nothing changes context on focus or on input alone | 3.2 | tab and type through selects and fields | | | |
-| Content works in both orientations, unless a specific orientation is essential | 1.3 | rotate the device | | | |
-| Text resizes to 200 percent and survives text-spacing overrides without loss | 1.4 | zoom to 200 percent; apply the text-spacing bookmarklet | | | |
-| More than one way exists to reach each page | 2.4 | check for search, sitemap, or related-page links | | | |
-| Same-function components are identified consistently across screens | 3.2 | compare identical controls across screens | | | |
-| Instructions do not rely on shape, position, or sound alone | 1.3 | read instructions with visuals and sound removed | | | |
-| Headings and labels describe their topic or purpose | 2.4 | read headings and labels out of context | | | |
+| Check | Family | Responsibility | How to verify | Evidence | Evidence status | Result | Owner |
+|---|---|---|---|---|---|---|---|
+| Headings form an outline; landmarks mark regions | 1.3, 2.4 | | headings and landmarks list in a screen reader | | | | |
+| The page title states the page and the product | 2.4 | | read the title | | | | |
+| A skip mechanism bypasses repeated blocks | 2.4 | | first tab stop | | | | |
+| Language of the page, and of any foreign passages, is set | 3.1 | | inspect attributes | | | | |
+| Navigation sits in a consistent place across screens | 3.2.3 | | compare screens | | | | |
+| Help (contact details, chat, FAQ link) appears in the same relative order on every screen where it is offered | 3.2.6 | | compare screens that carry a help mechanism | | | | |
+| Content reflows at high zoom without horizontal scrolling or loss | 1.4 | | zoom to the level's reflow point | | | | |
+| Nothing changes context on focus or on input alone | 3.2 | | tab and type through selects and fields | | | | |
+| Content works in both orientations, unless a specific orientation is essential | 1.3 | | rotate the device | | | | |
+| Text resizes to 200 percent and survives text-spacing overrides without loss | 1.4 | | zoom to 200 percent; apply the text-spacing bookmarklet | | | | |
+| More than one way exists to reach each page | 2.4 | | check for search, sitemap, or related-page links | | | | |
+| Same-function components are identified consistently across screens | 3.2 | | compare identical controls across screens | | | | |
+| Instructions do not rely on shape, position, or sound alone | 1.3 | | read instructions with visuals and sound removed | | | | |
+| Headings and labels describe their topic or purpose | 2.4 | | read headings and labels out of context | | | | |
 
 ## 6. Images, icons, charts
 
-<!-- Families: 1.1 Text Alternatives, 1.4 Distinguishable. -->
+<!-- Families: 1.1 Text Alternatives, 1.4 Distinguishable. Test in grayscale AND
+     with a colour-vision deficiency simulator (protanopia, deuteranopia,
+     tritanopia); grayscale alone under-tests hue confusion, which is the
+     common failure mode. -->
 
-| Check | Family | How to verify | Evidence | Result | Owner |
-|---|---|---|---|---|---|
-| Informative images have text alternatives that carry the meaning; decorative ones are hidden | 1.1 | screen reader pass | | | |
-| Charts have a text or table equivalent of the data | 1.1 | find the equivalent without the chart | | | |
-| Color is never the only carrier of meaning | 1.4 | view in grayscale | | | |
-| Text and essential non-text contrast meet the ratio for the level | 1.4 | contrast tool on every state | | | |
-| No images of text where real text would do | 1.4 | inspect | | | |
+| Check | Family | Responsibility | How to verify | Evidence | Evidence status | Result | Owner |
+|---|---|---|---|---|---|---|---|
+| Informative images have text alternatives that carry the meaning; decorative ones are hidden | 1.1 | | screen reader pass | | | | |
+| Charts have a text or table equivalent of the data | 1.1 | | find the equivalent without the chart | | | | |
+| Color is never the only carrier of meaning | 1.4 | | view in grayscale | | | | |
+| Text and essential non-text contrast meet the ratio for the level | 1.4 | | contrast tool on every state | | | | |
+| No images of text where real text would do | 1.4 | | inspect | | | | |
 
 ## 7. Tables and data grids
 
 <!-- Families: 1.3 Adaptable, 2.1 Keyboard Accessible, 4.1 Compatible. -->
 
-| Check | Family | How to verify | Evidence | Result | Owner |
-|---|---|---|---|---|---|
-| Header cells are marked and associated with data cells | 1.3 | navigate cells with a screen reader | | | |
-| Sort and filter controls are keyboard operable and announce their state | 2.1, 4.1 | operate by keyboard | | | |
-| Grids keep their meaning when linearized | 1.3 | read with styles off | | | |
+| Check | Family | Responsibility | How to verify | Evidence | Evidence status | Result | Owner |
+|---|---|---|---|---|---|---|---|
+| Header cells are marked and associated with data cells | 1.3 | | navigate cells with a screen reader | | | | |
+| Sort and filter controls are keyboard operable and announce their state | 2.1, 4.1 | | operate by keyboard | | | | |
+| Grids keep their meaning when linearized | 1.3 | | read with styles off | | | | |
 
 ## 8. Dialogs, overlays, toasts
 
 <!-- Families: 1.4 Distinguishable, 2.1 Keyboard Accessible, 2.4 Navigable,
      4.1 Compatible. -->
 
-| Check | Family | How to verify | Evidence | Result | Owner |
-|---|---|---|---|---|---|
-| Focus moves into the dialog on open and returns on close | 2.4 | keyboard walk | | | |
-| The background is inert while the dialog is open | 2.1 | try to tab out | | | |
-| Status messages are announced without stealing focus | 4.1 | trigger a toast with a screen reader running | | | |
-| Content shown on hover or focus can be dismissed and does not obscure the trigger | 1.4 | hover, then press escape | | | |
+| Check | Family | Responsibility | How to verify | Evidence | Evidence status | Result | Owner |
+|---|---|---|---|---|---|---|---|
+| Focus moves into the dialog on open and returns on close | 2.4 | | keyboard walk | | | | |
+| The background is inert while the dialog is open | 2.1 | | try to tab out | | | | |
+| Status messages are announced without stealing focus | 4.1 | | trigger a toast with a screen reader running | | | | |
+| Content shown on hover or focus can be dismissed and does not obscure the trigger | 1.4 | | hover, then press escape | | | | |
+| Content rendered through a portal (overlay, menu, tooltip) inherits the page's text direction and language | 1.3, 4.1 | | render the overlay in an RTL locale and inspect its dir attribute | | | | |
+| Loading and error states inside a dialog or overlay are exposed through a live region, not visual change alone | 4.1 | | trigger a slow or failing load with a screen reader running | | | | |
+
+### AI conversation components
+
+<!-- Only for a product with a model-facing conversation surface; see
+     [templates/ai/ai-interaction-spec.md](../ai/ai-interaction-spec.md). -->
+
+| Check | Family | Responsibility | How to verify | Evidence | Evidence status | Result | Owner |
+|---|---|---|---|---|---|---|---|
+| The streaming response region is a polite live region, not assertive, so it does not interrupt reading | 4.1 | | stream a response with a screen reader running | | | | |
+| Reasoning disclosure (a collapsed "thinking" or citation panel) is keyboard reachable and operable | 2.1, 4.1 | | expand and collapse by keyboard | | | | |
+| Citation chips have an accessible name that states what they link to, not just a number | 4.1 | | inspect the accessible name | | | | |
+| Rating controls (thumbs, stars) are labeled and their state is announced after selection | 4.1 | | rate a response with a screen reader running | | | | |
+| The model picker exposes the selected model as a state, not only as visible text | 4.1 | | inspect the control's accessibility tree | | | | |
+| Tool-approval prompts trap focus appropriately and are announced on appearance | 2.1, 4.1 | | trigger a tool-approval prompt with a screen reader running | | | | |
+| Upload progress is exposed through text or a live region, not a visual bar alone | 4.1 | | start an upload with a screen reader running | | | | |
+| Keyboard shortcuts specific to the conversation surface can be turned off or remapped | 2.1 | | check the shortcut settings | | | | |
 
 ## 9. Media and motion
 
 <!-- Families: 1.2 Time-based Media, 2.2 Enough Time, 2.3 Seizures and Physical
      Reactions. -->
 
-| Check | Family | How to verify | Evidence | Result | Owner |
-|---|---|---|---|---|---|
-| Video has captions; audio has a transcript; audio description is present where the level requires it | 1.2 | play with sound off | | | |
-| Moving, blinking, or auto-updating content can be paused, stopped, or hidden | 2.2 | find the control | | | |
-| Nothing flashes above the threshold the standard sets | 2.3 | inspect animations | | | |
-| Time limits can be extended or turned off | 2.2 | trigger the timeout | | | |
-| Auto-playing audio can be paused or muted | 1.4 | trigger the audio and locate the control | | | |
+| Check | Family | Responsibility | How to verify | Evidence | Evidence status | Result | Owner |
+|---|---|---|---|---|---|---|---|
+| Video has captions; audio has a transcript; audio description is present where the level requires it | 1.2 | | play with sound off | | | | |
+| Moving, blinking, or auto-updating content can be paused, stopped, or hidden | 2.2 | | find the control | | | | |
+| Nothing flashes above the threshold the standard sets | 2.3 | | inspect animations | | | | |
+| Time limits can be extended or turned off | 2.2 | | trigger the timeout | | | | |
+| Auto-playing audio can be paused or muted | 1.4 | | trigger the audio and locate the control | | | | |
+| prefers-reduced-motion is honoured: parallax, auto-play, and large-scale animation are reduced or removed (2.3.3 is AAA; vestibular harm from motion is real regardless of the product's target level) | 2.3.3 | | enable the OS reduced-motion setting and retry | | | | |
 
 ## 10. Findings routed onward
 
 | Finding | Check | Severity | Routed to (backlog item, risk register row) | Owner | Fix by |
+|---|---|---|---|---|---|
+| | | | | | |
+
+### Suppressions and accepted exceptions
+
+<!-- A suppressed rule (ignored in the automated checker, or a component
+     marked N/A) is a decision, not a default. Every row here needs an
+     approver who did not author the suppressed check and an expiry date it
+     gets re-tested by. -->
+
+| Rule code | Location | Reason | Approver (not the author) | Expiry | Risk-register row |
 |---|---|---|---|---|---|
 | | | | | | |
 
@@ -174,4 +225,5 @@ Filled tables are the audit artifact [nfr.md](../definition/nfr.md) section 5 na
 - [ ] Every fail has a row in section 10 with an owner and a date
 - [ ] The walk used a keyboard, a screen reader, and a contrast tool, named in section 1
 - [ ] The walker is not the author of the component
+- [ ] Every suppression has an approver who is not the author and an expiry
 - [ ] Signed by [name], [date]

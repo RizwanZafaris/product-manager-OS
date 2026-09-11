@@ -31,6 +31,26 @@ Skill: ../../skills/ai-prd/SKILL.md
 | [e.g. help-center corpus] | [policy answers] | [re-indexed weekly] | [retrieval index vX] |
 | [add] | | | |
 
+### Citation contract
+
+<!-- The user-facing half of grounding: what a citation chip actually promises
+     when the interaction surface shows one. See
+     ../../knowledge/design/ai-interaction-patterns.md and
+     ai-interaction-spec.md's own citation contract, which this section is
+     the model-facing mirror of. -->
+
+- **What counts as a source:** only content actually retrieved for this answer, at the moment it was generated; a source named in the row above but not fetched for this turn does not count, and a citation that names it anyway is a fabricated citation, not a grounded one.
+- **Granularity:** [passage / paragraph / sentence]; a citation names a span a reader can locate, not only a document.
+- **Click behaviour:** a citation click lands on the highlighted supporting passage inside the source, never on the source's home page or an unhighlighted document.
+- **No source, no claim:** where retrieval returned nothing for a claim, the claim is dropped or the abstain wording from section 2 is used; a claim never ships uncited because none of the sources happened to support it.
+- **Which models may cite:** [name the model or tier; a smaller or cheaper model asked to cite from a context it was not given the retrieved passages for is asked to fabricate, not to cite].
+- **Empty or unreadable attachments:** [the exact abstain wording when a user-supplied attachment could not be read or parsed; never silently ignored].
+
+| Eval case | Asserts | Pass condition |
+|---|---|---|
+| Citation resolves | Every citation in a sampled response links to a passage actually present in the retrieved context | The passage exists at the cited location, verified by lookup, not by re-asking the model |
+| No citation invented on empty retrieval | Retrieval returns nothing for the query | The response carries no citation, and uses the abstain wording from section 2 |
+
 ## 2. Abstain policy
 
 - When the system cannot ground a claim, it: [says what, exactly; write the user-facing wording]

@@ -34,7 +34,21 @@ Skill: ../../agents/red-team-agent.md
 | 1 | [e.g. user message] | [any user] | [direct input] |
 | 2 | [e.g. retrieved document] | [document authors, possibly external] | [context passage] |
 | 3 | [e.g. tool output] | [the upstream system] | [tool result] |
+| 4 | A third-party plugin or connector the agent can invoke | The plugin's own author or the account the connector reaches | [tool result, or content injected into a later turn] |
+| 5 | An uploaded archive (zip, tarball) the agent extracts or reads inside | Whoever supplied the archive | [file contents, filenames, and nested paths, all attacker-controlled] |
+| 6 | A model-generated HTML preview rendered back to the user or to another agent | The model itself, from whatever it was shown upstream | [rendered markup that can carry a script or a misleading link] |
+| 7 | A URL the model fetches on its own initiative | Whoever controls that URL at fetch time, which can change after the model decided to fetch it | [fetched page content, treated as a context passage] |
 | [add] | | | |
+
+### Declared threat model and out of scope
+
+<!-- State this before running scenarios, not after finding out what broke.
+     An undeclared threat model makes every review look thorough regardless
+     of what it actually covered. -->
+
+- **In scope for this review:** [the attacker classes and entry points this run actually tests, named explicitly]
+- **Out of scope, and why:** [what this run does not test, and the reason: a different review owns it, the risk is accepted, or the surface does not exist in this release]
+- **Assumed attacker capability:** [what the attacker can and cannot do: anonymous user, authenticated user, someone who controls a fetched page, someone who can name an uploaded file, and so on]
 
 ## 2. Attack scenarios
 
