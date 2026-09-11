@@ -31,16 +31,16 @@ Staged over nationwide-on-day-one was decided, not defaulted to. D6, 2026-07-01:
 
 | When (T-n days) | Channel | Audience | Artifact (draft linked) | Owner | Sent |
 |---|---|---|---|---|---|
-| T-5 (2026-07-01) | Internal memo | Engineering on-call, support leads | Dashboard LD-1 walkthrough, drafted with this plan | Zainab Qureshi | [ ] |
-| T-4 (2026-07-02) | Support macro and FAQ, in the support tool | Support and call-centre team | Macro linked in section 4 | Naveed Akhtar | [ ] |
-| T-3 (2026-07-03) | Agent job aid, printed and via the agent app | 600 Lahore pilot agents | One-page job aid, Tariq Sohail's field team | Tariq Sohail | [ ] |
-| T-3 (2026-07-03) | Email | Board and the sponsor sync | Section 1 launch facts, one page | Hira Baig | [ ] |
-| T-1 (2026-07-05) | Internal channel | All other agents (nationwide cohort) | Short pre-notice, this plan's audience row | Tariq Sohail | [ ] |
-| T-0 (2026-07-06) | Bulk SMS | Pilot-district customers | Pilot launch SMS (informational: free, plus the saved-bill reminder), PKR 1.2 per message (N40); volume Open: Hira Baig, not sized in the data sheet, so no batch total is stated here | Hira Baig | [ ] |
-| T-0 (2026-07-06) | BillBridge partner channel | Ravi Power, Chenab Gas via BillBridge | Live-volume confirmation | Bilal Hasan | [ ] |
-| T+1 (2026-07-07) | Email | Faisal Mirza and Hira Baig | Day-1 report, section 6 | Sara Lodhi | [ ] |
-| T-2 before the nationwide date (planned 2026-07-20, D6) | Internal channel + agent app | All agents, nationwide cohort | Nationwide activation message, this row | Tariq Sohail | [ ] |
-| Around 2026-07-20 (planned, D6) | Bulk SMS | Nationwide cohort | Nationwide balance-first SMS, "keep a balance and pay from it," planned at 400,000 messages x PKR 1.2 per message (N40) = PKR 480,000 planned | Hira Baig | [ ] |
+| T-5 (2026-07-01) | Internal memo | Engineering on-call, support leads | Dashboard LD-1 walkthrough, drafted with this plan | Zainab Qureshi | [ ] send date not on the data sheet |
+| T-4 (2026-07-02) | Support macro and FAQ, in the support tool | Support and call-centre team | Macro linked in section 4 | Naveed Akhtar | [ ] send date not on the data sheet |
+| T-3 (2026-07-03) | Agent job aid, printed and via the agent app | 600 Lahore pilot agents | One-page job aid, Tariq Sohail's field team | Tariq Sohail | [ ] send date not on the data sheet |
+| T-3 (2026-07-03) | Email | Board and the sponsor sync | Section 1 launch facts, one page | Hira Baig | [ ] send date not on the data sheet |
+| T-1 (2026-07-05) | Internal channel | All other agents (nationwide cohort) | Short pre-notice, this plan's audience row | Tariq Sohail | [ ] send date not on the data sheet |
+| T-0 (2026-07-06) | Bulk SMS | Pilot-district customers | Pilot launch SMS (informational: free, plus the saved-bill reminder), PKR 1.2 per message (N40); volume Open: Hira Baig, not sized in the data sheet, so no batch total is stated here | Hira Baig | [ ] send date not on the data sheet |
+| T-0 (2026-07-06) | BillBridge partner channel | Ravi Power, Chenab Gas via BillBridge | Live-volume confirmation | Bilal Hasan | [ ] send date not on the data sheet |
+| T+1 (2026-07-07) | Email | Faisal Mirza and Hira Baig | Day-1 report, section 6 | Sara Lodhi | [x] 2026-07-07, per section 6's day-1 report record |
+| T-2 before the nationwide date (planned 2026-07-20, D6) | Internal channel + agent app | All agents, nationwide cohort | Nationwide activation message, this row | Tariq Sohail | [ ] send date not on the data sheet |
+| Around 2026-07-20 (planned, D6) | Bulk SMS | Nationwide cohort | Nationwide balance-first SMS, "keep a balance and pay from it," planned at 400,000 messages x PKR 1.2 per message (N40) = PKR 480,000 planned | Hira Baig | [x] 2026-07-20, per N41's campaign log (400,000 messages, PKR 480,000); see the section 3 note and section 6's D7 amendment below |
 
 The nationwide row above is planned for 2026-07-20, not the 2026-07-06 pilot launch; it is the nationwide row above, not the T-0 row, and its content is the balance-first message, not the pilot's informational wording. Two customer-facing messages exist in this table, the T-0 pilot SMS and the nationwide balance-first SMS; every other row is internal or a partner channel.
 
@@ -76,7 +76,7 @@ This plan is done when:
 
 - [ ] Section 1 is filled and every message in section 3 links to a draft derived from it: the job aid, macro, pilot SMS and activation message all derive from the same five launch-fact bullets; none of those was drafted independently. **Amended 2026-08-21, after the post-launch review:** one exception is recorded here: the nationwide balance-first SMS ("keep a balance and pay from it") did not derive from section 1, whose bullets describe a free, lookup-by-reference feature with an SMS receipt, not a balance-keeping habit; the post-launch review's finding on N41 is the record of that departure.
 - [x] Every audience row has an action, an owner, and a sign-off name: seven rows in section 2, each with a "what they must do" field (two say "nothing required," stated rather than left blank) and one named sign-off.
-- [x] Support is briefed before any external message is scheduled: support briefing is scheduled for T-4 (2026-07-02), four days ahead of the first external message, the customer SMS at T-0 (2026-07-06).
+- [ ] Support is briefed before any external message is scheduled: support briefing was scheduled for T-4 (2026-07-02), four days ahead of the first external message, the customer SMS at T-0 (2026-07-06); matching section 4's own unticked box, no dated confirmation that the briefing itself happened, as opposed to being scheduled, is on the data sheet, so this box stays open rather than ticked on the schedule alone. Open: Naveed Akhtar, confirm the briefing date.
 - [x] The rollback holding statement exists and its approver is named: section 5, approved by Faisal Mirza, sender Naveed Akhtar, drafted 2026-06-26.
 
 Signed: Hira Baig, product owner, 2026-07-01.

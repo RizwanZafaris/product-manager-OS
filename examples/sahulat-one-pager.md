@@ -1,6 +1,6 @@
 # One-Pager: Sahulat Bill Pay
 
-Fills [templates/definition/one-pager.md](../templates/definition/one-pager.md). Everything here is invented: Sahulat is a fictional mobile-money wallet in Pakistan, Hira Baig its only fictional product manager, and every number, name and date is ILLUSTRATIVE, drawn from the shared data sheet in the Sahulat journey rather than from any real wallet or market. See the [examples index](README.md).
+Fills [templates/definition/one-pager.md](../templates/definition/one-pager.md). Everything here is invented: Sahulat is a fictional mobile-money wallet in Pakistan, Hira Baig its only fictional product manager, and every number, name and date is ILLUSTRATIVE, drawn from the shared data sheet in the [Sahulat journey](sahulat-journey.md) rather than from any real wallet or market. See the [examples index](README.md).
 
 **Owner:** Hira Baig · **Date:** 2026-03-09 · **Status:** Approved at Gate 2 attempt 2, 2026-03-25 (attempt 1 on 2026-03-18 was RETURNED for adjectives); amended 2026-05-21 per decision D5; annotated after Gate 5 (2026-07-01) and the post-launch review (2026-08-21), annotations marked as such
 **Reviewers who must not be surprised:** Faisal Mirza, Zainab Qureshi, Amna Rasheed
@@ -105,7 +105,7 @@ Rows 2 through 7 are the DESIGN-stage premortem's six risks, dated 2026-04-08, f
 
 - [x] The problem cites evidence with a source ID rather than asserting it. Section 1 cites E1 and E2 by interview id and date.
 - [x] One outcome metric and one guardrail metric, each with a baseline and an owner. Section 4 carries M1 and M2 as outcomes and M3 and M4 as guardrails, each with a baseline, a target and an owner.
-- [x] The not-doing list is written and the reviewers have read it. Section 5 lists five items. Three were on the list at Gate 2 attempt 2, signed 2026-03-25 by Hira Baig and Faisal Mirza. Water (D5) and the Darya rail (D3) were added at the 2026-05-21 amendment, which Faisal Mirza, Zainab Qureshi and Amna Rasheed re-reviewed.
+- [x] The not-doing list is written and the reviewers have read it. Section 5 lists five items. Three were on the list at Gate 2 attempt 2, signed 2026-03-25 by Hira Baig, Zainab Qureshi, Faisal Mirza and Amna Rasheed. Water (D5) and the Darya rail (D3) were added at the 2026-05-21 amendment, which Faisal Mirza, Zainab Qureshi and Amna Rasheed re-reviewed.
 - [x] Every must has an acceptance criterion that can fail. SAHULAT-S1, S2, S3, S6 and S8 are the Rel-1 musts, each with a testable criterion in the AC-1 to AC-13 contract; three headline rows are sampled in section 6.
 - [ ] Every risk and open question has an owner and a date. Rows 2 and 7 (R1 and R6) carry an owner but a marked-Open date, since Gate 5 had not yet set the nationwide-rollout and review-window dates at this amendment; every other row carries both.
 - [ ] It still fits on one page, or it has been promoted to prd.md. No: about 1,970 words after the 2026-05-21 amendment and the post-Gate-5 annotations. Gate 2 accepted the one-pager weight under decision D2, over Amna Rasheed's objection, but that decision was about document weight, not page count. Not promoted to prd.md. Open: Hira Baig decides trim vs promote.

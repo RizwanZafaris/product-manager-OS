@@ -6,8 +6,8 @@ Fills [templates/architecture/observability.md](../templates/architecture/observ
 **Knowledge:** [knowledge index](../knowledge/INDEX.md)
 **Skill:** [architect agent](../agents/architect-agent.md); [metrics-tree](../skills/metrics-tree/SKILL.md) for the product metrics it must emit
 
-**System:** Quay · **Owner:** Bea Lindqvist, Senior Engineer, payments · **Date:** 2026-07-10
-**Status:** Approved
+**System:** Quay · **Owner:** Bea Lindqvist, Senior Engineer, payments · **Date:** 2026-04-09
+**Status:** Approved at Gate 3, 2026-04-10; current as of 2026-07-10 (A3 live)
 
 ## 1. Service level objectives
 

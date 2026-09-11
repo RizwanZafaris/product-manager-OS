@@ -98,7 +98,7 @@ Next question: DEFINE-4
 Overlays active: AI: no. Regulated: no. Decided at: 2026-08-31, decision log entry D-014
 
 ## Accepted answers (this session)
-| DEFINE-1 | stakes | a sprint or two, one squad | named commitment (owner's call, logged) | definition/one-pager.md, header |
+| DEFINE-1 | stakes | a sprint or two, one squad | named commitment (owner's call, logged) | execution/decision-log.md, weight entry |
 | DEFINE-2 | audience | CS squad + sponsor | accepted by smart skip, source: README.md + stakeholder-map.md | definition/one-pager.md, "Reviewers who must not be surprised" |
 | DEFINE-3 | reversibility | flag-reversible, read-only on the warehouse | named commitment | definition/one-pager.md, "Scope" |
 ```

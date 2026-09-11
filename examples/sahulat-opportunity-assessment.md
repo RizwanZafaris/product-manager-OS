@@ -2,7 +2,7 @@
 
 Fills [templates/discovery/opportunity-assessment.md](../templates/discovery/opportunity-assessment.md). Everything here is invented: Sahulat is a fictional mobile-money wallet in Pakistan run by a fictional electronic-money institution, Hira Baig and Faisal Mirza are fictional roles, and every figure is ILLUSTRATIVE, drawn from the data sheet in the [Sahulat journey](sahulat-journey.md) so the ten answers agree with the rest of that journey rather than describing any real wallet, market or regulator. See the [examples index](README.md).
 
-**Owner:** Hira Baig, Product Manager, the only PM in the company · **Date:** 2026-01-15 · **Requested by:** Faisal Mirza, Chief Executive (who asked for a keep-balance promotion); bill pay itself raised by Hira Baig from the 2026-01-12 helpline trigger · **Status:** Decided, go to discovery (D1, logged 2026-01-16)
+**Owner:** Hira Baig, Product Manager, the only PM in the company · **Date:** 2026-01-15 · **Requested by:** Faisal Mirza, Chief Executive (who asked for a keep-balance promotion); bill pay itself raised by Hira Baig from the 2026-01-12 helpline trigger · **Status:** Decided, go to discovery (D1, logged 2026-01-16); annotated 2026-08-28
 **Sector cards:** [mobile money and wallets](../knowledge/domains/mobile-money-wallets.md) · [payments acquiring](../knowledge/domains/payments-acquiring.md)
 
 ## 1. The ten questions
@@ -29,12 +29,12 @@ Every figure below is ILLUSTRATIVE, drawn from the [Sahulat journey's data sheet
 | 3 | 246,000 wallets show a cash-in on the 5th to 10th of the month in two of the last three months | Ledger cut run for this assessment; N64, estimate | medium, one query, not yet checked against real bill-paying behavior |
 | 3 | BillBridge would post at PKR 10 a bill, Sahulat net PKR 7 | BillBridge indicative quote, 2026-01-13; N31, N32, quoted | medium, not yet a signed rate card |
 | 3, 6 | Board key result is 520,000 30-day active wallets by 2026-12-31, against 410,000 today | Board OKR sheet, December 2025; core ledger; N4 target, N2 measured | high |
-| 3 | The 5th to 10th is a "bill-peak window", when most bills fall due | None yet; N57 measures bill-peak days only in July and August 2026, after this assessment | assumption |
+| 3 | The 5th to 10th is a "bill-peak window", when most bills fall due | None yet at this assessment's 2026-01-15 date. Amended 2026-08-28: N57 measured bill-peak days in July and August 2026, after this assessment, and confirmed the window | assumption at this date; see the 2026-08-28 amendment |
 | 4 | Customers pay today at a bank branch, a bill shop, another wallet or bank app, or pay late | None yet; the team's own market knowledge | assumption |
 | 7 | The agent counter is the right first channel to launch in | None yet; the team's own judgment | assumption |
 | 9 | Customers will keep a balance in order to pay from it | None yet; runs against the pattern in N10 | assumption, the riskiest one |
 | 9 | A late payment carries a surcharge that bill pay would remove | None yet; the team's belief at this date | assumption |
-| 9 | BillBridge would post reliably enough that the surcharge does not land anyway | None yet; BillBridge's posting SLA (N36) is on the same rate card dated 2026-02-10, after this assessment | assumption |
+| 9 | BillBridge would post reliably enough that the surcharge does not land anyway | None yet at this assessment's 2026-01-15 date. Amended 2026-08-28: BillBridge's posting SLA (N36), a quoted 30-minute post within seven days, is on the rate card dated 2026-02-10, after this assessment, and is itself a quote, not a measured result | assumption at this date; see the 2026-08-28 amendment |
 
 ## 3. Decision
 
