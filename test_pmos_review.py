@@ -926,6 +926,166 @@ class AttestationSymlinkTests(unittest.TestCase):
                 outside.unlink(missing_ok=True)
 
 
+class AttestationParentSymlinkTests(unittest.TestCase):
+    """A symlink at a *parent directory* of the attestation path must never
+    be followed either, and record_review must never create one.
+
+    Round 2 of the same finding: the leaf-level fix above (commit a419774)
+    closed the case where ``docs/readiness/independent-review.json`` is
+    itself a symlink. But ``_write_attestation`` still reached that file by
+    walking ``docs`` and ``docs/readiness`` as plain pathname components --
+    ``os.makedirs`` to create a missing one, a bare ``os.open(str(path))`` to
+    write the file inside it -- and pathname resolution follows a symlink at
+    any component that is not the final one. Replacing ``docs`` (or
+    ``docs/readiness``) with a symlink to a directory outside the reviewed
+    tree therefore sent the write there instead, with ``record_review``
+    still reporting success. This class is that traversal, one directory
+    shallower each time, plus the two ordinary-tree cases the fix must not
+    break: recording still works in a clean tree, and a missing
+    ``docs/readiness/`` is still created (safely) when absent.
+    """
+
+    def _args(self, root, attestation, **over):
+        import argparse
+        fields = dict(
+            record=True, attestation=str(attestation),
+            reviewer="A. Reviewer", reviewer_kind="human",
+            scope=["templates/"], evidence=["python3 tools/ci_gate.py|17/18"],
+            finding=None, verdict="accepted", digest=False)
+        fields.update(over)
+        return argparse.Namespace(**fields)
+
+    def test_refuses_when_docs_is_a_symlink_to_outside_the_tree(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.md").write_text("content\n", encoding="utf-8")
+            outside = root.parent / ("attn-parent-docs-%d" % os.getpid())
+            outside.mkdir()
+            try:
+                canonical = root / review_gate.ATTESTATION
+                (root / "docs").symlink_to(outside, target_is_directory=True)
+
+                code = review_gate.record_review(
+                    self._args(root, canonical), root)
+
+                self.assertEqual(2, code)
+                self.assertEqual(
+                    [], list(outside.rglob("*")),
+                    "the refused write reached the directory the docs/ "
+                    "symlink pointed at")
+                self.assertFalse(
+                    (root / "docs" / "readiness").exists(),
+                    "record_review must not resolve through the docs/ "
+                    "symlink to fabricate a readiness/ directory beyond it")
+            finally:
+                import shutil
+                shutil.rmtree(outside, ignore_errors=True)
+
+    def test_refuses_when_docs_readiness_is_a_symlink_to_outside_the_tree(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.md").write_text("content\n", encoding="utf-8")
+            (root / "docs").mkdir()
+            outside = root.parent / ("attn-parent-readiness-%d" % os.getpid())
+            outside.mkdir()
+            try:
+                canonical = root / review_gate.ATTESTATION
+                (root / "docs" / "readiness").symlink_to(
+                    outside, target_is_directory=True)
+
+                code = review_gate.record_review(
+                    self._args(root, canonical), root)
+
+                self.assertEqual(2, code)
+                self.assertEqual(
+                    [], list(outside.rglob("*")),
+                    "the refused write reached the directory the "
+                    "docs/readiness/ symlink pointed at")
+            finally:
+                import shutil
+                shutil.rmtree(outside, ignore_errors=True)
+
+    def test_refuses_when_the_attestation_file_itself_is_a_symlink(self):
+        """The leaf case, kept alongside the parent-traversal cases above so
+        this class stands on its own as the round-2 regression set."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.md").write_text("content\n", encoding="utf-8")
+            outside = root.parent / ("attn-parent-leaf-%d" % os.getpid())
+            outside.write_text("do not touch\n", encoding="utf-8")
+            try:
+                canonical = root / review_gate.ATTESTATION
+                canonical.parent.mkdir(parents=True, exist_ok=True)
+                canonical.symlink_to(outside)
+
+                code = review_gate.record_review(
+                    self._args(root, canonical), root)
+
+                self.assertEqual(2, code)
+                self.assertEqual(
+                    "do not touch\n", outside.read_text(encoding="utf-8"))
+                self.assertTrue(canonical.is_symlink())
+            finally:
+                outside.unlink(missing_ok=True)
+
+    def test_still_records_normally_and_creates_missing_readiness_dir(self):
+        """The ordinary case the fix must not break: no docs/readiness/ yet,
+        nothing malicious anywhere, a plain first recording."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.md").write_text("content\n", encoding="utf-8")
+            canonical = root / review_gate.ATTESTATION
+            self.assertFalse((root / "docs").exists())
+
+            code = review_gate.record_review(
+                self._args(root, canonical), root)
+
+            self.assertEqual(0, code)
+            self.assertTrue((root / "docs" / "readiness").is_dir())
+            self.assertFalse((root / "docs" / "readiness").is_symlink())
+            document = json.loads(canonical.read_text(encoding="utf-8"))
+            self.assertEqual([], validate_attestation(document, root))
+
+    def test_refuses_a_dot_dot_component_in_the_attestation_path(self):
+        """Round 2's own gap, found by the adversarial verifier against the
+        walk above: ``path.relative_to(root)`` is a string comparison of
+        path segments, not a filesystem resolution. A literal ``..``
+        segment survives it -- ``root / ".." / "escape.json"`` reads as a
+        child of ``root`` by that comparison alone -- and the walk then
+        genuinely opens ``..`` with ``dir_fd=parent_fd``: that entry always
+        exists, is always a directory, and is never a symlink, so none of
+        the walk's existing checks catch it. This is exactly the gap the
+        containment check's own error message ("not inside root; refusing")
+        was supposed to close."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.md").write_text("content\n", encoding="utf-8")
+
+            code = review_gate.record_review(
+                self._args(root, "../escape-dotdot.json"), root)
+
+            self.assertEqual(2, code)
+            self.assertFalse((root.parent / "escape-dotdot.json").exists())
+            self.assertFalse((root / "escape-dotdot.json").exists())
+
+    def test_refuses_an_embedded_dot_dot_component_in_the_attestation_path(self):
+        """Same gap, reached through an existing directory rather than as
+        the leading component -- ``docs/../../outside/escape.json`` walks
+        into the real ``docs/`` first, then back out through the ``..``
+        entries exactly as above."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.md").write_text("content\n", encoding="utf-8")
+            (root / "docs").mkdir()
+
+            code = review_gate.record_review(
+                self._args(root, "docs/../../outside/escape2.json"), root)
+
+            self.assertEqual(2, code)
+            self.assertFalse((root.parent / "outside").exists())
+            self.assertFalse((root / "outside").exists())
+
+
 class RecordReviewTests(unittest.TestCase):
     """The gate had no way to close it except hand-writing JSON.
 
