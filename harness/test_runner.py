@@ -1606,6 +1606,18 @@ class AuditRegressionTests(unittest.TestCase):
                          "the initializer refuses to place a template the "
                          "manifest routes to")
 
+    def test_stage_gates_has_no_single_workspace_destination(self):
+        """os/STAGE-GATES.md declares stage ALL STAGES, so the fallback used
+        to route the whole gate form into execution/STAGE-GATES.md as if it
+        were one more template, silently, rather than naming the one gate
+        attempt file it should become."""
+        sys.path.insert(0, str(REPO / "tools"))
+        import init_product
+
+        text = (REPO / "os" / "STAGE-GATES.md").read_text(encoding="utf-8")
+        with self.assertRaises(init_product.InitError):
+            init_product.destination_for("os/STAGE-GATES.md", "p", text)
+
     def test_state_lands_at_the_workspace_root(self):
         got = runner.artifact_path("p", REPO / "templates" / "execution"
                                    / "state.md")
@@ -1866,6 +1878,42 @@ class AuditRegressionTests(unittest.TestCase):
                 with runner.state_lock(self.slug, timeout=0.2):
                     pass
         self.assertIn("wrote nothing", str(caught.exception))
+
+    def test_concurrent_enqueue_of_the_same_job_loses_no_attempts(self):
+        """enqueue()'s read-modify-write used to run unlocked: two deferrals
+        of the same job fingerprint at once both read the same attempts
+        value, and the second atomic_write clobbered the first, silently
+        losing the record's attempts, last_deferred and reason."""
+        import threading
+        from types import SimpleNamespace
+
+        runner.ensure_state(self.slug)
+        args = SimpleNamespace(input_file=None, input="same work",
+                               template=None)
+        errors = []
+
+        def defer():
+            try:
+                runner.enqueue(self.slug, "gather-evidence", "extraction",
+                               "concurrency test", args, "2026-01-01T00:00:00Z")
+            except Exception as error:                      # noqa: BLE001
+                errors.append(error)
+
+        threads = [threading.Thread(target=defer) for _ in range(16)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        self.assertEqual([], errors, "a concurrent enqueue raised")
+        records = runner.queue_records(self.slug)
+        self.assertEqual(1, len(records),
+                         "concurrent deferrals of one fingerprint created more "
+                         "than one job record")
+        record = json.loads(records[0].read_text(encoding="utf-8"))
+        self.assertEqual(16, record["attempts"],
+                         "concurrent deferrals lost attempts to an unlocked "
+                         "read-modify-write")
 
 
 class QueueRecordsIgnoreSidecarsTests(unittest.TestCase):

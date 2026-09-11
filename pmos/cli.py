@@ -167,7 +167,7 @@ def _init(args: argparse.Namespace) -> dict[str, Any]:
     # through their descriptor-relative destination lock.
     root, database = _paths(root)
     product_id = args.product_id or root.name + "-product"
-    if database.exists() and not args.force:
+    if database.exists():
         try:
             with Store(database) as store:
                 store.head(product_id)
@@ -190,7 +190,7 @@ def _status(args: argparse.Namespace) -> dict[str, Any]:
             row = store._conn.execute("SELECT product_id FROM products ORDER BY product_id LIMIT 1").fetchone()
             product_id = str(row[0]) if row else None
         if not product_id:
-            raise ValidationError("runtime contains no product; run `pmos init --force`")
+            raise ValidationError("runtime contains no product; run `pmos init --product-id <id>`")
         head = store.head(product_id)
         report = store.verify()
         snapshot = store.read_snapshot(product_id)
@@ -275,7 +275,8 @@ def _parser() -> argparse.ArgumentParser:
             # only/first product deterministically.
             pass
         if name in {"init", "new-user"}:
-            sub.add_argument("--force", action="store_true", help="allow an existing runtime when product is absent")
+            sub.add_argument("--force", action="store_true",
+                             help="accepted for compatibility; an existing product is always refused")
         if name == "verify":
             sub.add_argument("--provenance", help="provenance manifest to verify")
     for name, help_text in (("answer", "submit a caller-supplied answer and evidence"),

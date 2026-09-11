@@ -2598,32 +2598,42 @@ def enqueue(product, task_id, tier, reason, args, started_at):
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / ("%s.json" % fingerprint)
 
-    record = {}
-    if path.is_file():
-        try:
-            record = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            record = {}
-    attempts = int(record.get("attempts") or 0) + 1
-    record.update({
-        "id": fingerprint,
-        "task": task_id,
-        "tier": tier,
-        "status": "deferred",
-        "reason": redact(str(reason)),
-        "product": product,
-        "template": getattr(args, "template", None),
-        "input_file": getattr(args, "input_file", None),
-        "transport": getattr(args, "transport", None),
-        "first_deferred": record.get("first_deferred") or started_at,
-        "last_deferred": started_at,
-        "attempts": attempts,
-        "rerun": ("python3 harness/runner.py --task %s --product %s"
-                  % (task_id, product)),
-        "note": "A record that this work was refused, not a job any worker "
-                "will pick up. Nothing in this repository runs it for you.",
-    })
-    atomic_write(path, redact(json.dumps(record, indent=2) + "\n"))
+    # The read of the existing record, the attempts increment and the write
+    # are one sequence, and it used to run unlocked. Two runs deferring the
+    # same job fingerprint at once both read the same attempts value and the
+    # second atomic_write() clobbered the first, so the record's attempts,
+    # last_deferred and reason silently lost history with no error anywhere
+    # -- the exact race state_lock above exists to close for STATE.md. This
+    # reuses that same per-product lock rather than adding a second one;
+    # report_queued releases it (inside append_journal) before calling here,
+    # so there is no nesting.
+    with state_lock(product):
+        record = {}
+        if path.is_file():
+            try:
+                record = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                record = {}
+        attempts = int(record.get("attempts") or 0) + 1
+        record.update({
+            "id": fingerprint,
+            "task": task_id,
+            "tier": tier,
+            "status": "deferred",
+            "reason": redact(str(reason)),
+            "product": product,
+            "template": getattr(args, "template", None),
+            "input_file": getattr(args, "input_file", None),
+            "transport": getattr(args, "transport", None),
+            "first_deferred": record.get("first_deferred") or started_at,
+            "last_deferred": started_at,
+            "attempts": attempts,
+            "rerun": ("python3 harness/runner.py --task %s --product %s"
+                      % (task_id, product)),
+            "note": "A record that this work was refused, not a job any worker "
+                    "will pick up. Nothing in this repository runs it for you.",
+        })
+        atomic_write(path, redact(json.dumps(record, indent=2) + "\n"))
     return path, attempts
 
 

@@ -34,15 +34,20 @@ products/
 
 ## Making one
 
-Two commands, the same two the Quickstart in [the README](../README.md) runs, because a documented journey that disagrees with the working one is worse than no documentation:
+The same commands the Quickstart in [the README](../README.md) runs, because a documented journey that disagrees with the working one is worse than no documentation:
 
 ```bash
 python3 tools/init_product.py ledgerline
+python3 tools/init_product.py ledgerline --add templates/discovery/problem-framing.md
+python3 tools/init_product.py ledgerline --add templates/discovery/user-research-plan.md
+python3 tools/init_product.py ledgerline --add templates/discovery/interview-notes.md
+python3 tools/init_product.py ledgerline --add templates/discovery/personas.md
+python3 tools/init_product.py ledgerline --add templates/discovery/journey-map.md
 python3 tools/init_product.py ledgerline --add templates/discovery/discovery-document.md
 python3 tools/init_product.py ledgerline --check
 ```
 
-The first builds the folders above and seeds `STATE.md` from `templates/execution/state.md`. The second copies one template into its stage folder: `templates/discovery/` lands in `discovery/`, `templates/ai/` lands in `definition/ai/` because the overlay attaches at DEFINE, and `templates/execution/state.md` is the one file that lands at the workspace root under its own name. Nothing is ever overwritten without `--force`. The third re-resolves every link in the workspace and reports the ones that do not land.
+The first builds the folders above and seeds `STATE.md` from `templates/execution/state.md`. Each `--add` after it copies one template into its stage folder: `templates/discovery/` lands in `discovery/`, `templates/ai/` lands in `definition/ai/` because the overlay attaches at DEFINE, and `templates/execution/state.md` is the one file that lands at the workspace root under its own name. Nothing is ever overwritten without `--force`. The research templates land before `discovery-document.md`, because that document rolls their findings up rather than gathering them itself. The last command re-resolves every link in the workspace and reports the ones that do not land.
 
 There is a reason the copy is a tool rather than `cp`, and it is the same reason rule 1 below exists. A template's relative links are computed from where the blank lives, two levels under the repository root. Copied by hand into `products/ledgerline/discovery/`, the discovery document's `../../knowledge/...` link now points at `products/knowledge/...`, which has never existed, and all four of that file's links break at once. `--add` recomputes each link from the real depth of where the copy lands, then re-resolves every one of them from the destination and refuses to leave a copy behind if any fails. A link to another template resolves to your own filled copy once that copy exists, and to the blank until then.
 
@@ -157,7 +162,7 @@ The PRD is not in the first ninety minutes, which surprises people. A PRD descri
 
 1. **Filled copies, never edits to the originals.** Copy the template out, fill the copy. `templates/` stays blank so the next product starts clean. This is the same rule the agent files state and the reason for it is the same. The failure it prevents is the one that ends a template library: a repository where the blanks contain one product's answers, so the next product inherits assumptions nobody restated, and eventually a PM writes their own template rather than untangle yours.
 2. **Keep the file name of the template you copied.** A filled PRD is `definition/prd.md`, not `PRD_v3_final_FINAL.md`. Versions are the file's history, not its name. When one product genuinely needs two of something, the suffix names the thing, not the version: `architecture/adr-004-precompute-explanations.md`. The tell that this rule has lapsed is a folder where two files could both plausibly be current, and the cost is paid by whoever has to guess.
-3. **Four files never get archived, whatever the stage.** The decision log, the risk register, the assumptions register, and STATE.md run the length of the product. Everything else is written at a stage and read afterward; these four are written continuously and are the first things a new owner reads. STATE.md appears once a Conductor run starts (the blank ships at `templates/execution/state.md`); a product run entirely with a pencil may never have one, and loses nothing but the resume protocol.
+3. **Four files never get archived, whatever the stage.** The decision log, the risk register, the assumptions register, and STATE.md run the length of the product. Everything else is written at a stage and read afterward; these four are written continuously and are the first things a new owner reads. STATE.md appears once a Conductor run starts (the blank ships at `templates/execution/state.md`); a product run entirely with a pencil may never have one, and loses nothing but the resume protocol. Such a product records the Gate 1 domain line and the non-AI regulated determination in its gate attempt file instead, per [STAGE-GATES.md](STAGE-GATES.md).
 4. **Gate attempts are kept, including the failures.** `gates/gate-2-attempt-1.md` is more useful than `gates/gate-2.md`, because the attempt that was returned records what the team did not know at the time. A gate history with no failures in it is either a very lucky product or a rewritten one. The returned Gate 2 in the listing above is the single most read file in the folder six months later, because it contains the sentence that explains why the freshness rule is worded the way it is.
 
 ## The product README is the index

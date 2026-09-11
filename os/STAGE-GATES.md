@@ -42,7 +42,7 @@ Two gate lines below hook in `../modules/regulated/`. That module covers exactly
 
 So the overlay lines are written to fire narrowly: **the product uses AI or machine learning and a financial or data regulator applies to it**. A conventional payments, lending, or KYC product with no model in it does not fire them, and that is deliberate. Attaching an AI-specific overlay to a non-AI regulated product produces the worst outcome available: a ticked line, a filled section 0, and no coverage at all of the licensing conditions, scheme rules, and conduct obligations that product actually lives under. A blank is a question. A wrongly ticked box is an answer nobody will re-open.
 
-**Known gap, stated rather than papered over.** This repository does not ship a jurisdiction pack for non-AI regulated products. If your product is regulated and has no model in it, these two gate lines are not your compliance coverage: bring your own licence conditions, scheme rules, and regulatory calendar to Gate 2, name the regulatory owner on the sign-off line, and record in STATE.md that the shipped overlay did not apply and what you used instead. [OPEN: a non-AI jurisdiction pack, owner is the repository maintainer.]
+**Known gap, stated rather than papered over.** This repository does not ship a jurisdiction pack for non-AI regulated products. If your product is regulated and has no model in it, these two gate lines are not your compliance coverage: bring your own licence conditions, scheme rules, and regulatory calendar to Gate 2, name the regulatory owner on the sign-off line, and record in STATE.md, or in this gate attempt file where the product keeps no STATE.md, that the shipped overlay did not apply and what you used instead. [OPEN: a non-AI jurisdiction pack, owner is the repository maintainer.]
 
 ---
 
@@ -59,7 +59,7 @@ Closes DISCOVER. Feeds DEFINE.
 - [ ] Personas built on fewer than five cited interviews are explicitly marked as assumptions
 - [ ] The cost of inaction is written down: what it costs, whom, per what period, with the calculation shown
 - [ ] At least one plausible reason to say no-go was seriously argued at this gate
-- [ ] A domain was selected from `../knowledge/domains/README.md` or "none" was recorded, either way in STATE.md
+- [ ] A domain was selected from `../knowledge/domains/README.md` or "none" was recorded, either way in STATE.md, or in this gate attempt file where the product keeps no STATE.md
 - [ ] The success signal for a future Gate 6 is named now, before any solution exists
 - [ ] Go or no-go is recorded below, with the deciding rationale in one paragraph
 
@@ -90,7 +90,7 @@ Closes DEFINE. Feeds DESIGN.
 
 **Product:** <name> · **Gate run date:** <YYYY-MM-DD> · **Attempt:** <n>
 
-**Inputs on the table:** the definition set at the weight chosen in [WHICH-DOCUMENT.md](WHICH-DOCUMENT.md). At full weight that is the completed BRD, PRD, FRD, NFR, business rules, assumptions register, and acceptance criteria from `../templates/definition/`. At the lighter weight it is a completed `../templates/definition/one-pager.md` with its acceptance criteria attached. The checklist below is the same either way: a lighter document answers these questions in fewer words, not in fewer answers.
+**Inputs on the table:** the definition set at the weight chosen in [WHICH-DOCUMENT.md](WHICH-DOCUMENT.md). Three weights reach this gate. At BRD-stack weight that is the completed BRD, PRD, FRD, NFR, business rules, assumptions register, and acceptance criteria from `../templates/definition/`. At full-PRD weight it is the completed PRD, NFR, and acceptance criteria, without a BRD. At one-pager weight it is a completed `../templates/definition/one-pager.md` with its acceptance criteria attached. The checklist below is the same at every weight: a lighter document answers these questions in fewer words, not in fewer answers.
 
 - [ ] Every PRD objective traces to the Gate 1 problem statement, and every FRD requirement traces to a PRD item
 - [ ] Every acceptance criterion can fail: it has a condition, an expected result, and a measurable threshold
@@ -269,6 +269,7 @@ Closes OPERATE. Loops back to DISCOVER.
 - [ ] The decision below is one of exactly three: persist, pivot, or sunset
 - [ ] The decision's consequence is scheduled: the next DISCOVER pass, the pivot's Gate 1, or the sunset plan with dates and owner
 - [ ] What this pass taught us is written in three sentences or fewer and filed where the next team will find it
+- [ ] **AI overlay, when the product contains a model:** production-sampled eval results for the review window are compared with the Gate 5 run, per segment, and any population added since Gate 5 was re-evaluated before it went live
 
 **Decision:** PERSIST / PIVOT / SUNSET, because: <one paragraph>
 

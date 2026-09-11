@@ -48,6 +48,23 @@ def _canonical(value: Any) -> bytes:
                       separators=(",", ":"), allow_nan=False).encode("utf-8")
 
 
+def _write_all(descriptor: int, data: bytes) -> None:
+    """Write every byte of *data*, never trusting a single os.write call.
+
+    os.write() is free to write fewer bytes than it was given and return
+    normally; it is not an error. A manifest written with one unchecked call
+    can publish a truncated document (observed with RLIMIT_FSIZE: the write
+    returned a short count with no exception, and the published file failed
+    to parse) with build_provenance still reporting success.
+    """
+    view = memoryview(data)
+    while view:
+        written = os.write(descriptor, view)
+        if written <= 0:
+            raise OSError("short write: os.write returned %r" % (written,))
+        view = view[written:]
+
+
 def _root_fd(root: Path) -> int:
     try:
         return os.open(root, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) |
@@ -377,7 +394,7 @@ def build_provenance(root: str | os.PathLike[str], *, output: str | os.PathLike[
                                      dir_fd=output_parent_fd)
                 try:
                     payload = _canonical(manifest) + b"\n"
-                    os.write(descriptor, payload)
+                    _write_all(descriptor, payload)
                     os.fsync(descriptor)
                 finally:
                     os.close(descriptor)

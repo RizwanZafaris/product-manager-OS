@@ -224,6 +224,45 @@ class ReleaseProvenanceTests(unittest.TestCase):
             self.assertEqual(sorted(item.name for item in output.parent.iterdir()), [])
             self.assertEqual(_lowest_free_descriptor(), baseline)
 
+    def test_a_short_write_followed_by_a_real_failure_leaves_no_trace(self):
+        """os.write() may write fewer bytes than asked without raising. A
+        single unchecked call could publish a manifest truncated mid-object
+        on the byte count where a later real failure (disk full) lands."""
+        with TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / "README.md").write_text("safe\n", encoding="utf-8")
+            output = root / release.DEFAULT_PROVENANCE
+            baseline = _lowest_free_descriptor()
+            real_write = release.os.write
+            calls = []
+
+            def short_then_fail(descriptor, payload):
+                calls.append(payload)
+                if len(calls) == 1:
+                    return real_write(descriptor, payload[:8])
+                raise OSError("disk full")
+
+            with patch.object(release.os, "write", side_effect=short_then_fail):
+                with self.assertRaises(OSError):
+                    build_provenance(root, output=output)
+            self.assertEqual(sorted(item.name for item in output.parent.iterdir()), [])
+            self.assertEqual(_lowest_free_descriptor(), baseline)
+
+    def test_a_complete_write_in_several_chunks_still_publishes_valid_json(self):
+        with TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / "README.md").write_text("safe\n", encoding="utf-8")
+            output = root / release.DEFAULT_PROVENANCE
+            real_write = release.os.write
+
+            def chunked_write(descriptor, payload):
+                return real_write(descriptor, payload[:16])
+
+            with patch.object(release.os, "write", side_effect=chunked_write):
+                manifest = build_provenance(root, output=output)
+            self.assertEqual(json.loads(output.read_text(encoding="utf-8")), manifest)
+            self.assertTrue(verify_provenance(root, output).ok)
+
     def test_manifest_built_without_output_records_an_existing_provenance_file(self):
         with TemporaryDirectory() as folder:
             root = Path(folder)
