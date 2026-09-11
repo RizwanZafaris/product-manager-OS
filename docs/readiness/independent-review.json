@@ -4,33 +4,33 @@
   "reviewer_kind": "independent-agent",
   "independent_implementation": true,
   "identity_assurance": "unauthenticated-local-claim",
-  "reviewed_at": "2026-09-11T09:36:04Z",
-  "reviewed_tree_sha256": "8dc829d32da3966fd1927aa76e737bbdfe7f43bb81efbe46538d7a2f87f59530",
+  "reviewed_at": "2026-09-11T17:30:51Z",
+  "reviewed_tree_sha256": "a14c0cb8bb95d6091555e3a8085bbcdda19a420ea6f3d42aa9363d60624dbadc",
   "scope": [
-    "CI-6 exact-tree review of the two origin/main..HEAD hardening commits, tools/review_gate.py, docs/readiness criteria and review brief",
-    "Adversarial symlinked docs/ and docs/readiness/ write and validation paths, .. and outside-path refusal, and unsupported-dir_fd fail-closed behavior",
-    "Release gates and readiness score/hard-gate integrity; reviewer implemented none of the reviewed tree; model: GPT-5"
+    "HEAD exact-tree review: git show HEAD and the manifest-relative-path P1 fix",
+    "FILE MANIFEST resolution across all blocks, targeted lint tests, and release-gate readiness",
+    "Release gates and readiness integrity; reviewer implemented none of the reviewed tree; model: GPT-5"
   ],
   "evidence": [
     {
-      "command": " /opt/homebrew/bin/python3.12 tools/review_gate.py --help ",
-      "result": " usage displayed; exit 0"
+      "command": "git rev-parse HEAD && git rev-parse 'HEAD~1^{tree}'",
+      "result": "HEAD a2892daaaa8e6a2917aef16b78a8387f61dcbd04; parent tree 65319ce10bec96f821b92ea455f10270a72ccf69"
     },
     {
-      "command": " /opt/homebrew/bin/python3.12 tools/ci_gate.py ",
-      "result": " 20/21 release gates passed; only readiness-local/CI-6 red before recording; exit 1 as expected"
+      "command": "git show HEAD -- system/BOOT-PROMPT.md",
+      "result": "intro now states block-directory resolution and gives learn/skills/tutor/SKILL.md"
     },
     {
-      "command": " /opt/homebrew/bin/python3.12 tools/readiness.py ",
-      "result": " 99/100; only CI-6 failing and local_review_record_complete NOT GREEN before recording; exit 1 as expected"
+      "command": "/opt/homebrew/bin/python3.12 -m unittest test_lint.PathGateFenceTests && /opt/homebrew/bin/python3.12 lint.py --os",
+      "result": "5 tests OK; OS tree ok"
     },
     {
-      "command": " /opt/homebrew/bin/python3.12 -m unittest test_pmos_review.AttestationParentSymlinkTests test_pmos_review.AttestationReadPathTests test_pmos_review.AttestationSymlinkTests test_pmos_review.IndependentReviewGateTests test_pmos_review.RecordReviewTests ",
-      "result": " 31 tests OK"
+      "command": "/opt/homebrew/bin/python3.12 tools/ci_gate.py",
+      "result": "all checks passed except expected readiness-local due missing review record; 20/21"
     },
     {
-      "command": "focused unsupported-dir_fd write probe ",
-      "result": " refusal returned rc 2; no pathname fallback"
+      "command": "/opt/homebrew/bin/python3.12 tools/readiness.py",
+      "result": "99/100; only local review record incomplete because no record existed"
     }
   ],
   "findings": [],
