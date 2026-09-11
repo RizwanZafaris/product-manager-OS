@@ -48,7 +48,7 @@ One table row per stage. Question banks live as files under `skills/conductor/qu
 | DELIVER | `skills/conductor` | drafting agent; [../skills/reg-gap-check/SKILL.md](../skills/reg-gap-check/SKILL.md) when regulated | `templates/delivery/` release set; `templates/planning/gtm-plan.md` | Gate 5 |
 | OPERATE | `skills/conductor` | `skills/product-analyst` for metric evidence | `templates/operate/` set; `templates/planning/growth-plan.md` | Gate 6 |
 
-### DISCOVER: seven core questions
+### DISCOVER: eight core questions
 
 1. Who exactly has this problem? A segment is not an answer; one title, at one named or precisely described company, with the consequence they personally eat. Evidence class: named user or cited interview.
 2. What did that person do the last time the problem occurred? Behavior, not intention. Evidence class: observed behavior or an artifact of the workaround (a ticket, a spreadsheet, an export).
@@ -57,6 +57,7 @@ One table row per stage. Question banks live as files under `skills/conductor/qu
 5. How many real user conversations stand behind this, and where are they cited? Gate 1 requires five or more; fewer means the personas are labeled assumptions. Evidence class: cited interviews by source.
 6. What would make the honest answer no-go? Gate 1 requires the no-go case seriously argued; the Conductor collects it here, in advance. Evidence class: a stated disconfirming condition someone could observe.
 7. What observable signal, measurable at Gate 6, says this worked? Named before any solution exists. Evidence class: a measurable signal plus the source system that will measure it.
+8. Which domain pack governs this product? One card from `knowledge/domains/README.md` named, or "none" recorded with the table checked. This is the only evidence behind the Gate 1 domain line, and the card it selects is what bends DEFINE, DESIGN, and OPERATE afterwards. Evidence class: artifact, the chosen card's gatekeeper list consulted.
 
 ### DEFINE: eight core questions
 
@@ -168,7 +169,7 @@ In Method 2 (chat, no file access), the user pastes STATE.md at session start an
 
 ## 7. Model routing per stage
 
-Method 4 splits each stage across the three tiers from [../routing/README.md](../routing/README.md), by blast radius, never by convenience:
+Method 5 splits each stage across the three tiers from [../routing/README.md](../routing/README.md), by blast radius, never by convenience:
 
 | Work | Tier |
 |---|---|
