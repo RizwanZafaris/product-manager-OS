@@ -808,7 +808,7 @@ class ReadinessRecordCommitFieldTests(unittest.TestCase):
     """
 
     COMMIT_FIELD_RE = re.compile(
-        r"^(Commit under test|Commit reviewed)\s*:\s*([0-9a-f]{7,40})\b",
+        r"^(Commit under test|Commit reviewed)\s*:\s*[`\"']?([0-9a-f]{7,40})\b",
         re.MULTILINE)
 
     def test_no_readiness_doc_pre_fills_a_literal_commit_sha(self):
@@ -827,6 +827,10 @@ class ReadinessRecordCommitFieldTests(unittest.TestCase):
         """The regex must actually fire, not just pass vacuously above."""
         sample = "Commit under test     : ba286db0121e613f5c1a6a6d3bdfa3cc6bee2c27\n"
         self.assertTrue(self.COMMIT_FIELD_RE.search(sample))
+        backticked = "Commit under test: `ba286db`\n"
+        self.assertTrue(self.COMMIT_FIELD_RE.search(backticked))
+        quoted = 'Commit reviewed: "ba286db0121e613f5c1a6a6d3bdfa3cc6bee2c27"\n'
+        self.assertTrue(self.COMMIT_FIELD_RE.search(quoted))
         safe = "Commit under test     : (output of git rev-parse HEAD)\n"
         self.assertFalse(self.COMMIT_FIELD_RE.search(safe))
 

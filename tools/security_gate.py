@@ -29,7 +29,7 @@ SECRET_PATTERNS = (
     ("anthropic", re.compile(r"\bsk-ant-[A-Za-z0-9_-]{20,}\b")),
     ("github", re.compile(r"\bgh[pous]_[A-Za-z0-9_]{20,}\b")),
     ("aws", re.compile(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b")),
-    ("private-key", re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----")),
+    ("private-key", re.compile(r"-{5}BEGIN [A-Z ]*PRIVATE KEY-{5}")),
 )
 ASSIGNMENT_SECRET = re.compile(
     r"(?i)\b(?:openrouter|api[_-]?key|secret|token|password)\b\s*[:=]\s*"

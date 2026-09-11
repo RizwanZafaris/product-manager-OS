@@ -161,6 +161,10 @@ def main(argv=None):
     parser.add_argument("--gate", action="append", default=[],
                         help="run only this exact gate id (repeatable)")
     args = parser.parse_args(argv)
+    if sys.version_info < (3, 11):
+        print("tools/ci_gate.py needs Python 3.11+, found %d.%d" %
+              sys.version_info[:2])
+        return 2
     if args.manifest:
         print(json.dumps(manifest(), sort_keys=True))
         return 0

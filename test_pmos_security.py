@@ -80,6 +80,9 @@ class SecurityGateFixtureTests(unittest.TestCase):
     ANTHROPIC_KEY = "sk-ant-" + "abcdefghijklmnopqrstuvwx"
     OPENAI_KEY = "sk-" + "abcdefghijklmnopqrstuvwx"
     PEM_HEADER = "-" * 5 + "BEGIN RSA PRIVATE KEY" + "-" * 5
+    ENCRYPTED_PEM_HEADER = "-" * 5 + "BEGIN ENCRYPTED PRIVATE KEY" + "-" * 5
+    DSA_PEM_HEADER = "-" * 5 + "BEGIN DSA PRIVATE KEY" + "-" * 5
+    PGP_PEM_HEADER = "-" * 5 + "BEGIN PGP PRIVATE KEY" + "-" * 5
     ASSIGNED_VALUE = "Ab3" + "cdefghijklmnopqrstuvwxyz"
 
     def test_every_credential_detector_has_a_fixture_that_names_it(self):
@@ -117,6 +120,31 @@ class SecurityGateFixtureTests(unittest.TestCase):
                         any(item.path == name and item.code == "committed-secret"
                             and item.message == message for item in findings),
                         findings)
+                    path.unlink()
+
+    def test_encrypted_dsa_and_pgp_private_key_headers_are_caught(self):
+        """The private-key detector used to accept only RSA/EC/OPENSSH, so a
+        PKCS#8 ENCRYPTED PRIVATE KEY block, a DSA key, or a PGP key passed
+        this gate even though pmos/hooks.py and lint.py's tree gate agreed
+        those headers were secrets. All three now share one pattern."""
+        cases = {
+            "encrypted-key.md": "%s\n" % self.ENCRYPTED_PEM_HEADER,
+            "dsa-key.md": "%s\n" % self.DSA_PEM_HEADER,
+            "pgp-key.md": "%s\n" % self.PGP_PEM_HEADER,
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            secure_fixture(root)
+            self.assertEqual(scan(root), [])
+            for name, body in cases.items():
+                with self.subTest(name=name):
+                    path = root / name
+                    write(path, body)
+                    findings = scan(root)
+                    self.assertTrue(
+                        any(item.path == name and item.code == "committed-secret"
+                            and item.message == "credential-shaped private-key value"
+                            for item in findings), findings)
                     path.unlink()
 
     def test_a_test_named_file_is_not_exempt_from_the_source_scan(self):

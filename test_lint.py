@@ -3,9 +3,11 @@
 import datetime as dt
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 import lint
+from pmos.sidecars import SidecarInspectionError
 
 REPO = Path(__file__).resolve().parent
 
@@ -373,6 +375,26 @@ class OsTreeGateTests(unittest.TestCase):
 
     def test_the_real_tree_passes_the_shipping_gate(self):
         self.assertEqual([], lint.os_check(REPO))
+
+    def test_git_unavailable_is_a_reported_finding_not_a_traceback(self):
+        """tracked_files() consults git through SidecarFilter unguarded, so a
+        checkout with .git present but git unreachable used to blow lint.py
+        --os up with a traceback and no finding line. It must fail closed as
+        one reported SIDECAR finding with a non-zero exit instead."""
+        broken = SidecarInspectionError("git could not be consulted")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "docs").mkdir()
+            (root / "docs" / "note.md").write_text(self.CLEAN)
+            with unittest.mock.patch.object(lint, "SidecarFilter",
+                                            side_effect=broken):
+                problems = lint.os_check(root)
+                exit_code = lint.run_os_mode(root)
+        self.assertEqual(1, len(problems), problems)
+        _, _, code, message = problems[0]
+        self.assertEqual("SIDECAR", code)
+        self.assertIn("git", message)
+        self.assertEqual(1, exit_code)
 
 
 class WorkspaceExclusion(unittest.TestCase):

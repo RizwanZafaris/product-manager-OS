@@ -318,6 +318,26 @@ class CiGateVerdictTests(unittest.TestCase):
     def gate(self, script, **options):
         return ci_gate.Gate("fixture", ("python3", "-c", script), **options)
 
+    def test_a_spawned_gate_uses_sys_executable_not_literal_python3(self):
+        captured = {}
+
+        def fake_run(argv, **kwargs):
+            captured["argv0"] = argv[0]
+            return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
+
+        with unittest.mock.patch.object(ci_gate.subprocess, "run", fake_run):
+            ci_gate.run_gate(self.gate("pass"))
+        self.assertEqual(sys.executable, captured["argv0"])
+        self.assertNotEqual("python3", captured["argv0"])
+
+    def test_main_refuses_to_run_under_python_older_than_3_11(self):
+        with unittest.mock.patch.object(ci_gate.sys, "version_info",
+                                        (3, 9, 6, "final", 0)):
+            code, output = quietly(ci_gate.main, ["--manifest"])
+        self.assertEqual(2, code)
+        self.assertIn("Python 3.11+", output)
+        self.assertIn("3.9", output)
+
     def test_a_clean_test_run_passes_and_is_counted(self):
         row = ci_gate.run_gate(self.gate(
             "print('Ran 3 tests in 0.010s'); print(); print('OK')",

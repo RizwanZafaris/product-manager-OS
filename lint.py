@@ -133,7 +133,7 @@ _REPO_ROOT = Path(__file__).resolve().parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from pmos.sidecars import SidecarFilter                              # noqa: E402
+from pmos.sidecars import SidecarFilter, SidecarInspectionError      # noqa: E402
 
 STALE_AFTER_DAYS = 180
 
@@ -1094,7 +1094,12 @@ def os_check(root, pins=None):
     problems = []
     fail = lambda p, n, c, m: problems.append((str(p), n, c, m))  # noqa: E731
 
-    all_files = list(tracked_files(root))
+    try:
+        all_files = list(tracked_files(root))
+    except SidecarInspectionError as error:
+        fail(".", 1, "SIDECAR",
+             "cannot consult git to classify sidecar files: %s" % error)
+        return sorted(problems)
     rel = {p: p.relative_to(root).as_posix() for p in all_files}
     tree = set(rel.values())
     inside = root.resolve()

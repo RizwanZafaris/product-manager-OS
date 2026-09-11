@@ -21,7 +21,7 @@ SECRET_PATTERNS = (
     re.compile(r"\bAKIA[A-Z0-9]{16}\b"),
     re.compile(r"(?i)\b(?:api[_-]?key|secret|token|password)\s*[:=]\s*"
                r"[\"']?[A-Za-z0-9_+/=-]{20,}"),
-    re.compile(r"-{5}BEGIN (?:RSA |DSA |EC |OPENSSH |PGP )?PRIVATE KEY-{5}"),
+    re.compile(r"-{5}BEGIN [A-Z ]*PRIVATE KEY-{5}"),
 )
 WRITE_TOOLS = frozenset({"Write", "Edit", "NotebookEdit"})
 EVENTS = frozenset({

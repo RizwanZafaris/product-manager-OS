@@ -78,6 +78,27 @@ class ClaudeHookTests(unittest.TestCase):
         self.assertEqual(
             rendered["hookSpecificOutput"]["permissionDecision"], "deny")
 
+    def test_encrypted_dsa_and_pgp_key_headers_are_also_blocked(self):
+        # The three detectors in this repository (this module, the security
+        # gate, and lint.py's tree gate) used to disagree on which key header
+        # prefixes counted: an ENCRYPTED PKCS#8 key passed here and passed the
+        # security gate, and DSA/PGP passed the security gate too. All three
+        # now share lint.py's `[A-Z ]*PRIVATE KEY` shape. Fixtures assembled
+        # rather than written out so this file carries no literal key block
+        # for the repository's own secret scanner to flag.
+        fence = "-" * 5
+        for prefix in ("ENCRYPTED ", "DSA ", "PGP "):
+            with self.subTest(prefix=prefix.strip()):
+                key = (fence + "BEGIN " + prefix + "PRIVATE KEY" + fence +
+                       "\n" + "b3BlbnNzaC1rZXktdjEAAAAABG5vbmU=\n" +
+                       fence + "END " + prefix + "PRIVATE KEY" + fence + "\n")
+                self.assertTrue(contains_secret({"content": key}), prefix)
+                decision = decide("PreToolUse", {
+                    "tool_name": "Write",
+                    "tool_input": {"file_path": "notes/key.txt",
+                                   "content": key}})
+                self.assertEqual(decision.action, "deny", prefix)
+
     def test_destructive_command_is_denied_and_external_write_asks(self):
         destructive = decide("PreToolUse", {
             "tool_name": "Bash", "tool_input": {"command": "git reset --hard"}})
