@@ -38,7 +38,7 @@ Three more bind the routes that reach their conditions: `human-approves-send` wh
 | `skills/` | Procedures: conductor (the stage-gated interviewer, protocol in `os/CONDUCTOR.md`), product-analyst, ai-prd, roadmap-builder, program-premortem, reg-gap-check, feedback-synthesis, product-review, escalation, plus the v0.5 set: user-interview, competitive-intel, market-sizing, pricing-packaging, gtm-launch-planner, experiment-designer, metrics-tree, stakeholder-update, story-writer, okr-critic, strategy-critic, decision-memo, postmortem-facilitator, launch-readiness, pm-hiring, and the v0.5.1 set: write-prd, spec-review, persona-builder, write-vision-strategy | Follow when routed |
 | `agents/` | Role instruction files (see below) and the team protocol in `agents/TEAM.md` | Adopt one role per run; emit the handoff packet |
 | `system/` | Boot and role prompts for file-less chat models | Read; not for you, you have file access |
-| `routing/` | OmniRoute tier config | Read when the user runs Method 4 |
+| `routing/` | OmniRoute tier config | Read when the user runs Method 5 |
 | `harness/` | The executable face of the router table in `CLAUDE.md`: `MANIFEST.json` (one entry per router row), `INVARIANTS.md`, `tiers.md`, `runner.py`, and three adapters | Read to resolve a request into a route; it is deletable and never a runtime dependency, so never make an artifact depend on it |
 | `tools/`, `docs/GRAPH.md`, `os/maps/` | The graph layer: `graph.py` renders the declarations into `docs/GRAPH.md`, `frontmatter_init.py` seeds them, `check_manifest.py` proves the router and manifest agree, and `os/maps/` holds one hub note per stage | Read for where a file sits; regenerate the graph after adding a file, never hand-edit `docs/GRAPH.md` |
 | `modules/regulated/` | Byte-exact regulated overlay, hash-pinned | Read and quote ONLY. Never edit, reformat, or reword anything under it |
@@ -77,6 +77,6 @@ One role per run, from `agents/`. Who leads which stage, what one agent hands th
 
 - **Read and edit files; prefer editing a copied template over generating a document from scratch.** The template's guidance comments are the procedure.
 - **Keep HTML guidance comments intact** in any copy you fill for a user, until the user asks to strip them for publication.
-- **Run the quality gate** (`python3 lint.py --os` at repo root) after any change to repo files, and before telling the user the tree is consistent.
+- **Run the quality gate** (`python3 tools/ci_gate.py` at repo root) after any change to repo files, and before telling the user the tree is consistent. That command is the whole release suite. `python3 lint.py --os` is one gate inside it and checks only the document tree, so it reports `ok` on a tree the graph check, the docs contract, the security gate and the test suites reject.
 - **Do not write into `templates/`, `knowledge/`, `os/`, or `modules/regulated/`** on a normal product run. Product artifacts belong in the user's own workspace, laid out per [os/PRODUCT-WORKSPACE.md](os/PRODUCT-WORKSPACE.md): one folder per product, one subfolder per stage, filled copies keeping the template's file name. Use `examples/` only when the user wants a worked example kept in this repository.
-- **Model routing is not your concern** unless the user invokes Method 4; then read [routing/README.md](routing/README.md) and respect the tier doctrine.
+- **Model routing is not your concern** unless the user invokes Method 5; then read [routing/README.md](routing/README.md) and respect the tier doctrine.

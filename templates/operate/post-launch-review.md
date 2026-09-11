@@ -101,7 +101,7 @@ aliases: ["Post-Launch Review", "post-launch-review"]
 | The target moved after the fact | "What we really wanted was a smaller number", said afterwards | The target and the definition of success are locked before launch and quoted here unchanged |
 | Everything is attributed to the launch | Any movement in the period is credited to the release | State what the metric would plausibly have done anyway, and say how confident you are |
 | Nothing is decided | The document ends in thanks and a list of observations | Close with named owners, dated actions, and a date to re-check |
-| Held too late to remember | Six weeks after launch, and nobody can recall what shipped | Hold it within about two weeks of the launch window closing |
+| Held too late to remember | More than six weeks after launch, and nobody can recall what shipped | Hold it inside the window set above, and no later than about two weeks after the rollout window closes |
 | Blame lands on a person | The review names who missed rather than what allowed the miss | Name the step in the process that permitted it, and the change to that step |
 
 ### Worked micro-example (ILLUSTRATIVE, invented)

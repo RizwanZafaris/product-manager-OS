@@ -33,8 +33,8 @@ Each action follows from the policy and leans on the others; that is the coheren
 |---|---|---|---|
 | 1 | Ship v1: extraction of four fields, category suggestion with policy line, filer edit-and-submit | The clerical half of the filer's job moves to the machine; the judgment half stays | 3, for the reviewer to trust it |
 | 2 | Confidence flags in the reviewer view | The reviewer's mechanical pass shrinks to the flagged fields | 1, and the eval spec's threshold |
-| 3 | Admin correction loop for category mappings, logged and versioned, fed back only after a review step | The system converges on policy without a filer ever reading it | 1; grows into the Q4 loop item on the [RICE sheet](ledgerline-rice-scoring.md) |
-| 4 | Measure first-submission approval on drafted reports from week one, against the 62% baseline | The scope rule in the policy needs a number to fire on | The [north star tree](ledgerline-north-star-tree.md) |
+| 3 | Admin correction loop for category mappings, logged and versioned, fed back only after a review step | The system converges on policy without a filer ever reading it | 1; grows into a Q4 backlog item, later scored as row 2 on the [RICE sheet](ledgerline-rice-scoring.md) (2026-09-01) |
+| 4 | Measure first-submission approval on drafted reports from week one, against the 62% baseline | The scope rule in the policy needs a number to fire on | Later formalized in the [north star tree](ledgerline-north-star-tree.md) (2026-09-01) |
 | 5 | Close the vendor-terms clause before Gate 5 | The policy's third refusal is a contract term, not a feature | Legal; blocks launch if unmet |
 
 ## 4. The kernel test

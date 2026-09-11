@@ -29,6 +29,44 @@ class CliTests(unittest.TestCase):
             with Store(Path(folder) / ".pmos/runtime.sqlite") as store:
                 self.assertEqual(store.head("checkout").revision, 0)
 
+    def test_force_never_lets_init_overwrite_an_existing_product(self):
+        """--force's help once promised the opposite of what it did: an
+        existing product was always refused without --force, and --force's
+        only real effect was to skip that refusal. It must always refuse."""
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            output = StringIO()
+            with redirect_stdout(output):
+                code = main(["init", "--path", folder, "--product-id", "checkout",
+                            "--force", "--json"])
+            self.assertEqual(code, 2)
+            self.assertIn("already contains product", json.loads(output.getvalue())["error"])
+
+    def test_force_after_an_accepted_answer_still_refuses_clearly(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            with Store(Path(folder) / ".pmos/runtime.sqlite") as store:
+                current = store.head("checkout").token
+            valid = {"class": "observed_behavior", "source": "interview-001",
+                     "date": "2026-09-04", "location": "customer-call"}
+            self.assertEqual(main(["answer", "--path", folder, "--product-id", "checkout",
+                                   "--question-id", "first-outcome", "--answer", "A real outcome",
+                                   "--evidence", json.dumps(valid), "--expected-revision", current,
+                                   "--turn-id", "v1", "--json"]), 0)
+            output = StringIO()
+            with redirect_stdout(output):
+                code = main(["init", "--path", folder, "--product-id", "checkout",
+                            "--force", "--json"])
+            self.assertEqual(code, 2)
+            self.assertIn("already contains product", json.loads(output.getvalue())["error"])
+
+    def test_a_new_product_id_still_initializes_in_an_existing_runtime(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "billing"]), 0)
+            with Store(Path(folder) / ".pmos/runtime.sqlite") as store:
+                self.assertEqual(store.head("billing").revision, 0)
+
     def test_user_supplied_evidence_flow_rejects_invalid_and_stale_submissions(self):
         with TemporaryDirectory() as folder:
             self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
@@ -320,6 +358,58 @@ class CliTests(unittest.TestCase):
             self.assertTrue(swapped)
             self.assertTrue(journal.is_symlink())
             self.assertEqual(external.read_bytes(), external_before)
+
+    def test_atomic_json_completes_a_write_split_into_short_chunks(self):
+        """os.write() may write fewer bytes than given without raising;
+        _atomic_json must keep writing until every byte lands rather than
+        trust one call."""
+        real_write = migrations.os.write
+
+        def short_write(descriptor, payload):
+            return real_write(descriptor, payload[:7])
+
+        with TemporaryDirectory() as folder:
+            target = Path(folder) / "migration-journal.json"
+            value = {"state": "recovery_required", "note": "x" * 200}
+            with patch.object(migrations.os, "write", side_effect=short_write):
+                migrations._atomic_json(target, value)
+            self.assertEqual(migrations._read_json(target), value)
+
+    def test_atomic_json_leaves_the_previous_journal_untouched_on_failure(self):
+        """A short write followed by a real failure (disk full) must not
+        replace a valid control file with truncated JSON, and must not
+        leave a temporary behind that blocks the next attempt."""
+        real_write = migrations.os.write
+
+        with TemporaryDirectory() as folder:
+            target = Path(folder) / "migration-journal.json"
+            first = {"state": "in_progress", "note": "original"}
+            migrations._atomic_json(target, first)
+            original_bytes = target.read_bytes()
+
+            calls = []
+
+            def short_then_fail(descriptor, payload):
+                calls.append(payload)
+                if len(calls) == 1:
+                    return real_write(descriptor, payload[:8])
+                raise OSError(28, "No space left on device")
+
+            second = {"state": "aborted", "note": "y" * 200}
+            with patch.object(migrations.os, "write", side_effect=short_then_fail):
+                with self.assertRaises(OSError):
+                    migrations._atomic_json(target, second)
+
+            self.assertEqual(target.read_bytes(), original_bytes,
+                             "a failed write replaced the previous valid journal")
+            leftovers = [item.name for item in target.parent.iterdir()
+                        if ".tmp-" in item.name]
+            self.assertEqual([], leftovers, "a failed write left a temporary behind")
+            self.assertEqual(migrations._read_json(target), first)
+
+            # The failed attempt must not block the very next one.
+            migrations._atomic_json(target, second)
+            self.assertEqual(migrations._read_json(target), second)
 
     def test_rollback_rejects_runtime_directory_swap_and_symlinked_manifest(self):
         with TemporaryDirectory() as folder:

@@ -89,7 +89,7 @@ ILLUSTRATIVE worked line on invented inputs for Ledgerline's expense copilot, op
 | *build cost (ILLUSTRATIVE)* | *300* | *450* | *about +118* | *year 3* | *no* |
 | | | | | | |
 
-*Adoption-row arithmetic, disclosed so it can be checked: in this ILLUSTRATIVE example, the year 1 to 3 net flows (140, 260, 300) are revenue benefit net of a fixed run cost, and revenue benefit scales with adoption. Year 0 (-300) is the build cost, fixed and not adoption-linked. Halving adoption halves only the benefit component of each year 1 to 3 flow, giving new net flows of 70, 130, 150. NPV = -300 + 70 / 1.1 + 130 / 1.21 + 150 / 1.331 = -300 + 64 + 107 + 113 = about -16. Cumulative net is -300, -230, -100, +50, so payback lands in year 3, not beyond it. State your own benefit-versus-fixed-cost split here; a sensitivity row with no disclosed split is not reproducible and should not ship.*
+*Adoption-row arithmetic, disclosed so it can be checked: in this ILLUSTRATIVE example, the year 1 to 3 net flows (140, 260, 300) are adoption-linked revenue benefit in full, with no fixed run cost carried against them, so halving adoption halves each flow outright: 70, 130, 150. Year 0 (-300) is the build cost, fixed and not adoption-linked. NPV = -300 + 70 / 1.1 + 130 / 1.21 + 150 / 1.331 = -300 + 64 + 107 + 113 = about -16. Cumulative net is -300, -230, -100, +50, so payback lands in year 3, not beyond it. Most real cases do carry a fixed run cost, and then only the benefit component halves, which changes every number after it. State your own benefit-versus-fixed-cost split here; a sensitivity row with no disclosed split is not reproducible and should not ship.*
 
 **The case survives when:** [the one or two conditions that must hold, in plain words].
 

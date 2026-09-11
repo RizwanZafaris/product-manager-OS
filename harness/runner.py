@@ -19,6 +19,12 @@ to disk inside this repository, and are never logged or printed. Any deployment
 that can reach an OpenAI-compatible URL can use this path with no adapter code,
 which is why it is the default and the only path a deployment should use.
 
+Two things this path refuses. It does not follow a redirect: the credential
+goes to the host in OMNIROUTE_BASE_URL and to no host a response names, so a
+3xx is reported as a gateway failure and the run queues. And it folds a
+response under a byte bound derived from the tokens the call asked for, so a
+gateway that streams without end is refused rather than buffered.
+
 `--transport cli` is a local convenience and nothing more. It shells out to the
 `omniroute` binary, which authenticates itself against a local install. Reach
 for it only on a machine where the gateway is up, no client endpoint key
@@ -276,6 +282,39 @@ PROBE_MAX_TOKENS = 300
 BASE_URL_DEFAULT = "http://localhost:20128/v1"
 READ_TIMEOUT_S = 600
 OPEN_FORM = "[OPEN: "
+
+# The ceiling on the raw SSE body read for one call, whatever the tier asked
+# for. A tier that asks for a small answer gets a small bound; nothing gets
+# more than this. On the SSE path every token arrives in its own frame
+# envelope (id, object, created, model, choices[].delta, ...), so this has to
+# cover frame overhead, not just the content the frames carry: at
+# routing/omniroute.config.json's highest maxOutputTokens (16384, drafting
+# and judgment), stream_cap(16384) is ~8.45 MB. This stays comfortably above
+# that so the ceiling never becomes the reason a tier's own budget cannot be
+# honoured.
+SSE_MAX_BYTES = 10 * 1024 * 1024
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Refuse a redirect rather than carry the credential to a second host.
+
+    The default opener follows a 3xx and rebuilds the request with every
+    header intact, so a gateway that answers 302 with a Location on another
+    host is handed the Authorization header this runner attached. The gateway
+    is a local process an operator points OMNIROUTE_BASE_URL at, and the
+    default path is plain http over loopback, so both a compromised gateway
+    and anything on that path can name the second host. Returning None makes
+    urllib raise the 3xx as an HTTPError, which the caller already reports as
+    a gateway failure, and the key never leaves for the named host.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+# Bound once, at module scope, so every call on the http transport goes
+# through it. pmos/openrouter.py defends its own adapter the same way.
+_OPENER = urllib.request.build_opener(_NoRedirect()).open
 
 # The response header that names the concrete model that actually answered.
 # The config's requestHeaders doc says the response echoes it, and this runner
@@ -764,9 +803,67 @@ def _error_descriptor(obj):
             "is not persisted." % (kind or "unreported", code or "unreported"))
 
 
-def _fold_sse(stream):
+def content_cap(max_tokens):
+    """The byte ceiling on the text this runner actually keeps.
+
+    Derived from what the call asked for, the way pmos/openrouter.py derives
+    its own limit for one non-streaming JSON body, so a tier that asks for
+    4096 tokens cannot be answered with two megabytes of folded content. This
+    bounds text_parts, not the raw SSE body: see stream_cap for that.
+    """
+    try:
+        tokens = int(max_tokens)
+    except (TypeError, ValueError):
+        tokens = 0
+    return max(4096, tokens * 64 + 16384)
+
+
+def stream_cap(max_tokens):
+    """The byte ceiling one call's raw SSE body is read under.
+
+    This is not content_cap: on the SSE path every token arrives in its own
+    frame envelope (id, object, created, model, choices[].delta,
+    finish_reason, ...), so the raw body is far larger than the content it
+    carries. Bounding the raw read at content_cap's formula refused ordinary
+    long answers well inside the tier's own maxOutputTokens, because a
+    realistic ~220-290 byte per-token frame blows past tokens*64+16384 long
+    before the answer does. This is instead derived from frame overhead
+    (tokens*512 + 65536, roughly double the observed worst case), and
+    content_cap still bounds the text actually folded out of those frames.
+    The hard ceiling (SSE_MAX_BYTES) applies whatever the tier asks for,
+    because max_tokens is a request the gateway is free to ignore and this is
+    the number the runner enforces.
+    """
+    try:
+        tokens = int(max_tokens)
+    except (TypeError, ValueError):
+        tokens = 0
+    return min(SSE_MAX_BYTES, max(65536, tokens * 512 + 65536))
+
+
+def _fold_sse(stream, max_bytes=SSE_MAX_BYTES, max_content_bytes=None):
     """Fold an SSE body into a Folded. Falls back to a plain JSON body when
     the gateway ignored stream, which some provider paths do.
+
+    max_bytes bounds the whole raw body, enforced on the read itself and
+    counted before anything is retained, so stream is anything with a
+    readline(size) that honours its size, which an http.client response does
+    whether or not the body is chunked. Without it the loop below buffers
+    every frame twice, in text_parts and in raw_lines, for as long as the
+    gateway keeps sending: READ_TIMEOUT_S bounds one read rather than the
+    stream, so a gateway that never sends the terminal event can drive this
+    process out of memory and put an arbitrarily large file in the workspace
+    behind it. Over the bound is an error, not a truncation, so the run
+    queues.
+
+    max_content_bytes bounds a different thing: the text actually folded out
+    of those frames (text_parts), not the frame envelopes around it. On the
+    SSE path max_bytes has to be generous with per-frame overhead (see
+    stream_cap) so an ordinary long answer is never refused inside its own
+    tier budget; max_content_bytes is what still stops a stream that packs
+    far more content than max_tokens asked for into frames with unusually
+    little overhead. Defaults to max_bytes, so a caller reasoning about only
+    one bound keeps the older single-ceiling behaviour.
 
     Three things are checked here and nowhere else, because this is the only
     place that sees the frames:
@@ -785,9 +882,29 @@ def _fold_sse(stream):
     on an artifact's face where the audit trail belongs, so it is never
     accepted as a model id.
     """
+    if max_content_bytes is None:
+        max_content_bytes = max_bytes
     out = Folded()
     text_parts, raw_lines = [], []
-    for raw in stream:
+    total = 0
+    content_total = 0
+    while True:
+        # The read itself is bounded, not only the count after it. Iterating
+        # the response calls readline() with no size, which buffers a whole
+        # line before returning it, so a gateway that sends no newline byte
+        # would be read in full inside that call before any counter here ran.
+        # Asking for at most one byte past what is left means an overrun is
+        # seen after reading max_bytes + 1 bytes, whatever the framing.
+        raw = stream.readline(max_bytes - total + 1)
+        if not raw:
+            break
+        total += len(raw)
+        if total > max_bytes:
+            out.error = ("the stream exceeded the response size bound of %d "
+                         "bytes, so it was refused rather than buffered. "
+                         "Nothing folded before that point is a complete "
+                         "document." % max_bytes)
+            break
         line = raw.decode("utf-8", "replace").strip()
         raw_lines.append(line)
         if not line or line.startswith(":"):
@@ -827,7 +944,17 @@ def _fold_sse(stream):
             if piece is None:
                 piece = (choice.get("message") or {}).get("content")
             if isinstance(piece, str):
+                content_total += len(piece.encode("utf-8"))
+                if content_total > max_content_bytes:
+                    out.error = (
+                        "the stream's folded content exceeded the response "
+                        "size bound of %d bytes, so it was refused rather "
+                        "than buffered. Nothing folded before that point is "
+                        "a complete document." % max_content_bytes)
+                    break
                 text_parts.append(piece)
+        if out.error:
+            break
     out.text = "".join(text_parts)
     if out.error or text_parts:
         return out
@@ -930,7 +1057,7 @@ def call_http(cfg, tier, messages, max_tokens=None, temperature=None,
         headers=headers, method="POST")
     started = time.monotonic()
     try:
-        with urllib.request.urlopen(request, timeout=READ_TIMEOUT_S) as resp:
+        with _OPENER(request, timeout=READ_TIMEOUT_S) as resp:
             reply.status = resp.status
             got = {k.lower(): v for k, v in resp.headers.items()}
             from_header = got.get(MODEL_HEADER, "").strip()
@@ -940,7 +1067,8 @@ def call_http(cfg, tier, messages, max_tokens=None, temperature=None,
             reply.provider = got.get("x-omniroute-provider", "")
             reply.cache = got.get("x-omniroute-cache", "")
             reply.compression = got.get("x-omniroute-compression", "")
-            folded = _fold_sse(resp)
+            folded = _fold_sse(resp, stream_cap(body["max_tokens"]),
+                               content_cap(body["max_tokens"]))
             reply.text = folded.text
             reply.model = from_header or folded.model
             reply.terminal = folded.terminal
@@ -2523,32 +2651,42 @@ def enqueue(product, task_id, tier, reason, args, started_at):
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / ("%s.json" % fingerprint)
 
-    record = {}
-    if path.is_file():
-        try:
-            record = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            record = {}
-    attempts = int(record.get("attempts") or 0) + 1
-    record.update({
-        "id": fingerprint,
-        "task": task_id,
-        "tier": tier,
-        "status": "deferred",
-        "reason": redact(str(reason)),
-        "product": product,
-        "template": getattr(args, "template", None),
-        "input_file": getattr(args, "input_file", None),
-        "transport": getattr(args, "transport", None),
-        "first_deferred": record.get("first_deferred") or started_at,
-        "last_deferred": started_at,
-        "attempts": attempts,
-        "rerun": ("python3 harness/runner.py --task %s --product %s"
-                  % (task_id, product)),
-        "note": "A record that this work was refused, not a job any worker "
-                "will pick up. Nothing in this repository runs it for you.",
-    })
-    atomic_write(path, redact(json.dumps(record, indent=2) + "\n"))
+    # The read of the existing record, the attempts increment and the write
+    # are one sequence, and it used to run unlocked. Two runs deferring the
+    # same job fingerprint at once both read the same attempts value and the
+    # second atomic_write() clobbered the first, so the record's attempts,
+    # last_deferred and reason silently lost history with no error anywhere
+    # -- the exact race state_lock above exists to close for STATE.md. This
+    # reuses that same per-product lock rather than adding a second one;
+    # report_queued releases it (inside append_journal) before calling here,
+    # so there is no nesting.
+    with state_lock(product):
+        record = {}
+        if path.is_file():
+            try:
+                record = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                record = {}
+        attempts = int(record.get("attempts") or 0) + 1
+        record.update({
+            "id": fingerprint,
+            "task": task_id,
+            "tier": tier,
+            "status": "deferred",
+            "reason": redact(str(reason)),
+            "product": product,
+            "template": getattr(args, "template", None),
+            "input_file": getattr(args, "input_file", None),
+            "transport": getattr(args, "transport", None),
+            "first_deferred": record.get("first_deferred") or started_at,
+            "last_deferred": started_at,
+            "attempts": attempts,
+            "rerun": ("python3 harness/runner.py --task %s --product %s"
+                      % (task_id, product)),
+            "note": "A record that this work was refused, not a job any worker "
+                    "will pick up. Nothing in this repository runs it for you.",
+        })
+        atomic_write(path, redact(json.dumps(record, indent=2) + "\n"))
     return path, attempts
 
 

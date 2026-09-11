@@ -97,6 +97,15 @@ Cross-examine when: the condition is "if it clearly fails". Move: naked numbers.
 Accept when: a result threshold and a date, and the owner who calls it.
 Lands in: the workspace growth plan, kill condition section, and STATE.md accepted answers.
 
+### OPERATE-10: AI overlay, production evals against Gate 5
+
+Ask: Were production-sampled evals for the review window compared with the Gate 5 run, per segment, and was every population added since Gate 5 re-evaluated before it went live?
+Wrong costs: A model that drifted since Gate 5 ships a different answer to a different segment, and nobody would know until a customer does.
+Evidence class: 2, the dated eval run.
+Cross-examine when: the comparison is aggregate only, with no segment breakdown, or a population added since Gate 5 carries no re-evaluation date. Move: naked numbers.
+Accept when: a per-segment comparison against the Gate 5 run, and a re-evaluation date for each population added since. Skip this entry with a cited source when STATE.md says the AI overlay is not active.
+Lands in: `definition/ai/eval-spec.md` results, and STATE.md accepted answers.
+
 ## Forced pair
 
 On "advance anyway": OPERATE-1, then OPERATE-6. An unmeasured promise and an unmade decision are how a product joins the zombie portfolio, which is Gate 6's own skip warning.
@@ -112,3 +121,4 @@ On "advance anyway": OPERATE-1, then OPERATE-6. An unmeasured promise and an unm
 | Decision is one of persist, pivot, sunset | OPERATE-6 |
 | The decision's consequence is scheduled | OPERATE-6 |
 | What this pass taught us, three sentences, filed findably | Drafted by the Conductor from the accepted answers, confirmed word by word by the user before filing |
+| AI overlay: production evals compared with Gate 5, new populations re-evaluated | OPERATE-10 |

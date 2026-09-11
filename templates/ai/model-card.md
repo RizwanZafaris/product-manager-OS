@@ -35,9 +35,14 @@ Skill: ../../skills/ai-prd/SKILL.md
 - Who it serves: [user types]
 - Explicitly out of scope: [uses the model will be asked for and must not be trusted with, e.g. legal or medical judgment, decisions about individual people without review]
 
-<!-- The out-of-scope list is the load-bearing part. Every support ticket that starts
-     "I used it to X and it was wrong" where X is on this list is a closed ticket;
-     where X is missing from this list, it is your incident. -->
+<!-- The out-of-scope list is the load-bearing part. A ticket that starts "I used it
+     to X and it was wrong" where X is on this list is one the card already
+     answered, not one it closes: log it, and treat a repeating X as a design
+     finding, because the product is inviting that use. Where X is missing from
+     this list, it is your incident. Any ticket alleging harm to a person
+     (safety, privacy, discrimination, money) goes through the incident process
+     whether or not X is listed; a disclaimer limits reliance, it does not waive
+     the investigation. -->
 
 ## 2. Known limitations and failure modes
 
@@ -68,7 +73,7 @@ One or two sentences: what data the model was trained or fine-tuned on to the ex
 
 ## 5. Update policy
 
-- What triggers a card update: [model or prompt version change, new eval results, new red-team findings]
+- What triggers a card update: [model or prompt version change, new eval results, new red-team findings, a new market, language, user segment, or input source, or production sampling showing drift past the threshold in eval-spec.md section 4]
 - Who updates it: [name] · Review cadence even without changes: [cadence]
 - Where old versions live: [location, so past claims stay checkable]
 

@@ -9,7 +9,7 @@ aliases: ["BUILD bank"]
 # BUILD bank
 
 Stage: BUILD, feeds Gate 4 (acceptance criteria met) in [../../../os/STAGE-GATES.md](../../../os/STAGE-GATES.md).
-Working handoffs: [../../../agents/validation-agent.md](../../../agents/validation-agent.md) checks drafts against criteria; [../../../agents/red-team-agent.md](../../../agents/red-team-agent.md) attacks the build, using the filled copy of `templates/ai/red-team-review.md` when a model is inside.
+Working handoffs: [../../../agents/acceptance-agent.md](../../../agents/acceptance-agent.md) turns the Gate 2 criteria into failing tests and keeps the evidence ledger and the Gate 4 gap report; [../../../agents/validation-agent.md](../../../agents/validation-agent.md) checks drafts against template and gate form; [../../../agents/red-team-agent.md](../../../agents/red-team-agent.md) attacks the build, using the filled copy of `templates/ai/red-team-review.md` when a model is inside.
 This bank interviews about evidence of testing, not about the code. Demonstrated means a run a reader could reproduce, not a green badge remembered.
 Format and ladder: [README.md](README.md).
 
@@ -56,7 +56,7 @@ Wrong costs: An eval suite run against last month's model is the most common way
 Evidence class: 2, the eval run, version-stamped, threshold by threshold.
 Cross-examine when: the run predates the current model version, or a threshold miss is explained rather than escalated. Move: naked numbers.
 Accept when: the run is against the shipping version and every threshold passed or its miss is escalated with an owner. Skip this entry with a cited source when STATE.md says the AI overlay is not active.
-Lands in: the workspace copy of `templates/ai/eval-spec.md` results, and STATE.md accepted answers.
+Lands in: `definition/ai/eval-spec.md` results section, and STATE.md accepted answers.
 
 ### BUILD-6: what the red team broke
 
@@ -65,7 +65,7 @@ Wrong costs: A fix that was never re-attacked is a hypothesis wearing a checkmar
 Evidence class: 2, the red-team findings and the re-test evidence per fix.
 Cross-examine when: the red team found nothing, or a fix's re-test is "should be fine now". Move: banned openers; a clean red-team pass on a first attempt is a finding about the red team.
 Accept when: findings listed, every fix re-tested, no unfixed break rated high.
-Lands in: the red-team review copy in the workspace and `execution/risk-register.md` for accepted residual risk, and STATE.md accepted answers.
+Lands in: `definition/ai/red-team-review.md` and `execution/risk-register.md` for accepted residual risk, and STATE.md accepted answers.
 
 ## Forced pair
 
@@ -78,6 +78,6 @@ On "advance anyway": BUILD-1, then BUILD-3. Undemonstrated criteria and unrehear
 | Every criterion demonstrated passing, or a miss with owner and decision | BUILD-1 |
 | No edge-case row undecided; expected behavior and linked test per case | BUILD-2 |
 | Failure scenarios exercised, detection fired, recovery matched | BUILD-3 |
-| Coverage meets targets, gaps listed by name | BUILD-1, via the validation-agent handoff against `delivery/testing-strategy.md` |
+| Coverage meets targets, gaps listed by name | BUILD-1, via the acceptance-agent evidence ledger against `delivery/testing-strategy.md` |
 | Scope changes since Gate 2 all in the decision log with deciders | BUILD-4 |
 | AI overlay: evals ran on the shipping version, red team clean or escalated | BUILD-5, BUILD-6 |

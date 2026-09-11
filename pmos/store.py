@@ -1099,10 +1099,13 @@ class Store:
                 str(row["job_id"]), "migrated_snapshot", float(row["updated_at"]))
 
     def _assert_queue_verified(self) -> None:
-        blob_rows = {str(row["hash"]): row for row in self._conn.execute(
-            "SELECT hash,size,data FROM blobs")}
+        # Job verification only asks whether a hash is present, so this reads
+        # the hash column alone: selecting `data` would materialize every
+        # committed document body on every queue call.
+        blob_hashes = {str(row["hash"]) for row in self._conn.execute(
+            "SELECT hash FROM blobs")}
         errors: list[str] = []
-        self._verify_jobs(blob_rows, errors)
+        self._verify_jobs(blob_hashes, errors)
         if errors:
             raise IntegrityError("; ".join(errors))
 
@@ -1217,17 +1220,11 @@ class Store:
         try:
             self._assert_queue_verified()
             self._recover_expired_locked(stamp)
-            cancelling = self._conn.execute(
-                "SELECT job_id FROM jobs WHERE status='cancel_requested' ORDER BY job_id"
-            ).fetchall()
-            for cancelling_row in cancelling:
-                cancelling_id = str(cancelling_row["job_id"])
-                self._conn.execute(
-                    "UPDATE jobs SET status='cancelled',lease_token=NULL,lease_owner=NULL,"
-                    "lease_until=NULL,updated_at=?,error='cancelled before lease' WHERE job_id=?",
-                    (stamp, cancelling_id),
-                )
-                self._append_job_event(cancelling_id, "cancelled_before_lease", stamp)
+            # A cancel request against a live lease belongs to its holder, so
+            # this poll leaves it alone: the recovery above cancels it once the
+            # lease expires, and succeed/fail/mark_conflicted cancel it the
+            # moment the holder reports.  Reaping it here would fence a worker
+            # that is still running and discard its result.
             elapsed = self._conn.execute(
                 "SELECT job_id FROM jobs WHERE status IN ('queued','retry_wait') "
                 "AND deadline IS NOT NULL AND deadline <= ? ORDER BY job_id", (stamp,)
@@ -1267,6 +1264,14 @@ class Store:
                                   "AND (deadline IS NULL OR deadline > ?)",
                                   (job_id, token, generation, stamp, stamp)).fetchone()
 
+    def _deadline_elapsed_job(self, job_id: str, token: str, generation: int,
+                              stamp: float) -> Optional[sqlite3.Row]:
+        """A live lease whose deadline has passed; _fenced_job excludes these."""
+        return self._conn.execute("SELECT * FROM jobs WHERE job_id=? AND lease_token=? AND lease_generation=? "
+                                  "AND status='leased' AND lease_until > ? "
+                                  "AND deadline IS NOT NULL AND deadline <= ?",
+                                  (job_id, token, generation, stamp, stamp)).fetchone()
+
     @_serialized
     def heartbeat(self, job_id: str, token: str, generation: int, *, lease_seconds: float = 30.0,
                   now: Optional[float] = None) -> LeaseResult:
@@ -1277,16 +1282,16 @@ class Store:
         try:
             self._assert_queue_verified()
             self._recover_expired_locked(stamp)
-            row = self._fenced_job(job_id, token, generation, stamp)
-            if row is None or row["status"] != QueueStatus.LEASED.value:
-                self._conn.commit()
-                return LeaseResult("fenced", reason="lease token or generation is stale")
-            if row["deadline"] is not None and float(row["deadline"]) <= stamp:
+            if self._deadline_elapsed_job(job_id, token, generation, stamp) is not None:
                 self._conn.execute("UPDATE jobs SET status='dead_letter',lease_token=NULL,lease_owner=NULL,lease_until=NULL,error='deadline elapsed',updated_at=? WHERE job_id=?",
                                    (stamp, job_id))
                 self._append_job_event(job_id, "heartbeat_deadline_elapsed", stamp)
                 self._conn.commit()
                 return LeaseResult("deadline", reason="deadline elapsed")
+            row = self._fenced_job(job_id, token, generation, stamp)
+            if row is None or row["status"] != QueueStatus.LEASED.value:
+                self._conn.commit()
+                return LeaseResult("fenced", reason="lease token or generation is stale")
             self._conn.execute("UPDATE jobs SET lease_until=?,updated_at=? WHERE job_id=?", (stamp + lease_seconds, stamp, job_id))
             self._append_job_event(job_id, "heartbeat", stamp)
             result = self._job_from_row(self._conn.execute("SELECT * FROM jobs WHERE job_id=?", (job_id,)).fetchone())
@@ -1731,7 +1736,7 @@ class Store:
             found.append("queue error is invalid")
         return tuple(found)
 
-    def _verify_jobs(self, blob_rows: Mapping[str, sqlite3.Row], errors: list[str]) -> None:
+    def _verify_jobs(self, blob_hashes: set[str], errors: list[str]) -> None:
         jobs = {str(row["job_id"]): row for row in self._conn.execute(
             "SELECT * FROM jobs ORDER BY created_at,job_id")}
         event_jobs = {str(row["job_id"]) for row in self._conn.execute(
@@ -1744,7 +1749,7 @@ class Store:
             except Exception:
                 errors.append("queue row is malformed: %s" % job_id)
                 continue
-            for problem in self._queue_state_errors(actual, set(blob_rows)):
+            for problem in self._queue_state_errors(actual, blob_hashes):
                 errors.append("%s: %s" % (problem, job_id))
             events = self._conn.execute(
                 "SELECT * FROM job_events WHERE job_id=? ORDER BY event_id", (job_id,)
@@ -1773,7 +1778,7 @@ class Store:
                     if (event["previous_hash"] != previous_hash
                             or event["event_hash"] != _event_hash(previous_hash, body)):
                         raise ValueError("queue event hash chain mismatch")
-                    state_problems = self._queue_state_errors(state, set(blob_rows))
+                    state_problems = self._queue_state_errors(state, blob_hashes)
                     if state_problems:
                         raise ValueError(state_problems[0])
                     if float(event["created_at"]) != float(state["updated_at"]):
@@ -1826,7 +1831,7 @@ class Store:
                 errors.append("blob size mismatch: %s" % row["hash"])
             if sha256(data) != row["hash"]:
                 errors.append("blob hash mismatch: %s" % row["hash"])
-        self._verify_jobs(blob_rows, errors)
+        self._verify_jobs(set(blob_rows), errors)
         products = {str(row["product_id"]) for row in
                     self._conn.execute("SELECT product_id FROM products")}
         self._verify_chain("product_events", [(item,) for item in sorted(products)], errors)

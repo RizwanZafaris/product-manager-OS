@@ -23,6 +23,14 @@ the two callers return the same path for each.
 `harness/` is deletable by design, so a tree without it has no runner to
 disagree with anything. That is a pass, reported as a skip, exactly as
 `tools/check_manifest.py` treats the same case.
+
+The two-caller comparison cannot see a change to the shared map itself: both
+callers read it, so they agree on the new answer and the check stays green
+while the artifact moves. On the shipped tree `harness/test_runner.py` catches
+that, and on a tree with `harness/` deleted that suite is gone too. So this
+script also asserts the destinations that skills, prompts and adapters address
+by name against `CANONICAL_DESTINATIONS` below, and it runs that table on both
+paths, deleted harness included.
 """
 
 from __future__ import annotations
@@ -35,6 +43,16 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 MANIFEST = REPO / "harness" / "MANIFEST.json"
 SLUG = "contract-check"
+
+# The destinations the rest of the tree addresses by name rather than by
+# computing them. STATE.md is the one that matters: os/CONDUCTOR.md's resume
+# protocol, every skill and every adapter look for it at the workspace root, so
+# moving it leaves a resume reading a file that is not there.
+CANONICAL_DESTINATIONS = {
+    "templates/execution/state.md": "products/%s/STATE.md",
+    "modules/regulated/templates/regulated-ai-prd-template.md":
+        "products/%s/definition/ai/regulated-ai-prd.md",
+}
 
 
 def say(*parts):
@@ -50,21 +68,59 @@ def named_templates():
     return sorted(found)
 
 
+def canonical_problems(workspace, quiet):
+    """Report every canonical destination the shared map no longer produces."""
+    problems = 0
+    for rel, shape in sorted(CANONICAL_DESTINATIONS.items()):
+        expected = shape % SLUG
+        path = REPO / rel
+        if not path.is_file():
+            say("MISSING  %s is addressed by name and does not exist." % rel)
+            problems += 1
+            continue
+        try:
+            got = workspace.destination_for(rel, SLUG,
+                                            path.read_text(encoding="utf-8"))
+        except workspace.WorkspaceError as error:
+            say("REFUSED  %s has no computable destination: %s" % (rel, error))
+            problems += 1
+            continue
+        if got != expected:
+            say("MOVED    %s" % rel)
+            say("           addressed by name at: %s" % expected)
+            say("           computed:             %s" % got)
+            problems += 1
+        elif not quiet:
+            say("  ok  %-52s -> %s" % (rel, got))
+    return problems
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--quiet", action="store_true",
                         help="print only failures and the one-line verdict")
     args = parser.parse_args(argv)
 
+    sys.path.insert(0, str(REPO / "tools"))
+    import workspace                                        # noqa: E402
+
+    fixed = canonical_problems(workspace, args.quiet)
+
     if not (REPO / "harness").is_dir() or not MANIFEST.is_file():
-        say("workspace contract: skipped, this tree has no harness/. The "
+        if fixed:
+            say("")
+            say("workspace contract: %d canonical destination(s) moved. There "
+                "is no harness/ in this tree, so the runner disagrees with "
+                "nothing, but the paths the rest of the tree addresses by name "
+                "still have to be the paths the initializer writes." % fixed)
+            return 1
+        say("workspace contract: ok (%d canonical destination(s)). The "
+            "two-writer comparison is skipped, this tree has no harness/. The "
             "harness is deletable by design and an absent runner disagrees "
-            "with nothing.")
+            "with nothing." % len(CANONICAL_DESTINATIONS))
         return 0
 
-    sys.path.insert(0, str(REPO / "tools"))
     sys.path.insert(0, str(REPO / "harness"))
-    import workspace                                        # noqa: E402
     import runner                                           # noqa: E402
 
     templates = named_templates()
@@ -96,7 +152,7 @@ def main(argv=None):
         elif not args.quiet:
             say("  ok  %-52s -> %s" % (rel, canonical))
 
-    problems = 0
+    problems = fixed
     for rel in missing:
         say("MISSING  %s is routed to by the manifest and does not exist."
             % rel)
@@ -118,8 +174,9 @@ def main(argv=None):
             "files and a resume that reads the wrong one."
             % (problems, len(templates)))
         return 1
-    say("workspace contract: ok (%d templates, one destination each)"
-        % len(templates))
+    say("workspace contract: ok (%d templates, one destination each, %d of "
+        "them addressed by name)" % (len(templates),
+                                     len(CANONICAL_DESTINATIONS)))
     return 0
 
 

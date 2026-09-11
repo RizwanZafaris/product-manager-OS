@@ -45,6 +45,60 @@ class ClaudeHookTests(unittest.TestCase):
         self.assertEqual(outside.action, "deny")
         self.assertEqual(protected.action, "deny")
 
+    def test_case_variant_protected_destinations_are_denied(self):
+        variants = ("modules/Regulated/policy.md", "MODULES/REGULATED/policy.md",
+                    ".GIT/config", ".Git/hooks/pre-commit", ".ENV.production",
+                    "secrets/server.PEM")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for relative in variants:
+                with self.subTest(path=relative):
+                    decision = decide("PreToolUse", {
+                        "tool_name": "Write",
+                        "tool_input": {"file_path": relative}}, root)
+                    self.assertEqual(decision.action, "deny")
+            self.assertTrue(decide("PreToolUse", {
+                "tool_name": "Write",
+                "tool_input": {"file_path": "docs/Regulated-notes.md"}},
+                root).allowed)
+
+    def test_private_key_material_is_blocked_like_other_secrets(self):
+        # Assembled rather than written out so the file itself carries no
+        # literal key block for the repository's own secret scanner to flag.
+        fence = "-" * 5
+        key = (fence + "BEGIN OPENSSH PRIVATE KEY" + fence + "\n" +
+               "b3BlbnNzaC1rZXktdjEAAAAABG5vbmU=\n" +
+               fence + "END OPENSSH PRIVATE KEY" + fence + "\n")
+        self.assertTrue(contains_secret({"content": key}))
+        decision = decide("PreToolUse", {
+            "tool_name": "Write",
+            "tool_input": {"file_path": "notes/key.txt", "content": key}})
+        self.assertEqual(decision.action, "deny")
+        rendered = claude_output("PreToolUse", decision)
+        self.assertEqual(
+            rendered["hookSpecificOutput"]["permissionDecision"], "deny")
+
+    def test_encrypted_dsa_and_pgp_key_headers_are_also_blocked(self):
+        # The three detectors in this repository (this module, the security
+        # gate, and lint.py's tree gate) used to disagree on which key header
+        # prefixes counted: an ENCRYPTED PKCS#8 key passed here and passed the
+        # security gate, and DSA/PGP passed the security gate too. All three
+        # now share lint.py's `[A-Z ]*PRIVATE KEY` shape. Fixtures assembled
+        # rather than written out so this file carries no literal key block
+        # for the repository's own secret scanner to flag.
+        fence = "-" * 5
+        for prefix in ("ENCRYPTED ", "DSA ", "PGP "):
+            with self.subTest(prefix=prefix.strip()):
+                key = (fence + "BEGIN " + prefix + "PRIVATE KEY" + fence +
+                       "\n" + "b3BlbnNzaC1rZXktdjEAAAAABG5vbmU=\n" +
+                       fence + "END " + prefix + "PRIVATE KEY" + fence + "\n")
+                self.assertTrue(contains_secret({"content": key}), prefix)
+                decision = decide("PreToolUse", {
+                    "tool_name": "Write",
+                    "tool_input": {"file_path": "notes/key.txt",
+                                   "content": key}})
+                self.assertEqual(decision.action, "deny", prefix)
+
     def test_destructive_command_is_denied_and_external_write_asks(self):
         destructive = decide("PreToolUse", {
             "tool_name": "Bash", "tool_input": {"command": "git reset --hard"}})
@@ -120,6 +174,13 @@ class ClaudeHookTests(unittest.TestCase):
             "rg -n readiness README.md",
             "pwd",
             "cat README.md | head -5",
+            # Each wrapper below is itself off the read-only allowlist, so these
+            # are allowed only when the wrapper is actually stripped.
+            "sudo git -C /tmp status",
+            "env MODE=safe git -C /tmp status",
+            "timeout 5 rg -n readiness README.md",
+            "nice -n 5 cat README.md",
+            "time git -C /tmp status",
         )
         for command in safe_commands:
             with self.subTest(safe=command):
@@ -130,6 +191,12 @@ class ClaudeHookTests(unittest.TestCase):
     def test_shell_classification_fails_closed_on_ambiguous_or_destructive_text(self):
         denied = (
             "git -C /tmp reset --hard",
+            # A -C prefix hides the clean subcommand from
+            # DESTRUCTIVE_COMMANDS, and the --force spelling is unreachable for
+            # that regex with or without a prefix, so both of these depend on
+            # the git subcommand check alone.
+            "git -C /tmp clean -x -f -d",
+            "git clean --force -d",
             "git -C /tmp push -f origin main",
             "git -C /tmp push origin +main",
             "git -c alias.ship=push ship origin main",
@@ -283,6 +350,21 @@ class RuntimeHookTests(unittest.TestCase):
         decisions = bus.emit("before_commit", {"paths": ["x"]})
         self.assertEqual(calls, ["first"])
         self.assertEqual(decisions[-1].action, "deny")
+
+    def test_hook_bus_rejects_duplicates_and_orders_same_priority_by_name(self):
+        calls = []
+        bus = HookBus()
+        bus.register("before_commit", "beta", lambda event, payload:
+                     calls.append("beta") or HookDecision("allow"))
+        bus.register("before_commit", "alpha", lambda event, payload:
+                     calls.append("alpha") or HookDecision("allow"))
+        decisions = bus.emit("before_commit", {"paths": ["x"]})
+        self.assertEqual(calls, ["alpha", "beta"])
+        self.assertEqual([decision.action for decision in decisions],
+                         ["allow", "allow"])
+        with self.assertRaises(ValueError):
+            bus.register("before_commit", "alpha", lambda event, payload:
+                         HookDecision("allow"))
 
 
 if __name__ == "__main__":

@@ -38,7 +38,7 @@ Reports findings and never rewrites. This is the testability check, the second o
 - `templates/definition/acceptance-criteria.md`
 - `os/STAGE-GATES.md`
 
-## Templates the output lands in
+## Templates this route reads for context
 
 None. This route writes no template.
 

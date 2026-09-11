@@ -84,9 +84,17 @@ cat os/OPERATING-LOOP.md            # the six stages and what each gate demands
 cat os/WHICH-DOCUMENT.md            # how much document this decision deserves
 
 python3 tools/init_product.py my-product
+python3 tools/init_product.py my-product --add templates/discovery/problem-framing.md
+python3 tools/init_product.py my-product --add templates/discovery/user-research-plan.md
+python3 tools/init_product.py my-product --add templates/discovery/interview-notes.md
+python3 tools/init_product.py my-product --add templates/discovery/personas.md
+python3 tools/init_product.py my-product --add templates/discovery/journey-map.md
 python3 tools/init_product.py my-product --add templates/discovery/discovery-document.md
 # Fill every field with any editor. Square-bracket fields are the blanks.
 # Delete any section you do not need; an empty section is worse than no section.
+# Roll the research above into discovery-document.md, then copy the Gate 1
+# section of os/STAGE-GATES.md into products/my-product/gates/gate-1-attempt-1.md
+# and fill it.
 
 python3 tools/init_product.py my-product --check   # every link still resolves
 cat os/STAGE-GATES.md                              # take the filled document to Gate 1
@@ -123,7 +131,7 @@ pmos verify --path ./my-product
 | [knowledge/roles/](knowledge/roles/README.md) | Roles | WHO each product title is: what it owns, decides, and how it fails |
 | [knowledge/domains/](knowledge/domains/README.md) | Domains | WHERE the product plays: what a specific market changes about the loop |
 | [frameworks/](frameworks/README.md) | Frameworks | HOW to actually run a method: the sheet, the scales, the arithmetic |
-| [templates/](templates/README.md) | Templates | WHAT to produce at each stage, all 98 blanks cataloged by stage |
+| [templates/](templates/README.md) | Templates | WHAT to produce at each stage, all 100 blanks cataloged by stage |
 | [learn/](learn/README.md) | Learning | HOW to study the OS on fictional products before running a real one |
 | [skills/](skills/README.md), [agents/](agents/README.md) | Skills and agents | HOW to produce it with an AI runtime: procedures, and the roles that run them |
 | [system/](system/README.md) | System prompts | WHO the model becomes |
@@ -143,7 +151,7 @@ The last two rows are reference rather than layers, and nothing in the loop depe
 
 ## Who you are and where you play
 
-Two knowledge sub-layers answer the questions that arrive before any template does. [knowledge/roles/](knowledge/roles/README.md) is the PM role map: an eight-rung ladder from Associate PM to CPO with the IC and management fork after Senior PM, the specializations, the PM and PMM boundary as a decision table, the triad's decision rights with a written dispute path, the hiring loop and growth rituals, and what the same title means at a startup versus an enterprise. Rung names are marked directional, because titles are the least standardized vocabulary in software. [knowledge/domains/](knowledge/domains/README.md) is ten market cards, ecommerce through AI products, each naming the gatekeepers who can stop a launch and the metrics practitioners are judged on, plus how each metric lies. Fintech is deliberately a pointer card: its domain pack is the regulated module below. Record your product's domain, or "none", in STATE.md at DISCOVER; the Gate 1 checklist asks for it.
+Two knowledge sub-layers answer the questions that arrive before any template does. [knowledge/roles/](knowledge/roles/README.md) is the PM role map: an eight-rung ladder from Associate PM to CPO with the IC and management fork after Senior PM, the specializations, the PM and PMM boundary as a decision table, the triad's decision rights with a written dispute path, the hiring loop and growth rituals, and what the same title means at a startup versus an enterprise. Rung names are marked directional, because titles are the least standardized vocabulary in software. [knowledge/domains/](knowledge/domains/README.md) is forty-four market cards, from ecommerce to core banking and Islamic finance, fourteen of them financial services, each naming the gatekeepers who can stop a launch and the metrics practitioners are judged on, plus how each metric lies. Fintech is deliberately a pointer card: it routes a model that makes a financial decision to the regulated module below, and the rails and licences to the fourteen financial-services cards. Record your product's domain, or "none", in STATE.md at DISCOVER; the Gate 1 checklist asks for it.
 
 ## Running a method, not reading about one
 
@@ -169,11 +177,11 @@ This repository does not assume a US software company. Discovery and compliance 
 python3 lint.py --os
 ```
 
-Standard library only. It enforces, across the whole tree: no banned characters, no banned metric literals, no unowned placeholders outside sanctioned fill-in fields, every relative link resolves inside the repository and lands on a tracked file, every template carries its Stage/Knowledge/Skill header, every skill has exactly the two required frontmatter fields, all five imported regulated files match their pinned hashes, every path named in a system prompt exists, no credential-shaped string anywhere (no file is exempt, including the file that defines the patterns), every file in the six declaring layers carries a graph declaration whose layer matches its directory and whose stage, gate, and feeds paths hold, and every wikilink lands on a tracked file or on a uniquely declared alias. Green means the tree is consistent, not that any document in it is true.
+Standard library only. It enforces, across the whole tree: no banned characters, no banned metric literals, no unowned placeholders outside sanctioned fill-in fields, every relative link resolves inside the repository and lands on a tracked file, every template carries its Stage/Knowledge/Skill header, every skill has exactly the two required frontmatter fields, all five imported regulated files match their pinned hashes, every path named in a system prompt exists, no credential-shaped string anywhere (no file is exempt, including the file that defines the patterns), every file in the six declaring layers carries a graph declaration whose layer matches its directory and whose stage, gate, and feeds paths hold, and every wikilink lands on a tracked file or on a uniquely declared alias. Green means the tree is consistent, not that any document in it is true. When run inside a git checkout, the tree gate also needs a git executable on PATH: it consults git to tell a tracked file from a stray AppleDouble sidecar, and reports that as a failing SIDECAR finding rather than a traceback when git cannot be consulted.
 
 The local-runtime gates are separate and executable: `python3 tools/ci_gate.py` runs the checked runtime suites, while `python3 tools/readiness.py --local` evaluates the fixed local engineering rubric on a clean commit. Neither command makes an external gate pass; the required external evidence is deliberately listed separately.
 
-**What the gate expects, and what that costs a fork.** It expects the whole tree. Delete `harness/` and every gate still passes, which is proved in `harness/README.md` and is the one deletion the gate is built to support. Delete a content layer such as `skills/`, `agents/`, `system/`, or `routing/` and two different things happen: the remaining documents keep working, because a template's link to a skill is a pointer and the guidance is readable prose, and the link gate fails in the hundreds because those pointers no longer resolve. Deleting `modules/regulated/` costs a few dozen findings the same way. So the honest version of the claim is that the document layers are usable with no model and no AI layers present, and that a fork which deletes a layer has chosen to give up the gate or to fix the links it broke. An honest limit stated once beats a guarantee that fails on first contact.
+**What the gate expects, and what that costs a fork.** It expects the whole tree. `harness/` is the one deletion the gate is built to support, and what survives the deletion is most of the suite rather than all of it. Measured on a copy of this tree with the directory removed from git, sixteen of the twenty-one gates in `tools/ci_gate.py` still pass: `compile`, `regulated-tests`, `workspace-lifecycle`, `workspace-links`, `workspace-contract`, `regulated-template`, `regulated-example`, `os-tree`, `json-syntax`, `graph-freshness`, `skill-rubric-freshness`, `manifest-contract`, `frontmatter`, `security-policy`, `docs-contract`, and `skill-rubric`. Five do not. `harness-tests`, `claude-adapter`, and `desktop-adapter` run files that are no longer there. `root-tests` carries three tests of harness code: two mutation-anchor checks read `harness/MANIFEST.json` and error without it, and the manifest model-id test skips when there is no manifest to mutate; the gate counts an error or a skip as a failure. `readiness-local` loses criterion HR-1 (every route has an executable typed contract), criterion CI-1 with the harness suite, and criterion CI-3, whose mutation checks edit `harness/MANIFEST.json`, along with its `routes_executable`, `links_green`, and `security_green` hard gates; CI-6, the review record, fails on any tree nobody has reviewed, harness or not. A fork that takes the deletion has to drop the three adapter and harness gates from `tools/ci_gate.py` and from the workflow, and the three harness-dependent root tests, and accept that the local readiness rubric no longer describes its tree. This paragraph used to say every gate still passes and cite `harness/README.md` as the proof. That file records a run of four document gates on a deleted tree, which is a smaller claim than the sentence it was cited for, and `tools/ci_gate.py` landed the day after the sentence was written. Delete a content layer such as `skills/`, `agents/`, `system/`, or `routing/` and two different things happen: the remaining documents keep working, because a template's link to a skill is a pointer and the guidance is readable prose, and the link gate fails in the hundreds because those pointers no longer resolve. Deleting `modules/regulated/` costs a few dozen findings the same way. So the honest version of the claim is that the document layers are usable with no model and no AI layers present, and that a fork which deletes a layer has chosen to give up the gate or to fix the links it broke. An honest limit stated once beats a guarantee that fails on first contact.
 
 ## Versioning and stability
 
@@ -197,7 +205,7 @@ This is all stated because the failure is common enough to plan for: systems in 
 - **Not legal or regulatory advice.** The regulated module tells you which questions to answer and where the primary text sits, never what the answer is in your entity or license class.
 - **Not an external-readiness certificate.** This repository cannot self-attest a hosted run, a live provider, a vendor sandbox, a non-maintainer journey, an independent team review, a regulated deployment, or a published release.
 
-Each of those four refusals comes from a belief, and the beliefs are argued rather than asserted in [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md): nine of them, each carrying the best counter-argument against it, the mechanism that enforces it, and the failure mode that shows up when the mechanism is present but hollow.
+Each of those five refusals comes from a belief, and the beliefs are argued rather than asserted in [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md): nine of them, each carrying the best counter-argument against it, the mechanism that enforces it, and the failure mode that shows up when the mechanism is present but hollow.
 
 ## Scope and sunset
 

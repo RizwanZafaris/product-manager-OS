@@ -320,14 +320,31 @@ def next_action(entry, tier, out_paths):
                      "the blank, never the draft. A field with no answer gets "
                      "[OPEN: what is missing, who owns the answer], which is a "
                      "valid value." % which)
+    elif entry.get("kind") == "artifact":
+        # An artifact route that names no template has its destination chosen
+        # at run time; tools/check_manifest.py admits that shape only with a
+        # null stage and a gate_note. It still files a document.
+        steps.append("Fill a copy of the one template the request needs, "
+                     "found through the reads above, in your product "
+                     "workspace, per os/PRODUCT-WORKSPACE.md. This row names "
+                     "none in advance, so the choice is made at run time. A "
+                     "field with no answer gets [OPEN: what is missing, who "
+                     "owns the answer], which is a valid value.")
     else:
         steps.append("This row produces no artifact, so there is nothing to "
                      "fill in and nothing to file.")
     gate = entry.get("gate")
+    # A row with no gate number usually has no gate. The exception is a row
+    # whose stage is decided at run time: it has a gate the manifest cannot
+    # name in advance, and says so in gate_note. Read that rather than telling
+    # the reader the opposite of what the row they were routed to does.
+    gate_note = " ".join(str(entry.get("gate_note") or "").split())
     if gate:
         steps.append("Take it to gate %d in %s. Report which boxes pass and "
                      "which do not, then stop: a named human signs it, never "
                      "an agent." % (gate, GATES_DOC))
+    elif gate_note:
+        steps.append(gate_note)
     else:
         steps.append("No gate applies to this row. Review it on its own "
                      "cadence per %s." % LOOP_DOC)
@@ -360,6 +377,11 @@ def cmd_plan(root, entry, tier, notes, input_lines, facts, rules, out):
         field("stage", "%s (gate %s in %s)" % (stage, gate, GATES_DOC), out)
         field("gate", "%s, signed by a named human, never by an agent" % gate,
               out)
+    elif entry.get("gate_note"):
+        field("stage", "not declared here: this row's stage is decided at run "
+                       "time, by placing the request in one per %s." % LOOP_DOC,
+              out)
+        field("gate", " ".join(str(entry["gate_note"]).split()), out)
     else:
         field("stage", "none. A planning overlay or a reference read: reviewed "
                        "on its own cadence, not at a gate (%s)." % LOOP_DOC,
@@ -370,8 +392,15 @@ def cmd_plan(root, entry, tier, notes, input_lines, facts, rules, out):
     field("skill", entry.get("skill") or
           "none. This router row names no skill; the reads are the procedure.",
           out)
-    field("templates", templates or
-          ["none. This row produces no artifact."], out)
+    if templates:
+        landing = templates
+    elif entry.get("kind") == "artifact":
+        landing = ["none named in advance. This row files a document, and "
+                   "the template it fills is chosen at run time from the "
+                   "reads below."]
+    else:
+        landing = ["none. This row produces no artifact."]
+    field("templates", landing, out)
     field("reads first", reads or ["none named."], out)
     field("invariants", ["%s: %s" % (name, rules.get(name, "defined in %s"
                                                      % INVARIANTS))

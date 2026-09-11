@@ -76,7 +76,7 @@ aliases: ["Operational Readiness Review", "operational-readiness-review"]
      are mining are filled copies of incident-postmortem.md in this directory; its
      verified corrective actions are this table's best rows. -->
 
-| Past incident (yours or a neighboring team's) | Check added here | Evidence it holds | Verified date |
+| Past incident (yours, a neighboring team's, or a dependency's published postmortem) | Check added here | Evidence it holds | Verified date |
 |---|---|---|---|
 | | | | |
 
@@ -112,7 +112,7 @@ This review passes when:
 - [ ] The escalation path is names and thresholds, not team labels
 - [ ] A restore has actually been tested, not just backups taken
 - [ ] A kill switch or containment mechanism exists, or its absence is a gap row with a date
-- [ ] Section 6 has at least one row, because no team has zero relevant incident history
+- [ ] Section 6 has at least one row, each linking the real incident it came from; a first service in a new organization draws on its dependencies' published postmortems, never an invented one
 - [ ] Every gap has an owner and a date
 
 Signed: [service owner], [role], [YYYY-MM-DD]

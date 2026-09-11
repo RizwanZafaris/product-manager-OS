@@ -593,6 +593,11 @@ class ModelRouter:
                 if (spec.cost_per_1k_tokens is not None and
                         attempt_cost > reserve + 1e-12):
                     raise ProviderPolicyViolation()
+                # Defence in depth behind the pre-attempt reserve check above.
+                # While both that check and the per-attempt reserve check stand,
+                # a reported cost can pass them and still exceed the aggregate
+                # cap only inside a float-rounding window, so this rarely fires.
+                # It is the last guard on the cap if either is ever narrowed.
                 if (request.budget_usd is not None and
                         spent_total > request.budget_usd + 1e-12):
                     raise ProviderPolicyViolation()

@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Optional
 
-from .release import _canonical
+from .release import _canonical, _write_all
 from .store import Store, ValidationError, sha256
 
 
@@ -357,16 +357,34 @@ def _atomic_json(path: Path, value: Mapping[str, Any], *,
                  lifecycle_lock: Optional[_DestinationLock] = None) -> None:
     _assert_lifecycle_file(path, "migration control file", lifecycle_lock=lifecycle_lock,
                            allow_missing=True)
-    temporary = path.with_name(path.name + ".tmp-%s" % os.getpid())
-    descriptor: Optional[int] = None
+    # A random suffix, not the pid: a deterministic per-pid name left behind
+    # by one failed write (short write, ENOSPC) made the very next
+    # _atomic_json call on this same path in this same process raise
+    # FileExistsError instead of writing, which mattered most right where it
+    # hurt most -- the except handler that records the aborted/recovery
+    # journal state after that same kind of failure.
+    temporary = path.with_name(path.name + ".tmp-%s" % secrets.token_hex(16))
     try:
         descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL |
                              getattr(os, "O_NOFOLLOW", 0), 0o600)
-        os.write(descriptor, _canonical(value) + b"\n")
-        os.fsync(descriptor)
-    finally:
-        if descriptor is not None:
+        try:
+            # os.write() may write fewer bytes than given without raising;
+            # one unchecked call could atomically replace a valid journal or
+            # manifest with truncated JSON. _write_all loops until every
+            # byte lands or a real failure raises.
+            _write_all(descriptor, _canonical(value) + b"\n")
+            os.fsync(descriptor)
+        finally:
             os.close(descriptor)
+    except BaseException:
+        # The previous control file, if any, is never touched by a failed
+        # write. Do not leave the failed attempt's temporary behind either,
+        # so this path is safe to retry immediately.
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
     if lifecycle_lock is not None:
         lifecycle_lock.assert_runtime_directory()
     os.replace(temporary, path)

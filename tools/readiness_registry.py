@@ -53,6 +53,7 @@ DOMAIN_TESTS = tuple(
         "test_two_instances_conflict_rolls_back_then_refresh_retry_preserves_both",
         "test_tampered_hash_and_unknown_schema_fail_closed",
         "test_every_public_mutator_is_transactional",
+        "test_score_writes_to_the_allocation_row_for_the_named_period",
     ))
 
 CONDUCTOR_TESTS = tuple(
@@ -64,6 +65,7 @@ CONDUCTOR_TESTS = tuple(
         "test_gate_proof_requires_authority_independence_and_verified_hash",
         "test_question_bank_freezes_all_sequences",
         "test_evicted_turn_is_state_checked_and_window_does_not_permanently_block",
+        "test_parked_question_advances_the_cursor_and_only_blocks_the_gate",
     ))
 
 ROUTING_TESTS = tuple(
@@ -86,6 +88,7 @@ ROUTING_TESTS = tuple(
         "test_dynamic_catalog_and_fallback_exhaustion_are_deterministic",
         "test_no_eligible_model_is_explicitly_blocked",
         "test_secret_store_repr_and_provider_failures_never_leak",
+        "test_bounded_budget_call_under_the_cap_is_not_rejected",
     ))
 
 HOOK_TESTS = tuple(
@@ -102,6 +105,8 @@ HOOK_TESTS = tuple(
         "test_secret_is_blocked_and_never_copied_to_audit_or_output",
         "test_claude_event_specific_output_contracts",
         "test_command_adapter_fails_closed_on_malformed_json",
+        "test_case_variant_protected_destinations_are_denied",
+        "test_private_key_material_is_blocked_like_other_secrets",
     )) + tuple(
         "test_pmos_hooks.RuntimeHookTests." + name for name in (
             "test_transition_requires_actor_revision_and_evidence",
@@ -109,6 +114,7 @@ HOOK_TESTS = tuple(
             "test_runtime_boundaries_reject_malformed_or_truthy_bypasses",
             "test_completion_hook_blocks_a_failed_release_gate",
             "test_hook_bus_is_ordered_and_stops_after_denial",
+            "test_hook_bus_rejects_duplicates_and_orders_same_priority_by_name",
         ))
 
 STORE_TESTS = tuple(
@@ -136,6 +142,11 @@ STORE_TESTS = tuple(
         "test_relative_and_uri_metacharacter_database_names_are_literal",
         "test_post_initialization_database_parent_swap_fails_before_operation",
         "test_forged_missing_or_cross_product_head_fails_closed",
+        "test_read_snapshot_serves_the_head_and_refuses_a_stale_revision",
+        "test_cancel_requested_live_lease_is_not_reaped_by_another_poll",
+        "test_heartbeat_past_the_deadline_reports_deadline_and_dead_letters",
+        "test_queue_admission_check_does_not_read_blob_payload_bytes",
+        "test_promotion_refuses_a_source_that_changed_after_it_was_reviewed",
     ))
 
 OPERATIONS_TESTS = (
@@ -158,6 +169,7 @@ OPERATIONS_TESTS = (
     "test_pmos_operations.AdoptionTests.test_consent_and_accessibility_flags_require_exact_booleans",
     "test_pmos_operations.OperationsBoundaryTests.test_issue_updates_allow_only_valid_mutable_fields",
     "test_pmos_operations.OperationsBoundaryTests.test_bounded_in_memory_adapters_reject_oversized_record_sets",
+    "test_pmos_operations.OutboxTests.test_completed_send_with_an_unusable_id_is_never_dispatched_again",
 )
 
 USE_CASE_TESTS = tuple(
@@ -241,6 +253,11 @@ SECURITY_TESTS = (
     "test_pmos_security.PublicRuntimeAdversarialTests.test_untrusted_prompt_cannot_authorize_tool_and_secret_never_leaks",
     "test_pmos_security.PublicRuntimeAdversarialTests.test_store_rejects_traversal_before_persistence",
     "test_pmos_security.PublicRuntimeAdversarialTests.test_audit_tamper_and_regulated_approval_drift_fail_closed",
+    "test_pmos_security.SecurityGateFixtureTests.test_every_credential_detector_has_a_fixture_that_names_it",
+    "test_pmos_security.SecurityGateFixtureTests.test_a_test_named_file_is_not_exempt_from_the_source_scan",
+    "test_pmos_security.SecurityGateFixtureTests.test_shell_and_process_replacement_primitives_are_rejected",
+    "test_pmos_security.DocumentationContractFixtureTests.test_a_lost_boundary_is_reported_against_the_document_that_lost_it",
+    "test_pmos_security.DocumentationContractFixtureTests.test_a_boundary_another_document_still_carries_is_not_masked",
 )
 
 EVALUATOR_TESTS = (
@@ -270,6 +287,16 @@ EVALUATOR_TESTS = (
     "test_readiness.VerifierExecutionTests.test_skip_evidence_fails",
     "test_readiness.VerifierExecutionTests.test_wrong_test_count_evidence_fails",
     "test_readiness.VerifierExecutionTests.test_zero_test_evidence_fails",
+    # The --category exit code, read in the fast suite rather than only through
+    # the two fresh-tree mutants under CI-3.
+    "test_tools_gates.ReadinessCategoryExitTests.test_a_failing_criterion_fails_the_category_run",
+    "test_tools_gates.ReadinessCategoryExitTests.test_a_rubric_error_fails_the_category_run",
+    "test_tools_gates.ReadinessCategoryExitTests.test_a_clean_category_passes_without_claiming_readiness",
+    # A committed measurement nothing re-measures goes stale silently, which
+    # is the same failure the rest of this list guards against one level up.
+    "test_readiness.GeneratedEvidenceFreshnessTests.test_check_passes_on_a_fresh_snapshot_and_fails_on_a_stale_one",
+    "test_readiness.GeneratedEvidenceFreshnessTests.test_check_fails_when_the_snapshot_is_missing",
+    "test_readiness.GeneratedEvidenceFreshnessTests.test_the_freshness_check_is_a_release_gate",
 )
 
 CLI_TESTS = tuple(
@@ -310,14 +337,94 @@ RELEASE_TESTS = tuple(
         "test_source_commit_is_bound_to_clean_current_git_head",
         "test_dirty_tree_is_never_attributed_to_head",
         "test_secret_like_path_blocks_build_and_cannot_hide_from_verification",
+        "test_file_replaced_between_stat_and_open_fails_closed",
+        "test_failed_build_does_not_leak_the_output_directory_descriptor",
+        "test_failed_provenance_write_leaves_no_temporary_in_the_tree",
+        "test_manifest_built_without_output_records_an_existing_provenance_file",
     ))
+
+# Built by pmos_build_backend rather than by a packaging frontend, so this runs
+# offline and reads what the wheel says about itself.
+DISTRIBUTION_TESTS = tuple(
+    "test_readiness.DistributionMetadataTests." + name for name in (
+        "test_the_built_wheel_declares_its_license",
+        "test_build_sdist_refuses_in_the_way_a_frontend_can_report",
+    ))
+
+# The gate list and the full-suite probe are two readers of the same suite.
+# These hold the probe to the gate's own argv, refuse a gate argv that drops a
+# shipped module, and hold gate names to what their verifiers execute.
+GATE_CONTRACT_TESTS = tuple(
+    "test_readiness.ReleaseGateContractTests." + name for name in (
+        "test_a_gate_is_named_for_what_its_verifiers_prove",
+        "test_full_suite_probe_runs_exactly_the_root_tests_gate",
+        "test_full_suite_probe_refuses_a_gate_that_skips_a_shipped_module",
+        "test_every_workflow_lint_of_a_shipped_file_is_also_a_gate",
+    ))
+
+# Route shape, read out of the two adapters that render it. A route can declare
+# a kind the runner implements and still be told to do something else by the
+# command generated from it, which is what these read.
+ROUTE_RENDERING_TESTS = tuple(
+    "harness.test_runner.StoryRouteStageTests." + name for name in (
+        "test_the_route_declares_the_stage_its_skill_declares",
+        "test_the_route_declares_the_stage_its_templates_declare",
+        "test_the_skill_prose_names_the_same_gate",
+    )) + tuple(
+        "harness.test_runner.GeneratedCommandTests." + name for name in (
+            "test_a_report_route_does_not_call_its_reads_a_destination",
+            "test_an_artifact_route_still_titles_its_templates_as_the_destination",
+            "test_an_interactive_route_says_the_answer_lands_there_later",
+            "test_a_route_whose_stage_is_decided_at_run_time_names_its_gate",
+            "test_the_catch_all_is_told_to_fill_a_template_not_to_report",
+            "test_a_stage_less_route_with_no_gate_note_still_denies_a_gate",
+        )) + tuple(
+        "harness.test_runner.CliPlanGateTests." + name for name in (
+            "test_a_route_whose_stage_is_decided_at_run_time_names_its_gate",
+            "test_a_reference_route_still_reports_that_no_gate_applies",
+        ))
+
+# lint.py --os is the only verifier this rubric runs over the document tree, so
+# a green run of it is worth exactly what these tests prove about the gates
+# behind it: that they read guidance comments and fenced blocks rather than
+# skipping them, that the path gate reaches every directory in the tree, and
+# that a system prompt's manifest is read both ways.
+LINT_TREE_GATE_TESTS = tuple(
+    "test_lint.OsTreeGateTests." + name for name in (
+        "test_the_content_gates_read_html_comments",
+        "test_the_content_gates_read_fenced_blocks_but_the_link_gate_does_not",
+    )) + tuple(
+        "test_lint.PathGateFenceTests." + name for name in (
+            "test_every_top_level_directory_of_the_tree_is_in_reach",
+            "test_a_directory_with_no_files_is_not_invented_as_a_path_root",
+            "test_a_manifest_block_must_name_every_file_in_its_directory",
+        )) + tuple(
+        "test_lint.ReviewGateTests." + name for name in (
+            "test_status_spellings_that_render_the_same_are_read_the_same",
+            "test_deferred_decisions_are_flagged_inside_comments_and_fences",
+            "test_banned_metrics_are_caught_inside_code_fences_and_comments",
+        )) + tuple(
+        "test_lint.WorkspaceModeTests." + name for name in (
+            "test_content_hidden_in_a_comment_is_still_checked",
+            "test_the_boundary_does_not_move_with_the_working_directory",
+        ))
 
 
 REGISTRY = {
-    "os-tree": (Step(("python3", "lint.py", "--os")),),
+    "os-tree": (
+        Step(("python3", "lint.py", "--os")),
+        unit(*LINT_TREE_GATE_TESTS),
+    ),
     "workspace-lifecycle": (probe("workspace-lifecycle"),),
     "workspace-contract": (
-        Step(("python3", "tools/check_workspace_contract.py", "--quiet")),),
+        Step(("python3", "tools/check_workspace_contract.py", "--quiet")),
+        unit(
+            "test_contract_gates.WorkspaceContractGateTests."
+            "test_moving_the_state_file_fails_the_gate",
+            "test_contract_gates.WorkspaceContractGateTests."
+            "test_moving_the_state_file_fails_with_the_harness_deleted_too",
+        ),
+    ),
     "workspace-links": (probe("workspace-links"),),
     "workspace-drift": (
         probe("workspace-drift"),
@@ -328,7 +435,16 @@ REGISTRY = {
     ),
     "link-grammar": (probe("link-grammar"),),
     "manifest-contract": (
-        Step(("python3", "tools/check_manifest.py", "--quiet")),),
+        Step(("python3", "tools/check_manifest.py", "--quiet")),
+        unit(
+            "test_contract_gates.ModelIdGateTests."
+            "test_every_pattern_catches_that_vendors_production_ids",
+            "test_contract_gates.ModelIdGateTests."
+            "test_a_vendor_name_in_prose_is_not_read_as_a_model_id",
+            "test_contract_gates.ModelIdGateTests."
+            "test_a_non_numeric_model_id_in_the_manifest_fails_the_gate",
+        ),
+    ),
     "harness-route-behavior": (unit(
         "harness.test_runner.AuditRegressionTests."
         "test_every_route_declares_a_kind_the_runner_implements",
@@ -338,6 +454,7 @@ REGISTRY = {
         "test_the_conductor_is_interactive_and_files_no_document",
         "harness.test_runner.AuditRegressionTests."
         "test_an_interactive_route_is_never_told_to_return_a_document",
+        *ROUTE_RENDERING_TESTS,
     ),),
     "claude-adapter": (
         Step(("python3", "harness/adapters/claude-code/generate.py",
@@ -387,7 +504,23 @@ REGISTRY = {
         Step(("python3", "tools/security_gate.py")),
     ),
     "docs-contract": (
-        Step(("python3", "tools/docs_contract.py", "--strict")),),
+        Step(("python3", "tools/docs_contract.py", "--strict")),
+        # The template inventory is the one reading in that gate that counts
+        # against the tree, so a seeded wrong count is its only evidence: a
+        # stale total, and a wrong heading hidden inside a correct total.
+        unit(
+            "test_tools_gates.TemplateInventoryGateTests."
+            "test_the_tree_as_it_stands_states_its_own_inventory",
+            "test_tools_gates.TemplateInventoryGateTests."
+            "test_a_self_consistent_stale_total_is_reported_everywhere_it_sits",
+            "test_tools_gates.TemplateInventoryGateTests."
+            "test_a_wrong_section_heading_is_reported_when_the_total_still_adds_up",
+            "test_tools_gates.TemplateInventoryGateTests."
+            "test_dropping_the_claim_is_not_a_way_to_pass",
+            "test_tools_gates.TemplateInventoryGateTests."
+            "test_the_gate_itself_fails_on_a_stale_total",
+        ),
+    ),
     "accessibility": (
         unit(
             "test_pmos_security.DocumentationContractFixtureTests."
@@ -399,7 +532,8 @@ REGISTRY = {
     ),
     "evaluator-integrity": (unit(*EVALUATOR_TESTS),),
     "cli-contract": (unit(*CLI_TESTS),),
-    "packaging-release": (unit(*(CLI_TESTS + RELEASE_TESTS)),),
+    "packaging-release": (
+        unit(*(CLI_TESTS + RELEASE_TESTS + DISTRIBUTION_TESTS)),),
     "approved-evidence": (unit(
         "test_lint.ReviewGateTests."
         "test_approved_with_an_unticked_box_fails",
@@ -442,6 +576,23 @@ REGISTRY = {
         "test_sanitize_detail_does_not_pass_a_body_through",
         "harness.test_runner.RedactionTests."
         "test_an_http_error_body_is_never_persisted",
+        "test_lint.SecretGateTests."
+        "test_the_regulated_module_is_not_exempt_from_the_secret_gate",
+        "test_lint.SecretGateTests."
+        "test_an_undecodable_regulated_file_fails_instead_of_being_skipped",
+        # A redirect is a second request, and the default opener would have put
+        # the gateway key on it. That is a credential boundary, so it is held
+        # here beside the redaction tests rather than with the transport.
+        "harness.test_runner.GatewayRedirectTests."
+        "test_the_default_handler_would_carry_the_key_to_the_named_host",
+        "harness.test_runner.GatewayRedirectTests."
+        "test_the_runners_handler_builds_no_second_request",
+        "harness.test_runner.GatewayRedirectTests."
+        "test_the_opener_call_http_uses_carries_that_refusal",
+        "harness.test_runner.GatewayRedirectTests."
+        "test_call_http_does_not_reach_for_the_default_opener",
+        "harness.test_runner.GatewayRedirectTests."
+        "test_a_redirecting_gateway_queues_the_run",
     ),),
     "write-boundary": (unit(
         "harness.test_runner.SlugTests.test_traversal_is_refused",
@@ -456,9 +607,34 @@ REGISTRY = {
     ),),
     "compile-all": (probe("compile-all"),),
     "full-suite": (probe("full-suite", timeout=1800),),
-    "ci-runtime": (probe("ci-covers-runtime"),),
+    "ci-runtime": (
+        probe("ci-covers-runtime"),
+        unit(
+            "test_tools_gates.ReadinessProbeCiWiringTests."
+            "test_a_suite_missing_a_required_gate_fails",
+            "test_tools_gates.ReadinessProbeCiWiringTests."
+            "test_a_commented_out_invocation_fails",
+            "test_tools_gates.CiGateVerdictTests."
+            "test_zero_tests_fails_even_on_a_clean_exit",
+            "test_tools_gates.CiGateVerdictTests."
+            "test_a_skipped_test_is_not_a_pass",
+            "test_tools_gates.CiGateVerdictTests."
+            "test_one_failing_gate_fails_the_suite_and_no_gates_is_no_pass",
+        ),
+        unit(*GATE_CONTRACT_TESTS),
+    ),
     "deletable-harness": (probe("deletable-harness"),),
-    "mutation-gates": (probe("mutation-checks", timeout=1800),),
+    # The anchors are read first: a moved anchor is a table defect, and the
+    # probe below would otherwise report it as a gate that caught nothing.
+    "mutation-gates": (
+        unit(
+            "test_tools_gates.ReadinessProbeMutationAnchorTests."
+            "test_every_anchor_matches_its_target_exactly_once",
+            "test_tools_gates.ReadinessProbeMutationAnchorTests."
+            "test_the_queue_mutant_removes_only_the_check_and_only_in_lease_next",
+        ),
+        probe("mutation-checks", timeout=1800),
+    ),
     "golden-path": (probe("golden-path"),),
     "regulated-example": (
         Step(("python3", "lint.py",

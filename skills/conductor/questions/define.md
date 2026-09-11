@@ -21,7 +21,7 @@ Evidence class: 5 is acceptable, this is a judgment the user owns; the judgment 
 Options: a) an afternoon, which implies decide and log or a ticket. b) a sprint, which implies a ticket with acceptance criteria. c) a quarter, which implies a one-pager or a full PRD. d) a license or a contract, which implies the full stack and a regulatory look.
 Cross-examine when: the answer hedges across two options. Move: banned openers, then force one.
 Accept when: exactly one option, with one line of reasoning.
-Lands in: `execution/decision-log.md` weight entry, and STATE.md accepted answers.
+Lands in: `execution/decision-log.md` weight entry and STATE.md accepted answers, at every weight.
 
 ### DEFINE-2: audience
 
@@ -30,7 +30,7 @@ Wrong costs: A document written for nobody in particular is read by nobody at al
 Evidence class: named roles, or named people where they exist.
 Cross-examine when: the answer is "the team" or "stakeholders". Move: category to name.
 Accept when: each reader named with the action their reading triggers.
-Lands in: `execution/decision-log.md` weight entry, and STATE.md accepted answers.
+Lands in: `execution/decision-log.md` weight entry always; at one-pager weight, also `definition/one-pager.md` "Reviewers who must not be surprised" once DEFINE-3 lands the weight (full-PRD and BRD-stack weight route this answer to section 3 "Users and stories" of the PRD and section 4 "Stakeholders" of the BRD instead, filled during those templates' own drafting), and STATE.md accepted answers.
 
 ### DEFINE-3: reversibility
 
@@ -39,7 +39,7 @@ Wrong costs: Treating a one-way door as reversible is how a weekend decision bec
 Evidence class: 2 where the claim is a flag or a rollback path, an artifact should exist; otherwise a reasoned judgment.
 Cross-examine when: "we can always roll it back" arrives with no named mechanism. Move: interest to behavior, has that rollback ever been performed?
 Accept when: reversible with the mechanism named, or irreversible with what it locks in named. The three answers so far pick the weight; the Conductor states the pick and why before continuing.
-Lands in: `execution/decision-log.md` weight entry, and STATE.md accepted answers.
+Lands in: `execution/decision-log.md` weight entry, plus `definition/one-pager.md` section 3 "Scope" at one-pager weight (full-PRD and BRD-stack weight route this answer into section 4 "Functional scope" of the PRD instead, filled during that template's own drafting), and STATE.md accepted answers.
 
 ### DEFINE-4: objective traceability
 
@@ -48,7 +48,7 @@ Wrong costs: An objective that traces to nothing is scope smuggled past discover
 Evidence class: 2, the trace itself, objective to problem statement, line by line.
 Cross-examine when: an objective traces to a goal, a competitor, or a wish instead of the Gate 1 problem. Move: banned openers, then: cut it, or name the gap out loud in the document.
 Accept when: every objective traces, or the untraced ones are cut or explicitly flagged as new scope needing its own discovery.
-Lands in: `definition/prd.md` section 2, and STATE.md accepted answers.
+Lands in: `definition/prd.md` section 2 at full-PRD or BRD-stack weight; `definition/one-pager.md` section 4 at one-pager weight, and STATE.md accepted answers.
 
 ### DEFINE-5: how requirements fail
 
@@ -57,7 +57,7 @@ Wrong costs: Prose that cannot fail cannot be tested, and its gaps ship silently
 Evidence class: 2, a condition, an expected result, and a measurable threshold per requirement.
 Cross-examine when: a criterion contains "works well", "fast", "intuitive", or any word a demo could not falsify. Move: naked numbers, threshold or it is not a criterion.
 Accept when: every requirement has a failing condition a tester could stage. Prose that cannot fail is returned, not accepted.
-Lands in: `definition/acceptance-criteria.md` and `definition/frd.md`, and STATE.md accepted answers.
+Lands in: `definition/acceptance-criteria.md`, plus `definition/frd.md` at BRD-stack weight, and STATE.md accepted answers.
 
 ### DEFINE-6: out of scope
 
@@ -66,7 +66,7 @@ Wrong costs: The unwritten exclusion is the launch-week surprise, delivered by t
 Evidence class: 3, named commitment, the sponsor's written acknowledgment of the list.
 Cross-examine when: the list exists but the sponsor has "seen it around". Move: interest to behavior, where is the written yes?
 Accept when: the list is written and the sponsor's acknowledgment is dated.
-Lands in: `definition/prd.md` section 7, and STATE.md accepted answers.
+Lands in: `definition/prd.md` section 7 at full-PRD or BRD-stack weight; `definition/one-pager.md` section 5 at one-pager weight, and STATE.md accepted answers.
 
 ### DEFINE-7: the assumptions
 
@@ -99,6 +99,6 @@ On "advance anyway": DEFINE-5, then DEFINE-8. Untestable requirements and an une
 | Every NFR target is a number or names a dated owner | DEFINE-5, checked by the validation agent against `definition/nfr.md` |
 | Assumptions register complete per assumption | DEFINE-7 |
 | Out of scope written and read by the sponsor | DEFINE-6 |
-| Sponsor signed the BRD itself | Human signature; the Conductor reports presence or absence, never supplies it |
+| Sponsor signed the definition artifact at the chosen weight | Human signature on the one-pager, PRD, or BRD sign-off block; the Conductor reports presence or absence, never supplies it |
 | AI overlay: eval sets with thresholds, not prose | DEFINE-8, via the ai-prd handoff |
 | Regulated overlay: section 0 answered per market, lint green | DEFINE-8, via the reg-gap-check handoff |

@@ -33,11 +33,14 @@ Four leads and one lag is deliberate. The leads are dials a team can turn this s
 
 | Check | Result | Reasoning |
 |---|---|---|
-| Value, not vanity: would it fall within the quarter if customers stopped benefiting? | Pass | If extraction degrades, reviewers bounce and the count falls that month; if filers abandon the draft flow, the count falls the next month. It cannot only go up |
-| Moves within a quarter | Pass | Monthly count; the inputs are per-sprint dials |
+| Value not vanity | Pass | The unit counts reports approved on first submission, not reports attempted: a filer got it done in one sitting and it did not come back. "Reports drafted" was rejected in section 1 for exactly the volume failure this check names |
+| Responsive to value loss | Pass | If extraction degrades, reviewers bounce and the count falls that month; if filers abandon the draft flow, the count falls the next month. It cannot only go up |
+| Inputs move within a quarter | Pass | Four of five answer yes, the four leads in section 2, which are per-sprint dials. Input 5 is the lag that confirms them afterwards and is the one lag row the sheet allows. Four is above the floor of three |
 | No single metric hides a leak | Pass, with a companion | The count rises with travel volume alone in a busy quarter. Companion on the same dashboard: the count as a share of all reports, so a seasonal rise shows as a flat share |
-| Exactly one owner per input | Pass | Roles above. The finance admin owns input 3 because the mapping is theirs, not engineering's |
-| Three to five inputs | Pass | Five. A sixth, "receipts forwarded by email", was cut; it is an input to input 1, not to the north star |
+| Coverage | Pass, with one omission explained | Breadth is input 1, depth is inputs 2 and 3, efficiency is input 4. Frequency has no input on purpose: reports are filed when spend happens, and the copilot cannot move how often a rep travels |
+| Not arithmetic | Pass, with the identity named | Every causal claim in section 2 is a mechanism, not a sum. The closing line of that section states an identity, the rate times input 1 times report volume, and that identity defines the unit rather than the tree: inputs 2, 3 and 4 are not terms in it. Inputs 2 and 3 act on the rate through the bounce reasons, and input 4 acts on input 1 through the filer's habit, which is the causal reading the check is asking for |
+
+Step 2's own rules hold as well. Exactly one owner per input: the finance admin owns input 3 because the mapping is theirs, not engineering's. Three to five inputs: five, after a sixth, "receipts forwarded by email", was cut as an input to input 1 rather than to the north star.
 
 ## 4. Guardrails
 

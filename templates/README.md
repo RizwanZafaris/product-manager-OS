@@ -14,7 +14,7 @@ Skill: [the Conductor](../skills/conductor/SKILL.md) fills these by interview; i
 
 A template is the blank a stage produces and a gate reads. Every one opens with the same three-line header this page carries, naming the stage it serves and the gate it feeds, the knowledge card behind it, and the skill or agent that drives it, so a copy you fill in still knows where it came from and which checklist will judge it. Nothing here needs a model: the blanks are fields, the gates are checklists, and a pencil finishes the job. Before some of these blanks get filled, a worksheet in [frameworks/](../frameworks/README.md) has often done the arithmetic that lands in them, the reconciled TAM/SAM/SOM a business case argues from, the RICE score a roadmap sequences by.
 
-Eight directories, 98 templates. Six carry stage work: `discovery` and `definition` sit under DISCOVER and DEFINE, `architecture` holds the DESIGN artifacts while `execution` holds the registers and logs that open early and stay open, `delivery` carries BUILD through DELIVER, and `operate` closes the loop at Gate 6. The last two, `planning` and `ai`, are the tracks that run across every stage rather than inside one. The stage definitions are in [os/OPERATING-LOOP.md](../os/OPERATING-LOOP.md); the checklists these feed are in [os/STAGE-GATES.md](../os/STAGE-GATES.md).
+Eight directories, 100 templates. Six carry stage work: `discovery` and `definition` sit under DISCOVER and DEFINE, `architecture` holds the DESIGN artifacts while `execution` holds the registers and logs that open early and stay open, `delivery` carries BUILD through DELIVER, and `operate` closes the loop at Gate 6. The last two, `planning` and `ai`, are the tracks that run across every stage rather than inside one. The stage definitions are in [os/OPERATING-LOOP.md](../os/OPERATING-LOOP.md); the checklists these feed are in [os/STAGE-GATES.md](../os/STAGE-GATES.md).
 
 ## discovery (16 templates)
 
@@ -39,7 +39,7 @@ DISCOVER, feeding Gate 1: problem worth solving. A no-go here is a success, beca
 | [service-blueprint.md](discovery/service-blueprint.md) | One scenario across frontstage, backstage, and support systems, with line-of-visibility failure points, each owned | The product is a service and the failure happens behind the counter |
 | [evidence-note.md](discovery/evidence-note.md) | One note per source: claim, verbatim load-bearing quote, source, dates, confidence | Any claim is about to enter a template and would not survive the question "says who" |
 
-## definition (10 templates)
+## definition (11 templates)
 
 DEFINE, feeding Gate 2: requirements signed off. Pick the weight before you pick the template; the gate asks the same questions either way.
 
@@ -75,7 +75,7 @@ DESIGN, feeding Gate 3: architecture and risks reviewed. Alternatives get consid
 | [accessibility-checklist.md](architecture/accessibility-checklist.md) | A component-by-component walk against the WCAG guideline families at the conformance level the NFR already set, each check carrying evidence a skeptic could open | Before Gate 3, and again at Gate 4 once the evidence column can be filled from a real keyboard and screen-reader pass |
 | [observability.md](architecture/observability.md) | SLOs, logs, traces, alert thresholds, dashboard owner, a synthetic failure check | Deciding what "working" means while you can still instrument for it |
 
-## execution (10 templates)
+## execution (11 templates)
 
 These open early and are never finished. The stakeholder map is first required at Gate 2, the risk and dependency registers open at DESIGN and are governed weekly through DELIVER, and the decision log and STATE.md run for the life of the product.
 

@@ -38,6 +38,10 @@ HEX64 = re.compile(r"^[0-9a-f]{64}$")
 # permission failures, and config errors are nonzero exits too, but none of
 # them say this, and none of them mean "nothing is tracked here".
 NOT_A_GIT_REPOSITORY = re.compile(rb"not a git repository", re.IGNORECASE)
+# Git's wording for a repository that positively exists but has no commits
+# yet. There is no history to check for self-attestation there either, so it
+# is treated the same as "no repository": an empty author set, not a fail.
+NO_COMMITS_YET = re.compile(rb"does not have any commits yet", re.IGNORECASE)
 MAX_TREE_ENTRIES = 16384
 MAX_TREE_DEPTH = 64
 MAX_TREE_BYTES = 256 * 1024 * 1024
@@ -305,9 +309,26 @@ def tree_digest(root=REPO):
                     # Neither form is reviewable content.
                     continue
                 if stat.S_ISDIR(metadata.st_mode):
-                    if ((at_root and (name in ROOT_SKIP_DIRS or name.endswith(".egg-info"))) or
-                            (not at_root and name in NESTED_CACHE_DIRS)):
+                    if not at_root and name in NESTED_CACHE_DIRS:
                         continue
+                    if at_root and (name in ROOT_SKIP_DIRS or name.endswith(".egg-info")):
+                        # A root-level scratch directory is skipped by name
+                        # only while git carries nothing beneath it. `git add
+                        # -f` can force-track a file inside `dist/` or
+                        # `build/` past .gitignore, and skipping the whole
+                        # directory by name let such a file change content
+                        # without moving the digest a recorded review is
+                        # pinned to -- the same defect class the ._ exclusion
+                        # above was fixed for. tracked_set() is None outside
+                        # a git work tree, which keeps the old behaviour
+                        # there: nothing tracked to protect, so the name-only
+                        # exclusion is safe.
+                        tracked = tracked_set()
+                        tracked_beneath = tracked is not None and any(
+                            p == name or p.startswith(name + "/")
+                            for p in tracked)
+                        if not tracked_beneath:
+                            continue
                     entries += 1
                     if entries > MAX_TREE_ENTRIES:
                         raise OSError("review tree exceeds entry limit")
@@ -346,6 +367,60 @@ def tree_digest(root=REPO):
     rows.sort(key=lambda row: row["path"])
     encoded = json.dumps(rows, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest(), tuple(rows)
+
+
+def _read_attestation(path):
+    """Read the canonical attestation record, refusing to follow a symlink.
+
+    ``Path.read_text`` follows symlinks like any other ``open(2)`` call. The
+    attestation path is a well-known, fixed location
+    (``docs/readiness/independent-review.json``) that ``tree_digest`` itself
+    deliberately excludes from the hash it binds a review to -- so a symlink
+    planted at that exact path is never caught by the reviewed-tree digest
+    either. Reading through it would validate whatever file the symlink
+    pointed to, inside the repository or outside it, as though it were the
+    record written to this path, defeating the point of pinning a review to
+    an exact file. ``O_NOFOLLOW`` on the open refuses that outright: if the
+    final path component is a symlink, the open fails instead of resolving
+    it.
+    """
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(str(path), flags)
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode):
+            raise OSError("attestation path %s is not a regular file" % path)
+        payload = b"".join(iter(lambda: os.read(fd, 65536), b""))
+        return payload.decode("utf-8")
+    finally:
+        os.close(fd)
+
+
+def _write_attestation(path, contents):
+    """Write the attestation record, refusing to write through a symlink.
+
+    ``Path.write_text`` follows symlinks the same way ``read_text`` does. If
+    the canonical attestation path had been replaced with a symlink -- to
+    another file inside the tracked tree, or to something outside the
+    repository entirely -- an unguarded write would silently overwrite
+    whatever that symlink pointed to instead of the attestation file itself,
+    while ``record_review`` went on to report success. ``O_NOFOLLOW`` on the
+    open refuses to resolve a symlink at that path; ``O_CREAT`` still creates
+    an ordinary new file when nothing exists there yet, because there is
+    nothing to follow in that case.
+    """
+    directory = os.path.dirname(str(path))
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(str(path), flags, 0o644)
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode):
+            raise OSError("attestation path %s is not a regular file" % path)
+        os.write(fd, contents.encode("utf-8"))
+    finally:
+        os.close(fd)
 
 
 def validate_attestation(document, root=REPO):
@@ -417,18 +492,45 @@ def recent_authors(root, limit=40):
     the person who wrote the commits, and it cannot catch a reviewer who uses
     a different name. Independence is asserted by a human either way; this
     only removes the easiest way to assert it falsely by accident.
+
+    Returns None when git control metadata is present but the history could
+    not be read (a corrupted repository, an unreadable object store, a
+    missing HEAD). This used to return an empty set on any failure, which let
+    the self-attestation refusal fail open: a reviewer whose name matched an
+    author of a history git could not read was recorded anyway, because
+    "git told us nothing" and "there is no history to check" collapsed into
+    the same answer. That is the same distinction tracked_paths() makes for
+    the reviewed tree itself, and record_review() below refuses outright
+    rather than guess when this returns None. An empty set is still correct,
+    not a failure, for a tree with no git control metadata at all and for a
+    repository that positively has no commits yet -- both have no history to
+    protect.
     """
     import subprocess
     try:
         done = subprocess.run(
             ["git", "log", "--format=%an%n%ae", "-%d" % int(limit)],
-            cwd=str(root), capture_output=True, text=True, timeout=20)
+            cwd=str(root), capture_output=True, timeout=20)
     except (OSError, subprocess.SubprocessError):
-        return set()
+        return None if git_control_present(root) else set()
     if done.returncode != 0:
-        return set()
-    return {line.strip().lower() for line in done.stdout.splitlines()
-            if line.strip()}
+        stderr = _as_bytes(done.stderr)
+        if NO_COMMITS_YET.search(stderr) is not None:
+            return set()
+        # Control-metadata presence decides before the message does, the
+        # same order tracked_paths() above uses and for the same reason: a
+        # damaged repository (for instance a HEAD file overwritten with
+        # garbage) makes git print the identical "fatal: not a git
+        # repository" line a plain directory gets, so trusting the message
+        # here first would let a self-attestation through on a tree that
+        # very much has commit history git merely could not read.
+        if git_control_present(root):
+            return None
+        if NOT_A_GIT_REPOSITORY.search(stderr) is not None:
+            return set()
+        return None
+    stdout = _as_bytes(done.stdout).decode("utf-8", "replace")
+    return {line.strip().lower() for line in stdout.splitlines() if line.strip()}
 
 
 def record_review(args, root=REPO):
@@ -453,6 +555,13 @@ def record_review(args, root=REPO):
         return 2
 
     authors = recent_authors(root)
+    if authors is None:
+        print("record: REFUSED. this tree's commit history could not be "
+              "inspected, so a self-attestation by %r cannot be ruled out."
+              % reviewer)
+        print("        The self-attestation refusal only protects when git "
+              "can be read; it does not stand in for it.")
+        return 2
     if reviewer.lower() in authors:
         print("record: REFUSED. %r authored commits in this tree's recent "
               "history, so recording this review would be a self-attestation."
@@ -512,7 +621,11 @@ def record_review(args, root=REPO):
     path = Path(args.attestation)
     if not path.is_absolute():
         path = root / path
-    path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+    try:
+        _write_attestation(path, json.dumps(document, indent=2) + "\n")
+    except OSError as error:
+        print("record: REFUSED. %s" % error)
+        return 2
     print("recorded review of %d files at %s" % (len(rows), digest[:12]))
     print("  reviewer : %s (%s, identity not authenticated)"
           % (reviewer, args.reviewer_kind))
@@ -561,7 +674,7 @@ def main(argv=None):
     if not path.is_absolute():
         path = REPO / path
     try:
-        document = json.loads(path.read_text(encoding="utf-8"))
+        document = json.loads(_read_attestation(path))
     except (OSError, json.JSONDecodeError) as error:
         print("independent review unavailable: %s" % error)
         return 1

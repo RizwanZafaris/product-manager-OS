@@ -82,8 +82,10 @@ Invented, for Ledgerline's expense-report copilot. Value metric: active filer pe
 | Tier | Segment | Included | Fence above | Price |
 |---|---|---|---|---|
 | Filer (Good) | teams under 50 filers | capture, card match, submit, status | feature | 8 |
-| Team (Better) | mid-market finance teams | adds policy pre-check, approver queue, two ERP connectors | feature plus support | 12 |
-| Finance (Best) | firms with audit requirements | adds audit trail, SSO, custom policy rules, named support | none above | 18 |
+| Team (Better) | mid-market finance teams | adds policy pre-check, approver queue, two ERP connectors | feature plus support | 10 |
+| Finance (Best) | firms with audit requirements | adds audit trail, SSO, custom policy rules, named support | none above | 15 |
+
+Every price is read off the [Gabor-Granger ladder](gabor-granger.md), which is what the checklist item above asks for. Better is that sheet's stated middle-tier decision, 10. Best is 15, the top of the 12-to-15 plateau the above-500-staff segment produced, and that sheet routes exactly that segment to the top tier. Good has no plateau of its own: it sits at 8, the bottom of the same 8-to-10 plateau Better is priced from. A plateau that flat is the ladder saying price is not the lever between those two rungs, so the fence between Filer and Team carries the boundary, not the two-unit gap.
 
 Migration: customers on the legacy per-seat plan map to Team at their current spend for two renewal cycles; notice 90 days before the first affected renewal; the pricing owner approves exceptions and logs them. The mapping run found 11 accounts using the audit export on the legacy plan; they get Finance at the Team price until their second renewal.
 

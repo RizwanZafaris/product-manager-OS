@@ -266,6 +266,21 @@ class RegressionsReachHostedCI(unittest.TestCase):
         self.assertEqual(missing, [],
                          "test modules CI never runs: %s" % missing)
 
+    def test_the_full_suite_criterion_runs_every_root_test_module(self):
+        """CI-1, 2026-09-10: the full-suite probe kept its own list of root
+        modules, three shipped modules were never on it, and the criterion
+        "every shipped root test runs" counted 371 root tests while the
+        release gate ran 516. Nothing compared the two lists."""
+        import ci_gate
+        import readiness_probe
+        on_disk = sorted(p.stem for p in REPO.glob("test_*.py"))
+        self.assertEqual(readiness_probe.root_test_modules(), on_disk)
+        gate = next(g for g in ci_gate.GATES if g.gate_id == "root-tests")
+        self.assertEqual(sorted(a for a in gate.argv if a.startswith("test_")),
+                         on_disk,
+                         "the release gate and the full-suite criterion must "
+                         "run the same root modules")
+
 
 if __name__ == "__main__":
     unittest.main()

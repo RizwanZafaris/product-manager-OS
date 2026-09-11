@@ -120,7 +120,13 @@ MODEL_PATTERNS = [
     (r"\bgemini-[0-9a-z]", "a Google gemini model id"),
     (r"\bllama-?[0-9]", "a Llama model id"),
     (r"\bmistral-[0-9a-z]", "a Mistral model id"),
-    (r"\b(?:qwen|deepseek|grok)-?[0-9]", "a third-party model id"),
+    # A separator followed by any id character, not a digit: the primary
+    # production ids of all three vendors are non-numeric (deepseek-chat,
+    # qwen-max, grok-beta) and the digit requirement let every one of them
+    # through the check that exists to keep model ids out of the manifest. The
+    # bare-digit alternative keeps qwen3-max, and requiring one of the two
+    # keeps the word "grok" in prose from matching.
+    (r"\b(?:qwen|deepseek|grok)(?:[-.][0-9a-z]|[0-9])", "a third-party model id"),
 ]
 
 
@@ -290,6 +296,67 @@ def walk_strings(node, trail="tasks"):
     elif isinstance(node, list):
         for index, value in enumerate(node):
             yield from walk_strings(value, "%s[%d]" % (trail, index))
+
+
+def destination_chosen_at_run_time(entry):
+    """True when this route cannot name its destination in advance.
+
+    Exactly one shape qualifies, and both halves are required: stage null, so
+    the entry declares no stage folder for the output, and a gate_note, which
+    is what an entry carries when its stage is null and a gate nonetheless
+    applies. That pair describes the catch-all row, whose stage is whatever the
+    request turns out to belong to; harness/runner.py implements the same case
+    by refusing the run with an instruction to pass --template.
+
+    Either half alone would widen this past that one route. A null stage on its
+    own covers the PLANNING and reference rows, which produce no artifact at
+    all and would then be free to claim kind artifact with nowhere to land. A
+    gate_note on a route that does declare a stage is a contradiction that
+    check_gate_notes fails, and is not a licence to drop the template. Every
+    other artifact route names a fixed destination and still fails the check
+    above without one.
+    """
+    if entry.get("stage") is not None:
+        return False
+    note = entry.get("gate_note")
+    return isinstance(note, str) and bool(note.strip())
+
+
+def check_gate_notes(entries, line_of, fail):
+    """Hold gate_note to the shape the exemption above relies on.
+
+    A gate_note is half of the only exemption from the rule that kind artifact
+    names a template, so its shape is checked here rather than trusted. It is a
+    sentence an adapter can say about the gate, it sits only on an entry whose
+    stage and gate are null, and it sits on at most one entry. Without the last
+    rule a second stage-null route could add a note and file a document with
+    no destination declared anywhere, and nothing here would notice; the
+    runner would still refuse the run, but only at run time.
+    """
+    carriers = []
+    for entry in entries:
+        if "gate_note" not in entry:
+            continue
+        carriers.append(entry)
+        entry_id, note = entry.get("id"), entry.get("gate_note")
+        line_no = line_of(entry)
+        if not isinstance(note, str) or not note.strip():
+            fail(line_no, "SHAPE", "%s: gate_note is %r. It is the sentence an "
+                 "adapter says about the gate in place of 'no gate', so it is "
+                 "a non-empty string or it is absent." % (entry_id, note))
+        if entry.get("stage") is not None or entry.get("gate") is not None:
+            fail(line_no, "GATE", "%s: carries a gate_note and declares stage "
+                 "%r and gate %r. A declared stage already names its gate; the "
+                 "note is for a stage decided at run time, so on this entry the "
+                 "two disagree about which gate applies."
+                 % (entry_id, entry.get("stage"), entry.get("gate")))
+    if len(carriers) > 1:
+        fail(line_of(carriers[1]), "GATE", "gate_note is carried by %s. It "
+             "belongs on at most one entry, the catch-all whose stage is "
+             "decided at run time. Every stage-null carrier is exempt from "
+             "naming a template, so a second one is a second route that files "
+             "a document with no destination declared."
+             % ", ".join(str(e.get("id")) for e in carriers))
 
 
 def check_paths(entry, root, line_no, fail):
@@ -486,11 +553,15 @@ def check_manifest(root):
             fail(line_no, "KIND", "%s: kind %r is not one of %s. The runner "
                  "branches on this value and implements no other."
                  % (entry_id, kind, ", ".join(KINDS)))
-        elif kind == "artifact" and not (entry.get("templates") or []):
+        elif kind == "artifact" and not (entry.get("templates") or []) \
+                and not destination_chosen_at_run_time(entry):
             fail(line_no, "KIND", "%s: kind artifact names no template, so a "
                  "run of it has nowhere to land. Give it a template, or give "
-                 "it the kind that matches what it actually produces."
-                 % entry_id)
+                 "it the kind that matches what it actually produces. One "
+                 "shape is exempt and this entry is not it: a route whose "
+                 "stage is null AND which carries a gate_note has its "
+                 "destination chosen at run time, and both halves are "
+                 "required." % entry_id)
 
         # A non-writing kind may still name templates. They are the documents
         # the route works with rather than a destination for its output, which
@@ -568,6 +639,7 @@ def check_manifest(root):
                  "A stage without its gate hides which checklist applies; a "
                  "gate without its stage names a checklist nothing feeds."
                  % entry.get("id"))
+    check_gate_notes(entries, line_of, fail)
 
     # Check 5, path gate: every named file exists.
     for entry in entries:

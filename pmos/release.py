@@ -48,90 +48,21 @@ def _canonical(value: Any) -> bytes:
                       separators=(",", ":"), allow_nan=False).encode("utf-8")
 
 
-def _regular_file_digest(path: Path) -> tuple[str, int]:
-    """Hash one stable regular file without following a swapped symlink."""
-    nofollow = getattr(os, "O_NOFOLLOW", None)
-    if nofollow is None:
-        raise ProvenanceError("release file hashing requires no-follow support")
-    descriptor: Optional[int] = None
-    try:
-        descriptor = os.open(path, os.O_RDONLY | nofollow)
-        before = os.fstat(descriptor)
-        if not stat.S_ISREG(before.st_mode):
-            raise ProvenanceError("release path is not a regular file: %s" % path)
-        digest = hashlib.sha256()
-        while True:
-            chunk = os.read(descriptor, 1024 * 1024)
-            if not chunk:
-                break
-            digest.update(chunk)
-        after = os.fstat(descriptor)
-        if (before.st_dev != after.st_dev or before.st_ino != after.st_ino or
-                before.st_size != after.st_size):
-            raise ProvenanceError("release file changed while hashing: %s" % path)
-        pathname = os.stat(path, follow_symlinks=False)
-        if (not stat.S_ISREG(pathname.st_mode) or pathname.st_dev != before.st_dev or
-                pathname.st_ino != before.st_ino):
-            raise ProvenanceError("release path changed while hashing: %s" % path)
-        return digest.hexdigest(), int(before.st_size)
-    except ProvenanceError:
-        raise
-    except OSError as exc:
-        raise ProvenanceError("cannot safely read release file: %s" % path) from exc
-    finally:
-        if descriptor is not None:
-            try:
-                os.close(descriptor)
-            except OSError:
-                pass
+def _write_all(descriptor: int, data: bytes) -> None:
+    """Write every byte of *data*, never trusting a single os.write call.
 
-
-def _sha256(path: Path) -> str:
-    """Return a stable no-follow digest for callers needing only the hash."""
-    return _regular_file_digest(path)[0]
-
-
-def _regular_file_digest_at(root_fd: int, relative: str) -> tuple[str, int]:
-    """Hash a regular release file through pinned no-follow directory fds."""
-    parts = Path(relative).parts
-    if not parts or any(part in ("", ".", "..") for part in parts):
-        raise ProvenanceError("unsafe release path: %s" % relative)
-    descriptors: list[int] = []
-    try:
-        current = os.dup(root_fd)
-        descriptors.append(current)
-        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
-        for component in parts[:-1]:
-            current = os.open(component, flags | getattr(os, "O_DIRECTORY", 0), dir_fd=current)
-            descriptors.append(current)
-        file_fd = os.open(parts[-1], flags, dir_fd=current)
-        descriptors.append(file_fd)
-        before = os.fstat(file_fd)
-        if not stat.S_ISREG(before.st_mode):
-            raise ProvenanceError("release path is not a regular file: %s" % relative)
-        digest = hashlib.sha256()
-        while True:
-            chunk = os.read(file_fd, 1024 * 1024)
-            if not chunk:
-                break
-            digest.update(chunk)
-        after = os.fstat(file_fd)
-        current_name = os.stat(parts[-1], dir_fd=current, follow_symlinks=False)
-        if (before.st_dev != after.st_dev or before.st_ino != after.st_ino or
-                before.st_size != after.st_size or not stat.S_ISREG(current_name.st_mode) or
-                current_name.st_dev != before.st_dev or current_name.st_ino != before.st_ino):
-            raise ProvenanceError("release path changed while hashing: %s" % relative)
-        return digest.hexdigest(), int(before.st_size)
-    except ProvenanceError:
-        raise
-    except OSError as exc:
-        raise ProvenanceError("cannot safely read release file: %s" % relative) from exc
-    finally:
-        for descriptor in reversed(descriptors):
-            try:
-                os.close(descriptor)
-            except OSError:
-                pass
+    os.write() is free to write fewer bytes than it was given and return
+    normally; it is not an error. A manifest written with one unchecked call
+    can publish a truncated document (observed with RLIMIT_FSIZE: the write
+    returned a short count with no exception, and the published file failed
+    to parse) with build_provenance still reporting success.
+    """
+    view = memoryview(data)
+    while view:
+        written = os.write(descriptor, view)
+        if written <= 0:
+            raise OSError("short write: os.write returned %r" % (written,))
+        view = view[written:]
 
 
 def _root_fd(root: Path) -> int:
@@ -411,63 +342,88 @@ def build_provenance(root: str | os.PathLike[str], *, output: str | os.PathLike[
                                        getattr(os, "O_NOFOLLOW", 0))
         except OSError as exc:
             raise ProvenanceError("cannot open provenance output parent safely") from exc
-    excluded = {target.relative_to(base).as_posix()} if target.is_relative_to(base) else set()
-    if target.is_relative_to(base) and _secret_path(target.relative_to(base).as_posix()):
-        raise ProvenanceError("provenance output cannot use a secret-like path")
-    entries: dict[str, dict[str, Any]] = {}
-    counts = {"artifacts": 0, "config": 0, "skills": 0}
-    for relative, kind, digest, size in _inventory(base, excluded):
-        if _secret_path(relative):
+    try:
+        # Only a file this call is about to write is excluded from the
+        # inventory. A no-output manifest writes nothing, so omitting the
+        # default path would hide a provenance file that is really there and
+        # that verify_provenance, which excludes nothing for a mapping
+        # manifest, would then report as unrecorded.
+        excluded = ({target.relative_to(base).as_posix()}
+                    if output is not None and target.is_relative_to(base) else set())
+        if target.is_relative_to(base) and _secret_path(target.relative_to(base).as_posix()):
+            raise ProvenanceError("provenance output cannot use a secret-like path")
+        entries: dict[str, dict[str, Any]] = {}
+        counts = {"artifacts": 0, "config": 0, "skills": 0}
+        for relative, kind, digest, size in _inventory(base, excluded):
+            if _secret_path(relative):
+                raise ProvenanceError(
+                    "release tree contains a secret-like path: %s" % relative)
+            category = _category(relative)
+            entry = {"category": category, "kind": kind,
+                     "sha256": digest, "size": size}
+            entries[relative] = entry
+            counts[category] += 1
+        # git_identity answers a different question than the inventory: an
+        # existing default-path manifest under an untouched tree should not
+        # make a library caller's git status look dirty, or its
+        # source_commit go None, just because this call happens not to be
+        # writing a new one right now.
+        git_excluded = excluded
+        if output is None and target.is_relative_to(base):
+            git_excluded = excluded | {target.relative_to(base).as_posix()}
+        discovered_commit, clean = _git_identity(base, git_excluded)
+        if source_commit is not None and (clean is not True or
+                                          source_commit.lower() != discovered_commit):
             raise ProvenanceError(
-                "release tree contains a secret-like path: %s" % relative)
-        category = _category(relative)
-        entry = {"category": category, "kind": kind,
-                 "sha256": digest, "size": size}
-        entries[relative] = entry
-        counts[category] += 1
-    discovered_commit, clean = _git_identity(base, excluded)
-    if source_commit is not None and (clean is not True or
-                                      source_commit.lower() != discovered_commit):
-        raise ProvenanceError(
-            "source_commit overrides are accepted only for the clean, current Git HEAD")
-    source_state = ("git-clean" if clean is True else
-                    "git-dirty" if clean is False else "not-a-git-root")
-    manifest: dict[str, Any] = {
-        "format": PROVENANCE_FORMAT,
-        "schema": PROVENANCE_SCHEMA,
-        # A dirty tree is deliberately not attributed to HEAD: the file hashes
-        # still identify it, while source_commit remains an honest null.
-        "source_commit": discovered_commit if clean is True else None,
-        "source_state": source_state,
-        "files": {key: entries[key] for key in sorted(entries)},
-        "counts": counts,
-    }
-    if output is not None:
-        try:
-            manifest["provenance_path"] = target.relative_to(base).as_posix()
-        except ValueError:
-            pass
-    manifest["tree_sha256"] = _tree_hash(manifest["files"])
-    if output is not None:
-        descriptor: Optional[int] = None
-        temporary_name = target.name + ".tmp-%s" % secrets.token_hex(16)
-        try:
-            descriptor = os.open(temporary_name, os.O_WRONLY | os.O_CREAT | os.O_EXCL |
-                                 getattr(os, "O_NOFOLLOW", 0), 0o600,
-                                 dir_fd=output_parent_fd)
-            payload = _canonical(manifest) + b"\n"
-            os.write(descriptor, payload)
-            os.fsync(descriptor)
-        finally:
-            if descriptor is not None:
-                os.close(descriptor)
-        try:
-            os.replace(temporary_name, target.name, src_dir_fd=output_parent_fd,
-                       dst_dir_fd=output_parent_fd)
-            os.fsync(output_parent_fd)
-        finally:
+                "source_commit overrides are accepted only for the clean, current Git HEAD")
+        source_state = ("git-clean" if clean is True else
+                        "git-dirty" if clean is False else "not-a-git-root")
+        manifest: dict[str, Any] = {
+            "format": PROVENANCE_FORMAT,
+            "schema": PROVENANCE_SCHEMA,
+            # A dirty tree is deliberately not attributed to HEAD: the file hashes
+            # still identify it, while source_commit remains an honest null.
+            "source_commit": discovered_commit if clean is True else None,
+            "source_state": source_state,
+            "files": {key: entries[key] for key in sorted(entries)},
+            "counts": counts,
+        }
+        if output is not None:
+            try:
+                manifest["provenance_path"] = target.relative_to(base).as_posix()
+            except ValueError:
+                pass
+        manifest["tree_sha256"] = _tree_hash(manifest["files"])
+        if output is not None:
+            temporary_name = target.name + ".tmp-%s" % secrets.token_hex(16)
+            try:
+                descriptor = os.open(temporary_name, os.O_WRONLY | os.O_CREAT | os.O_EXCL |
+                                     getattr(os, "O_NOFOLLOW", 0), 0o600,
+                                     dir_fd=output_parent_fd)
+                try:
+                    payload = _canonical(manifest) + b"\n"
+                    _write_all(descriptor, payload)
+                    os.fsync(descriptor)
+                finally:
+                    os.close(descriptor)
+                os.replace(temporary_name, target.name, src_dir_fd=output_parent_fd,
+                           dst_dir_fd=output_parent_fd)
+                os.fsync(output_parent_fd)
+            except BaseException:
+                # A half-written temporary left inside the release tree would be
+                # inventoried by the next build as a real file, so it never
+                # outlives the build that created it.
+                try:
+                    os.unlink(temporary_name, dir_fd=output_parent_fd)
+                except OSError:
+                    pass
+                raise
+        return manifest
+    finally:
+        # Every guard above can raise; the output parent descriptor is a bare
+        # int that refcounting will not reclaim, so it is closed on every path.
+        if output_parent_fd is not None:
             os.close(output_parent_fd)
-    return manifest
 
 
 def _load_manifest(manifest: Mapping[str, Any] | str | os.PathLike[str]) -> Mapping[str, Any]:

@@ -4,6 +4,7 @@
     python3 tools/skill_rubric.py
     python3 tools/skill_rubric.py --min 6
     python3 tools/skill_rubric.py --json docs/readiness/skill-rubric.json
+    python3 tools/skill_rubric.py --check   # exit 1 when that file is stale
 
 Standard library only, like every other script in this tree.
 
@@ -15,21 +16,25 @@ been the same mistake the template rubric already caught once with
 templates/execution/state.md: the score improves and the file gets worse.
 
 The bar is read off the skills, not invented. Counting sections across the
-thirty-five prose skills in this tree produced a clear shared vocabulary, and
-the seven below are what the strongest of them carry:
+twenty-eight prose skills in this tree produced a clear shared vocabulary, and
+the seven below are what the strongest of them carried when the bar was set,
+in commit 95d3872 on 2026-09-04:
 
-    28/35  Files this skill drives
-    28/35  When to use
-    28/35  Exit gate
-    27/35  Workflow
-    24/35  Output format
-    22/35  Inputs
-    18/35  Failure modes this skill guards against
+    28/28  Files this skill drives
+    28/28  When to use
+    28/28  Exit gate
+    27/28  Workflow
+    24/28  Output format
+    22/28  Inputs
+    18/28  Failure modes this skill guards against
 
-That last one matters. Skills already have their own convention for naming how
-the work goes wrong, and it is a named section rather than a table bolted on.
-Eighteen of thirty-five carry it, which is the single largest gap in the layer
-and the one worth closing first.
+Those seven counts are that one historical measurement, not the current state,
+and the denominator is twenty-eight because the seven runtime skills excluded
+below carry none of the sections and were never part of the population. The
+last row was the largest gap when the bar was set; commit 53136c1 closed it,
+and this tool now measures every one of the seven at 28/28. Run it rather than
+reading a number out of this paragraph: what is written here is the argument
+for the seven sections, and the live output is where the layer stands.
 
 What is deliberately out of scope. skills/runtime/ holds a different artifact
 entirely: short machine-facing entries whose contract lives in contract.json
@@ -50,6 +55,10 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 SKILLS = REPO / "skills"
+# The committed measurement. It once sat in the evidence directory reporting
+# ten skills as missing contract sections for every reader who did not think
+# to re-run the generator, so --check now compares it against a fresh one.
+SNAPSHOT = REPO / "docs" / "readiness" / "skill-rubric.json"
 
 # The contract, in the order a reader meets it.
 SECTIONS = (
@@ -152,6 +161,12 @@ def score_skill(path):
     }
 
 
+def snapshot(scored, exempt):
+    """The payload --json writes and --check compares against."""
+    return {"schema": 1, "sections": list(SECTIONS), "skills": scored,
+            "exempt": [r["path"] for r in exempt]}
+
+
 def say(*parts):
     print(" ".join(str(p) for p in parts))
 
@@ -162,6 +177,11 @@ def main(argv=None):
                         help="exit 1 if any prose skill carries fewer than N "
                              "of the seven sections")
     parser.add_argument("--json", metavar="PATH")
+    parser.add_argument("--check", nargs="?", const=str(SNAPSHOT),
+                        metavar="PATH",
+                        help="exit 1 when the committed measurement no longer "
+                             "matches a fresh one (defaults to "
+                             "docs/readiness/skill-rubric.json)")
     parser.add_argument("--path", help="score one skill and stop")
     args = parser.parse_args(argv)
 
@@ -220,18 +240,45 @@ def main(argv=None):
                 % (row["path"].replace("skills/", "").replace("/SKILL.md", ""),
                    row["workflow_steps"], row["exit_gate_words"]))
 
+    fresh = snapshot(scored, exempt)
+
     if args.json:
         out = Path(args.json)
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(json.dumps(
-            {"schema": 1, "sections": list(SECTIONS),
-             "skills": scored, "exempt": [r["path"] for r in exempt]},
-            indent=2) + "\n", encoding="utf-8")
+        out.write_text(json.dumps(fresh, indent=2) + "\n", encoding="utf-8")
         say("")
         try:
             say("  written to %s" % out.relative_to(REPO).as_posix())
         except ValueError:
             say("  written to %s" % out)
+
+    if args.check is not None:
+        target = Path(args.check)
+        try:
+            name = target.relative_to(REPO).as_posix()
+        except ValueError:
+            name = str(target)
+        say("")
+        try:
+            committed = json.loads(target.read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            say("%s is missing. Run: python3 tools/skill_rubric.py --json %s"
+                % (name, name))
+            return 1
+        except json.JSONDecodeError as error:
+            say("%s does not parse as JSON (%s). Run: python3 "
+                "tools/skill_rubric.py --json %s" % (name, error, name))
+            return 1
+        # Parsed comparison, not bytes. What is checked is the measurement,
+        # so re-indenting the file does not count as stale and a skill that
+        # gained or lost a section does.
+        if committed != fresh:
+            say("%s is stale: it does not match what this tool measures on "
+                "the current tree. Run: python3 tools/skill_rubric.py --json "
+                "%s, then commit the result." % (name, name))
+            return 1
+        say("%s: ok (up to date, %d prose skill(s) measured)"
+            % (name, len(scored)))
 
     if args.min is not None:
         below = [r for r in scored if r["sections_present"] < args.min]

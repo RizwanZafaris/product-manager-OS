@@ -36,7 +36,7 @@ aliases: ["Roadmap"]
      writing. Keep it at the top of every copy you share, internal or external.
      Edit the horizon lengths to match your cadence; leave the meaning alone. -->
 
-> **This roadmap manages expectations, not commitments.** It says what we are working on now, what we expect to pick up next, and the directions we are holding open for later. It is not a delivery contract and no date on it is a promise.
+> **This roadmap manages expectations, not delivery dates.** Only Now is a commitment, and it is a commitment to the work, not to a date. It says what we are working on now, what we expect to pick up next, and the directions we are holding open for later. It is not a delivery contract and no date on it is a promise.
 >
 > **Now** is committed and in flight. Confidence is high, and if something here slips you will hear it from us before you notice it yourself.
 >
@@ -107,7 +107,7 @@ aliases: ["Roadmap"]
 | Dates read as promises | A month appears next to an item, and a customer is told it | Say in the legend that these are targets. Outward-facing versions use Now, Next, Later with no dates |
 | Features with no outcome | Rows of things to build, none tied to an objective or a metric | Every row names the outcome it serves. A row that cannot is a task, not an initiative |
 | Later is a graveyard | Half the items sit in Later permanently and nobody revisits them | Items in Later expire after two cycles and are re-justified or killed |
-| Nothing moves | The same items sit in Now for months while work happens elsewhere | Anything in Now for more than two cycles is flagged for kill or commit |
+| Nothing moves | The same items sit in Now for months while work happens elsewhere | Anything in Now for more than two cycles is flagged: kill it, or re-commit with a new target period and a change-log row |
 | Killed work vanishes | An item disappears and three months later somebody asks what happened to it | Killed items move to the parked and killed table with one line of reason |
 | Confidence set once | The confidence column was filled at planning and never touched again | Confidence is re-entered every cycle. A carried-over value is not a confidence |
 

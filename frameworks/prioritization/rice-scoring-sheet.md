@@ -38,7 +38,7 @@ A backlog with more candidates than capacity needs an order, and the order needs
 |---|---|---|
 | [reports per quarter] | [KR reference] | [role], [YYYY-MM-DD] |
 
-**Step 2: the scales.** Impact, per person reached, against that metric: 3 massive (moves it on its own), 2 high, 1 medium, 0.5 low, 0.25 minimal; coarse on purpose, because a finer scale claims precision the inputs lack. Effort is whole person-months across every discipline, minimum 0.5; score a range at its top.
+**Step 2: the scales.** Impact, per person reached, against that metric: 3 massive (moves it on its own), 2 high, 1 medium, 0.5 low, 0.25 minimal; coarse on purpose, because a finer scale claims precision the inputs lack. Effort is whole person-months across every discipline, minimum 0.5; score a range at its top. From the [estimation sheet](../execution/estimation-sheet.md): person-months = weeks at its P80 outside view x people assigned in each discipline / 4.3, summed across disciplines, including its Step 5 missing work; show the conversion in the Arithmetic column.
 
 | Confidence | Rule |
 |---|---|

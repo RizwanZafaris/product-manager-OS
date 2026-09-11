@@ -43,6 +43,7 @@ Every gate decision writes a record with, at minimum:
 - Model version and prompt version that produced the request
 - Retention period for these records: [n, per applicable requirement]
 - Where the log lives and who can read it: [location, access rule]
+- Data classes the record carries, with their PII class from ../architecture/data-model.md, and which fields are masked, excluded, or stored as a reference to the unchanged original payload, per ../architecture/observability.md section 2; what the approver saw must stay reconstructable
 
 ## 3. Exceptions and fail-open register
 
@@ -60,3 +61,4 @@ Gate: any outbound message composed by the assistant. Trigger: message ready to 
 - [ ] Every approver is a role with a rota, and the rota exists
 - [ ] Every timeout behavior is deny, or the fail-open is in section 3 with an owner
 - [ ] The audit record fields are implemented, not aspirational; someone has read one
+- [ ] The audit record's data classes are classified and its PII handling is stated

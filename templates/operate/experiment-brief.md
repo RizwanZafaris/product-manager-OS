@@ -88,6 +88,8 @@ aliases: ["Experiment Brief", "experiment-brief"]
 | Expected duration | [period at current traffic; if it exceeds an honest ceiling, shrink the question] |
 | Start / end dates | [YYYY-MM-DD to YYYY-MM-DD] |
 | Unit of assignment | [user / account / session, and why] |
+| Assignment method | [random at that unit, by which tool; how an allocation mismatch is detected] |
+| Analysis | [the test or estimator, significance and power as used, the interval reported with the result, and the correction when more than one variant is compared with control] |
 
 ## 5. Decision rule
 
@@ -139,6 +141,7 @@ This brief is fit to launch when:
 - [ ] Exactly one target metric is named, tied to the north star tree, with a dated baseline
 - [ ] A guardrail exists with a numeric floor and a stop behavior
 - [ ] Sample size and duration were computed before launch, arithmetic shown
+- [ ] Random assignment and the analysis method, including any multiple-variant correction, are written before launch
 - [ ] All three decision outcomes have pre-committed rules, actions, and owners
 - [ ] The kill outcome ends in a written learning, not a quiet burial
 

@@ -30,6 +30,7 @@ Skill: [write-prd](../../skills/write-prd/SKILL.md); [ai-prd](../../skills/ai-pr
 
 **Owner:** [name] · **Date:** [YYYY-MM-DD] · **Status:** Draft / In review / Approved
 **Reviewers who must not be surprised:** [names, one line]
+**Business sponsor sign-off:** [name] · [YYYY-MM-DD] · signs the business case this page spends, not only the gate form
 
 ## 1. Problem
 
@@ -147,3 +148,4 @@ Skill: [write-prd](../../skills/write-prd/SKILL.md); [ai-prd](../../skills/ai-pr
 - [ ] Every must has an acceptance criterion that can fail
 - [ ] Every risk and open question has an owner and a date
 - [ ] It still fits on one page, or it has been promoted to [prd.md](prd.md)
+- [ ] The business sponsor sign-off line names a real person and is dated

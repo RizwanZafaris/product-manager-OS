@@ -109,7 +109,7 @@ The symmetric three-point. M is set first, O and P are set one week either side 
 
 - [Capacity plan](../../templates/planning/capacity-plan.md), the demand rows, in weeks per team with the range
 - [Roadmap](../../templates/planning/roadmap.md): a Now row carries the P80 figure and the confidence
-- [RICE scoring sheet](../prioritization/rice-scoring-sheet.md), the effort column
+- [RICE scoring sheet](../prioritization/rice-scoring-sheet.md), the effort column, after converting the P80 weeks to person-months with the rule in its Step 2
 - [Dependency register](../../templates/execution/dependency-register.md), for waits found in step 5
 - The [estimator agent](../../agents/estimator-agent.md) runs this sheet and flags the missing work
 - PLANNING track; the committed figure is read at [Gate 2](../../os/STAGE-GATES.md) with the requirements it prices

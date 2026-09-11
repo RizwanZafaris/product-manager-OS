@@ -49,9 +49,9 @@ Skill: [red-team-agent](../../agents/red-team-agent.md) for the risk walk; [reg-
      filled by counsel or the DPO, not by the product team; leave it as a field
      until they do. Retention and storage are copied from the data model. -->
 
-| Data category | Data subjects | Source | Purpose | Lawful basis (entered by counsel or DPO) | Special or sensitive category | Retention (from data-model.md) | Stored and processed where | Processors involved |
-|---|---|---|---|---|---|---|---|---|
-| | | | | [basis] | yes / no | | | |
+| Data category | Data subjects | Source | Purpose | Lawful basis (entered by counsel or DPO) | Special or sensitive category | Additional condition for special-category or criminal-offence data (entered by counsel or DPO) | Retention (from data-model.md) | Stored and processed where | Processors involved |
+|---|---|---|---|---|---|---|---|---|---|
+| | | | | [basis] | yes / no | [condition, or N/A if not special] | | | |
 
 ## 3. Necessity and proportionality
 
@@ -120,7 +120,7 @@ Skill: [red-team-agent](../../agents/red-team-agent.md) for the risk walk; [reg-
 
 A signed assessment supports the PII and retention line at [Gate 3](../../os/STAGE-GATES.md), feeds risk rows into [risk-register.md](../execution/risk-register.md), and is re-confirmed under the regulated overlay at Gate 5.
 
-- [ ] Every data category has a purpose, a retention period copied from the data model, and a lawful basis entered by counsel or the DPO, or a named owner and date for it
+- [ ] Every data category has a purpose, a retention period copied from the data model, and a lawful basis entered by counsel or the DPO, or a named owner and date for it; every row marked special or sensitive also carries the additional processing condition the regime requires (for example GDPR Article 9(2), or Article 10 for criminal-offence data, plus any national-law condition), entered by counsel or the DPO
 - [ ] Every necessity question is answered with a mechanism or an owner, none with a bare yes
 - [ ] The DPO was consulted, and the consultation row records what changed
 - [ ] Every risk is phrased as harm to a person, scored on the risk matrix scales, and has a mitigation row

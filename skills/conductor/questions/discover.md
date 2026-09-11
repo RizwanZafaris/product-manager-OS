@@ -54,11 +54,11 @@ Lands in: `discovery/problem-framing.md` section 5 and `discovery/discovery-docu
 
 ### DISCOVER-5: conversation count
 
-Ask: How many real user conversations stand behind this, and where are they cited?
+Ask: How many real user conversations, or equivalent primary data (observed usage, support tickets, recorded sessions), stand behind this, and where are they cited?
 Wrong costs: Gate 1 requires five or more; fewer, undisclosed, turns personas into fiction the whole system then trusts.
 Evidence class: 4, interview claims cited by source.
 Cross-examine when: the count includes teammates, secondhand summaries, or "lots". Move: banned openers, then re-ask at class.
-Accept when: a count, with each conversation cited by source; below five, every persona is marked as an assumption before this answer is accepted.
+Accept when: a count, with each source cited, where primary data counts only when it is first-hand and cited by source; below five, every persona is marked as an assumption before this answer is accepted.
 Lands in: `discovery/discovery-document.md` section 2 citations and `discovery/personas.md` evidence blocks, and STATE.md accepted answers and evidence ledger.
 
 ### DISCOVER-6: the no-go case
@@ -88,6 +88,15 @@ Cross-examine when: a domain is claimed but no gatekeeper from its card can be n
 Accept when: one card from the domain index named, or "none", either way recorded.
 Lands in: STATE.md position block, `Domain:` line.
 
+### DISCOVER-9: the problem statement
+
+Ask: In one sentence, with no solution words, what is the problem?
+Wrong costs: With no accepted sentence in this exact form, every later reader states the problem differently, and DEFINE-4 traces objectives to a sentence nobody agreed on.
+Evidence class: every clause traces to an accepted DISCOVER-1, DISCOVER-2, or DISCOVER-3 answer; this entry composes them, it does not gather new evidence.
+Cross-examine when: the sentence names a feature, a solution, or needs two sentences to say. Move: banned openers, then: state it as a person, a circumstance, and a consequence, nothing else.
+Accept when: one sentence in the section 3 form, each clause citing the accepted answer ID it comes from.
+Lands in: `discovery/problem-framing.md` section 3, and STATE.md accepted answers.
+
 ## Forced pair
 
 On "advance anyway": DISCOVER-1, then DISCOVER-5. A team that cannot name one person or count its conversations is the gate's own skip warning in progress.
@@ -96,8 +105,8 @@ On "advance anyway": DISCOVER-1, then DISCOVER-5. A team that cannot name one pe
 
 | Gate 1 checklist line | Evidenced by |
 |---|---|
-| Problem statement one sentence, stated the same way | DISCOVER-1, DISCOVER-2, rolled into `discovery/problem-framing.md` section 3 |
-| Five or more real conversations, cited by source | DISCOVER-5 |
+| Problem statement one sentence, stated the same way | DISCOVER-9, built on DISCOVER-1 and DISCOVER-2 |
+| Five or more real conversations or equivalent primary data, cited by source | DISCOVER-5 |
 | Personas under five cited interviews marked as assumptions | DISCOVER-5 |
 | Cost of inaction written down, calculation shown | DISCOVER-3, DISCOVER-4 |
 | A plausible no-go seriously argued | DISCOVER-6 |

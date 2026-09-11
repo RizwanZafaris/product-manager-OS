@@ -44,7 +44,7 @@ For each Gate 5 item, record the evidence seen, the verdict (pass, condition, or
 5. **On-call knows, and the runbook exists.** Evidence: the runbook link and the on-call acknowledgment. Rule: a runbook nobody on call has read is a condition owned by the on-call lead.
 6. **Every function signed its own line**: engineering, product, QA, support, and any others the readiness document names. Rule: a blank line is a no-go from that function until it is filled.
 7. **AI overlay**, when a model ships: guardrails verified live in the release candidate, and the kill switch tested. Rule: a kill switch that was designed but never tested is a fail.
-8. **Regulated overlay**: the Gate 2 section 0 answers are still true of the artifact that ships; any drift is written up and re-signed by the regulatory owner. Rule: drift without a re-signature is a fail.
+8. **Regulated overlay**, where the Gate 2 line fired: the Gate 2 section 0 answers are still true of the artifact that ships; any drift is written up and re-signed by the regulatory owner. Rule: drift without a re-signature is a fail. Where Gate 2 recorded that the shipped overlay did not apply, this item instead re-checks what the regulatory owner used in its place, named; an unnamed substitute is a fail.
 
 ### 3. Check the rollback trigger
 
@@ -62,7 +62,7 @@ Decision log entry with the decider named. Accepted known issues become risk reg
 
 1. Item table: | # | Gate 5 item | Evidence seen | Verdict (pass / condition / fail) | Condition owner | Close-by date |
 2. Rollback line: trigger, owner, time to roll back, rehearsal date and environment
-3. Decision: GO / NO-GO / CONDITIONAL GO, the decider's name, the reason paragraph, and for a conditional go the numbered conditions with owners and dates
+3. Recommendation for the decider: GO / NO-GO / CONDITIONAL GO from the step 4 rules, the reason paragraph, and for a conditional go the numbered conditions with owners and dates; the decision line is left blank for the named decider
 4. Sign-off table copied from the readiness document, every row named and dated
 5. The decision log entry and any risk register rows
 
@@ -78,4 +78,4 @@ Decision log entry with the decider named. Accepted known issues become risk reg
 
 ## Exit gate
 
-This skill runs Gate 5 in [../../os/STAGE-GATES.md](../../os/STAGE-GATES.md), closing DELIVER and feeding OPERATE. It is done when the readiness document's exit gate boxes are honestly checkable, the decision is recorded with the decider's name, and every condition has an owner and a date.
+This skill walks Gate 5 in [../../os/STAGE-GATES.md](../../os/STAGE-GATES.md), feeding OPERATE once DELIVER closes. It is done when every item has a verdict with evidence, the recommendation follows the step 4 rules, every condition has an owner and a date, and the decision line is left for the named decider; the decision log entry is written after they record it.

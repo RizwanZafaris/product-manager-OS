@@ -1,8 +1,8 @@
 # Security
 
-Last reviewed 2026-09-03, against the tree as it stands on that date.
+Last reviewed 2026-09-03, against the tree as it stands on that date. The path inventory, the script list below it, and the agent-CLI section were re-checked against the tree on 2026-09-10; the rest of this file carries the earlier date.
 
-This repository has three paths through it and they have different security properties. Most readers only ever use the first. Read the one you are on, because a sentence that is true of the manual path is not automatically true of the local runtime or a provider call.
+This repository has four paths through it and they have different security properties. Most readers only ever use the first. Read the one you are on, because a sentence that is true of the manual path is not automatically true of an agent CLI, the local runtime, or a provider call.
 
 ## The manual path: markdown, no network, no credentials
 
@@ -12,7 +12,19 @@ Clone the repository, copy a template, fill it in an editor, work the gate check
 - Nothing calls out. There is no telemetry, no hosted service, no account, and no phone-home.
 - Nothing takes a credential. No file in the tree asks for one and no file in the tree holds one.
 
-Three local scripts exist and stay on this path. `lint.py` and `test_lint.py` are the quality gate and its tests, Python standard library only. `tools/graph.py`, `tools/frontmatter_init.py`, and `tools/check_manifest.py` read the tree and write `docs/GRAPH.md` or a report. They open no socket and read no environment variable. `harness/adapters/claude-code/generate.py` writes generated command files inside the repository. If you never touch `harness/runner.py` or the desktop adapter, that is the whole attack surface: files you can read, and scripts that read files.
+Six local scripts stay on this path. `lint.py` and `test_lint.py` are the quality gate and its tests, Python standard library only. `tools/graph.py`, `tools/frontmatter_init.py`, and `tools/check_manifest.py` read the tree and write `docs/GRAPH.md` or a report. They open no socket and read no environment variable. `harness/adapters/claude-code/generate.py` writes generated command files inside the repository.
+
+Those six are not the whole executable surface of the tree, and this file used to say they were. `tools/` holds eighteen scripts in all. Most of the fifteen not named above are gate and readiness runners that read files and print findings; `tools/init_product.py` is the quickstart tool that writes a workspace under `products/`; and one leaves this path entirely, because `tools/ext_ai_probe.py` reads `OPENROUTER_API_KEY` (or an OmniRoute gateway variable) and makes the outbound calls described under the provider path below. So the manual path is files you can read and scripts that read files, and three tracked entry points step off it when you invoke them: `harness/runner.py`, the desktop adapter, and that probe. A fourth needs no invocation at all, and is the section immediately below.
+
+## The agent-CLI path: a committed hook that runs on session events
+
+Method 3 in [README.md](README.md) is an agent CLI reading [CLAUDE.md](CLAUDE.md) or [AGENTS.md](AGENTS.md). Two tracked files make that path different from the manual one, and they are the only part of this tree that runs without being asked.
+
+`.claude/settings.json` registers `.claude/hooks/pmos_hook.py` on seven Claude Code events: session start, prompt submit, before and after every `Bash`, `PowerShell`, `Write`, `Edit`, `NotebookEdit`, and `mcp__*` tool call, and on stop, subagent stop, and task completion. Claude Code reads that settings file when it opens the repository, so cloning the tree and starting a session is enough to arm the layer. Delete `.claude/` and it is gone; nothing else in the tree depends on it.
+
+The hook itself reads one JSON payload from standard input, refuses anything over 1 MiB, and imports `pmos/hooks.py` from the project directory. That policy module is standard library only, opens no socket, and reads no environment variable; the hook adapter around it reads one, `CLAUDE_PROJECT_DIR`, to locate the repository. What the policy does is refuse. It denies a write whose destination is outside the project or lands on `.git`, `.env`, `modules/regulated/`, or a `.pem`, `.key`, or `.p12` file. It denies a payload carrying credential-shaped material, such as a provider key or a key, token, or password assignment. It blocks destructive shell commands. It asks for human approval before any MCP connector call and before any tool name it does not recognize, because an unknown connector's own description is not a trustworthy capability declaration. One limit belongs with that list: only the `PreToolUse` refusals reach Claude Code as a permission decision. A refusal raised on a `PostToolUse` event serialises to an empty object, so that branch of the policy does not currently change what the CLI does, and this file will say otherwise only when the code does.
+
+One event does more than decide. On stop, subagent stop, and task completion the hook spawns `python3 tools/ci_gate.py --gate compile --gate os-tree` inside the repository, with `shell=False` and a 180-second timeout, and blocks the stop when that returns non-zero. That subprocess runs `git ls-files`, compiles every tracked Python file into a temporary directory, and runs the document-tree check. It writes nothing into the repository and calls nothing out. It is still repository code executing because a session ended rather than because anyone ran it, which is the fact this file omitted, and it is the reason the manual path's guarantees are stated for the manual path only.
 
 ## The local runtime: durable state without a provider
 

@@ -42,7 +42,7 @@ Two gate lines below hook in `../modules/regulated/`. That module covers exactly
 
 So the overlay lines are written to fire narrowly: **the product uses AI or machine learning and a financial or data regulator applies to it**. A conventional payments, lending, or KYC product with no model in it does not fire them, and that is deliberate. Attaching an AI-specific overlay to a non-AI regulated product produces the worst outcome available: a ticked line, a filled section 0, and no coverage at all of the licensing conditions, scheme rules, and conduct obligations that product actually lives under. A blank is a question. A wrongly ticked box is an answer nobody will re-open.
 
-**Known gap, stated rather than papered over.** This repository does not ship a jurisdiction pack for non-AI regulated products. If your product is regulated and has no model in it, these two gate lines are not your compliance coverage: bring your own licence conditions, scheme rules, and regulatory calendar to Gate 2, name the regulatory owner on the sign-off line, and record in STATE.md that the shipped overlay did not apply and what you used instead. [OPEN: a non-AI jurisdiction pack, owner is the repository maintainer.]
+**Known gap, stated rather than papered over.** This repository does not ship a jurisdiction pack for non-AI regulated products. If your product is regulated and has no model in it, these two gate lines are not your compliance coverage: bring your own licence conditions, scheme rules, and regulatory calendar to Gate 2, name the regulatory owner on the sign-off line, and record in STATE.md, or in this gate attempt file where the product keeps no STATE.md, that the shipped overlay did not apply and what you used instead. [OPEN: a non-AI jurisdiction pack, owner is the repository maintainer.]
 
 ---
 
@@ -59,7 +59,7 @@ Closes DISCOVER. Feeds DEFINE.
 - [ ] Personas built on fewer than five cited interviews are explicitly marked as assumptions
 - [ ] The cost of inaction is written down: what it costs, whom, per what period, with the calculation shown
 - [ ] At least one plausible reason to say no-go was seriously argued at this gate
-- [ ] A domain was selected from `../knowledge/domains/README.md` or "none" was recorded, either way in STATE.md
+- [ ] A domain was selected from `../knowledge/domains/README.md` or "none" was recorded, either way in STATE.md, or in this gate attempt file where the product keeps no STATE.md
 - [ ] The success signal for a future Gate 6 is named now, before any solution exists
 - [ ] Go or no-go is recorded below, with the deciding rationale in one paragraph
 
@@ -90,14 +90,14 @@ Closes DEFINE. Feeds DESIGN.
 
 **Product:** <name> · **Gate run date:** <YYYY-MM-DD> · **Attempt:** <n>
 
-**Inputs on the table:** the definition set at the weight chosen in [WHICH-DOCUMENT.md](WHICH-DOCUMENT.md). At full weight that is the completed BRD, PRD, FRD, NFR, business rules, assumptions register, and acceptance criteria from `../templates/definition/`. At the lighter weight it is a completed `../templates/definition/one-pager.md` with its acceptance criteria attached. The checklist below is the same either way: a lighter document answers these questions in fewer words, not in fewer answers.
+**Inputs on the table:** the definition set at the weight chosen in [WHICH-DOCUMENT.md](WHICH-DOCUMENT.md). Three weights reach this gate. At BRD-stack weight that is the completed BRD, PRD, FRD, NFR, business rules, assumptions register, and acceptance criteria from `../templates/definition/`. At full-PRD weight it is the completed PRD, NFR, and acceptance criteria, without a BRD. At one-pager weight it is a completed `../templates/definition/one-pager.md` with its acceptance criteria attached. The checklist below is the same at every weight: a lighter document answers these questions in fewer words, not in fewer answers.
 
 - [ ] Every PRD objective traces to the Gate 1 problem statement, and every FRD requirement traces to a PRD item
 - [ ] Every acceptance criterion can fail: it has a condition, an expected result, and a measurable threshold
 - [ ] Every NFR target is a number, or names the owner who will produce the number by a dated deadline
 - [ ] The assumptions register exists, and every assumption carries a confidence, a validation method, and a validate-by date
 - [ ] Out-of-scope is written down and the sponsor has read it
-- [ ] The sponsor named in the BRD has signed the BRD itself, not just this gate
+- [ ] The business sponsor has signed the definition artifact at the chosen weight, not just this gate: the BRD's section 8 at BRD-stack weight, the PRD sign-off block at full-PRD weight, the one-pager's sign-off line at one-pager weight
 - [ ] **AI overlay, when the product contains a model:** acceptance criteria for model behavior are eval sets with thresholds per `../templates/ai/eval-spec.md`, not prose
 - [ ] **Regulated overlay, when the product contains an AI or machine-learning feature and a financial or data regulator applies to it:** section 0 of `../modules/regulated/templates/regulated-ai-prd-template.md` is answered per market, and its lint gate runs green on the filled document. A regulated product with no model in it does not run this overlay; see "The regulated overlay, and what it does not cover" above for what it needs instead
 
@@ -118,7 +118,7 @@ Closes DEFINE. Feeds DESIGN.
 2. **The criterion nobody would remove.** Some criteria cannot be made testable and are also not launch-blocking. Tell: it survives three attempts at a threshold and nobody can name what happens if it fails. The correct move is demotion, not decoration: move it to a UAT observation and record the demotion. Kept as an untestable criterion, it teaches readers that criteria are advisory.
 3. **The NFR with an owner instead of a number, forever.** The line permits an owner and a date in place of a number, and teams use that as a permanent home. Tell: the same NFR row carries an owner and a date at Gate 2 and again at Gate 4, with the date moved. One deferral is a plan; two is a decision to ship without a target, and it should be made explicitly or not at all.
 4. **Traceability that runs one way.** Every FRD requirement points at a PRD item, and three PRD objectives point at nothing being built. Tell: trace backward from the PRD, not forward from the FRD, and count objectives with no requirement under them. Those are either scope the team dropped silently or objectives that were decoration.
-5. **The sponsor who signed the gate and not the BRD.** Tell: the BRD's signature block is empty while the gate form is fully signed. The line exists because signing a process commits nobody; signing the business case commits the person whose budget the ROI logic spends.
+5. **The sponsor who signed the gate and not the definition artifact.** Tell: the chosen artifact's own sign-off block (the BRD's, the PRD's, or the one-pager's) is empty while the gate form is fully signed. The line exists because signing a process commits nobody; signing the business case commits the person whose budget the ROI logic spends.
 6. **Prose criteria on model behavior.** "Summaries should be accurate and helpful" passes a room that does not know how to write an eval row. Tell: the AI overlay line is ticked and the eval spec's dataset field is empty, or the eval spec is thorough and two model behaviors were never routed into it. The second version is more common and harder to see, because the artifact exists and looks complete.
 7. **Regulated preconditions parked as risks.** A precondition is written into the risk register with an owner and treated as handled. Tell: a risk-register row whose mitigation is "confirm with legal before launch". A constraint on the solution space is not a risk to be scored; it is an answer that must exist before design starts, which is why the overlay hooks here rather than at Gate 5.
 
@@ -269,6 +269,7 @@ Closes OPERATE. Loops back to DISCOVER.
 - [ ] The decision below is one of exactly three: persist, pivot, or sunset
 - [ ] The decision's consequence is scheduled: the next DISCOVER pass, the pivot's Gate 1, or the sunset plan with dates and owner
 - [ ] What this pass taught us is written in three sentences or fewer and filed where the next team will find it
+- [ ] **AI overlay, when the product contains a model:** production-sampled eval results for the review window are compared with the Gate 5 run, per segment, and any population added since Gate 5 was re-evaluated before it went live
 
 **Decision:** PERSIST / PIVOT / SUNSET, because: <one paragraph>
 

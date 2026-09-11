@@ -150,6 +150,24 @@ SPECIAL_DESTINATIONS = {
         "definition/ai/regulated-ai-prd.md",
 }
 
+# os/STAGE-GATES.md declares "stage: ALL STAGES", so the fallback below would
+# otherwise route it into execution/STAGE-GATES.md as if it were one more
+# continuously written file, and the whole gate form, every stage's
+# checklist, would land silently in one workspace folder under its template
+# name rather than as the one attempt file a stage actually closes with. A
+# gate attempt is not a template copy: it is one attempt file per stage per
+# try, at products/<slug>/gates/gate-<n>-attempt-<k>.md, holding only that
+# stage's checklist, filled and signed. There is no single destination this
+# function could compute for that, so it refuses instead of guessing one.
+REFUSED_DESTINATIONS = {
+    "os/STAGE-GATES.md":
+        "os/STAGE-GATES.md is the whole gate form for every stage, not one "
+        "stage's artifact, so there is no single workspace destination for "
+        "it. Copy the gate you are closing by hand into "
+        "products/<slug>/gates/gate-<n>-attempt-<k>.md and fill only that "
+        "section.",
+}
+
 
 def safe_product_slug(value):
     """One product slug, or a refusal."""
@@ -200,6 +218,8 @@ def destination_for(template_rel, slug, text=None):
     templates/ reads the stage out of that text.
     """
     template_rel = str(template_rel).replace("\\", "/")
+    if template_rel in REFUSED_DESTINATIONS:
+        raise WorkspaceError(REFUSED_DESTINATIONS[template_rel])
     if template_rel in SPECIAL_DESTINATIONS:
         return "products/%s/%s" % (slug, SPECIAL_DESTINATIONS[template_rel])
     parts = template_rel.split("/")
@@ -370,5 +390,5 @@ def broken_links(path):
     """
     path = Path(path)
     problems = _lint.link_problems(
-        path, _lint.mask(read_text(path)), REPO.resolve())
+        path, _lint.mask(read_text(path), comments=False), REPO.resolve())
     return [(number, message) for number, _code, message in problems]

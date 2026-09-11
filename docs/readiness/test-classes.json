@@ -3,6 +3,10 @@
   "title": "Test classes shipped at the repository root",
   "note": "A floor and a ceiling at once: test_pmos_invariants asserts that the TestCase classes defined in each root test module are exactly these. A class cannot be deleted, renamed or added without editing this file in the same change, which is where a reviewer sees it. Written after commit a92cefa removed four tests from test_pmos_skills.py without any gate noticing; the loss was found by a grep five merges later.",
   "modules": {
+    "test_contract_gates": [
+      "ModelIdGateTests",
+      "WorkspaceContractGateTests"
+    ],
     "test_lint": [
       "GraphDeclarationTests",
       "GraphTruthTests",
@@ -17,6 +21,7 @@
       "ScratchDirectoryExclusion",
       "SecretGateTests",
       "SkillDeclarationTests",
+      "TrackedDotUnderscoreFileIsLinted",
       "WikilinkTests",
       "WorkflowTests",
       "WorkspaceExclusion",
@@ -48,8 +53,10 @@
     "test_pmos_matrix": [
       "GraderTests",
       "RecordTests",
+      "RenderTests",
       "SelectionTests",
-      "ShippedMatrixTests"
+      "ShippedMatrixTests",
+      "SpendCeilingTests"
     ],
     "test_pmos_operations": [
       "AdapterContractTests",
@@ -86,11 +93,15 @@
     ],
     "test_pmos_review": [
       "AppleDoubleSidecarTests",
+      "AttestationSymlinkTests",
       "DamagedRepositoryTests",
       "GitDiscoveryConservatismTests",
       "GitDiscoveryFailureFailsClosedTests",
       "IndependentReviewGateTests",
+      "ReadinessRecordCommitFieldTests",
+      "RecentAuthorsUnreadableHistoryTests",
       "RecordReviewTests",
+      "RootSkipDirectoryTrackedContentTests",
       "TrackedFilenameByteFidelityTests",
       "TrackedMetadataNameTests",
       "WorktreeGitLinkTests"
@@ -117,10 +128,25 @@
       "UseCaseMatrixTests"
     ],
     "test_readiness": [
+      "BuildArtifactIgnoreTests",
+      "DistributionMetadataTests",
+      "GeneratedEvidenceFreshnessTests",
       "ProbeMarkdownWalkIgnoresSidecarsTests",
+      "ReleaseGateContractTests",
       "RubricValidationTests",
       "VerdictAndOutputTests",
       "VerifierExecutionTests"
+    ],
+    "test_tools_gates": [
+      "CiGateVerdictTests",
+      "FrontmatterInitGateTests",
+      "GraphFreshnessGateTests",
+      "PmWorkingSetGateTests",
+      "ReadinessCategoryExitTests",
+      "ReadinessProbeCiWiringTests",
+      "ReadinessProbeMutationAnchorTests",
+      "TemplateInventoryGateTests",
+      "TemplateRubricGateTests"
     ]
   }
 }

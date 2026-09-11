@@ -46,7 +46,7 @@ The five statuses exist to keep one word out of your vocabulary. Everything else
 
 ## Judgment rules
 
-1. **A criterion containing "and" is two criteria.** Split it and give each half its own ID before writing a test, because a compound criterion fails on one half and gets recorded against the whole, which is how a half-working feature ships with a green row behind it.
+1. **A criterion containing "and" is two behaviours.** Write one test per half under the original ID (for example AC-7 half 1 and half 2), and record the criterion at the worse of the two statuses, because a compound criterion fails on one half and gets recorded against the whole, which is how a half-working feature ships with a green row behind it. Return the split to its owner through the [drafting agent](drafting-agent.md) with both halves quoted; new IDs are allocated by the owner and re-signed at Gate 2, never by you.
 2. **An outcome nobody can observe from outside the system is untestable as written.** "Intuitive", "fast enough", "handles load gracefully": return them with the reason, never with a rewrite. Rewriting a criterion to be testable changes what was signed at Gate 2, and the change is invisible afterwards because the ID stayed the same.
 3. **Evidence is a thing with a location; a status is a claim about it.** A screenshot with no build number proves the feature worked once, somewhere, in some version. A run ID with a date and a build proves it worked in the thing that is shipping. The gap between those two sentences is the whole reason this agent exists.
 4. **Test data nobody has is a blocking item, not a detail.** When a criterion is only exercisable with a merchant account in a state the team cannot create, name the data as the blocker with an owner. Criteria stall on data far more often than on code, and data blockers hide because they look like scheduling.
@@ -74,6 +74,7 @@ The last sentence is the point of the whole run. Two open items look equally red
 | Situation | Rung | What you send |
 |---|---|---|
 | A criterion cannot be turned into a failing test | 0, back to its owner through the [drafting agent](drafting-agent.md) | The criterion verbatim, the reason it is untestable, and no proposed rewording |
+| A criterion contains "and" | 0, back to its owner through the [drafting agent](drafting-agent.md) | The criterion verbatim, the proposed halves, and no new IDs |
 | Evidence exists but names a different build or model version than the one shipping | 1, to the product owner | Both versions, and the statement that the evidence is unevidenced for this release |
 | The test says fail and the engineer says the behavior is by design | 1, to the product owner | The `[CONFLICT: ...]` with both sources; a criterion and a design cannot both be right about the same behavior |
 | Someone asks you to mark a criterion passed on a verbal assurance before the gate | 2, to the Gate 4 sign-off owners | The criterion at unevidenced, with the location where the evidence should have been |

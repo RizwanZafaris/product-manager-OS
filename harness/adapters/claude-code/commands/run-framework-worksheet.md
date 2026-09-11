@@ -43,7 +43,7 @@ No skill needed for the sheet itself: the worksheet carries its own scales, arit
 - `frameworks/strategy/market-sizing.md`
 - `frameworks/strategy/swot-tows.md`
 
-## Templates the output lands in
+## Templates this route reads for context
 
 None. This route writes no template.
 

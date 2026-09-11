@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
 """Canonical local/CI release gate for the PM OS.
 
-The workflow invokes this file; it does not carry a second hand-maintained
-list of release checks. ``--manifest`` is machine-readable so the readiness
-evaluator can prove which gates that active invocation owns.
+The workflow invokes this file first, and then re-runs several of the same
+checks as its own named steps, each carrying the comment that records the
+reproduced defect it exists for. Those steps are a second run, not a second
+suite: every check the workflow's gate job runs is also a gate here, and its
+deletable-harness job is measured by the deletable-harness probe inside the
+readiness-local gate, so a green run of this file is what a green workflow
+means. That was not always so. The workflow linted the regulated template in
+structure mode and no gate did, which made a local pass on that file evidence
+of nothing; test_readiness proves the two agree by reading the workflow.
+``--manifest`` is machine-readable so the readiness evaluator can prove which
+gates that active invocation owns.
 """
 
 from __future__ import annotations
@@ -35,12 +43,13 @@ GATES = (
     Gate("compile", ("python3", "tools/readiness_probe.py", "compile-all")),
     Gate("root-tests", ("python3", "-m", "unittest", "-v",
          "test_lint", "test_readiness", "test_pmos_routing",
+         "test_tools_gates",
          "test_pmos_store", "test_pmos_domain", "test_pmos_operations",
          "test_pmos_hooks", "test_pmos_usecases", "test_pmos_conductor",
          "test_pmos_skills", "test_pmos_cli", "test_pmos_release",
          "test_pmos_security", "test_pmos_review",
-         "test_pmos_probe", "test_pmos_matrix",
-         "test_pmos_invariants"), expects_tests=True,
+         "test_pmos_probe", "test_pmos_matrix", "test_pmos_invariants",
+         "test_contract_gates"), expects_tests=True,
          timeout=1800),
     Gate("harness-tests", ("python3", "-m", "unittest", "discover", "-s",
          "harness", "-p", "test_*.py", "-v"), expects_tests=True,
@@ -57,11 +66,23 @@ GATES = (
          "workspace-links")),
     Gate("workspace-contract", ("python3",
          "tools/check_workspace_contract.py", "--quiet")),
+    # Structure only, which is why it is a separate gate from the worked
+    # example below: an unfilled template is supposed to be unfilled.
+    Gate("regulated-template", ("python3", "lint.py", "--template",
+         "modules/regulated/templates/regulated-ai-prd-template.md")),
     Gate("regulated-example", ("python3", "lint.py",
          "modules/regulated/examples/dispute-summary/PRD.md")),
     Gate("os-tree", ("python3", "lint.py", "--os")),
     Gate("json-syntax", ("python3", "lint.py", "--json-syntax")),
     Gate("graph-freshness", ("python3", "tools/graph.py", "--check")),
+    # Same instrument as graph-freshness, for the other generated artifact a
+    # reader is invited to trust: docs/readiness/skill-rubric.json sat in the
+    # evidence directory reporting ten skills as missing contract sections
+    # after a commit had already added them, and nothing noticed. The
+    # skill-rubric gate below cannot see that: it scores the live skills, so
+    # it passes however stale the committed measurement is.
+    Gate("skill-rubric-freshness", ("python3", "tools/skill_rubric.py",
+         "--check")),
     Gate("manifest-contract", ("python3", "tools/check_manifest.py",
          "--quiet")),
     Gate("frontmatter", ("python3", "tools/frontmatter_init.py", "--dry-run"),
@@ -140,6 +161,10 @@ def main(argv=None):
     parser.add_argument("--gate", action="append", default=[],
                         help="run only this exact gate id (repeatable)")
     args = parser.parse_args(argv)
+    if sys.version_info < (3, 11):
+        print("tools/ci_gate.py needs Python 3.11+, found %d.%d" %
+              sys.version_info[:2])
+        return 2
     if args.manifest:
         print(json.dumps(manifest(), sort_keys=True))
         return 0

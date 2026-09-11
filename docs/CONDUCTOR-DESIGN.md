@@ -43,12 +43,12 @@ One table row per stage. Question banks live as files under `skills/conductor/qu
 |---|---|---|---|---|
 | DISCOVER | `skills/conductor` | `skills/product-analyst` via [../agents/research-agent.md](../agents/research-agent.md) | `templates/discovery/` set, rolled into discovery-document.md | Gate 1 |
 | DEFINE | `skills/conductor` | [../agents/drafting-agent.md](../agents/drafting-agent.md); [../skills/ai-prd/SKILL.md](../skills/ai-prd/SKILL.md) when a model is inside; [../agents/validation-agent.md](../agents/validation-agent.md) before the gate | `templates/definition/` set at the chosen weight | Gate 2 |
-| DESIGN | `skills/conductor` | drafting agent in the Architect role; [../skills/program-premortem/SKILL.md](../skills/program-premortem/SKILL.md) | `templates/architecture/` and `templates/execution/` sets | Gate 3 |
-| BUILD | `skills/conductor` | [../agents/validation-agent.md](../agents/validation-agent.md), [../agents/red-team-agent.md](../agents/red-team-agent.md) | `templates/delivery/` testing set; decision log updates | Gate 4 |
-| DELIVER | `skills/conductor` | drafting agent; [../skills/reg-gap-check/SKILL.md](../skills/reg-gap-check/SKILL.md) when regulated | `templates/delivery/` release set; `templates/planning/gtm-plan.md` | Gate 5 |
+| DESIGN | `skills/conductor` | [../agents/architect-agent.md](../agents/architect-agent.md), with [../agents/drafting-agent.md](../agents/drafting-agent.md) filling the chosen template; [../skills/program-premortem/SKILL.md](../skills/program-premortem/SKILL.md) | `templates/architecture/` and `templates/execution/` sets | Gate 3 |
+| BUILD | `skills/conductor` | [../agents/acceptance-agent.md](../agents/acceptance-agent.md), [../agents/validation-agent.md](../agents/validation-agent.md), [../agents/red-team-agent.md](../agents/red-team-agent.md) | `templates/delivery/` testing set; decision log updates | Gate 4 |
+| DELIVER | `skills/conductor` | [../agents/release-manager-agent.md](../agents/release-manager-agent.md), [../agents/pmm-agent.md](../agents/pmm-agent.md); [../skills/reg-gap-check/SKILL.md](../skills/reg-gap-check/SKILL.md) when regulated | `templates/delivery/` release set; `templates/planning/gtm-plan.md` | Gate 5 |
 | OPERATE | `skills/conductor` | `skills/product-analyst` for metric evidence | `templates/operate/` set; `templates/planning/growth-plan.md` | Gate 6 |
 
-### DISCOVER: seven core questions
+### DISCOVER: nine core questions
 
 1. Who exactly has this problem? A segment is not an answer; one title, at one named or precisely described company, with the consequence they personally eat. Evidence class: named user or cited interview.
 2. What did that person do the last time the problem occurred? Behavior, not intention. Evidence class: observed behavior or an artifact of the workaround (a ticket, a spreadsheet, an export).
@@ -57,6 +57,8 @@ One table row per stage. Question banks live as files under `skills/conductor/qu
 5. How many real user conversations stand behind this, and where are they cited? Gate 1 requires five or more; fewer means the personas are labeled assumptions. Evidence class: cited interviews by source.
 6. What would make the honest answer no-go? Gate 1 requires the no-go case seriously argued; the Conductor collects it here, in advance. Evidence class: a stated disconfirming condition someone could observe.
 7. What observable signal, measurable at Gate 6, says this worked? Named before any solution exists. Evidence class: a measurable signal plus the source system that will measure it.
+8. Which domain pack governs this product? One card from `knowledge/domains/README.md` named, or "none" recorded with the table checked. This is the only evidence behind the Gate 1 domain line, and the card it selects is what bends DEFINE, DESIGN, and OPERATE afterwards. Evidence class: artifact, the chosen card's gatekeeper list consulted.
+9. In one sentence, with no solution words, what is the problem? Composed from the accepted answers to questions 1 and 2, each clause citing its source answer. This is the sentence Gate 1's "problem statement, stated the same way" line evidences; the Conductor's own summaries never fill it. Evidence class: every clause traces to an accepted answer.
 
 ### DEFINE: eight core questions
 
@@ -86,7 +88,7 @@ One table row per stage. Question banks live as files under `skills/conductor/qu
 5. AI overlay: did the eval sets run against the model version that ships, and what happened at each threshold?
 6. What did the red team break, and was every fix re-tested?
 
-### DELIVER: six core questions
+### DELIVER: twelve questions
 
 1. Was the rollback actually performed in pre-production, and how long did it take?
 2. Are UAT exit criteria met with real users or named proxies, and is every severity-1 defect closed?
@@ -95,13 +97,15 @@ One table row per stage. Question banks live as files under `skills/conductor/qu
 5. Do support and on-call know this is coming, and does the runbook exist?
 6. Regulated overlay: are the section 0 answers from Gate 2 still true of the artifact that ships?
 
-### OPERATE: six core questions
+Also in the bank, neither core nor part of the gtm-plan block: DELIVER-11 asks whether comms are drafted and approved per audience, with a named approver; DELIVER-12 asks whether the kill switch was pulled live in the release candidate, dated, timed, and by whom.
+
+### OPERATE: ten questions
 
 1. Was the Gate 1 success signal measured, with the source system and the calculation stated?
 2. For each key result: number versus number. Adjectives are returned unanswered.
 3. Did the input metrics move, or did the headline move for an unrelated reason?
 4. What does this cost to run: incident count, support volume, on-call load?
-5. Which input metric is the next growth bet, and what is the cheapest experiment that would move it? First of the growth-plan questions; the bank file carries the rest (the loop or channel behind the metric, the counter-metric that catches damage, and the kill condition for the experiment).
+5. Which input metric is the next growth bet, and what is the cheapest experiment that would move it? First of the growth-plan questions; the bank file carries the rest (the loop or channel behind the metric, the counter-metric that catches damage, the kill condition for the experiment, and the AI overlay's production-eval comparison against the Gate 5 run).
 6. Persist, pivot, or sunset, and what consequence is scheduled: the next DISCOVER pass, the pivot's Gate 1, or the sunset plan with dates and an owner?
 
 ## 4. Evidence classes and the challenge grammar
@@ -168,7 +172,7 @@ In Method 2 (chat, no file access), the user pastes STATE.md at session start an
 
 ## 7. Model routing per stage
 
-Method 4 splits each stage across the three tiers from [../routing/README.md](../routing/README.md), by blast radius, never by convenience:
+Method 5 splits each stage across the three tiers from [../routing/README.md](../routing/README.md), by blast radius, never by convenience:
 
 | Work | Tier |
 |---|---|

@@ -12,7 +12,7 @@ Based on the ideas of Dave McClure, from the talk "Startup Metrics for Pirates" 
 
 ## What it is for
 
-Five stages, acquisition, activation, retention, referral, revenue, each marked by one event, with conversion measured between neighbours. The question it answers is not "how are we growing" but "where exactly does growth leak". The decision it improves is where the next experiment goes. A funnel forces the team to define activation as a moment of value rather than a page view, and it exposes the common failure of buying more acquisition to feed a funnel that loses most people two steps later.
+Five stages, acquisition, activation, retention, referral, revenue, each marked by one event. Acquisition, activation, and retention are sequential, each measured against the one before it; retention then feeds two separate branches, referral and revenue, each measured from retention rather than from each other. The question it answers is not "how are we growing" but "where exactly does growth leak". The decision it improves is where the next experiment goes. A funnel forces the team to define activation as a moment of value rather than a page view, and it exposes the common failure of buying more acquisition to feed a funnel that loses most people two steps later.
 
 ## Run it when
 
@@ -44,6 +44,8 @@ One event per stage. The window says how long after the previous stage a user ma
 | Referral | Another user arrives because of this one (invite sent and accepted) | [event] | | |
 | Revenue | Payment, or expansion of an existing account | [event] | | |
 
+Referral and Revenue both branch off Retention: their windows are measured from the Retention event, not from each other, and not from Referral in Revenue's case.
+
 ### Step 2: measure the transitions, cut by channel and segment
 
 | Transition | Channel or segment | Entered | Converted | Conversion (%) | Same figure last period | Change |
@@ -59,7 +61,9 @@ Compare only against your own prior periods. No industry figure enters this tabl
 
 The leak is not the lowest percentage. Weight each transition's loss by what the lost people would have been worth downstream:
 
-leak weight = (entered minus converted) x (product of the conversion rates for every later transition) x (value per revenue-stage user)
+leak weight = (entered minus converted) x (product of the conversion rates for every later transition on the path to the value stage) x (value per revenue-stage user)
+
+Referral is a side branch off retention, not on the path to revenue; do not multiply the Retention-to-referral rate into a leak weight computed for revenue.
 
 A small loss near the bottom, where survivors are valuable, can outrank a large loss at the top.
 

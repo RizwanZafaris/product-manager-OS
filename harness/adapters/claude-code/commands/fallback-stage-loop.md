@@ -1,6 +1,6 @@
 ---
 name: fallback-stage-loop
-description: "Router row: Anything else in the product loop. No stage and no gate, drafting tier. Say: anything else in the product loop."
+description: "Router row: Anything else in the product loop. Stage and gate decided at run time, drafting tier. Say: anything else in the product loop."
 disable-model-invocation: true
 ---
 
@@ -12,24 +12,24 @@ GENERATED FILE. Do not hand-edit. Written by `harness/adapters/claude-code/gener
 |---|---|
 | Route id | `fallback-stage-loop` |
 | Router row | Anything else in the product loop |
-| Stage | None. See the note below. |
-| Gate | None. See the note below. |
+| Stage | Decided at run time: see the note and step 4 below. |
+| Gate | Decided at run time: see the note and step 4 below. |
 | Tier | drafting. A tier name, never a model. |
-| Kind | report. Produces a findings report. It judges; it never rewrites. |
+| Kind | artifact. Fills one template and files it in the product workspace. |
 | Skill | None. This row names no skill; the reads below carry the procedure. |
 
 The tier to model mapping lives in `routing/omniroute.config.json` and nowhere else. Read it there rather than assuming one here.
 
 ## Note from the manifest
 
-The catch-all, and the only entry whose stage is decided at run time: find the stage in os/OPERATING-LOOP.md, fill that stage's template, take it to that stage's gate. Offer the Conductor once first, per load order step 0 in AGENTS.md. An unroutable request is queued and this table is amended, never guessed at.
+The catch-all, and the only entry whose stage is decided at run time: find the stage in os/OPERATING-LOOP.md, fill that stage's template, take it to that stage's gate. It fills a template and files it, so its kind is artifact; the template it fills is not knowable here, so templates is empty and a run of this route names one with --template. templates/README.md is under reads because it is the catalog the stage template is found in, never a document this route writes into. Offer the Conductor once first, per load order step 0 in AGENTS.md. An unroutable request is queued and this table is amended, never guessed at.
 
 ## What to do
 
 1. Read every file under Read first, in the order listed, before you produce anything.
 2. There is no skill for this row. The reads are the procedure. Do not substitute a skill that looks close.
-3. Report what you found. Never rewrite the thing you were asked to judge, and never fill a template that was not given to you. Any template named below is context for the judgment, not a destination for it.
-4. There is no gate on this output. Do not invent one, and do not report a gate as passed.
+3. Land the output in the one template the request needs, found through the reads below. This route names none in advance, so the choice is made at run time. One template, not several.
+4. Take the output to the gate of the stage you placed the request in, per os/STAGE-GATES.md. Report which boxes pass and which do not, then stop. A named human signs.
 5. Leave any unanswered field as `[OPEN: what is missing, who owns the answer]`. That is a valid value here.
 
 ## Read first
@@ -37,11 +37,12 @@ The catch-all, and the only entry whose stage is decided at run time: find the s
 - `AGENTS.md`
 - `os/OPERATING-LOOP.md`
 - `os/STAGE-GATES.md`
+- `templates/README.md`
 - `skills/conductor/SKILL.md`
 
 ## Templates the output lands in
 
-- `templates/README.md`
+None named in advance. This route files a document, and the template it fills is chosen at run time from the reads above.
 
 ## Invariants that bind this route
 

@@ -57,6 +57,13 @@ class OutboxTests(unittest.TestCase):
         self.assertEqual(retry.status, OutboxStatus.RETRY_WAIT)
         dead = outbox.attempt(first.id, lambda payload: (_ for _ in ()).throw(RuntimeError()), now=2)
         self.assertEqual(dead.status, OutboxStatus.DEAD_LETTER)
+        # This dead letter came from backoff exhaustion, not an unusable
+        # external id: the remote side never confirmed the action completed,
+        # so acknowledgement (directly or via reconcile) stays refused.
+        with self.assertRaises(OutboxError):
+            outbox.acknowledge(dead.id, external_id="whatever", now=2)
+        with self.assertRaises(OutboxError):
+            outbox.reconcile({"k": "whatever"}, now=2)
         delivered = outbox.enqueue("notice", {"id": "2"}, idempotency_key="n")
         delivered = outbox.attempt(delivered.id, lambda payload: "external-2", now=0)
         self.assertEqual(delivered.status, OutboxStatus.DELIVERED)
@@ -103,6 +110,36 @@ class OutboxTests(unittest.TestCase):
         self.assertEqual(outbox.attempt(queued.id, sender, now=2), delivered)
         self.assertEqual(len(calls), 1)
 
+    def test_completed_send_with_an_unusable_id_is_never_dispatched_again(self):
+        outbox = TransactionalOutbox(backoff_base=1, backoff_cap=4)
+        queued = outbox.enqueue("invoice.created", {"id": "inv-1"},
+                                idempotency_key="inv-1", max_attempts=3)
+        sends = []
+
+        def sender(envelope):
+            sends.append(envelope["idempotency_key"])
+            return {"id": "ext-42"}
+
+        terminal = outbox.attempt(queued.id, sender, now=1)
+        self.assertEqual(terminal.status, OutboxStatus.DEAD_LETTER)
+        self.assertEqual(terminal.last_error, "invalid_external_id")
+        self.assertIsNone(terminal.external_id)
+        self.assertEqual(outbox.dispatch(sender, now=2), ())
+        self.assertEqual(outbox.dispatch(sender, now=60), ())
+        self.assertEqual(sends, ["inv-1"])
+        self.assertEqual([record.id for record in outbox.dead_letters()],
+                         [queued.id])
+        # The remote side already completed the action (the sender returned
+        # "ext-42"); reconciliation supplies the id the sender's own
+        # acknowledgement could not, closing the record instead of leaving it
+        # stuck terminal with no path out.
+        reconciled = outbox.reconcile({"inv-1": "ext-42"}, now=61)
+        self.assertEqual([record.status for record in reconciled],
+                         [OutboxStatus.ACKNOWLEDGED])
+        self.assertEqual(reconciled[0].external_id, "ext-42")
+        self.assertEqual(reconciled[0].id, queued.id)
+        self.assertEqual(outbox.dead_letters(), ())
+
     def test_acknowledgement_requires_a_delivered_matching_record(self):
         outbox = TransactionalOutbox()
         queued = outbox.enqueue("notice", {"id": "1"}, idempotency_key="ack-1")
@@ -110,7 +147,8 @@ class OutboxTests(unittest.TestCase):
             outbox.acknowledge(queued.id, external_id="unverified-remote", now=1)
         with self.assertRaises(OutboxError):
             outbox.reconcile({"ack-1": "unverified-remote"}, now=1)
-        rejected = outbox.attempt(queued.id, lambda envelope: None, now=2)
+        rejected = outbox.attempt(
+            queued.id, lambda envelope: (_ for _ in ()).throw(TimeoutError()), now=2)
         self.assertEqual(rejected.status, OutboxStatus.RETRY_WAIT)
         delivered = outbox.attempt(queued.id, lambda envelope: "verified-remote", now=3)
         self.assertEqual(delivered.status, OutboxStatus.DELIVERED)

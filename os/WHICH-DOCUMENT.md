@@ -33,10 +33,10 @@ BRD + PRD + FRD       -> funding decision, contracts, or a regulator in scope
 | Weight | Use it when | The artifact | What it costs you |
 |---|---|---|---|
 | Decide and log | The decision is reversible and needs no build, but someone will ask why in six months | One entry in [decision-log.md](../templates/execution/decision-log.md) | Ten minutes |
-| Ticket only | Scope fits a sprint, one team owns it end to end, a flag turns it off | Your tracker, plus acceptance criteria pasted from [acceptance-criteria.md](../templates/definition/acceptance-criteria.md) | An hour |
-| One-pager | Real user-facing change, one squad, a stakeholder or two who must not be surprised | [one-pager.md](../templates/definition/one-pager.md) | Half a day |
-| Full PRD | Multiple functions, a quarter or more of work, a sponsor who signs at Gate 2 | [prd.md](../templates/definition/prd.md), plus FRD and NFR where the detail is load-bearing | Days, spread over the DEFINE stage |
-| BRD, PRD, FRD stack | Money is being allocated, external contracts are signed, or a regulator can ask for the file | [brd.md](../templates/definition/brd.md), then [prd.md](../templates/definition/prd.md), then [frd.md](../templates/definition/frd.md) | A DEFINE stage of its own |
+| Ticket only | **ticket:** Scope fits a sprint, one team owns it end to end, a flag turns it off | Your tracker, plus acceptance criteria pasted from [acceptance-criteria.md](../templates/definition/acceptance-criteria.md) | An hour |
+| One-pager | **one-pager:** Real user-facing change, one squad, a stakeholder or two who must not be surprised | [one-pager.md](../templates/definition/one-pager.md) | Half a day |
+| Full PRD | **full-PRD:** Multiple functions, a quarter or more of work, a sponsor who signs at Gate 2 | [prd.md](../templates/definition/prd.md), plus FRD and NFR where the detail is load-bearing | Days, spread over the DEFINE stage |
+| BRD, PRD, FRD stack | **BRD-stack** (the heaviest, "BRD plus PRD plus FRD stack"): Money is being allocated, external contracts are signed, or a regulator can ask for the file | [brd.md](../templates/definition/brd.md), then [prd.md](../templates/definition/prd.md), then [frd.md](../templates/definition/frd.md) | A DEFINE stage of its own |
 
 ## The tree
 

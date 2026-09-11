@@ -3,9 +3,11 @@
 import datetime as dt
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 import lint
+from pmos.sidecars import SidecarInspectionError
 
 REPO = Path(__file__).resolve().parent
 
@@ -120,6 +122,20 @@ class ReviewGateTests(unittest.TestCase):
                             "# PRD: Test feature\n**Status:** Approved"))
         self.assertEqual(set(), codes, messages)
 
+    def test_status_spellings_that_render_the_same_are_read_the_same(self):
+        """One spelling of the status line used to be matched, so a reviewer
+        writing "**Status**: Approved" or "APPROVED" bypassed the one PRD
+        check that can fail and was told the status was not Approved."""
+        for spelling in ("**Status**: Approved", "**Status:** APPROVED",
+                         "- **Status:** Approved", "Status: Approved"):
+            codes, messages = run(
+                MINIMAL.replace("- [x] Section 0 complete",
+                                "- [ ] Section 0 complete")
+                       .replace("# PRD: Test feature",
+                                "# PRD: Test feature\n" + spelling))
+            self.assertIn("GATE", codes, spelling)
+            self.assertIn("status is Approved", messages, spelling)
+
     def test_the_templates_status_menu_is_not_read_as_approval(self):
         """The blank template's own line offers Draft / In review / Approved.
         Reading that as a claim of approval would fail every blank."""
@@ -203,11 +219,24 @@ class ReviewGateTests(unittest.TestCase):
         self.assertNotIn("STALE", waived[0])
         self.assertIn("STALE", notices[0])
 
-    def test_deferred_decisions_flagged_but_not_inside_comments(self):
+    def test_deferred_decisions_are_flagged_inside_comments_and_fences(self):
+        """A TODO parked in a guidance comment used to pass. AGENTS.md tells
+        the person filling a template to keep those comments, so a deferred
+        decision written into one ships with the finished document."""
         codes, _ = run(MINIMAL.replace(COST, "- Cost per call target: TBD"))
         self.assertIn("TBD", codes)
-        clean, _ = run(MINIMAL.replace(COST, "<!-- TODO: revisit -->\n" + COST))
-        self.assertNotIn("TBD", clean)
+        commented, _ = run(
+            MINIMAL.replace(COST, "<!-- TODO: revisit -->\n" + COST))
+        self.assertIn("TBD", commented)
+        fenced, _ = run(
+            MINIMAL.replace(COST, "```\nTODO: revisit\n```\n" + COST))
+        self.assertIn("TBD", fenced)
+
+    def test_banned_metrics_are_caught_inside_code_fences_and_comments(self):
+        fenced = "```\nsaving %s a year\n```\n" % BANNED_MONEY + COST
+        self.assertIn("BANNED", run(MINIMAL.replace(COST, fenced))[0])
+        commented = "<!-- saving %s a year -->\n" % BANNED_MONEY + COST
+        self.assertIn("BANNED", run(MINIMAL.replace(COST, commented))[0])
 
     def test_template_mode_skips_fill_checks_but_keeps_the_rest(self):
         unfilled = MINIMAL.replace("Memo REG-1", "").replace("Reg Lead", "[name]")
@@ -321,8 +350,51 @@ class OsTreeGateTests(unittest.TestCase):
         self.assertIn("SECRET", codes)
         self.assertIn("AWS access key", messages)
 
+    def test_the_content_gates_read_html_comments(self):
+        """A banned figure, a deferred marker and a link hidden in a guidance
+        comment used to be invisible to tree mode, while the dash gate read the
+        same comment on purpose, because the person filling a template reads
+        the comments. All four now read the same text."""
+        codes, messages = os_run(
+            {"docs/note.md": "<!-- saving %s, TODO: check, [gone](nope.md) -->\n"
+                             % BANNED_MONEY})
+        self.assertIn("BANNED", codes, messages)
+        self.assertIn("TBD", codes, messages)
+        self.assertIn("LINK", codes, messages)
+
+    def test_the_content_gates_read_fenced_blocks_but_the_link_gate_does_not(self):
+        """A fenced URL is a code sample, so reporting it would be a false
+        positive. A fenced number and a fenced marker are still read by
+        whoever reads the file."""
+        codes, messages = os_run(
+            {"docs/note.md": "```\nsaving %s\nTODO: check\n[s](nope.md)\n```\n"
+                             % BANNED_MONEY})
+        self.assertIn("BANNED", codes, messages)
+        self.assertIn("TBD", codes, messages)
+        self.assertNotIn("LINK", codes, messages)
+
     def test_the_real_tree_passes_the_shipping_gate(self):
         self.assertEqual([], lint.os_check(REPO))
+
+    def test_git_unavailable_is_a_reported_finding_not_a_traceback(self):
+        """tracked_files() consults git through SidecarFilter unguarded, so a
+        checkout with .git present but git unreachable used to blow lint.py
+        --os up with a traceback and no finding line. It must fail closed as
+        one reported SIDECAR finding with a non-zero exit instead."""
+        broken = SidecarInspectionError("git could not be consulted")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "docs").mkdir()
+            (root / "docs" / "note.md").write_text(self.CLEAN)
+            with unittest.mock.patch.object(lint, "SidecarFilter",
+                                            side_effect=broken):
+                problems = lint.os_check(root)
+                exit_code = lint.run_os_mode(root)
+        self.assertEqual(1, len(problems), problems)
+        _, _, code, message = problems[0]
+        self.assertEqual("SIDECAR", code)
+        self.assertIn("git", message)
+        self.assertEqual(1, exit_code)
 
 
 class WorkspaceExclusion(unittest.TestCase):
@@ -348,6 +420,62 @@ class WorkspaceExclusion(unittest.TestCase):
         self.assertTrue(any(n.endswith("products/README.md") for n in names))
         self.assertTrue(
             any(n.endswith("learn/products/README.md") for n in names))
+
+
+class TrackedDotUnderscoreFileIsLinted(unittest.TestCase):
+    """A ``._`` name alone must not excuse tracked content from the OS gate.
+
+    ``tracked_files`` used to exclude every ``._`` name outright, on the
+    premise that git cannot track such a file. ``git add -f`` overrides
+    .gitignore, so a tracked ``._evil.md`` can be force-added and its content
+    -- including a broken link -- never reaches ``os_check`` at all, even
+    though ``tools/review_gate.py`` (tracked-aware) still puts it in the
+    reviewed digest. The rule is tracked-aware here too: a genuine untracked
+    AppleDouble sidecar is still skipped, but a tracked file is linted no
+    matter what it is called.
+    """
+
+    def _git_repo(self, root):
+        import subprocess
+
+        def run(*args):
+            return subprocess.run(("git",) + args, cwd=str(root),
+                                  capture_output=True, text=True, timeout=30)
+        run("init", "-q")
+        run("config", "user.email", "test@example.invalid")
+        run("config", "user.name", "Lint Fixture")
+        return run
+
+    def test_a_force_added_dot_underscore_file_with_a_broken_link_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            run = self._git_repo(root)
+            (root / "docs").mkdir()
+            evil = root / "docs" / "._evil.md"
+            evil.write_text("[broken](nowhere.md)\n", encoding="utf-8")
+            run("add", "-f", "docs/._evil.md")
+            run("commit", "-qm", "init")
+            self.assertIn("docs/._evil.md", run("ls-files").stdout.split())
+            names = [p.relative_to(root).as_posix()
+                     for p in lint.tracked_files(root)]
+            self.assertIn("docs/._evil.md", names)
+            problems = lint.os_check(root)
+            self.assertTrue(any(p[0] == "docs/._evil.md" and p[2] == "LINK"
+                                for p in problems), problems)
+
+    def test_an_untracked_sidecar_is_still_excluded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._git_repo(root)
+            (root / "docs").mkdir()
+            (root / "docs" / "real.md").write_text("A tracked note.\n",
+                                                   encoding="utf-8")
+            (root / "docs" / "._real.md").write_bytes(
+                b"\x00\x05\x16\x07AppleDouble junk")
+            names = [p.relative_to(root).as_posix()
+                     for p in lint.tracked_files(root)]
+            self.assertNotIn("docs/._real.md", names)
+            self.assertIn("docs/real.md", names)
 
 
 class ScratchDirectoryExclusion(unittest.TestCase):
@@ -620,6 +748,27 @@ class SecretGateTests(unittest.TestCase):
         self.assertIn("ENCODING", codes)
         self.assertIn("not valid UTF-8", messages)
 
+    def test_the_regulated_module_is_not_exempt_from_the_secret_gate(self):
+        # The module is exempt from the content checks and pinned by hash, and
+        # a re-copy from the source repository is the way a credential gets in.
+        # A key committed there is still a key, so the secret gate reads it.
+        fixture = {"modules/regulated/README.md":
+                   "example: %s\nOwner: TBD\nleft %s right\n"
+                   % (self.OPENAI_PROJECT, EM_DASH)}
+        codes, messages = os_run(fixture)
+        self.assertIn("SECRET", codes, messages)
+        # The content checks still skip that directory, which is deliberate.
+        self.assertNotIn("TBD", codes)
+        self.assertNotIn("DASH", codes)
+
+    def test_an_undecodable_regulated_file_fails_instead_of_being_skipped(self):
+        # A file the secret gate cannot decode is a file it has not cleared,
+        # and that holds inside the module as well as outside it.
+        codes, messages = os_run_bytes(
+            {"modules/regulated/note.md": b"head \xff\xfe tail"})
+        self.assertIn("ENCODING", codes)
+        self.assertIn("not valid UTF-8", messages)
+
 
 class PathGateFenceTests(unittest.TestCase):
     """Check 8. The prompt body a user pastes lives inside a fenced block."""
@@ -631,6 +780,26 @@ class PathGateFenceTests(unittest.TestCase):
         self.assertIn("PATH", codes)
         self.assertIn("templates/nowhere.md", messages)
 
+    def test_every_top_level_directory_of_the_tree_is_in_reach(self):
+        """The alternation was a hardcoded list of ten directory names against
+        sixteen in the tree, so a path a system prompt gave under frameworks/,
+        learn/, harness/, tools/, pmos/ or products/ was never checked at all,
+        while README.md says every path named in a system prompt exists."""
+        for top in ("frameworks", "learn", "harness", "tools", "pmos"):
+            with self.subTest(top=top):
+                codes, messages = os_run({
+                    "system/PROMPT.md": "Open %s/nowhere.md by path.\n" % top,
+                    "%s/real.md" % top: "Content.\n"})
+                self.assertIn("PATH", codes, messages)
+                self.assertIn("%s/nowhere.md" % top, messages)
+
+    def test_a_directory_with_no_files_is_not_invented_as_a_path_root(self):
+        # The alternation is derived from files that exist, so a word that
+        # merely looks like a directory does not become one.
+        codes, messages = os_run(
+            {"system/PROMPT.md": "Read nosuchdir/nowhere.md first.\n"})
+        self.assertNotIn("PATH", codes, messages)
+
     def test_a_manifest_line_resolves_names_against_its_directory(self):
         fenced = ("```\nlearn/         README.md, skills/tutor/SKILL.md\n"
                   "```\n")
@@ -640,6 +809,27 @@ class PathGateFenceTests(unittest.TestCase):
              "learn/skills/tutor/SKILL.md":
                  "---\nname: tutor\ndescription: Use when learning.\n---\nX.\n"})
         self.assertNotIn("PATH", codes, messages)
+
+    def test_a_manifest_block_must_name_every_file_in_its_directory(self):
+        # The prompt calls its manifest every file a session can ask for, so a
+        # tracked file left off its directory's block is unreachable.
+        prompt = ("```\nlearn/         README.md,\n"
+                  "               library.md\n```\n")
+        tree = {"learn/README.md": "# Learn\n",
+                "learn/library.md": "# Library\n",
+                "learn/INDEX.md": "# Index\n",
+                "learn/skills/tutor/SKILL.md":
+                    "---\nname: tutor\ndescription: Use when learning.\n---\nX.\n"}
+        codes, messages = os_run(dict(tree, **{"system/PROMPT.md": prompt}))
+        self.assertIn("PATH", codes)
+        self.assertIn("does not name learn/INDEX.md", messages)
+        # A name on a continuation line counts, and a file in a subdirectory
+        # answers to its own block, not to this one.
+        self.assertNotIn("does not name learn/library.md", messages)
+        self.assertNotIn("does not name learn/skills", messages)
+        whole = prompt.replace("library.md", "library.md, INDEX.md")
+        clean, messages = os_run(dict(tree, **{"system/PROMPT.md": whole}))
+        self.assertNotIn("PATH", clean, messages)
 
 
 class GraphTruthTests(unittest.TestCase):
@@ -1032,6 +1222,16 @@ class WorkspaceModeTests(unittest.TestCase):
                                             root=root)
         self.assertEqual("products/demo/draft.md", problems[0][0])
 
+    def test_content_hidden_in_a_comment_is_still_checked(self):
+        # A reviewer note pasted into one of the template's guidance comments
+        # used to be invisible here, so a filled draft could carry a deferred
+        # decision and a broken link with the gate green.
+        codes, messages = ws_run(
+            {"products/demo/draft.md":
+             "<!-- TODO: revisit, see [gone](nowhere.md) -->\n"})
+        self.assertIn("TBD", codes, messages)
+        self.assertIn("LINK", codes, messages)
+
     def test_a_workspace_outside_the_root_checks_against_itself(self):
         # A workspace kept outside the repository is still checkable; the
         # boundary falls back to the workspace rather than refusing to run.
@@ -1041,6 +1241,30 @@ class WorkspaceModeTests(unittest.TestCase):
             (root / "sub" / "draft.md").write_text("[a](../gone.md)\n")
             problems = lint.workspace_check(root)
         self.assertEqual({"LINK"}, {code for _, _, code, _ in problems})
+
+    def test_the_boundary_does_not_move_with_the_working_directory(self):
+        # The default boundary used to be Path.cwd(), so running the gate from
+        # a directory above the workspace widened it: a link that climbs out
+        # landed inside the boundary and passed. The boundary is the repository
+        # the gate itself lives in, and nothing else, so the same workspace
+        # gets the same verdict from every working directory.
+        import os
+        with tempfile.TemporaryDirectory() as tmp:
+            outer = Path(tmp).resolve()
+            workspace = outer / "products" / "ws"
+            workspace.mkdir(parents=True)
+            (outer / "outside.md").write_text("Outside.\n", encoding="utf-8")
+            (workspace / "note.md").write_text(
+                "See [outside](../../outside.md).\n", encoding="utf-8")
+            here = Path.cwd()
+            for cwd in (REPO, outer):
+                try:
+                    os.chdir(cwd)
+                    problems = lint.workspace_check(workspace)
+                finally:
+                    os.chdir(here)
+                codes = {code for _, _, code, _ in problems}
+                self.assertIn("LINK", codes, "run from %s" % cwd)
 
 
 class JsonSyntaxTests(unittest.TestCase):

@@ -97,8 +97,8 @@ Related: [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md) for the beliefs behind these m
 
 ## P
 
-- **Parked answer.** A weak answer that survived two pushes and went to the assumptions register with an owner and a validate-by date, visible in STATE.md under open challenges. Parking is the alternative to silent acceptance.
-- **Pencil path.** Running the whole system with no model at all: copy a template, fill it in any editor, work the gate checklist by hand. Method one of the four in [README.md](README.md).
+- **Parked answer.** A weak answer that survived two pushes and went to the assumptions register with an owner and a validate-by date, visible in STATE.md under open challenges; the local PMOS runtime always takes this path on the third invalid submission, since it has no call that accepts an answer as offered. Parking is the alternative to silent acceptance.
+- **Pencil path.** Running the whole system with no model at all: copy a template, fill it in any editor, work the gate checklist by hand. Method one of the five in [README.md](README.md).
 - **Premortem.** The exercise of assuming the launch already failed and writing the causes, run before Gate 3, because a team that has named nine failure modes in advance recognizes the first one in week two. See [frameworks/execution/premortem-worksheet.md](frameworks/execution/premortem-worksheet.md).
 - **Postmortem, blameless.** The per-incident review written in systems language with no names: facts, timeline, quantified impact, corrective actions with owners and verification. See [templates/operate/incident-postmortem.md](templates/operate/incident-postmortem.md).
 - **Product workspace.** `products/<name>/`, the folder where filled artifacts, gate attempts, and STATE.md accumulate as a product's memory. Gitignored, never shipped here, so your work cannot collide with an update. See [os/PRODUCT-WORKSPACE.md](os/PRODUCT-WORKSPACE.md).

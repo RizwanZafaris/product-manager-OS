@@ -9,7 +9,7 @@ aliases: ["DELIVER bank"]
 # DELIVER bank
 
 Stage: DELIVER, feeds Gate 5 (release readiness green) in [../../../os/STAGE-GATES.md](../../../os/STAGE-GATES.md).
-Working handoffs: [../../../agents/drafting-agent.md](../../../agents/drafting-agent.md) drafts the release set and the go-to-market plan (workspace copy of [../../../templates/planning/gtm-plan.md](../../../templates/planning/gtm-plan.md)); [../../reg-gap-check/SKILL.md](../../reg-gap-check/SKILL.md) re-runs when the regulated overlay is active.
+Working handoffs: [../../../agents/release-manager-agent.md](../../../agents/release-manager-agent.md) leads readiness, rollback, and the go decision packet; [../../../agents/pmm-agent.md](../../../agents/pmm-agent.md) drafts comms, positioning, and the go-to-market plan (workspace copy of [../../../templates/planning/gtm-plan.md](../../../templates/planning/gtm-plan.md)); [../../../agents/drafting-agent.md](../../../agents/drafting-agent.md) fills the remaining release-set templates; [../../reg-gap-check/SKILL.md](../../reg-gap-check/SKILL.md) re-runs when the regulated overlay is active.
 Applies: [Crossing the Chasm](../../../knowledge/crossing-the-chasm.md), Geoffrey Moore's argument that early adopters and mainstream buyers purchase for different reasons, so the first cohort is a beachhead choice, not a broadcast. The Conductor names this method aloud when DELIVER-4 runs.
 Questions 4 and 7 through 10 are the go-to-market block; their accepted answers fill the gtm plan.
 Gate 5 itself now carries a run-of-show block in [../../../os/STAGE-GATES.md](../../../os/STAGE-GATES.md): chair, attendees, the 48-hour pre-read, demo-not-slides, and GO / NO-GO / CONDITIONAL GO with a named owner and close-by date per condition. The Conductor renders the checklist; the run of show governs the humans in the room.
@@ -66,7 +66,7 @@ Ask: Are the section 0 answers from Gate 2 still true of the artifact that ships
 Wrong costs: A deferred precondition can resurface with a regulator's reference number attached.
 Evidence class: 2, the answers re-checked line by line against the shipping artifact: model version, vendor terms, data residency, disclosures.
 Cross-examine when: "nothing changed" without the line-by-line check. Move: interest to behavior, walk the four together.
-Accept when: each answer re-verified, and any drift written up and re-signed by the regulatory owner. Skip this entry with a cited source when STATE.md says the regulated overlay is not active.
+Accept when: each answer re-verified, and any drift written up and re-signed by the regulatory owner. Where STATE.md records that the shipped overlay did not apply and names what the regulatory owner used in its place, the Gate 5 line re-checks that substitute instead, by name, in the same way. Skip this entry with a cited source only when STATE.md records that no regulator applies to the product.
 Lands in: `delivery/release-readiness.md` section 7, and STATE.md accepted answers.
 
 ### DELIVER-7: positioning
@@ -105,6 +105,24 @@ Cross-examine when: the condition is "if things look bad". Move: naked numbers.
 Accept when: condition, threshold, and the person with authority to pull it, named.
 Lands in: the workspace gtm plan, stop condition section, and `execution/risk-register.md`, and STATE.md accepted answers.
 
+### DELIVER-11: comms drafted and approved
+
+Ask: For each audience (support, sales or field, customers), is the message drafted, and who approved it in writing?
+Wrong costs: A drafted message with no named approver ships as whatever the last editor left in it, and nobody is accountable for the version that went out.
+Evidence class: 3, named commitment per audience, or "silent release" recorded with its decider.
+Cross-examine when: an audience row has a message and no approver, or "we'll send something" stands in for a draft. Move: interest to behavior, who approved it and when?
+Accept when: every row of release-readiness section 6 has an owner, an approver named from evidence, and a sent or scheduled date.
+Lands in: `delivery/release-readiness.md` section 6, and STATE.md accepted answers.
+
+### DELIVER-12: kill switch tested
+
+Ask: Were the guardrails verified live in the release candidate, and when was the kill switch last pulled there, by whom, and how long until fully stopped?
+Wrong costs: A kill switch that was designed but never tested is a fail dressed as a pass; the first real pull is the worst possible time to discover it does not work.
+Evidence class: 1, the rehearsal in the release candidate, dated and timed.
+Cross-examine when: the switch is described, not pulled, or one flag takes the host surface down too. Move: interest to behavior.
+Accept when: guardrail rows re-verified against the release candidate, and the kill switch pulled, dated, timed, runner named. Skip this entry with a cited source when STATE.md says the AI overlay is not active.
+Lands in: the workspace copy of `templates/ai/guardrails.md` section 4 (Last tested) and `delivery/release-readiness.md` section 5, and STATE.md accepted answers.
+
 ## Forced pair
 
 On "advance anyway": DELIVER-1, then DELIVER-10. An unrehearsed rollback and a rollout with no stop condition are the two skips that convert a bad hour into a bad quarter.
@@ -116,8 +134,8 @@ On "advance anyway": DELIVER-1, then DELIVER-10. An unrehearsed rollback and a r
 | UAT exit criteria met, severity-1 defects closed | DELIVER-2 |
 | Rollback performed in pre-production, time recorded | DELIVER-1 |
 | Known issues listed with workaround or accepted-risk sign-off | DELIVER-3 |
-| Comms drafted and approved | DELIVER-4, DELIVER-7, via the drafting-agent handoff against `delivery/release-readiness.md` section 6 |
+| Comms drafted and approved | DELIVER-11, with DELIVER-5 for the support row |
 | On-call informed, runbook exists | DELIVER-5 |
 | Every function signed its own readiness line | Human signatures; the Conductor reports presence or absence, never supplies them |
-| AI overlay: guardrails live, kill switch tested | BUILD-5 and BUILD-6 evidence re-verified against the release candidate |
+| AI overlay: guardrails live, kill switch tested | DELIVER-12, with BUILD-5 and BUILD-6 re-verified against the release candidate |
 | Regulated overlay: section 0 still true of what ships | DELIVER-6 |

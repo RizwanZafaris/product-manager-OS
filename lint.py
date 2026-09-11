@@ -17,19 +17,21 @@ below-threshold action, and owner, with the threshold either labeled
 ILLUSTRATIVE or citing a dated agreement.
 
 Limits, stated rather than hidden: a section 0 bullet with no colon is not read
-as a field; gate boxes are checked for presence, never for being ticked, because
-only a human can honestly tick one; the banned-metric list is a specific set of
-literal strings, so a spelled-out variant walks straight through; a required
-column is matched by a keyword in its header, so a renamed column with the same
-word in it passes; and nothing here tells a real citation from a confident
-sentence. Green means the document is complete, not that it is true.
+as a field; gate boxes are checked for presence, and for being ticked only when
+the document's own status line says Approved, because only a human can honestly
+tick one; the banned-metric list is a specific set of literal strings, so a
+spelled-out variant walks straight through; a required column is matched by a
+keyword in its header, so a renamed column with the same word in it passes;
+and nothing here tells a real citation from a confident sentence. Green means
+the document is complete, not that it is true.
 
-Two scans are deliberately wider than the rest. Dashes are checked on the raw
-text, before code fences and HTML comments are blanked, because a template's
-comments are read by the person filling it in. Banned metric strings are checked
-line by line and then again over the text with its line breaks closed up, so a
-string broken across a line break is still caught; the reported line is where the
-match starts.
+Three scans are deliberately wider than the rest. Dashes, banned metric strings
+and deferred markers are all checked on the raw text, before code fences and
+HTML comments are blanked, because a template's comments are read by the person
+filling it in and a fenced block is read by whoever reviews the document.
+Banned metric strings are checked line by line and then again over the text with
+its line breaks closed up, so a string broken across a line break is still
+caught; the reported line is where the match starts.
 
 An as-of date older than STALE_AFTER_DAYS fails the gate, which is what makes the
 repository's re-verification promise something CI enforces rather than something
@@ -49,20 +51,29 @@ paths named in system/ prompts, a secret gate, a graph gate over the six-key
 declaration every file in the six declaring layers carries, and a wikilink gate
 that resolves every [[target]] to a file or a declared alias.
 modules/regulated/ is governed by its own verbatim lint.py and is exempt from
-tree mode except for the integrity gate, which is the point.
+tree mode except for two checks: the integrity gate, which is the whole point of
+pinning that directory, and the secret gate, which exempts no file anywhere.
 
-Four of those checks are wider than they read. The secret gate runs on every
+Seven of those checks are wider than they read. The secret gate runs on every
 readable file with no exemption, line by line and again over the closed-up text,
 and a file that is not valid UTF-8 fails rather than being skipped, because a
-file no check could read is a file no check has cleared. The path gate reads the
-raw lines of system/ prompts, fences included, since the prompt body a user
-pastes lives inside a fence; a name in a manifest line is resolved against the
-directory that line names as well as against the repository root. The graph gate
-checks the declaration against the truth it claims: layer is the directory the
-file lives in, gate is a gate os/STAGE-GATES.md defines, and stage and gate
-agree with the file's own Stage header and with the gate that document says
-closes that stage. The wikilink gate resolves a qualified target exactly and
-accepts a bare name only while it is unique in the tree.
+file no check could read is a file no check has cleared. The banned-metric,
+placeholder and link gates read HTML comments rather than blanking them, for the
+reason the character gate does: a template's guidance comments are read by the
+person filling it in, so a banned figure, a deferred marker or a link that does
+not resolve is a defect wherever it sits. Fenced code is still blanked for the
+link gate alone, because a URL in a code sample is a sample rather than a link
+a reader follows. The path gate reads the raw lines of system/ prompts, fences
+included, since the prompt body a user pastes lives inside a fence; a name in a
+manifest line is resolved against the directory that line names as well as
+against the repository root, and a tracked .md file sitting directly in a
+manifest block's directory fails when the block does not name it, because the
+prompt promises the model that its manifest is every file it can ask for. The
+graph gate checks the declaration against the truth it claims: layer is the
+directory the file lives in, gate is a gate os/STAGE-GATES.md defines, and stage
+and gate agree with the file's own Stage header and with the gate that document
+says closes that stage. The wikilink gate resolves a qualified target exactly
+and accepts a bare name only while it is unique in the tree.
 
 docs/ARCHITECTURE.md and this file name the detector's own rule strings, so the
 placeholder and wikilink gates skip them: a detector's rules have to be legible,
@@ -117,6 +128,12 @@ import re
 import sys
 import urllib.parse
 from pathlib import Path
+
+_REPO_ROOT = Path(__file__).resolve().parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from pmos.sidecars import SidecarFilter, SidecarInspectionError      # noqa: E402
 
 STALE_AFTER_DAYS = 180
 
@@ -215,8 +232,13 @@ TICKED_RE = re.compile(r"^\s*[-*]\s*\[[xX]\]")
 
 # The status line the regulated template puts at the top. Matched only when it
 # names Approved on its own, so the template's own "Draft / In review /
-# Approved" menu of choices is not read as a claim of approval.
-APPROVED_RE = re.compile(r"^\*\*Status:\*\*\s*Approved\b", re.M)
+# Approved" menu of choices is not read as a claim of approval. The bold marks,
+# the list bullet, the space around the colon and the case are all optional,
+# because "**Status**: Approved" and "**Status:** APPROVED" render as the same
+# claim and used to walk past the one PRD check that can fail.
+APPROVED_RE = re.compile(
+    r"^[ \t]*(?:[-*][ \t]+)?\*{0,2}Status\*{0,2}[ \t]*:[ \t]*"
+    r"\*{0,2}[ \t]*Approved\b", re.M | re.I)
 FIELD_RE = re.compile(r"^\s*[-*]\s+(.+?):\s*(.*)$")
 BARE_NA_RE = re.compile(r"^(n/?a|not applicable|none|nil|unknown)\.?$", re.I)
 SEPARATOR_RE = re.compile(r"^\|?[\s:|-]+\|?$")
@@ -240,10 +262,17 @@ SECTION0_TABLES = (
 )
 
 
-def mask(text):
-    """Blank HTML comments and fenced code, preserving line numbers."""
+def mask(text, comments=True):
+    """Blank fenced code, and HTML comments too unless comments is False.
+
+    Line numbers are preserved either way. The link gate passes comments=False:
+    a URL inside a fenced block is a code sample and reporting it would be a
+    false positive, but a link inside an HTML guidance comment is one the
+    person filling the template is told to follow, so it has to resolve.
+    """
     blank = lambda m: re.sub(r"[^\n]", " ", m.group(0))  # noqa: E731
-    text = re.sub(r"<!--.*?-->", blank, text, flags=re.S)
+    if comments:
+        text = re.sub(r"<!--.*?-->", blank, text, flags=re.S)
     text = re.sub(r"^```.*?^```", blank, text, flags=re.S | re.M)
     return text.split("\n")
 
@@ -327,19 +356,23 @@ def check(path, template_mode=False, stale_fatal=True):
     """Return (sorted failures, sorted non-fatal notices) as (line, code, msg)."""
     raw = Path(path).read_text(encoding="utf-8")
     lines = mask(raw)
+    raw_lines = raw.split("\n")
     text = "\n".join(lines)
     problems, notices = [], []
     fail = lambda n, c, m: problems.append((n, c, m))  # noqa: E731
 
     # Before mask(), on purpose: a dash inside a code fence or an HTML comment is
     # still a dash the reader sees, and the template's comments are instructions.
-    for i, line in enumerate(raw.split("\n"), 1):
+    for i, line in enumerate(raw_lines, 1):
         for char, name in DASHES.items():
             if char in line:
                 fail(i, "DASH", "contains an %s. Use a comma or a colon." % name)
 
-    # Line by line, then again over the closed-up text, so that a banned string
-    # broken across a line break is caught too. Reported once per line and label.
+    # Raw lines, for the reason the dash scan uses them: a banned number or a
+    # deferred marker inside a guidance comment or a fenced block is read by
+    # the person filling the document in and by whoever reviews it. Line by
+    # line, then again over the closed-up text, so that a banned string broken
+    # across a line break is caught too. Reported once per line and label.
     seen = set()
 
     def banned(line_no, label):
@@ -347,14 +380,14 @@ def check(path, template_mode=False, stale_fatal=True):
             seen.add((line_no, label))
             fail(line_no, "BANNED", "contains the banned metric string %s." % label)
 
-    for i, line in enumerate(lines, 1):
+    for i, line in enumerate(raw_lines, 1):
         for m in re.finditer(r"\b(TBD|TODO|FIXME|XXX)\b", line, re.I):
             fail(i, "TBD", '"%s" is a deferred decision, not an answer.' % m.group(1))
         for pattern, label in BANNED_METRICS:
             if re.search(pattern, line, re.I):
                 banned(i, label)
 
-    collapsed, origin = collapse(lines)
+    collapsed, origin = collapse(raw_lines)
     for pattern, label in BANNED_METRICS:
         for m in re.finditer(pattern, collapsed, re.I):
             banned(origin[m.start()], label)
@@ -595,9 +628,28 @@ REF_DEF_RE = re.compile(
 ATX_RE = re.compile(r"^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$")
 HTML_ANCHOR_RE = re.compile(
     r"<a\s[^>]*?\b(?:name|id)\s*=\s*[\"']([^\"']+)[\"']", re.I)
-REPO_PATH_RE = re.compile(
-    r"\b((?:os|templates|knowledge|skills|agents|system|routing|modules|"
-    r"examples|docs)/[A-Za-z0-9._/\-]*[A-Za-z0-9])")
+# The roots the path gate recognises. The list used to be the whole answer, and
+# it named ten of the sixteen top-level directories, so check 8 could not see a
+# path a system prompt gave under frameworks/, learn/, harness/, tools/, pmos/
+# or products/, while README.md says every path named in a system prompt exists.
+# The tree's own directories are added to it at run time, so a new directory is
+# covered the moment it holds a file. The written list stays in the union so
+# that a prompt naming a path under a directory somebody deleted still fails,
+# which is the one case the derived half cannot see.
+REPO_PATH_ROOTS = ("os", "templates", "knowledge", "skills", "agents",
+                   "system", "routing", "modules", "examples", "docs")
+REPO_PATH_TAIL = r"/[A-Za-z0-9._/\-]*[A-Za-z0-9])"
+
+
+def repo_path_re(tree):
+    """A pattern matching any path under a top-level directory of this tree."""
+    tops = sorted(set(REPO_PATH_ROOTS)
+                  | {target.split("/")[0] for target in tree if "/" in target})
+    return re.compile(r"\b((?:%s)%s"
+                      % ("|".join(re.escape(top) for top in tops),
+                         REPO_PATH_TAIL))
+
+
 HEADER_KEYS = ("Stage:", "Knowledge:", "Skill:")
 HEADER_WINDOW = 8
 
@@ -605,6 +657,8 @@ HEADER_WINDOW = 8
 # it holds, named relative to it.
 MANIFEST_PREFIX_RE = re.compile(
     r"^(?:>\s*)?([A-Za-z0-9._\-]+(?:/[A-Za-z0-9._\-]+)*/)\s{2,}\S")
+# A file named inside a manifest block, relative to the block's directory.
+MANIFEST_NAME_RE = re.compile(r"[A-Za-z0-9._\-]+(?:/[A-Za-z0-9._\-]+)*\.md\b")
 
 # The six layers that declare themselves to the graph, and the key set every
 # file in them carries. Written by tools/frontmatter_init.py, read by
@@ -864,13 +918,27 @@ def tracked_files(root):
     """Every file in the tree except VCS internals, scratch, and workspaces.
 
     products/ and learn/products/ hold a user's own filled drafts (gitignored);
-    the gate judges the shipped system, never someone's work in progress. The
-    two workspace README.md files stay in scope because they ship with the repo.
+    the gate judges the shipped system, never someone's work in progress. A
+    README.md directly inside either one stays in scope. Only one of the two
+    ships: learn/products/README.md is tracked, while .gitignore excludes
+    /products/ wholesale, so products/README.md is a file this repository never
+    carries. The exception is kept for it anyway, because a user who writes a
+    README into their own workspace root gets it linted rather than skipped.
+
+    A ``._`` name alone used to be excluded outright, on the premise that git
+    cannot carry such a file. ``git add -f`` overrides .gitignore, so a
+    tracked ``._real.md`` could be force-added and never linted: it entered
+    the review digest (``tools/review_gate.py`` is tracked-aware) but not this
+    gate. ``SidecarFilter`` makes the same tracked-aware judgement
+    ``tools/review_gate.py`` and every other walker in this tree already use:
+    a genuine untracked AppleDouble sidecar is skipped, but a tracked file is
+    linted no matter what it is named.
     """
     skip = SCRATCH_DIRS
+    sidecars = SidecarFilter(root)
     for path in sorted(root.rglob("*")):
         if path.is_file() and not (skip & set(path.parts)) \
-                and not path.name.startswith("._"):
+                and not sidecars.excused(path):
             rel = path.relative_to(root).parts
             in_workspace = (rel[:1] == ("products",) and rel[1:] != ("README.md",)) \
                 or (rel[:2] == ("learn", "products") and rel[2:] != ("README.md",))
@@ -885,9 +953,19 @@ def in_tree(target, tree):
 
 
 def in_angle_field(line, start):
-    """True when position start sits inside an <angle-bracket> fill-in field."""
+    """True when position start sits inside an <angle-bracket> fill-in field.
+
+    The span has to be a fill-in field in the sense ANGLE_FIELD_RE defines,
+    not merely a pair of angle brackets. An HTML comment opens with "<!--",
+    so the looser test read every guidance comment as one long sanctioned
+    field and a TODO parked inside one was exempt from the placeholder gate.
+    """
     left = line.rfind("<", 0, start)
-    return left != -1 and line.find(">", left) > start
+    if left == -1:
+        return False
+    right = line.find(">", left)
+    return (right > start
+            and ANGLE_FIELD_RE.fullmatch(line[left:right + 1]) is not None)
 
 
 def slug(heading):
@@ -1016,7 +1094,12 @@ def os_check(root, pins=None):
     problems = []
     fail = lambda p, n, c, m: problems.append((str(p), n, c, m))  # noqa: E731
 
-    all_files = list(tracked_files(root))
+    try:
+        all_files = list(tracked_files(root))
+    except SidecarInspectionError as error:
+        fail(".", 1, "SIDECAR",
+             "cannot consult git to classify sidecar files: %s" % error)
+        return sorted(problems)
     rel = {p: p.relative_to(root).as_posix() for p in all_files}
     tree = set(rel.values())
     inside = root.resolve()
@@ -1026,10 +1109,11 @@ def os_check(root, pins=None):
         basenames[target.split("/")[-1]].append(target)
     layers = {part for part in (t.split("/")[0] for t in tree)
               if part in GRAPH_LAYERS}
+    path_re = repo_path_re(tree)
     gate_numbers, stage_closed_by = gate_contract(root)
 
-    # Check 7, integrity gate: runs first and inside modules/regulated/,
-    # which is otherwise exempt from tree mode.
+    # Check 7, integrity gate: runs first and inside modules/regulated/, which
+    # is exempt from every other tree-mode check bar the secret gate below.
     for pinned, expected in sorted(pins.items()):
         target = root / pinned
         if not target.is_file():
@@ -1063,8 +1147,6 @@ def os_check(root, pins=None):
 
     for path in all_files:
         rp = rel[path]
-        if rp.startswith("modules/regulated/"):
-            continue
         try:
             raw = path.read_text(encoding="utf-8")
         except UnicodeDecodeError:
@@ -1078,12 +1160,13 @@ def os_check(root, pins=None):
                  "below ran against it.")
             continue
         raw_lines = raw.split("\n")
-        lines = mask(raw) if path.suffix == ".md" else raw_lines
-        is_doc = path.suffix in (".md", ".json")
 
         # Check 9, secret gate: every readable file, with no file-level
-        # exemption. The closed-up text is scanned as well, so a token broken
-        # across a line break is caught the way a split metric string is.
+        # exemption, modules/regulated/ included, which is why it sits above
+        # that directory's skip rather than below it. Reading those files to
+        # scan them writes nothing there, so the integrity pins hold. The
+        # closed-up text is scanned as well, so a token broken across a line
+        # break is caught the way a split metric string is.
         seen_secrets = set()
         for i, line in enumerate(raw_lines, 1):
             for label in secret_hits(line):
@@ -1099,7 +1182,15 @@ def os_check(root, pins=None):
                     fail(rp, key[0], "SECRET", "matches the %s pattern once "
                          "the line breaks are closed up." % label)
 
-        if not is_doc:
+        # Every remaining check judges content this repository owns. The
+        # regulated module is copied in byte for byte, governed by its own
+        # verbatim lint.py and pinned here by sha256, so it is exempt from all
+        # of them.
+        if rp.startswith("modules/regulated/"):
+            continue
+
+        lines = mask(raw) if path.suffix == ".md" else raw_lines
+        if path.suffix not in (".md", ".json"):
             continue
 
         # Check 1, character gate: raw text, same reasoning as the PRD gate.
@@ -1109,15 +1200,17 @@ def os_check(root, pins=None):
                     fail(rp, i, "DASH",
                          "contains an %s. Use a comma or a colon." % name)
 
-        # Check 2, metric gate: masked lines plus the closed-up text.
+        # Check 2, metric gate: raw lines plus the closed-up text. Raw for the
+        # reason check 1 is: a banned figure inside a guidance comment or a
+        # fenced sample is read by whoever reads the file.
         seen = set()
-        for i, line in enumerate(lines, 1):
+        for i, line in enumerate(raw_lines, 1):
             for pattern, label in BANNED_METRICS:
                 if re.search(pattern, line, re.I) and (i, label) not in seen:
                     seen.add((i, label))
                     fail(rp, i, "BANNED",
                          "contains the banned metric string %s." % label)
-        collapsed, origin = collapse(lines)
+        collapsed, origin = collapse(raw_lines)
         for pattern, label in BANNED_METRICS:
             for m in re.finditer(pattern, collapsed, re.I):
                 key = (origin[m.start()], label)
@@ -1126,9 +1219,11 @@ def os_check(root, pins=None):
                     fail(rp, key[0], "BANNED",
                          "contains the banned metric string %s." % label)
 
-        # Check 3, placeholder gate: angle-bracket fields are sanctioned.
+        # Check 3, placeholder gate: angle-bracket fields are sanctioned. Raw
+        # lines, so a deferred marker parked in a comment is still a deferred
+        # marker.
         if rp not in RULE_BEARING:
-            for i, line in enumerate(lines, 1):
+            for i, line in enumerate(raw_lines, 1):
                 for m in PLACEHOLDER_RE.finditer(line):
                     if not in_angle_field(line, m.start()):
                         fail(rp, i, "TBD", '"%s" is a deferred decision, '
@@ -1138,8 +1233,8 @@ def os_check(root, pins=None):
         # the parser under them reads the spellings it used to skip, so a link
         # with a title, a space, or an anchor is now judged rather than missed.
         if path.suffix == ".md":
-            for i, code, message in link_problems(path, lines, inside, tree,
-                                                  anchor_cache):
+            for i, code, message in link_problems(path, mask(raw, False),
+                                                  inside, tree, anchor_cache):
                 fail(rp, i, code, message)
 
         # Check 5, header gate: three-line Stage/Knowledge/Skill block. The
@@ -1174,21 +1269,41 @@ def os_check(root, pins=None):
         # check exists to read. The manifest inside that fence lists a
         # directory and then its contents, so a name is resolved against the
         # directory prefix in force as well as against the repository root.
+        # The manifest is also read the other way. The prompt tells the model
+        # the manifest is every file it can ask for, so a tracked .md file
+        # sitting directly in a block's directory and named nowhere in that
+        # block is a file a pasted session can never reach. Subdirectories
+        # answer to their own block.
         if rp.startswith("system/"):
             prefix = ""
+            blocks = []
             for i, line in enumerate(raw_lines, 1):
                 head = MANIFEST_PREFIX_RE.match(line)
                 if head and in_tree(head.group(1).rstrip("/"), tree):
                     prefix = head.group(1)
+                    blocks.append((prefix, i, [line[head.end(1):]]))
                 elif line.strip() and not line.startswith((" ", "\t")):
                     prefix = ""
-                for m in REPO_PATH_RE.finditer(line):
+                elif prefix:
+                    blocks[-1][2].append(line)
+                for m in path_re.finditer(line):
                     named = m.group(1)
                     if in_tree(named, tree) or (prefix and
                                                 in_tree(prefix + named, tree)):
                         continue
                     fail(rp, i, "PATH",
                          "names repo path %s, which does not exist." % named)
+            for prefix, i, text in blocks:
+                listed = set(MANIFEST_NAME_RE.findall(" ".join(text)))
+                for target in sorted(tree):
+                    leaf = target[len(prefix):]
+                    if (target.startswith(prefix) and "/" not in leaf
+                            and leaf.endswith(".md") and leaf not in listed
+                            and target not in listed):
+                        fail(rp, i, "PATH", "manifest block %s does not name "
+                             "%s, a tracked file in that directory, so a "
+                             "session given this prompt can never ask for it."
+                             % (prefix, target))
 
         # Check 10, graph gate: the declaration every file in the six layers
         # carries. A missing key is a hole in the graph; a stage outside the
@@ -1322,7 +1437,13 @@ def workspace_check(workspace, root=None):
     back to the templates and the gates it came from.
     """
     workspace = Path(workspace).resolve()
-    root = Path(root).resolve() if root is not None else Path.cwd().resolve()
+    # The repository, not the working directory. Deriving the boundary from
+    # cwd made the same workspace pass or fail depending on where the user
+    # happened to stand: from an ancestor directory an escaping link resolved
+    # inside the boundary, and from an unrelated directory every legitimate
+    # back-link into the repository was reported as an escape.
+    root = (Path(root).resolve() if root is not None
+            else Path(__file__).resolve().parent)
     if not workspace.is_relative_to(root):
         root = workspace
     problems = []
@@ -1342,7 +1463,6 @@ def workspace_check(workspace, root=None):
                  "below ran against it.")
             continue
         raw_lines = raw.split("\n")
-        lines = mask(raw) if path.suffix == ".md" else raw_lines
 
         seen_secrets = set()
         for i, line in enumerate(raw_lines, 1):
@@ -1375,7 +1495,7 @@ def workspace_check(workspace, root=None):
             if (line_no, label) in seen:
                 return
             seen.add((line_no, label))
-            if sourced_near(lines, line_no - 1):
+            if sourced_near(raw_lines, line_no - 1):
                 return
             fail(rp, line_no, "BANNED",
                  "contains %s with no source beside it. In your own workspace "
@@ -1385,23 +1505,23 @@ def workspace_check(workspace, root=None):
                  "on the same line or the next one, or replace it with your "
                  "own figure. Do not round it to get past this." % label)
 
-        for i, line in enumerate(lines, 1):
+        for i, line in enumerate(raw_lines, 1):
             for pattern, label in BANNED_METRICS:
                 if re.search(pattern, line, re.I):
                     banned_here(i, label)
-        collapsed, origin = collapse(lines)
+        collapsed, origin = collapse(raw_lines)
         for pattern, label in BANNED_METRICS:
             for m in re.finditer(pattern, collapsed, re.I):
                 banned_here(origin[m.start()], label)
 
-        for i, line in enumerate(lines, 1):
+        for i, line in enumerate(raw_lines, 1):
             for m in PLACEHOLDER_RE.finditer(line):
                 if not in_angle_field(line, m.start()):
                     fail(rp, i, "TBD", '"%s" is a deferred decision, not an '
                          "answer." % m.group(1))
 
         if path.suffix == ".md":
-            for i, code, message in link_problems(path, lines,
+            for i, code, message in link_problems(path, mask(raw, False),
                                                   root, None, anchor_cache):
                 fail(rp, i, code, message)
 

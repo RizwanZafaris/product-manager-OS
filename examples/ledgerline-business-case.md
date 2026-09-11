@@ -2,7 +2,7 @@
 
 Fills [templates/planning/business-case.md](../templates/planning/business-case.md). Everything here is invented: Ledgerline is a fictional mid-market software company, the copilot is the fictional internal product used across this repository, the people are roles, and every cost, rate, hour and dollar is ILLUSTRATIVE, chosen so the arithmetic can be followed and checked. None of it is a benchmark, a target, or a claim about what such a product costs or returns. The case was written for Gate 1 and read again at Gate 2. See the [examples index](README.md).
 
-**Owner:** the PM · **Sponsor:** the finance lead (budget owner) · **Date:** 2026-08-13 · **Status:** Approved at Gate 1 · **Horizon:** three years, payback measured from launch
+**Owner:** the PM · **Sponsor:** the finance lead (budget owner) · **Date:** 2026-08-13 · **Status:** Approved at Gate 1 with the GO on 2026-08-14 · **Horizon:** three years, payback measured from launch
 
 ## 1. The problem in one paragraph
 

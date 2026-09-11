@@ -125,7 +125,7 @@ aliases: ["Growth Plan", "growth-plan"]
 | *Counter* | *First-time acceptance rate of filed expenses* | *0.71, March* | | ***must not fall below 0.68*** |
 | *Counter* | *Support tickets per hundred submissions* | *2.4, March* | | ***must not exceed 3.0*** |
 
-*Kill condition, agreed before launch: if the counter-metric floor is breached for two consecutive weeks, the referral prompt is turned off and the loop is re-examined, called by the growth owner without further discussion.*
+*Kill condition, agreed before launch: if the counter-metric floor is breached for two consecutive weeks, the auto-fill of fields the app cannot verify is reverted to manual entry and the loop is re-examined, called by the growth owner without further discussion.*
 
 *Note what the counter-metrics are doing. Filing faster by auto-filling fields we cannot verify would move the growth number and break both floors. Without them the plan reports success while finance absorbs the cost.*
 
