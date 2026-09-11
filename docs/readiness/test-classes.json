@@ -131,6 +131,17 @@
       "RubricValidationTests",
       "VerdictAndOutputTests",
       "VerifierExecutionTests"
+    ],
+    "test_tools_gates": [
+      "CiGateVerdictTests",
+      "FrontmatterInitGateTests",
+      "GraphFreshnessGateTests",
+      "PmWorkingSetGateTests",
+      "ReadinessCategoryExitTests",
+      "ReadinessProbeCiWiringTests",
+      "ReadinessProbeMutationAnchorTests",
+      "TemplateInventoryGateTests",
+      "TemplateRubricGateTests"
     ]
   }
 }

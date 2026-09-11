@@ -123,7 +123,7 @@ pmos verify --path ./my-product
 | [knowledge/roles/](knowledge/roles/README.md) | Roles | WHO each product title is: what it owns, decides, and how it fails |
 | [knowledge/domains/](knowledge/domains/README.md) | Domains | WHERE the product plays: what a specific market changes about the loop |
 | [frameworks/](frameworks/README.md) | Frameworks | HOW to actually run a method: the sheet, the scales, the arithmetic |
-| [templates/](templates/README.md) | Templates | WHAT to produce at each stage, all 98 blanks cataloged by stage |
+| [templates/](templates/README.md) | Templates | WHAT to produce at each stage, all 100 blanks cataloged by stage |
 | [learn/](learn/README.md) | Learning | HOW to study the OS on fictional products before running a real one |
 | [skills/](skills/README.md), [agents/](agents/README.md) | Skills and agents | HOW to produce it with an AI runtime: procedures, and the roles that run them |
 | [system/](system/README.md) | System prompts | WHO the model becomes |

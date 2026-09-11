@@ -912,8 +912,12 @@ def tracked_files(root):
     """Every file in the tree except VCS internals, scratch, and workspaces.
 
     products/ and learn/products/ hold a user's own filled drafts (gitignored);
-    the gate judges the shipped system, never someone's work in progress. The
-    two workspace README.md files stay in scope because they ship with the repo.
+    the gate judges the shipped system, never someone's work in progress. A
+    README.md directly inside either one stays in scope. Only one of the two
+    ships: learn/products/README.md is tracked, while .gitignore excludes
+    /products/ wholesale, so products/README.md is a file this repository never
+    carries. The exception is kept for it anyway, because a user who writes a
+    README into their own workspace root gets it linted rather than skipped.
     """
     skip = SCRATCH_DIRS
     for path in sorted(root.rglob("*")):

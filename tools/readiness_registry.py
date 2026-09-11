@@ -277,6 +277,11 @@ EVALUATOR_TESTS = (
     "test_readiness.VerifierExecutionTests.test_skip_evidence_fails",
     "test_readiness.VerifierExecutionTests.test_wrong_test_count_evidence_fails",
     "test_readiness.VerifierExecutionTests.test_zero_test_evidence_fails",
+    # The --category exit code, read in the fast suite rather than only through
+    # the two fresh-tree mutants under CI-3.
+    "test_tools_gates.ReadinessCategoryExitTests.test_a_failing_criterion_fails_the_category_run",
+    "test_tools_gates.ReadinessCategoryExitTests.test_a_rubric_error_fails_the_category_run",
+    "test_tools_gates.ReadinessCategoryExitTests.test_a_clean_category_passes_without_claiming_readiness",
 )
 
 CLI_TESTS = tuple(
@@ -394,7 +399,23 @@ REGISTRY = {
         Step(("python3", "tools/security_gate.py")),
     ),
     "docs-contract": (
-        Step(("python3", "tools/docs_contract.py", "--strict")),),
+        Step(("python3", "tools/docs_contract.py", "--strict")),
+        # The template inventory is the one reading in that gate that counts
+        # against the tree, so a seeded wrong count is its only evidence: a
+        # stale total, and a wrong heading hidden inside a correct total.
+        unit(
+            "test_tools_gates.TemplateInventoryGateTests."
+            "test_the_tree_as_it_stands_states_its_own_inventory",
+            "test_tools_gates.TemplateInventoryGateTests."
+            "test_a_self_consistent_stale_total_is_reported_everywhere_it_sits",
+            "test_tools_gates.TemplateInventoryGateTests."
+            "test_a_wrong_section_heading_is_reported_when_the_total_still_adds_up",
+            "test_tools_gates.TemplateInventoryGateTests."
+            "test_dropping_the_claim_is_not_a_way_to_pass",
+            "test_tools_gates.TemplateInventoryGateTests."
+            "test_the_gate_itself_fails_on_a_stale_total",
+        ),
+    ),
     "accessibility": (
         unit(
             "test_pmos_security.DocumentationContractFixtureTests."
@@ -463,9 +484,33 @@ REGISTRY = {
     ),),
     "compile-all": (probe("compile-all"),),
     "full-suite": (probe("full-suite", timeout=1800),),
-    "ci-runtime": (probe("ci-covers-runtime"),),
+    "ci-runtime": (
+        probe("ci-covers-runtime"),
+        unit(
+            "test_tools_gates.ReadinessProbeCiWiringTests."
+            "test_a_suite_missing_a_required_gate_fails",
+            "test_tools_gates.ReadinessProbeCiWiringTests."
+            "test_a_commented_out_invocation_fails",
+            "test_tools_gates.CiGateVerdictTests."
+            "test_zero_tests_fails_even_on_a_clean_exit",
+            "test_tools_gates.CiGateVerdictTests."
+            "test_a_skipped_test_is_not_a_pass",
+            "test_tools_gates.CiGateVerdictTests."
+            "test_one_failing_gate_fails_the_suite_and_no_gates_is_no_pass",
+        ),
+    ),
     "deletable-harness": (probe("deletable-harness"),),
-    "mutation-gates": (probe("mutation-checks", timeout=1800),),
+    # The anchors are read first: a moved anchor is a table defect, and the
+    # probe below would otherwise report it as a gate that caught nothing.
+    "mutation-gates": (
+        unit(
+            "test_tools_gates.ReadinessProbeMutationAnchorTests."
+            "test_every_anchor_matches_its_target_exactly_once",
+            "test_tools_gates.ReadinessProbeMutationAnchorTests."
+            "test_the_queue_mutant_removes_only_the_check_and_only_in_lease_next",
+        ),
+        probe("mutation-checks", timeout=1800),
+    ),
     "golden-path": (probe("golden-path"),),
     "regulated-example": (
         Step(("python3", "lint.py",
