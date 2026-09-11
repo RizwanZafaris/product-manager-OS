@@ -1,6 +1,6 @@
 # Worked Examples
 
-Eleven examples. Two take one fictional product, an expense-report copilot at a fictional mid-market software company, through the front half of the [operating loop](../os/OPERATING-LOOP.md). The third takes the templates in the other direction: onto a product that was already live, already messy, and already carrying nine years of undocumented decisions. The fourth is a transcript rather than a filled template: the Conductor interviewing a PM, shown at the two moments interviews earn their keep, a vague answer challenged into evidence and a stage advance refused with the gate checklist as the reason. The eleventh is the record of a real routing run, the only file here produced by a model call rather than written by hand. The remaining six fill a framework worksheet or a planning template on the same copilot; the section after the table says why they exist. Read them before filling the templates: a template shows the questions, an example shows what an answer that survives a gate review looks like, including the places where the honest answer is a gap with an owner.
+Eleven standalone examples and three journeys. Two of the standalone examples take one fictional product, an expense-report copilot at a fictional mid-market software company, through the front half of the [operating loop](../os/OPERATING-LOOP.md). The third takes the templates in the other direction: onto a product that was already live, already messy, and already carrying nine years of undocumented decisions. The fourth is a transcript rather than a filled template: the Conductor interviewing a PM, shown at the two moments interviews earn their keep, a vague answer challenged into evidence and a stage advance refused with the gate checklist as the reason. The eleventh is the record of a real routing run, the only file here produced by a model call rather than written by hand. The remaining six fill a framework worksheet or a planning template on the same copilot; the section after the table says why they exist. The [three journeys](#the-three-journeys) are larger: each is one data sheet and an artifact map, plus the filled artifacts the map indexes, thirteen for Ledgerline, fourteen for Sahulat and sixteen for Harbourgate, forty-three in all, cross-checked against each other and against their data sheet. Read them before filling the templates: a template shows the questions, an example shows what an answer that survives a gate review looks like, including the places where the honest answer is a gap with an owner.
 
 Everything in these examples is invented. The company, the people, the interview counts, and every number are fiction built to illustrate the format. Nothing here is evidence about any real product, and none of the figures are targets to copy.
 
@@ -20,9 +20,77 @@ Everything in these examples is invented. The company, the people, the interview
 
 The brownfield example exists because clean examples teach the easy case. It shows a reconstructed Gate 1 labeled as reconstructed, an out-of-scope table doing the load-bearing work, a coupling the team wrote into the architecture rather than designing around, and one decision that was made in April and reversed in May, with both log entries kept.
 
+## The three journeys
+
+Each journey is one file holding the story, a data sheet every artifact draws its numbers and ids from, and an artifact map giving each artifact's brief: what it decides and which data-sheet rows it may not contradict. Every artifact fills one template, keeps that template's H2 structure, walks its exit gate at the bottom, and links back to its journey. The tables below index them in the order each journey's own artifact map lists them.
+
+### Ledgerline: pricing and selling the expense copilot
+
+[ledgerline-journey.md](ledgerline-journey.md) takes the same invented company from pricing and packaging through a killed pricing experiment to the post-pivot growth plan, PLANNING through OPERATE. It fills no template itself: it is the data sheet and the artifact map for the thirteen files below.
+
+| Example | Template it fills | Stage and gate |
+|---|---|---|
+| [ledgerline-positioning.md](ledgerline-positioning.md) | [templates/planning/positioning.md](../templates/planning/positioning.md) | PLANNING track, feeds the GTM plan |
+| [ledgerline-pricing-packaging.md](ledgerline-pricing-packaging.md) | [templates/planning/pricing-packaging.md](../templates/planning/pricing-packaging.md) | PLANNING track, feeds Gate 5 readiness |
+| [ledgerline-growth-plan.md](ledgerline-growth-plan.md) | [templates/planning/growth-plan.md](../templates/planning/growth-plan.md) | OPERATE, feeds Gate 6 |
+| [ledgerline-gtm-plan.md](ledgerline-gtm-plan.md) | [templates/planning/gtm-plan.md](../templates/planning/gtm-plan.md) | DELIVER, feeds Gate 5 |
+| [ledgerline-okrs.md](ledgerline-okrs.md) | [templates/planning/okrs.md](../templates/planning/okrs.md) | PLANNING track, scored into Gate 6 |
+| [ledgerline-experiment-brief.md](ledgerline-experiment-brief.md) | [templates/operate/experiment-brief.md](../templates/operate/experiment-brief.md) | OPERATE, feeds Gate 6 |
+| [ledgerline-metrics-dictionary.md](ledgerline-metrics-dictionary.md) | [templates/operate/metrics-dictionary.md](../templates/operate/metrics-dictionary.md) | OPERATE, feeds Gate 6; written before the instrumentation |
+| [ledgerline-dashboard-spec.md](ledgerline-dashboard-spec.md) | [templates/operate/dashboard-spec.md](../templates/operate/dashboard-spec.md) | OPERATE, feeds Gate 6; specified before launch day |
+| [ledgerline-metrics-review.md](ledgerline-metrics-review.md) | [templates/operate/metrics-review.md](../templates/operate/metrics-review.md) | OPERATE, feeds Gate 6 |
+| [ledgerline-sales-enablement-one-pager.md](ledgerline-sales-enablement-one-pager.md) | [templates/delivery/sales-enablement-one-pager.md](../templates/delivery/sales-enablement-one-pager.md) | DELIVER, feeds Gate 5 |
+| [ledgerline-win-loss-review.md](ledgerline-win-loss-review.md) | [templates/operate/win-loss-review.md](../templates/operate/win-loss-review.md) | OPERATE, feeds Gate 6 |
+| [ledgerline-feedback-program.md](ledgerline-feedback-program.md) | [templates/operate/feedback-program.md](../templates/operate/feedback-program.md) | OPERATE, feeds Gate 6; intake feeds DISCOVER |
+| [ledgerline-status-report.md](ledgerline-status-report.md) | [templates/execution/status-report.md](../templates/execution/status-report.md) | BUILD and DELIVER, weekly; feeds Gate 4 and Gate 5 |
+
+### Sahulat: a solo PM from zero to one
+
+[sahulat-journey.md](sahulat-journey.md) follows a fictional mobile-money wallet's bill-pay feature from DISCOVER to a Gate 6 PIVOT, run by one product manager. It fills no template itself: it is the data sheet and the artifact map for the fourteen files below.
+
+| Example | Template it fills | Stage and gate |
+|---|---|---|
+| [sahulat-user-research-plan.md](sahulat-user-research-plan.md) | [templates/discovery/user-research-plan.md](../templates/discovery/user-research-plan.md) | DISCOVER, feeds Gate 1 |
+| [sahulat-interview-guide.md](sahulat-interview-guide.md) | [templates/discovery/interview-guide.md](../templates/discovery/interview-guide.md) | DISCOVER, feeds Gate 1 |
+| [sahulat-interview-notes.md](sahulat-interview-notes.md) | [templates/discovery/interview-notes.md](../templates/discovery/interview-notes.md) | DISCOVER, feeds Gate 1 |
+| [sahulat-personas.md](sahulat-personas.md) | [templates/discovery/personas.md](../templates/discovery/personas.md) | DISCOVER, feeds Gate 1 |
+| [sahulat-problem-framing.md](sahulat-problem-framing.md) | [templates/discovery/problem-framing.md](../templates/discovery/problem-framing.md) | DISCOVER, feeds Gate 1 |
+| [sahulat-opportunity-assessment.md](sahulat-opportunity-assessment.md) | [templates/discovery/opportunity-assessment.md](../templates/discovery/opportunity-assessment.md) | DISCOVER, feeds Gate 1 |
+| [sahulat-one-pager.md](sahulat-one-pager.md) | [templates/definition/one-pager.md](../templates/definition/one-pager.md) | DEFINE, feeds Gate 2 |
+| [sahulat-acceptance-criteria.md](sahulat-acceptance-criteria.md) | [templates/definition/acceptance-criteria.md](../templates/definition/acceptance-criteria.md) | DEFINE, feeds Gate 2, verified at Gate 4 |
+| [sahulat-user-stories.md](sahulat-user-stories.md) | [templates/definition/user-stories.md](../templates/definition/user-stories.md) | DEFINE, feeds Gate 2, worked through BUILD |
+| [sahulat-vision.md](sahulat-vision.md) | [templates/planning/vision.md](../templates/planning/vision.md) | PLANNING track, feeds every stage |
+| [sahulat-north-star-metric.md](sahulat-north-star-metric.md) | [templates/planning/north-star-metric.md](../templates/planning/north-star-metric.md) | PLANNING track, scored at Gate 6 |
+| [sahulat-decision-log.md](sahulat-decision-log.md) | [templates/execution/decision-log.md](../templates/execution/decision-log.md) | All stages, reviewed at every gate |
+| [sahulat-launch-comms-plan.md](sahulat-launch-comms-plan.md) | [templates/delivery/launch-comms-plan.md](../templates/delivery/launch-comms-plan.md) | DELIVER, feeds Gate 5 |
+| [sahulat-post-launch-review.md](sahulat-post-launch-review.md) | [templates/operate/post-launch-review.md](../templates/operate/post-launch-review.md) | OPERATE, feeds Gate 6 |
+
+### Harbourgate: modernising a regulated brownfield checkout
+
+[harbourgate-journey.md](harbourgate-journey.md) completes [checkout-modernization-brownfield.md](checkout-modernization-brownfield.md), from Gate 4 through Gate 6 PERSIST and the retirement of the legacy payment layer. It fills no template itself: it is the data sheet and the artifact map for the sixteen files below.
+
+| Example | Template it fills | Stage and gate |
+|---|---|---|
+| [harbourgate-adr.md](harbourgate-adr.md) | [templates/architecture/adr.md](../templates/architecture/adr.md) | DESIGN, feeds Gate 3 |
+| [harbourgate-system-design.md](harbourgate-system-design.md) | [templates/architecture/system-design.md](../templates/architecture/system-design.md) | DESIGN, feeds Gate 3 |
+| [harbourgate-api-contract.md](harbourgate-api-contract.md) | [templates/architecture/api-contract.md](../templates/architecture/api-contract.md) | DESIGN, feeds Gate 3 |
+| [harbourgate-integrations.md](harbourgate-integrations.md) | [templates/architecture/integrations.md](../templates/architecture/integrations.md) | DESIGN, feeds Gate 3 |
+| [harbourgate-security-architecture.md](harbourgate-security-architecture.md) | [templates/architecture/security-architecture.md](../templates/architecture/security-architecture.md) | DESIGN, feeds Gate 3 |
+| [harbourgate-observability.md](harbourgate-observability.md) | [templates/architecture/observability.md](../templates/architecture/observability.md) | DESIGN, feeds Gate 3; re-checked at Gate 5 |
+| [harbourgate-nfr.md](harbourgate-nfr.md) | [templates/definition/nfr.md](../templates/definition/nfr.md) | DEFINE, feeds Gate 2 |
+| [harbourgate-business-rules.md](harbourgate-business-rules.md) | [templates/definition/business-rules.md](../templates/definition/business-rules.md) | DEFINE, feeds Gate 2; amended through DELIVER |
+| [harbourgate-dependency-register.md](harbourgate-dependency-register.md) | [templates/execution/dependency-register.md](../templates/execution/dependency-register.md) | DESIGN, feeds Gate 3; reviewed weekly through DELIVER |
+| [harbourgate-stakeholder-map.md](harbourgate-stakeholder-map.md) | [templates/execution/stakeholder-map.md](../templates/execution/stakeholder-map.md) | DISCOVER through OPERATE, first required at Gate 2 |
+| [harbourgate-risk-register.md](harbourgate-risk-register.md) | [templates/execution/risk-register.md](../templates/execution/risk-register.md) | DESIGN, feeds Gate 3; reviewed weekly |
+| [harbourgate-migration-cutover-plan.md](harbourgate-migration-cutover-plan.md) | [templates/delivery/migration-cutover-plan.md](../templates/delivery/migration-cutover-plan.md) | DELIVER, feeds Gate 5 |
+| [harbourgate-release-readiness.md](harbourgate-release-readiness.md) | [templates/delivery/release-readiness.md](../templates/delivery/release-readiness.md) | DELIVER, this file is Gate 5 (attempt 2) |
+| [harbourgate-incident-postmortem.md](harbourgate-incident-postmortem.md) | [templates/operate/incident-postmortem.md](../templates/operate/incident-postmortem.md) | OPERATE event review, written in DELIVER, feeds Gate 6 |
+| [harbourgate-sunset-eol-plan.md](harbourgate-sunset-eol-plan.md) | [templates/operate/sunset-eol-plan.md](../templates/operate/sunset-eol-plan.md) | OPERATE, executes the consequence of Gate 6 |
+| [harbourgate-compliance-impact-assessment.md](harbourgate-compliance-impact-assessment.md) | [templates/operate/compliance-impact-assessment.md](../templates/operate/compliance-impact-assessment.md) | DEFINE and DELIVER, feeds Gate 2 and Gate 5; re-verified at sunset |
+
 ## Why the framework examples exist
 
-A worksheet shows the form. An example shows a filled form: the declarations made before any scoring, the arithmetic done on the page where a reader can check it, the decision rule applied at the point where it actually bites (a Kano tie-break, a RICE row that scores low against the declared goal and is still worth building, a payback that fails at half the assumed adoption), and the cells left open with an owner because the invented team had no evidence for them. The six share one product and one set of invented facts, so a figure in the business case traces to the discovery document and a backlog row in the RICE sheet to a Kano class. A naming note: these six call the company Ledgerline, the repository's standard name for the invented company, and refer to people by role; the earlier pair calls the same company Fernwood Software and gives its people names. Same product, same interviews, same figures.
+A worksheet shows the form. An example shows a filled form: the declarations made before any scoring, the arithmetic done on the page where a reader can check it, the decision rule applied at the point where it actually bites (a Kano tie-break, a RICE row that scores low against the declared goal and is still worth building, a payback that fails at half the assumed adoption), and the cells left open with an owner because the invented team had no evidence for them. The six share one product and one set of invented facts, so a figure in the business case traces to the discovery document and a backlog row in the RICE sheet to a Kano class. A naming note: these six call the company Ledgerline, the repository's standard name for the invented company, and refer to people by role; the earlier pair calls the same company Fernwood Software and gives its people names. Same product, same interviews, same figures. The later Ledgerline journey and its thirteen artifacts depart from the by-role convention and name a cast: Maya Chen (product manager), Priya Nair (engineering lead), Daniel Okafor (finance lead), Isabel Ferreira (chief product officer), Tomas Lindqvist (head of product marketing), Ruth Adeyemi (VP sales), Kwame Boateng (data analyst), Hana Sato (head of customer success), and Marcus Webb (account executive); the journey's own "The people" section is the source for all nine.
 
 ## How these were produced
 

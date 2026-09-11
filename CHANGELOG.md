@@ -86,6 +86,28 @@ This is an unreleased working-tree change set, not a tag, published package, hos
   the same way and reworded. The lesson is recorded because a scan for numbers
   catches invented figures and cannot catch a confident wrong sentence; only a reader can.
 
+### Added, three worked journeys
+
+- Three journeys in `examples/`, 46 files: three journey files, each holding the story, one data
+  sheet and an artifact map, plus the 43 filled artifacts those maps index. Ledgerline has 13
+  artifacts, pricing and selling the expense copilot from positioning through a killed pricing
+  experiment to the post-pivot growth plan, PLANNING through OPERATE. Sahulat has 14, a fictional
+  mobile-money wallet's bill-pay feature taken by one product manager from DISCOVER to a Gate 6
+  PIVOT. Harbourgate has 16, completing `examples/checkout-modernization-brownfield.md` from Gate 4
+  through Gate 6 PERSIST and the retirement of the legacy payment layer. The 43 artifacts fill 43
+  different templates; each keeps its template's H2 structure, walks its exit gate at the bottom,
+  and takes every number and id from its journey's data sheet.
+- Every artifact was reviewed on its own, in batches, and each journey then had a cross-artifact
+  pass that corrected figures one artifact carried differently from another or from the data
+  sheet. One example: Ledgerline's add-on MRR at 2026-12-18 now reads $15,906 on the data sheet,
+  the OKR sheet, the growth plan, the dashboard spec and the metrics review, where the OKR sheet and
+  the growth plan had carried $15,900 and the growth plan had set it as the baseline for the next
+  cycle's target. The last consistency pass on each journey was not recorded clean after those
+  fixes, so where two artifacts still disagree the data sheet is the authority.
+- `examples/README.md` indexes the three journeys and all 43 artifacts in its own table style, one
+  table per journey. The Sahulat and Harbourgate artifact maps name each file as a relative link
+  where they had named it as plain text, so the lint gate now resolves all 30 of those entries.
+
 ### Changed
 
 - Documentation now separates the document path, the optional local runtime, and external readiness. Historical claims below describe the state at the time of those entries; where they characterize the legacy harness rather than the `pmos` runtime, they are superseded by this section and the current operator documentation.
