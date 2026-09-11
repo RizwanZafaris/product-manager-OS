@@ -44,19 +44,23 @@ pmos gate --path ./my-product --product-id checkout --bank-id onboarding \
 A rejection never records a gate approval, and the answer it refused is not
 accepted. Most rejections are still committed as a turn record, so the store
 revision advances: insufficient evidence, an answer to any question other
-than the one offered (an unknown question ID included), an unverifiable gate
-source, and any submission to a bank that holds a parked question each write
-a record and move the revision on. Only a stale expected revision and a
-reused turn ID leave the revision where it was; replaying a turn ID with the
-identical request returns its original result. Read the next revision from
-the rejection's own `revision` field, or from `pmos status`, which prints
-`revision` and `commit_hash` (the token is `<revision>:<commit_hash>`, and
-`0:-` before anything is committed). The revision `answer` returned is stale
-after any rejected call, and retrying with it is refused as a conflict.
+than the one offered (an unknown question ID included), and an unverifiable
+gate source each write a record and move the revision on. A stale expected
+revision and a reused turn ID leave the revision where it was, and so does a
+request refused before the conductor reads it: a question ID that is not well
+formed, evidence that is not a JSON object, or a bank ID that does not exist.
+Replaying a turn ID with the identical request returns its original result.
+Read the next revision from `pmos status`, which prints `revision` and
+`commit_hash` (the token is `<revision>:<commit_hash>`, and `0:-` before
+anything is committed), or, for a rejection that wrote a record, from that
+rejection's own `revision` field. After a rejection that wrote a record, the
+revision `answer` returned is stale and retrying with it is refused as a
+conflict; `pmos status` is current either way.
 A second rejected submission of the same question parks it: the answer is
-not filed and the cursor does not move, and from then on every answer to that
-bank, valid evidence included, is refused, as is its gate proof. No command
-clears a park, so a parked bank cannot reach its gate.
+filed as offered and marked parked, the cursor moves on, and the bank's
+remaining questions can still be answered. The bank's gate proof is refused
+while any of its answers is parked, and no command clears a park yet, so a
+bank holding a parked question cannot reach its gate.
 Replace every angle-bracket value with a real, traceable source; the source
 must be a regular, non-symlink file inside the workspace (but outside
 `.pmos/`) and its digest must match. The pinned onboarding policy requires

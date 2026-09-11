@@ -250,7 +250,7 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 43,
       "failure_modes": 5,
-      "links": 7,
+      "links": 8,
       "lines": 75
     },
     {
@@ -334,7 +334,7 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 77,
       "failure_modes": 8,
-      "links": 30,
+      "links": 31,
       "lines": 86
     },
     {

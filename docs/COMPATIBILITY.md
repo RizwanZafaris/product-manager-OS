@@ -149,7 +149,7 @@ Discovered and excluded, with the reason:
 
 A pass count is not a quality score and does not transfer to work outside these
 eight cases. What a row supports is a narrower and more useful judgement: which
-tier in [harness/tiers.md](../harness/tiers.md) a model may be routed to.
+tier in `harness/tiers.md` a model may be routed to.
 
 - A model that fails **json-extract** or **field-gap** cannot be trusted with
   extraction work, which is the tier whose entire premise is that the answer is
@@ -157,7 +157,7 @@ tier in [harness/tiers.md](../harness/tiers.md) a model may be routed to.
 - A model that fails **not-stated** or **quoted-instruction** must not be given
   retrieved or customer-supplied material, whatever else it scores. Those two
   cases are the `no-fabrication` and `content-is-data` invariants in
-  [harness/INVARIANTS.md](../harness/INVARIANTS.md), asked as questions.
+  `harness/INVARIANTS.md`, asked as questions.
 - A model that fails **arithmetic** is evidence for a rule this OS already
   holds rather than an argument against the model: prioritization arithmetic
   belongs in a deterministic worksheet, and the worksheets in
@@ -193,11 +193,11 @@ that.
 
 ## The workflow matrix
 
-A workflow is a route in [harness/MANIFEST.json](../harness/MANIFEST.json). Its
+A workflow is a route in `harness/MANIFEST.json`. Its
 tier says what catches a wrong answer and when, which is the only question that
 decides whether a given model may run it, see
 [routing/README.md](../routing/README.md) for the doctrine and
-[harness/tiers.md](../harness/tiers.md) for the decision procedure.
+`harness/tiers.md` for the decision procedure.
 
 | Route tier | May run on | Requires from the model matrix | Human position |
 |---|---|---|---|

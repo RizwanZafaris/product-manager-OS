@@ -65,7 +65,7 @@ the thing under review.
 python3 tools/ci_gate.py
 ```
 
-Expect `release gates: 18/19 passed`, with the one failure being
+Expect `release gates: 20/21 passed`, with the one failure being
 `readiness-local` reporting `failing : 1 criteria`, and that criterion CI-6.
 The number of gates has grown since this brief was first written and will grow
 again; what matters is that the only red is the review record you are about to
@@ -191,7 +191,7 @@ One command, run from the repository root after you have actually reviewed:
 python3 tools/review_gate.py --record \
   --reviewer "Your Name" \
   --scope "what you actually read" \
-  --evidence "python3 tools/ci_gate.py|18/19 passed; the one red is CI-6" \
+  --evidence "python3 tools/ci_gate.py|20/21 passed; the one red is CI-6" \
   --finding "P2|accepted|one-line summary|where you saw it"
 ```
 
@@ -231,7 +231,7 @@ Relationship to work : (must be: did not implement this release)
 Date reviewed        :
 Commit reviewed      : (output of git rev-parse HEAD)
 Digest confirmed     : (files and sha256 from review_gate.py --digest)
-ci_gate.py result    : 18/19 with CI-6 the only red / other:
+ci_gate.py result    : 20/21 with CI-6 the only red / other:
 Time spent           :
 
 P0 findings          : (none, or list with file and line)

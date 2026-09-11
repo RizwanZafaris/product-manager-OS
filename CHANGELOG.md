@@ -113,6 +113,152 @@ This is an unreleased working-tree change set, not a tag, published package, hos
   table per journey. The Sahulat and Harbourgate artifact maps name each file as a relative link
   where they had named it as plain text, so the lint gate now resolves all 30 of those entries.
 
+### Added, model compatibility matrix
+
+- `docs/COMPATIBILITY.md` and `tools/model_matrix.py`. The document keeps three matrices apart,
+  model, host and workflow, because each fails on its own, and defines its words: tested means a
+  command here produced the result and a record under `docs/readiness/` holds it; untested is an
+  absence, not a yes. Every model cell is graded by a predicate over the response text, never by
+  another model.
+- The model matrix is rendered from the recorded 2026-09-09 free-tier run, kept as recorded
+  rather than re-run: 17 models, 136 calls, 72 graded and 64 with no answer, each no-answer
+  cell classed from the gateway's own error text. The record came from a dirty working tree and
+  the table says so. No paid call was made, so every frontier model is untested.
+- `tools/model_matrix.py --check` now refuses a record whose prompt, tier or description changed
+  under it, a halted record, and an answered call with no usable cost; a stale table outside the
+  repository is reported as a finding instead of crashing on `relative_to`. `--render` no longer
+  writes em dashes into the document.
+- `--budget-usd` is a running total. It used to compare each call's own cost with the ceiling
+  after every call had already been made, took an answer with no cost as free, and dropped a
+  charge reported on an error response. Dispatch now stops once the total passes the ceiling or
+  an answered call carries no usable cost, charges on error responses count, and a NaN, infinite
+  or negative ceiling is refused. The ceiling is still checked as each call returns, so calls
+  already in flight, up to one fewer than the worker count, can finish over it; that is an owner
+  decision to take before any paid run.
+- Readiness criterion CI-1 ("every shipped root, harness, and regulated test runs") kept its own
+  list of root modules and never ran `test_pmos_probe`, `test_pmos_matrix` or
+  `test_pmos_invariants`, so it counted 371 root tests while the release gate ran 516. The
+  matrix branch and the tools lane below fixed this two ways, and the merge keeps both: the
+  full-suite probe runs the root-tests gate's own argv, keeps a floor of named modules, and now
+  fails when any `test_*.py` on disk is missing from that argv, with a regression test for the
+  case neither fix covered alone.
+
+### Fixed, audit port
+
+The findings of the 2026-09-05 audit at `9400d0b` that still reproduced on `df0601c`, ported in
+ten lanes and each lane accepted by an independent verifier before it merged. Finding ids are the
+audit's own.
+
+- **Conductor, the one P0.** `conductor-park-is-a-permanent-deadlock`: a question challenged
+  twice parked and froze its whole bank, so every later answer, valid evidence included, was
+  refused. A parked answer is now filed as offered and marked parked, the cursor advances, and
+  only the bank's gate proof is refused while anything in it is parked. No command unparks yet,
+  so a bank whose parked question is its last still stops at its gate
+  (`conductor-park-no-exit-route`, open for an owner ruling). Also
+  `conductor-challenge-docstring-is-wrong`.
+- **Store and domain.** `lease-next-cancels-a-live-lease` (P1): a cancel request on a live lease
+  is kept instead of being reaped by the next poll. `store-heartbeat-deadline-branch-unreachable`
+  (P1): a heartbeat past its deadline reports the deadline and dead-letters.
+  `queue-verify-loads-every-blob-body`: queue admission checks hashes without reading payloads.
+  `score-initiative-ignores-period` (P1): a score is written to the allocation row of the period
+  it names. `store-read-snapshot-revision-pin-untested` and
+  `store-promote-to-os-cas-guard-untested` now have tests.
+- **Outbox, hooks, release and routing.** `outbox-retries-an-already-delivered-event`: a send
+  that completed with an unusable external id, including a sender returning `None` or an empty
+  string, is dead-lettered instead of being retried, and a sender that itself raises
+  `DataValidationError` is recorded under that name rather than as `invalid_external_id`.
+  `hook-protected-paths-case-sensitive`: the write boundary compares case-folded paths, so a
+  case variant of a protected destination is denied. `hooks-allow-reading-credential-files`:
+  private key blocks are blocked like other secrets. `hookbus-emit-sorts-callables`: registering
+  the same hook twice raises `ValueError`, and hooks of equal priority run in name order.
+  `build-provenance-leaks-output-dir-fd`, `provenance-default-exclusion-breaks-verify` and
+  `release-dead-digest-helpers`: a failed build closes its output descriptor and the inventory
+  records what it excluded. `routing-aggregate-budget-postcheck-unreachable`: the guard stays
+  and a passing call now pins it. `hooks-wrapper-tests-cannot-fail` and
+  `hooks-git-clean-deny-branch-untested` are test-only.
+- **Lint and the security gates.** `secret-gate-exempts-regulated-module` and
+  `lint-secret-gate-skips-regulated`: the secret gate now reads `modules/regulated/` too, reading
+  only, so the pins hold. The masked-text finding, `masked-text-invisible-to-banned-...`, whose
+  full id carries the very deferred marker the placeholder gate rejects: the banned-metric,
+  placeholder and link gates read HTML comments, so a banned figure, a deferred marker or a dead
+  link inside a guidance comment now fails where it used to pass; the link gate still skips
+  fenced code.
+  `workspace-containment-boundary-depends-on-cwd`: workspace mode takes its boundary from the
+  repository, not the directory you run it from. `approved-status-regex-too-narrow`:
+  `**Status**: Approved` and case variants are read as an approval claim.
+  `system-path-gate-misses-half-the-tree`: the path gate reaches every top-level directory.
+  `security-gate-skips-every-test-file`, `security-gate-misses-shell-primitives` and
+  `security-gate-five-of-six-credential-detectors-untested`: test files are scanned and shell and
+  process-replacement primitives rejected. `docs-contract-boundary-error-names-the-wrong-file`,
+  `check-manifest-model-id-regex-misses-listed-vendors` (non-numeric ids such as `deepseek-chat`,
+  `qwen-max` and `grok-beta` now fail the manifest check) and
+  `workspace-contract-cannot-detect-the-drift-it-names`.
+- **Harness.** `runner-follows-redirect-with-bearer-key` (P1): the runner refuses a gateway
+  redirect, so the key is never carried to a second host, and a redirecting gateway queues the
+  run. `runner-unbounded-sse-buffer` (P1) and its newline bypass: the stream read itself is
+  bounded. `write-stories-routed-to-wrong-gate`: story writing routes to DEFINE and Gate 2.
+  `fallback-route-forbids-its-own-job` and `report-routes-contradict-their-own-templates-heading`:
+  the catch-all route has a kind and a gate note, and generated commands title templates by what
+  a route does with them; `gate-note-exemption-unenforced` makes the gate note's shape a checked
+  field. `three-versions-for-one-repo` (documented in the manifest) and
+  `runner-call-cli-has-no-test`.
+- **Tools and packaging.** `license-never-reaches-distribution`: the wheel declares its licence.
+  `backend-missing-build-sdist`: `build_sdist` refuses by name, in a way a frontend can report.
+  `gitignore-covers-wrong-build-artifacts`. `ci-gate-not-actually-canonical` and
+  `root-tests-gate-is-a-hardcoded-module-allowlist`: `tools/ci_gate.py` now holds 21 gates,
+  adding `regulated-template` and `skill-rubric-freshness`, and every lint the workflow runs over
+  a shipped file is also a gate. `skill-rubric-json-is-a-stale-measurement`,
+  `stale-tracked-skill-rubric` and `skill-rubric-docstring-states-a-closed-gap-as-open`: the
+  committed rubric is regenerated and a gate fails when it goes stale.
+  `readiness-documentation-claims-match-verifies-no-claims` (UX-3 is retitled for what it
+  verifies), `products-readme-cannot-ship` and `pm-working-set-docstring-ninety-eight`.
+- **Root documents.** `readme-harness-deletion-every-gate-passes`,
+  `changelog-omits-nine-commits-of-feature-work`, `ten-market-cards-is-now-sixteen`,
+  `method-numbering-four-versus-five`, `agents-md-names-insufficient-gate`,
+  `security-nothing-runs-vs-committed-claude-hook` and
+  `security-whole-attack-surface-omits-tools`.
+- **Reference documents.** `architecture-complete-file-tree-omits-tools`,
+  `architecture-complete-file-tree-is-incomplete`, `architecture-fifty-three-templates-name-the-index`,
+  `architecture-three-checks-not-in-ci-is-false`, `conductor-design-discover-omits-eighth-question`,
+  `faq-four-methods-readme-has-five` and `comparison-one-network-component`.
+  `runtime-quickstart-rejection-leaves-state-intact` (P1): the quickstart no longer says a
+  rejection leaves state intact. It names the rejections that advance the revision and the ones
+  that do not, where to read the next token, and, corrected at integration for the conductor fix
+  above, that a park files the answer and moves on while the bank's gate stays shut.
+- **Operating layer, skills and study paths.** `boot-prompt-inventory-omits-eight-files`: the path
+  gate now also fails a tracked file in a boot-prompt manifest directory that the manifest does
+  not name. `products-workspace-gitignore-contradiction`, `tutor-miscites-knowledge-card`,
+  `stage-hub-notes-omit-the-two-new-templates`, `user-stories-and-backlog-in-no-stage-map`,
+  `launch-readiness-item-8-drops-gate-5-condition`, `domain-cards-cite-wrong-conductor-question-ids`,
+  `fintech-card-states-broad-regulated-activation`,
+  `reg-gap-check-points-at-superseded-activation-rule`,
+  `conductor-protocol-cites-nonexistent-question-id`,
+  `validation-agent-worked-run-invents-a-gate-5-line`,
+  `estimator-worked-run-rollup-does-not-reconcile`, `drafting-agent-draft-status-count-wrong` and
+  `team-intra-stage-order-contradicts-architect`.
+- **Templates, frameworks and examples.** `template-count-98-actual-100`,
+  `ninety-eight-templates-is-now-one-hundred` and `template-catalog-counts-stale`: every count of
+  the templates now says 100, and `tools/docs_contract.py` counts the templates the catalog and the
+  front door claim, so the next stale total fails a gate. `invest-verdict-field-missing`,
+  `backlog-six-numbers-are-five`, `business-case-sensitivity-split-unreproducible`,
+  `exec-update-example-fails-own-gate`, `growth-plan-kill-lever-not-in-loop`,
+  `leverage-points-altitude-11-not-12`, `team-topologies-wrong-marker-named`,
+  `packaging-prices-contradict-gabor-granger`, `rice-example-capacity-contradiction` and
+  `north-star-example-conflates-checks`.
+- **Carry-overs and coverage.** `twelve-gate-tools-at-zero-coverage`: the graph, frontmatter,
+  CI-gate verdict, CI wiring, manifest and workspace-contract gate tools now have tests of their
+  own. `inventory-per-section-count-unpinned`, `readiness-category-exit-code-untested`,
+  `ux3-title-omits-inventory` and `manifest-tier-note-true-only-after-port-c`.
+- At integration, `tools/readiness_registry.py` names the lanes' new tests under the readiness
+  steps they prove: the hook, routing, operations, security, release and evaluator lists grow,
+  and the os-tree, manifest-contract, workspace-contract, harness-route-behavior,
+  packaging-release, secret-boundaries and ci-runtime steps each run the tests behind their gate.
+  `system/BOOT-PROMPT.md` names the journey files and `docs/COMPATIBILITY.md`, which the new
+  manifest check reported once the branches met.
+- Still open after the port: `conductor-park-no-exit-route` (above) and
+  `deliver-templates-filed-under-build-map`, where `templates/delivery/testing-strategy.md` and
+  `failure-scenarios.md` still declare DELIVER and Gate 5 although Gate 4 lists them as inputs.
+
 ### Changed
 
 - Documentation now separates the document path, the optional local runtime, and external readiness. Historical claims below describe the state at the time of those entries; where they characterize the legacy harness rather than the `pmos` runtime, they are superseded by this section and the current operator documentation.
