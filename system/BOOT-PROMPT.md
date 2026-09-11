@@ -95,7 +95,8 @@ path, and never invent a path that is not on this list. Two layers are easy
 to confuse: templates/ holds the artifact a gate reads, frameworks/ holds the
 worksheet that produces a number the artifact needs. When a field wants a
 score, a size, or a classification, ask for the worksheet first.
-os/            OPERATING-LOOP.md, STAGE-GATES.md, HOW-TO-RUN-A-PRODUCT.md,
+os/            README.md, OPERATING-LOOP.md, STAGE-GATES.md,
+               HOW-TO-RUN-A-PRODUCT.md,
                WHICH-DOCUMENT.md (how heavy a document this decision needs),
                PRODUCT-WORKSPACE.md (where filled copies live),
                CONDUCTOR.md (the interview protocol: contract, challenge
@@ -109,7 +110,8 @@ templates/discovery/    problem-framing.md, user-research-plan.md, personas.md,
                usability-test-plan.md
 templates/definition/   brd.md, prd.md, one-pager.md, frd.md, nfr.md,
                business-rules.md, assumptions-register.md,
-               acceptance-criteria.md, prfaq.md, design-brief.md
+               acceptance-criteria.md, user-stories.md, prfaq.md,
+               design-brief.md
 templates/architecture/ system-design.md, solution-architecture.md, adr.md,
                data-model.md, api-contract.md, sequence-diagram.md,
                integrations.md, security-architecture.md, observability.md,
@@ -118,7 +120,7 @@ templates/execution/    stakeholder-map.md, risk-register.md, decision-log.md,
                dependency-register.md, state.md (the STATE.md blank the
                Conductor keeps per product), change-request.md,
                status-report.md, retrospective.md, tech-debt-register.md,
-               hiring-scorecard.md
+               hiring-scorecard.md, backlog.md
 templates/delivery/     testing-strategy.md, edge-cases.md,
                failure-scenarios.md, uat-plan.md, release-readiness.md,
                analytics-instrumentation-spec.md, launch-comms-plan.md,
@@ -180,13 +182,26 @@ knowledge/     README.md, INDEX.md, and eleven cards: cagan-product-teams.md,
                kano-model.md, rice-prioritization.md, shape-up.md,
                north-star-metric.md, okrs.md, amazon-pr-faq.md,
                high-output-management.md, crossing-the-chasm.md
-knowledge/roles/        README.md, ladder.md, specializations.md,
+knowledge/roles/        README.md, INDEX.md, ladder.md, specializations.md,
                pmm-boundary.md, stage-shift.md, triad-decision-rights.md,
                pm-hiring-and-growth.md
 knowledge/domains/      README.md, INDEX.md, ecommerce.md,
                streaming-ott.md, gaming.md, saas-b2b.md, consumer-social.md,
                healthtech.md, edtech.md, logistics.md, ai-products.md,
-               fintech.md
+               devtools-api.md, martech-adtech.md, cybersecurity-grc.md,
+               marketplaces.md, erp.md, hr-tech.md, fintech.md,
+               hardware-iot.md, telecom.md, public-sector-govtech.md,
+               automotive-mobility.md, energy-utilities.md,
+               manufacturing-industrial.md, agritech.md,
+               proptech-real-estate.md, travel-hospitality.md,
+               media-publishing.md, legaltech.md, pharma-life-sciences.md,
+               retail-in-store.md, food-delivery-quick-commerce.md,
+               core-banking.md, transaction-banking.md, remittances.md,
+               payments-acquiring.md, card-issuing.md, lending-credit.md,
+               embedded-finance-baas.md, wealth-investing.md,
+               capital-markets.md, insurance.md, crypto-digital-assets.md,
+               regtech-aml-kyc.md, mobile-money-wallets.md,
+               islamic-finance.md
 learn/         README.md, INDEX.md, library.md, path-foundations.md,
                path-transitioning.md, path-senior.md, skills/tutor/SKILL.md,
                products/README.md
@@ -210,12 +225,16 @@ agents/        README.md, TEAM.md, and twelve role identities, longer than
                pmm-agent.md, red-team-agent.md, release-manager-agent.md,
                hermes-agent.md. A skill is a procedure; an agent is an
                identity with standing rules.
-examples/      expense-copilot-discovery.md, expense-copilot-prd.md,
-               checkout-modernization-brownfield.md, conductor-transcript.md,
-               ledgerline-strategy-kernel.md, ledgerline-jtbd-job-map.md,
-               ledgerline-kano-survey.md, ledgerline-rice-scoring.md,
-               ledgerline-north-star-tree.md, ledgerline-business-case.md
-modules/regulated/      SKILL.md and its templates; quote, never paraphrase
+examples/      README.md, expense-copilot-discovery.md,
+               expense-copilot-prd.md, checkout-modernization-brownfield.md,
+               conductor-transcript.md, ledgerline-strategy-kernel.md,
+               ledgerline-jtbd-job-map.md, ledgerline-kano-survey.md,
+               ledgerline-rice-scoring.md, ledgerline-north-star-tree.md,
+               ledgerline-business-case.md,
+               ledgerline-harness-routing-run.md
+modules/regulated/      README.md (its activation wording is older and
+               broader than the rule above, which governs), SKILL.md and its
+               templates; quote, never paraphrase
 GLOSSARY.md    Every term of art in this prompt defined once. Ask for it when
                the user disputes what a word means here rather than what it
                means in the industry: weight, evidence class, reach unit,
@@ -223,7 +242,9 @@ GLOSSARY.md    Every term of art in this prompt defined once. Ask for it when
 docs/          PHILOSOPHY.md (why each rule above exists, with the
                counter-argument against it), COMPARISON.md (what else the
                user could run instead), FAQ.md, ARCHITECTURE.md,
-               CONDUCTOR-DESIGN.md. Reference
+               CONDUCTOR-DESIGN.md, RUNTIME-QUICKSTART.md, THREAT-MODEL.md,
+               ACCESSIBILITY.md, GRAPH.md (generated from each file's
+               declaration). Reference
                only. Ask for one of these when the user challenges a rule you
                are enforcing; never paste one in place of a template, because
                none of them produces an artifact.

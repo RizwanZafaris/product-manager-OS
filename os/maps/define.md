@@ -31,6 +31,7 @@ Pick the artifact weight before you open anything here: [WHICH-DOCUMENT.md](../W
 | [nfr.md](../../templates/definition/nfr.md) | Latency, availability, scale, security, accessibility, retention, each a number or a named owner |
 | [business-rules.md](../../templates/definition/business-rules.md) | Rule, trigger, source of truth, exceptions, test traceability |
 | [assumptions-register.md](../../templates/definition/assumptions-register.md) | Confidence, validation method, validate-by date; the most skipped artifact in the field |
+| [user-stories.md](../../templates/definition/user-stories.md) | The story register: every US id defined once, worked through BUILD rather than edited inside a signed PRD |
 | [acceptance-criteria.md](../../templates/definition/acceptance-criteria.md) | Given, when, then, with edge and negative cases and thresholds that can report a failure |
 | [prfaq.md](../../templates/definition/prfaq.md) | Working backwards from the release announcement, with the hostile questions kept in |
 | [design-brief.md](../../templates/definition/design-brief.md) | The product and design agreement: problem, constraints, success, deliverables, review dates |
@@ -85,7 +86,7 @@ Wikilinks below are additive: they exist so the Obsidian graph draws the edges. 
 
 - Loop and gates: [[os/OPERATING-LOOP.md]] · [[os/STAGE-GATES.md]] · [[os/WHICH-DOCUMENT.md]] · [[os/PRODUCT-WORKSPACE.md]]
 - Neighbor hubs: [[os/maps/discover.md]] · [[os/maps/design.md]] · [[os/maps/README.md]]
-- Templates: [[templates/definition/one-pager.md]] · [[templates/definition/brd.md]] · [[templates/definition/prd.md]] · [[templates/definition/frd.md]] · [[templates/definition/nfr.md]] · [[templates/definition/business-rules.md]] · [[templates/definition/assumptions-register.md]] · [[templates/definition/acceptance-criteria.md]] · [[templates/definition/prfaq.md]] · [[templates/definition/design-brief.md]]
+- Templates: [[templates/definition/one-pager.md]] · [[templates/definition/brd.md]] · [[templates/definition/prd.md]] · [[templates/definition/frd.md]] · [[templates/definition/nfr.md]] · [[templates/definition/business-rules.md]] · [[templates/definition/assumptions-register.md]] · [[templates/definition/user-stories.md]] · [[templates/definition/acceptance-criteria.md]] · [[templates/definition/prfaq.md]] · [[templates/definition/design-brief.md]]
 - Overlay templates: [[templates/ai/eval-spec.md]] · [[templates/ai/guardrails.md]] · [[templates/ai/hallucination-controls.md]] · [[modules/regulated/README.md]]
 - Frameworks: [[frameworks/prioritization/rice-scoring-sheet.md]] · [[frameworks/prioritization/moscow.md]] · [[frameworks/prioritization/wsjf-cost-of-delay.md]] · [[frameworks/prioritization/weighted-decision-matrix.md]] · [[frameworks/prioritization/user-story-map.md]] · [[frameworks/prioritization/impact-mapping.md]] · [[frameworks/prioritization/decision-doors.md]] · [[frameworks/execution/estimation-sheet.md]]
 - Knowledge: [[knowledge/rice-prioritization.md]] · [[knowledge/amazon-pr-faq.md]] · [[knowledge/shape-up.md]] · [[knowledge/README.md]]

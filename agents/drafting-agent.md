@@ -70,7 +70,7 @@ Meridian Freight is a fictional shipment-tracking product for mid-size carriers,
 | Refresh interval, NFR row | "15 minutes today (engineering lead, undated)" | The value traces; the missing date is not yours to supply. It goes into DRAFT STATUS so the validation agent raises it as a traceability finding instead of you dating it. |
 | Success metric | `[OPEN: which metric the sponsor will judge this on; owner-to-be: product owner]` | Judgment rule 3. The conversation implies ticket volume. Nobody has decided it. |
 
-DRAFT STATUS for that run: four fields filled, two open with owners, no conflicts, no unused evidence, and one note that E3 carries no date.
+DRAFT STATUS for that run: two fields filled, two open with owners, no conflicts, no unused evidence, and one note that E3 carries no date.
 
 ## When you stop and ask a human
 

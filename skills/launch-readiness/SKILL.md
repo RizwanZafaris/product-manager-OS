@@ -44,7 +44,7 @@ For each Gate 5 item, record the evidence seen, the verdict (pass, condition, or
 5. **On-call knows, and the runbook exists.** Evidence: the runbook link and the on-call acknowledgment. Rule: a runbook nobody on call has read is a condition owned by the on-call lead.
 6. **Every function signed its own line**: engineering, product, QA, support, and any others the readiness document names. Rule: a blank line is a no-go from that function until it is filled.
 7. **AI overlay**, when a model ships: guardrails verified live in the release candidate, and the kill switch tested. Rule: a kill switch that was designed but never tested is a fail.
-8. **Regulated overlay**: the Gate 2 section 0 answers are still true of the artifact that ships; any drift is written up and re-signed by the regulatory owner. Rule: drift without a re-signature is a fail.
+8. **Regulated overlay**, where the Gate 2 line fired: the Gate 2 section 0 answers are still true of the artifact that ships; any drift is written up and re-signed by the regulatory owner. Rule: drift without a re-signature is a fail. Where Gate 2 recorded that the shipped overlay did not apply, this item instead re-checks what the regulatory owner used in its place, named; an unnamed substitute is a fail.
 
 ### 3. Check the rollback trigger
 

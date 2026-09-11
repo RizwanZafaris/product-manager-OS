@@ -76,6 +76,8 @@ Fintech stays a pointer card on purpose. The part of its pack that concerns a mo
 
 When a product's STATE.md records a Domain, any stage question that asks about gatekeepers or metrics should be answered with the named card open. Recording "none" is a valid answer and better than a guessed domain: a card applied to the wrong market sharpens the wrong questions.
 
+Each card ends with a **Conductor overlay** line naming the question IDs it sharpens. A card may only name an ID whose own subject it is sharpening, so writing or editing that line means opening [the question banks](../../skills/conductor/questions/README.md) and reading the handle after the ID. An overlay that names DESIGN-4 and then describes migration is telling the Conductor to replace the premortem, which leaves the Gate 3 premortem line unevidenced and asks the migration question nowhere.
+
 ## Graduation rule
 
 A domain gets a card when its gatekeepers or metrics change what a stage question means, not before. A per-domain template pack (a healthtech PRD variant, an ecommerce launch plan) ships only when a card proves insufficient in real use, matching the rule the [knowledge index](../README.md) applies to method cards. Cards first, templates on evidence.

@@ -31,15 +31,15 @@ The tutor writes in one place only: the learner's practice workspace under `lear
 
 1. **Locate.** Ask which path and step, or which stage and fictional product for an off-path drill. First session on a product: have the learner create `learn/products/<name>/` and copy the path's ledger block into `PROGRESS.md`.
 2. **Attempt first.** The learner fills the step's template, or the named section of it, before the tutor says anything substantive. No attempt, no critique; a model answer shown before an attempt is a lecture, and lectures do not transfer.
-3. **Critique against the exit gate.** Walk the template's own exit-gate checklist line by line. For each line: pass or fail, one sentence why, and the knowledge card the judgment rests on, cited by link. A critique that cannot name its card is an opinion and is labeled as one.
+3. **Critique against the exit gate.** Walk the template's own exit-gate checklist line by line. For each line: pass or fail, one sentence why, and the knowledge card or bank entry the judgment rests on, cited by link. A critique that cannot name its card or bank entry is an opinion and is labeled as one.
 4. **Drill from the bank.** Ask questions from the stage's bank file, one at a time, in the four-part anatomy, exactly as the Conductor would. Judge the answer against the entry's evidence class.
 5. **Push once, then teach.** A weak answer gets one challenge-grammar move, named out loud ("interest to behavior, push one of one"). Whatever comes back, the tutor then shows a model answer: what a passing answer looks like for the fictional product, labeled as model output. The Conductor parks; the tutor teaches. One push is the whole budget.
 6. **Score, always.** Every drilled question and every exit-gate line gets a score before the session moves on. The scale is fixed:
    - **2**: would survive the Conductor. Meets the evidence class in shape and specificity; a named person, a dated artifact, a number with a unit, a period, and a source.
    - **1**: right structure, wrong altitude. The field is filled and coherent but the evidence class is missed, the number is naked, or the answer is a category where a name was owed.
    - **0**: would trigger the challenge grammar and could not recover. Banned openers, intentions offered as behavior, or the field dodged.
-7. **Land the ledger line.** One line per session into `PROGRESS.md`: date, step, scores, and the single weakest area with the card to re-read. In a runtime without file access, dictate the line for the learner to save. A session that ends in chat and not in the ledger did not happen.
-8. **Route forward.** Scores of 2 across the board: next step. Anything at 0: redo the exercise after re-reading the cited card; the redo is a new attempt, not an edit war over the old one.
+7. **Land the ledger line.** One line per session into `PROGRESS.md`: date, step, scores, and the single weakest area with the card or bank entry to re-read. In a runtime without file access, dictate the line for the learner to save. A session that ends in chat and not in the ledger did not happen.
+8. **Route forward.** Scores of 2 across the board: next step. Anything at 0: redo the exercise after re-reading the cited card or bank entry; the redo is a new attempt, not an edit war over the old one.
 
 ## Two worked critiques
 
@@ -51,13 +51,13 @@ The learner is at the [Foundations](../../path-foundations.md) capstone. The gat
 
 **What the learner wrote.** "Invented: users who quit in week one cost us a lot of growth, and churn is our biggest problem."
 
-**The critique, as the tutor says it.** Fail. Three of the four required parts are missing: no number, no period, no calculation, so nobody who was not in your head when you wrote it can check the line. The judgment rests on [North star metric](../../../knowledge/north-star-metric.md), which is explicit that a cost stated as a direction rather than a quantity loses every roadmap argument it enters, and on the naked-numbers move in [CONDUCTOR.md](../../../os/CONDUCTOR.md), which routes this to the assumptions register rather than accepting it. Notice also what "biggest problem" is doing: it is a ranking claim smuggled in without the comparison that would justify it.
+**The critique, as the tutor says it.** Fail. Three of the four required parts are missing: no number, no period, no calculation, so nobody who was not in your head when you wrote it can check the line. The judgment rests on the bank entries behind this gate line in [the DISCOVER bank](../../../skills/conductor/questions/discover.md): DISCOVER-4 accepts a cost of inaction only as what it costs, whom, per what period, with the arithmetic visible, and DISCOVER-3 states what the miss costs, that a problem with no priced pain loses every roadmap argument it enters. The push is the naked-numbers move in [CONDUCTOR.md](../../../os/CONDUCTOR.md), which routes an unpriced answer to the assumptions register rather than accepting it. Notice also what "biggest problem" is doing: it is a ranking claim smuggled in without the comparison that would justify it.
 
 **The push, one of one, named out loud.** Naked numbers, push one of one. Your brief says 63 percent of accounts created last quarter made one habit and never returned after week one. What is that in accounts per quarter, and what does one of them cost you?
 
 **The model answer, model output.** Invented: 4,300 monthly actives with roughly 1,100 new accounts a quarter; 63 percent of those, about 690 accounts a quarter, create one habit and never return after week one. At an invented blended acquisition cost of 4 euros per install, that is about 2,760 euros a quarter spent on people who never reached a second habit, plus the 690 conversations we are not having. Calculation shown, source named, every figure invented and labeled.
 
-**Score: 0, then 2 on the redo.** The original scores 0 rather than 1 because the field was dodged, not filled at the wrong altitude; a 1 would have read "invented: about 690 accounts a quarter", a real count with no cost attached to it. The ledger line names the redo and the card.
+**Score: 0, then 2 on the redo.** The original scores 0 rather than 1 because the field was dodged, not filled at the wrong altitude; a 1 would have read "invented: about 690 accounts a quarter", a real count with no cost attached to it. The ledger line names the redo and the bank entry, DISCOVER-4.
 
 ### Critique B: a bank drill, Restow research plan
 

@@ -27,6 +27,7 @@ This file is a hub node. Its job is to give the graph one place per stage to fan
 | [failure-scenarios.md](../../templates/delivery/failure-scenarios.md) | Blast radius, detection, recovery, and the data-loss risk |
 | [analytics-instrumentation-spec.md](../../templates/delivery/analytics-instrumentation-spec.md) | Event taxonomy and owners, written before build so Gate 6 has a baseline |
 | [acceptance-criteria.md](../../templates/definition/acceptance-criteria.md) | Owned at DEFINE, verified here case by case against the running product |
+| [backlog.md](../../templates/execution/backlog.md) | The queue policy behind the stories: what is allowed in, how it is ranked, how often it is reviewed, when an item is killed |
 | [decision-log.md](../../templates/execution/decision-log.md) | Where a scope change goes instead of being absorbed silently |
 | [change-request.md](../../templates/execution/change-request.md) | One change to a signed baseline, with the approvers named |
 | [tech-debt-register.md](../../templates/execution/tech-debt-register.md) | What the shortcut costs per quarter and what removing it costs once |
@@ -80,7 +81,7 @@ Wikilinks below are additive: they exist so the Obsidian graph draws the edges. 
 
 - Loop and gates: [[os/OPERATING-LOOP.md]] · [[os/STAGE-GATES.md]] · [[os/PRODUCT-WORKSPACE.md]]
 - Neighbor hubs: [[os/maps/design.md]] · [[os/maps/deliver.md]] · [[os/maps/README.md]]
-- Templates: [[templates/delivery/testing-strategy.md]] · [[templates/delivery/edge-cases.md]] · [[templates/delivery/failure-scenarios.md]] · [[templates/delivery/analytics-instrumentation-spec.md]] · [[templates/definition/acceptance-criteria.md]] · [[templates/execution/decision-log.md]] · [[templates/execution/change-request.md]] · [[templates/execution/tech-debt-register.md]] · [[templates/execution/status-report.md]] · [[templates/execution/retrospective.md]]
+- Templates: [[templates/delivery/testing-strategy.md]] · [[templates/delivery/edge-cases.md]] · [[templates/delivery/failure-scenarios.md]] · [[templates/delivery/analytics-instrumentation-spec.md]] · [[templates/definition/acceptance-criteria.md]] · [[templates/execution/backlog.md]] · [[templates/execution/decision-log.md]] · [[templates/execution/change-request.md]] · [[templates/execution/tech-debt-register.md]] · [[templates/execution/status-report.md]] · [[templates/execution/retrospective.md]]
 - Overlay templates: [[templates/ai/eval-spec.md]] · [[templates/ai/red-team-review.md]]
 - Frameworks: [[frameworks/execution/estimation-sheet.md]] · [[frameworks/execution/five-whys-fishbone.md]] · [[frameworks/execution/retrospective-formats.md]] · [[frameworks/metrics/dora-four-keys.md]] · [[frameworks/execution/risk-matrix.md]] · [[frameworks/execution/theory-of-constraints.md]]
 - Knowledge: [[knowledge/shape-up.md]] · [[knowledge/cagan-product-teams.md]] · [[knowledge/README.md]]

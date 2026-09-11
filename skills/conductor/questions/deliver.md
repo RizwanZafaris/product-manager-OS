@@ -66,7 +66,7 @@ Ask: Are the section 0 answers from Gate 2 still true of the artifact that ships
 Wrong costs: A deferred precondition can resurface with a regulator's reference number attached.
 Evidence class: 2, the answers re-checked line by line against the shipping artifact: model version, vendor terms, data residency, disclosures.
 Cross-examine when: "nothing changed" without the line-by-line check. Move: interest to behavior, walk the four together.
-Accept when: each answer re-verified, and any drift written up and re-signed by the regulatory owner. Skip this entry with a cited source when STATE.md says the regulated overlay is not active.
+Accept when: each answer re-verified, and any drift written up and re-signed by the regulatory owner. Where STATE.md records that the shipped overlay did not apply and names what the regulatory owner used in its place, the Gate 5 line re-checks that substitute instead, by name, in the same way. Skip this entry with a cited source only when STATE.md records that no regulator applies to the product.
 Lands in: `delivery/release-readiness.md` section 7, and STATE.md accepted answers.
 
 ### DELIVER-7: positioning
