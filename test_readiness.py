@@ -3,15 +3,25 @@
 These tests use temporary JSON documents and mocks.  They deliberately never
 write a scorecard into the checkout and never allow a verifier subprocess to
 run while testing rubric validation.
+
+The release-surface classes near the end are about the tools rather than the
+evaluator: what the canonical gate suite covers, what the full-suite probe
+runs, and what the built wheel declares.  They live here because they are
+checks on tools, not on a product document, and because every one of them was
+written against a defect that shipped.
 """
 
 from __future__ import annotations
 
 import json
+import shlex
+import subprocess
 import sys
 import tempfile
 import unittest
-from contextlib import nullcontext
+import zipfile
+from contextlib import nullcontext, redirect_stdout
+from io import StringIO
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -22,9 +32,41 @@ TOOLS = REPO / "tools"
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
+import ci_gate  # noqa: E402
+import pmos_build_backend  # noqa: E402
 import readiness  # noqa: E402
 import readiness_probe  # noqa: E402
+import skill_rubric  # noqa: E402
 from readiness_registry import Step  # noqa: E402
+
+
+WORKFLOW = REPO / ".github" / "workflows" / "lint.yml"
+
+
+def workflow_commands():
+    """Every command the workflow actually runs, comments excluded.
+
+    Not a YAML parse: a ``run:`` value is either the rest of the line or an
+    indented block under ``run: |``, and both forms end up as plain shell
+    lines.  Reading them as text is enough to compare what CI runs against
+    what tools/ci_gate.py runs, and needs no dependency to do it.
+    """
+    commands = set()
+    for raw in WORKFLOW.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("run:"):
+            line = line[len("run:"):].strip()
+        if not line or line == "|":
+            continue
+        try:
+            parts = shlex.split(line)
+        except ValueError:
+            continue
+        if parts:
+            commands.add(tuple(parts))
+    return commands
 
 
 def valid_spec(*, verifier="os-tree", criterion_id="C-1", task=None):
@@ -424,6 +466,199 @@ class VerdictAndOutputTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             candidate = Path(directory) / "scorecard.json"
             self.assertEqual(readiness.output_path(candidate), candidate.resolve())
+
+
+class ReleaseGateContractTests(unittest.TestCase):
+    """What the canonical suite claims to cover, it has to cover."""
+
+    def gate(self, gate_id):
+        for candidate in ci_gate.GATES:
+            if candidate.gate_id == gate_id:
+                return candidate
+        self.fail("no gate named %s" % gate_id)
+
+    def test_a_gate_is_named_for_what_its_verifiers_prove(self):
+        # tools/docs_contract.py reads the operator documents for heading
+        # order, alt text, link labels, banned phrases and path existence. It
+        # executes nothing that is documented, so a gate standing on it alone
+        # cannot be named for documented claims matching the tree; that name
+        # printed GREEN in the release report while README.md was false.
+        for gate, verifiers in readiness.LOCAL_HARD_GATE_VERIFIERS.items():
+            if tuple(verifiers) == ("docs-contract",):
+                self.assertNotIn("claim", gate)
+
+    def test_full_suite_probe_runs_exactly_the_root_tests_gate(self):
+        # The probe carried its own copy of the root module list and the gate
+        # carried another. The gate's grew to sixteen and the probe's stayed
+        # at fourteen, so the full-suite criterion printed a passing count
+        # over a suite that never ran test_pmos_probe or test_pmos_invariants.
+        seen = []
+
+        def fake_run(command, cwd=None):
+            seen.append(tuple(command))
+            return 0, "Ran 1 test in 0.001s\n\nOK\n"
+
+        with patch.object(readiness_probe, "run", side_effect=fake_run), \
+                redirect_stdout(StringIO()):
+            self.assertEqual(readiness_probe.probe_full_suite(), 0)
+        self.assertEqual(seen[0], tuple(self.gate("root-tests").argv))
+        for path in sorted(REPO.glob("test_*.py")):
+            self.assertIn(path.stem, seen[0],
+                          "the full-suite probe never runs %s" % path.name)
+
+    def test_full_suite_probe_refuses_a_gate_that_skips_a_shipped_module(self):
+        # Two fixes for one defect met at integration: the probe now runs the
+        # gate's argv, and the probe also knows every root module on disk. A
+        # gate argv that drops a shipped module must fail the criterion rather
+        # than print a passing count over the smaller suite.
+        argv = tuple(self.gate("root-tests").argv)
+        dropped = "test_pmos_matrix"
+        self.assertIn(dropped, argv)
+        short = tuple(token for token in argv if token != dropped)
+        seen = []
+
+        def fake_run(command, cwd=None):
+            seen.append(tuple(command))
+            return 0, "Ran 1 test in 0.001s\n\nOK\n"
+
+        out = StringIO()
+        with patch.object(readiness_probe, "run", side_effect=fake_run), \
+                patch.object(readiness_probe, "root_tests_argv",
+                             return_value=short), \
+                redirect_stdout(out):
+            self.assertEqual(readiness_probe.probe_full_suite(), 1)
+        self.assertEqual(seen, [])
+        self.assertIn(dropped, out.getvalue())
+
+    def test_every_workflow_lint_of_a_shipped_file_is_also_a_gate(self):
+        # The workflow re-runs several checks as its own steps. That is a
+        # second run, not a second suite, except that it linted the
+        # regulated template in structure mode and no gate did, so a green
+        # local run was evidence about a file CI would still reject.
+        gate_argv = {tuple(gate.argv) for gate in ci_gate.GATES}
+        checked = 0
+        for command in sorted(workflow_commands()):
+            if command[:2] != ("python3", "lint.py"):
+                continue
+            targets = [arg for arg in command[2:] if not arg.startswith("-")]
+            if any(not (REPO / target).exists() for target in targets):
+                # Lints a workspace the workflow creates during the run. The
+                # workspace-lifecycle and workspace-links gates cover that
+                # path, on a workspace their probe creates for itself.
+                continue
+            checked += 1
+            self.assertIn(command, gate_argv,
+                          "CI runs %s and no gate does"
+                          % " ".join(command))
+        self.assertGreaterEqual(checked, 4)
+
+
+class GeneratedEvidenceFreshnessTests(unittest.TestCase):
+    """A committed measurement that nothing re-measures goes stale silently."""
+
+    def measure(self, argv):
+        buffer = StringIO()
+        with redirect_stdout(buffer):
+            return skill_rubric.main(argv)
+
+    def test_check_passes_on_a_fresh_snapshot_and_fails_on_a_stale_one(self):
+        with tempfile.TemporaryDirectory() as directory:
+            snapshot = Path(directory) / "skill-rubric.json"
+            self.assertEqual(self.measure(["--json", str(snapshot)]), 0)
+            self.assertEqual(self.measure(["--check", str(snapshot)]), 0)
+
+            stale = json.loads(snapshot.read_text(encoding="utf-8"))
+            stale["skills"][0]["missing"] = ["Inputs"]
+            stale["skills"][0]["sections_present"] = 6
+            snapshot.write_text(json.dumps(stale, indent=2) + "\n",
+                                encoding="utf-8")
+            self.assertEqual(self.measure(["--check", str(snapshot)]), 1)
+
+    def test_check_fails_when_the_snapshot_is_missing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            absent = Path(directory) / "never-written.json"
+            self.assertEqual(self.measure(["--check", str(absent)]), 1)
+
+    def test_the_freshness_check_is_a_release_gate(self):
+        # The skill-rubric gate scores the live skills with --min, so it
+        # passes however stale the committed measurement is. Only a gate
+        # that compares the two can see the defect.
+        argv = {tuple(gate.argv) for gate in ci_gate.GATES}
+        self.assertIn(("python3", "tools/skill_rubric.py", "--check"), argv)
+
+
+class BuildArtifactIgnoreTests(unittest.TestCase):
+    """A build artifact left in the tree must not become repository content."""
+
+    def ignored(self, relative):
+        done = subprocess.run(["git", "check-ignore", "-q", relative],
+                              cwd=str(REPO), shell=False, capture_output=True,
+                              text=True, timeout=30)
+        return done.returncode
+
+    def test_the_documented_build_commands_drop_nothing_unignored(self):
+        # tools/review_gate.py skips a dist/ directory but hashes a
+        # root-level .whl into the reviewable tree digest, so an unignored
+        # wheel changes the digest reviewers are asked to confirm.
+        for relative in ("dist/product_manager_os-0.8.0-py3-none-any.whl",
+                         "product_manager_os-0.8.0-py3-none-any.whl",
+                         "wheelhouse/product_manager_os-0.8.0-py3-none-any.whl"):
+            if self.ignored(relative) == 128:
+                self.skipTest("git is unavailable here")
+            self.assertEqual(self.ignored(relative), 0, relative)
+
+    def test_no_tracked_file_became_ignored(self):
+        done = subprocess.run(["git", "ls-files", "-i", "-c",
+                               "--exclude-standard"], cwd=str(REPO),
+                              shell=False, capture_output=True, text=True,
+                              timeout=30)
+        if done.returncode != 0:
+            self.skipTest("git is unavailable here")
+        self.assertEqual(done.stdout.strip(), "")
+
+
+class DistributionMetadataTests(unittest.TestCase):
+    """What the wheel declares about itself, read out of the wheel."""
+
+    def built_wheel(self, directory):
+        name = pmos_build_backend.build_wheel(str(directory))
+        return zipfile.ZipFile(Path(directory) / name)
+
+    def headers(self, wheel):
+        name = next(entry for entry in wheel.namelist()
+                    if entry.endswith(".dist-info/METADATA"))
+        text = wheel.read(name).decode("utf-8").split("\n\n", 1)[0]
+        fields = {}
+        for line in text.splitlines():
+            key, _, value = line.partition(":")
+            fields.setdefault(key.strip(), []).append(value.strip())
+        return fields
+
+    def test_the_built_wheel_declares_its_license(self):
+        # pyproject declared a license and the wheel shipped the file, but the
+        # METADATA named neither, so pip show reported the package as
+        # unlicensed and a scanner had no field to read.
+        with tempfile.TemporaryDirectory() as directory:
+            with self.built_wheel(directory) as wheel:
+                fields = self.headers(wheel)
+                self.assertEqual(fields["License-Expression"], ["MIT"])
+                self.assertEqual(fields["License-File"], ["LICENSE"])
+                # License-Expression is defined by Metadata 2.4, which is also
+                # the version that defines the licenses/ path used below.
+                self.assertEqual(fields["Metadata-Version"], ["2.4"])
+                shipped = next(entry for entry in wheel.namelist()
+                               if entry.endswith(".dist-info/licenses/LICENSE"))
+                self.assertEqual(wheel.read(shipped),
+                                 (REPO / "LICENSE").read_bytes())
+
+    def test_build_sdist_refuses_in_the_way_a_frontend_can_report(self):
+        # PEP 517 makes the hook mandatory. Leaving it out did not narrow this
+        # backend to wheels; it made python -m build die with an
+        # AttributeError naming the module and nothing else.
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaises(pmos_build_backend.UnsupportedOperation) as raised:
+                pmos_build_backend.build_sdist(directory)
+        self.assertIn("--wheel", str(raised.exception))
 
 
 if __name__ == "__main__":

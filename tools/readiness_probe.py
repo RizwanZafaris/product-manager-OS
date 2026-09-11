@@ -81,10 +81,13 @@ def tracked_tree(destination):
     """A copy of this repository holding exactly the tracked files.
 
     Not a filtered copytree. The first version of this ignored products/
-    wholesale and so dropped products/README.md, which is tracked and which
-    six files under learn/ link to, and the probe then reported a deletability
-    failure that was its own. What CI checks out is the tracked set, so that is
-    what a probe measuring CI's behaviour has to build.
+    wholesale, and a substring filter of that shape also drops
+    learn/products/README.md, which is tracked and which the study paths and
+    the tutor under learn/ link to, and the probe then reported a deletability failure that
+    was its own. (The repository root has no tracked products/ at all:
+    .gitignore excludes /products/, so a user's own workspace never ships.)
+    What CI checks out is the tracked set, so that is what a probe measuring
+    CI's behaviour has to build.
     """
     destination = Path(destination)
     code, out = run(["git", "ls-files", "-z"])
@@ -316,6 +319,22 @@ def root_test_modules(root=REPO):
     return sorted(found | {Path(name).stem for name in REQUIRED_ROOT_TESTS})
 
 
+def root_tests_argv():
+    """The root-tests release gate's argv, read out of tools/ci_gate.py.
+
+    This probe used to carry its own copy of the root module list. The gate's
+    copy grew to sixteen modules and this one stayed at fourteen, so the
+    full-suite criterion reported a passing count while two modules the gate
+    runs (test_pmos_probe and test_pmos_invariants) never ran here. One list,
+    held in the gate and guarded there by test_pmos_invariants, and read here.
+    """
+    import ci_gate
+    for gate in ci_gate.GATES:
+        if gate.gate_id == "root-tests":
+            return tuple(gate.argv)
+    raise RuntimeError("tools/ci_gate.py has no root-tests gate")
+
+
 def probe_full_suite():
     """Root, harness and regulated suites, with the counts printed."""
     missing = [name for name in REQUIRED_ROOT_TESTS
@@ -323,11 +342,28 @@ def probe_full_suite():
     if missing:
         say("required root test modules missing: %s" % ", ".join(missing))
         return 1
-    root_modules = root_test_modules()
+    root_argv = root_tests_argv()
+    root_modules = [token for token in root_argv[1:]
+                    if token.startswith("test_")]
+    if not root_modules:
+        say("the root-tests gate names no root test module")
+        return 1
+    missing = [name + ".py" for name in root_modules
+               if not (REPO / (name + ".py")).is_file()]
+    if missing:
+        say("required root test modules missing: %s" % ", ".join(missing))
+        return 1
+    # The run is the gate's own argv, so the criterion and the release gate
+    # cannot count different suites; a shipped module or a floor module the
+    # gate does not name fails here instead of going unrun on both.
+    unrun = sorted(set(root_test_modules()) - set(root_modules))
+    if unrun:
+        say("root test modules the root-tests gate never runs: %s"
+            % ", ".join(unrun))
+        return 1
     total, failed = 0, 0
     for label, command, cwd in (
-            ("root", ["python3", "-m", "unittest", *root_modules, "-v"],
-             REPO),
+            ("root", list(root_argv), REPO),
             ("harness", ["python3", "-m", "unittest", "discover", "-s",
                          "harness", "-p", "test_*.py", "-v"], REPO),
             ("regulated", ["python3", "-m", "unittest", "test_lint", "-v"],
@@ -385,7 +421,8 @@ def probe_ci_covers_runtime():
         "compile", "root-tests", "harness-tests", "regulated-tests",
         "claude-adapter", "desktop-adapter", "workspace-lifecycle",
         "workspace-links", "workspace-contract", "regulated-example",
-        "os-tree", "json-syntax", "graph-freshness", "manifest-contract",
+        "regulated-template", "os-tree", "json-syntax", "graph-freshness",
+        "skill-rubric-freshness", "manifest-contract",
         "frontmatter", "security-policy", "docs-contract",
         "readiness-local",
     }

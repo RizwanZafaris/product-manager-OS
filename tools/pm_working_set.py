@@ -8,7 +8,7 @@
 Standard library only, like every other script in this tree.
 
 Why this file exists, separately from tools/template_rubric.py. The rubric
-scores all ninety-eight templates equally, and they are not equal. A sunset
+scores every template equally, and they are not equal. A sunset
 plan is written once in a product's life; a decision log is written every
 week. A tree whose median score is respectable can still be weak in exactly
 the documents a person touches on a Tuesday, and that is the failure this
