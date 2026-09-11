@@ -103,6 +103,26 @@ class OutboxTests(unittest.TestCase):
         self.assertEqual(outbox.attempt(queued.id, sender, now=2), delivered)
         self.assertEqual(len(calls), 1)
 
+    def test_completed_send_with_an_unusable_id_is_never_dispatched_again(self):
+        outbox = TransactionalOutbox(backoff_base=1, backoff_cap=4)
+        queued = outbox.enqueue("invoice.created", {"id": "inv-1"},
+                                idempotency_key="inv-1", max_attempts=3)
+        sends = []
+
+        def sender(envelope):
+            sends.append(envelope["idempotency_key"])
+            return {"id": "ext-42"}
+
+        terminal = outbox.attempt(queued.id, sender, now=1)
+        self.assertEqual(terminal.status, OutboxStatus.DEAD_LETTER)
+        self.assertEqual(terminal.last_error, "invalid_external_id")
+        self.assertIsNone(terminal.external_id)
+        self.assertEqual(outbox.dispatch(sender, now=2), ())
+        self.assertEqual(outbox.dispatch(sender, now=60), ())
+        self.assertEqual(sends, ["inv-1"])
+        self.assertEqual([record.id for record in outbox.dead_letters()],
+                         [queued.id])
+
     def test_acknowledgement_requires_a_delivered_matching_record(self):
         outbox = TransactionalOutbox()
         queued = outbox.enqueue("notice", {"id": "1"}, idempotency_key="ack-1")
@@ -110,7 +130,8 @@ class OutboxTests(unittest.TestCase):
             outbox.acknowledge(queued.id, external_id="unverified-remote", now=1)
         with self.assertRaises(OutboxError):
             outbox.reconcile({"ack-1": "unverified-remote"}, now=1)
-        rejected = outbox.attempt(queued.id, lambda envelope: None, now=2)
+        rejected = outbox.attempt(
+            queued.id, lambda envelope: (_ for _ in ()).throw(TimeoutError()), now=2)
         self.assertEqual(rejected.status, OutboxStatus.RETRY_WAIT)
         delivered = outbox.attempt(queued.id, lambda envelope: "verified-remote", now=3)
         self.assertEqual(delivered.status, OutboxStatus.DELIVERED)

@@ -176,6 +176,24 @@ class RoutingTests(unittest.TestCase):
         self.assertIn("fallback budget exhausted",
                       [attempt.reason for attempt in bounded.attempts])
 
+    def test_bounded_budget_call_under_the_cap_is_not_rejected(self):
+        provider = FakeProvider({"output": "answer", "input_tokens": 4,
+                                 "output_tokens": 2, "total_tokens": 6,
+                                 "cost_usd": 0.004, "latency_ms": 5,
+                                 "actual_model": "cheap/model"})
+        decision = ModelRouter(
+            [spec("cheap", "cheap/model", cost_per_1k_tokens=0.5)],
+            {"cheap": provider}).route(
+                RoutingRequest(budget_usd=0.01, estimated_tokens=1,
+                               max_output_tokens=10))
+        self.assertTrue(decision.ok)
+        self.assertEqual(decision.model, "cheap/model")
+        self.assertEqual(len(provider.calls), 1)
+        self.assertNotIn("fallback budget exhausted",
+                         [attempt.reason for attempt in decision.attempts])
+        self.assertNotIn("policy_violation",
+                         [attempt.reason for attempt in decision.attempts])
+
     def test_budget_counts_policy_failed_paid_attempts_before_fallback(self):
         first = FakeProvider({
             "output": "charged but rejected", "output_tokens": 1,
