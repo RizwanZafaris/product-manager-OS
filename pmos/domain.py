@@ -1970,9 +1970,11 @@ class PMOSDomain:
     revoke = revoke_approval
 
     @_transactional
-    def score_initiative(self, initiative_id: str, score: float, *, actor_id: Optional[str] = None, period: str = "", expected_revision: Optional[int] = None) -> PortfolioAllocation:
+    def score_initiative(self, initiative_id: str, score: float, *, period: str, actor_id: Optional[str] = None, expected_revision: Optional[int] = None) -> PortfolioAllocation:
         init = self._allowed(initiative_id, actor_id, "edit")
         actor = self._public_actor(actor_id)
+        if not period:
+            raise AllocationError("period is required")
         if not self._finite_number(score):
             raise AllocationError("score must be a finite number")
         # An allocation row is identified by (product, initiative, period), so
@@ -2015,9 +2017,11 @@ class PMOSDomain:
     allocate = allocate_capacity
 
     @_transactional
-    def sequence_initiative(self, initiative_id: str, sequence: int, *, actor_id: Optional[str] = None, period: str = "", expected_revision: Optional[int] = None) -> PortfolioAllocation:
+    def sequence_initiative(self, initiative_id: str, sequence: int, *, period: str, actor_id: Optional[str] = None, expected_revision: Optional[int] = None) -> PortfolioAllocation:
         init = self._allowed(initiative_id, actor_id, "edit")
         actor = self._public_actor(actor_id)
+        if not period:
+            raise AllocationError("period is required")
         if not isinstance(sequence, int) or isinstance(sequence, bool) or sequence < 0:
             raise AllocationError("sequence must be a non-negative integer")
         old = next((a for a in self._tables["portfolio_allocation"].values() if a.initiative_id == initiative_id and a.period == period), None)

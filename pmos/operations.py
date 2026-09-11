@@ -1068,6 +1068,18 @@ class TransactionalOutbox:
                 if record.external_id != delivered_id:
                     raise OutboxError("external acknowledgement does not reconcile")
                 return record
+            if record.status is OutboxStatus.DEAD_LETTER:
+                # Only the dead-letter branch that fired because the sender's
+                # own acknowledgement was unusable can be closed this way: the
+                # remote action already completed, so reconciliation supplies
+                # the id the sender could not. Any other dead letter (backoff
+                # exhaustion, adapter unavailability) never had a completed
+                # remote effect and stays refused.
+                if record.last_error != "invalid_external_id":
+                    raise OutboxError("only a delivered record can be acknowledged")
+                return self._replace(record, status=OutboxStatus.ACKNOWLEDGED,
+                                     external_id=delivered_id,
+                                     acknowledged_at=_now(now if now is not None else time.time()))
             if record.status is not OutboxStatus.DELIVERED:
                 raise OutboxError("only a delivered record can be acknowledged")
             if record.external_id != delivered_id:

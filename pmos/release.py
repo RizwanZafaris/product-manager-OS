@@ -363,7 +363,15 @@ def build_provenance(root: str | os.PathLike[str], *, output: str | os.PathLike[
                      "sha256": digest, "size": size}
             entries[relative] = entry
             counts[category] += 1
-        discovered_commit, clean = _git_identity(base, excluded)
+        # git_identity answers a different question than the inventory: an
+        # existing default-path manifest under an untouched tree should not
+        # make a library caller's git status look dirty, or its
+        # source_commit go None, just because this call happens not to be
+        # writing a new one right now.
+        git_excluded = excluded
+        if output is None and target.is_relative_to(base):
+            git_excluded = excluded | {target.relative_to(base).as_posix()}
+        discovered_commit, clean = _git_identity(base, git_excluded)
         if source_commit is not None and (clean is not True or
                                           source_commit.lower() != discovered_commit):
             raise ProvenanceError(

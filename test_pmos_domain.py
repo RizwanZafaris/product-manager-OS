@@ -638,6 +638,23 @@ class DomainTest(unittest.TestCase):
             len([allocation for allocation in self.d.list_entities("portfolio_allocation", actor_id=self.actor)
                  if allocation.initiative_id == a.id]), 2)
 
+    def test_score_and_sequence_initiative_require_a_period(self):
+        a = self.d.create_initiative(self.product.id, "No period", actor_id=self.actor)
+        self.d.set_capacity(self.product.id, "Q1", 10, actor_id=self.actor)
+        self.d.allocate_capacity(a.id, "Q1", 5, actor_id=self.actor)
+        with self.assertRaises(TypeError):
+            self.d.score_initiative(a.id, 9, actor_id=self.actor)
+        with self.assertRaises(AllocationError):
+            self.d.score_initiative(a.id, 9, period="", actor_id=self.actor)
+        with self.assertRaises(TypeError):
+            self.d.sequence_initiative(a.id, 1, actor_id=self.actor)
+        with self.assertRaises(AllocationError):
+            self.d.sequence_initiative(a.id, 1, period="", actor_id=self.actor)
+        allocations = [allocation for allocation in self.d.list_entities("portfolio_allocation", actor_id=self.actor)
+                       if allocation.initiative_id == a.id]
+        self.assertEqual(len(allocations), 1)
+        self.assertEqual(allocations[0].period, "Q1")
+
     def test_full_aggregate_round_trip_rehydrates_every_state_family(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory, "domain.db")

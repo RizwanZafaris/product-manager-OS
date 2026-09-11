@@ -353,6 +353,37 @@ class ReleaseProvenanceTests(unittest.TestCase):
                 stdout=subprocess.PIPE).stdout.strip()
             self.assertFalse(verify_provenance(root, forged).ok)
 
+    def test_untracked_default_provenance_file_does_not_dirty_a_library_call(self):
+        # A library caller of build_provenance(root) (no `output`) should see
+        # the tree as clean, and get a real source_commit, when the only
+        # untracked file sitting in the tree is a default-path provenance
+        # manifest written by a prior call. That manifest is excluded from
+        # this call's own inventory already (it is recorded as an existing
+        # file, per test_manifest_built_without_output_records_an_existing_
+        # provenance_file); git identity must exclude it the same way, or
+        # its own presence marks the tree dirty and hides source_commit.
+        with TemporaryDirectory() as folder:
+            root = Path(folder)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+            subprocess.run(["git", "config", "user.email", "release@test.invalid"],
+                           cwd=root, check=True)
+            subprocess.run(["git", "config", "user.name", "Release Test"],
+                           cwd=root, check=True)
+            (root / "tracked.txt").write_text("clean\n", encoding="utf-8")
+            subprocess.run(["git", "add", "tracked.txt"], cwd=root, check=True)
+            subprocess.run(["git", "commit", "-qm", "fixture"], cwd=root, check=True)
+            head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, check=True,
+                                  text=True, stdout=subprocess.PIPE).stdout.strip()
+            # Writes the default-path manifest to disk, untracked, exactly as
+            # a prior release step would leave it.
+            written = build_provenance(root, output=root / release.DEFAULT_PROVENANCE)
+            self.assertTrue(verify_provenance(root, root / release.DEFAULT_PROVENANCE).ok)
+            manifest = build_provenance(root)
+            self.assertEqual(manifest["source_state"], "git-clean")
+            self.assertEqual(manifest["source_commit"], head)
+            self.assertEqual(written["source_state"], "git-clean")
+            self.assertEqual(written["source_commit"], head)
+
     def test_secret_like_path_blocks_build_and_cannot_hide_from_verification(self):
         with TemporaryDirectory() as folder:
             root = Path(folder)
