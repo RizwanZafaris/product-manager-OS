@@ -21,7 +21,7 @@ Evidence class: 5 is acceptable, this is a judgment the user owns; the judgment 
 Options: a) an afternoon, which implies decide and log or a ticket. b) a sprint, which implies a ticket with acceptance criteria. c) a quarter, which implies a one-pager or a full PRD. d) a license or a contract, which implies the full stack and a regulatory look.
 Cross-examine when: the answer hedges across two options. Move: banned openers, then force one.
 Accept when: exactly one option, with one line of reasoning.
-Lands in: `execution/decision-log.md` weight entry always; at one-pager weight, also `definition/one-pager.md` header once DEFINE-3 lands the weight (full-PRD and BRD-stack weight have no equivalent header field, so the decision log stays the record of this answer there), and STATE.md accepted answers.
+Lands in: `execution/decision-log.md` weight entry and STATE.md accepted answers, at every weight.
 
 ### DEFINE-2: audience
 
@@ -30,7 +30,7 @@ Wrong costs: A document written for nobody in particular is read by nobody at al
 Evidence class: named roles, or named people where they exist.
 Cross-examine when: the answer is "the team" or "stakeholders". Move: category to name.
 Accept when: each reader named with the action their reading triggers.
-Lands in: `execution/decision-log.md` weight entry always; at one-pager weight, also `definition/one-pager.md` "Reviewers who must not be surprised" once DEFINE-3 lands the weight (full-PRD and BRD-stack weight route this answer to section 3 "Users and stories" and section 4 "Stakeholders" of the BRD instead, filled during those templates' own drafting), and STATE.md accepted answers.
+Lands in: `execution/decision-log.md` weight entry always; at one-pager weight, also `definition/one-pager.md` "Reviewers who must not be surprised" once DEFINE-3 lands the weight (full-PRD and BRD-stack weight route this answer to section 3 "Users and stories" of the PRD and section 4 "Stakeholders" of the BRD instead, filled during those templates' own drafting), and STATE.md accepted answers.
 
 ### DEFINE-3: reversibility
 

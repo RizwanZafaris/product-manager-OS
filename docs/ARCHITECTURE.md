@@ -97,11 +97,11 @@ product-manager-OS/
 ├── test_lint.py  (EXTEND)  Unit tests for every original and every added lint check
 ├── pyproject.toml  Package metadata, the pmos console script, and the PEP 517 hook table naming the local backend below; no runtime dependencies
 ├── pmos_build_backend.py  The repository-local, standard-library PEP 517 backend; it builds the one artifact this repository ships, a pure-Python wheel, so an offline build needs no build package
-├── test_pmos_cli.py · test_pmos_conductor.py · test_pmos_domain.py · test_pmos_hooks.py · test_pmos_invariants.py · test_pmos_operations.py · test_pmos_probe.py · test_pmos_release.py · test_pmos_review.py · test_pmos_routing.py · test_pmos_security.py · test_pmos_skills.py · test_pmos_store.py · test_pmos_usecases.py  Fourteen runtime and tooling suites, each named for what it covers; test_pmos_invariants.py guards whole defect classes rather than single examples, and test_pmos_probe.py covers the EXT-AI probe and the skill rubric with no network reachable
+├── test_pmos_cli.py · test_pmos_conductor.py · test_pmos_domain.py · test_pmos_hooks.py · test_pmos_invariants.py · test_pmos_matrix.py · test_pmos_operations.py · test_pmos_probe.py · test_pmos_release.py · test_pmos_review.py · test_pmos_routing.py · test_pmos_security.py · test_pmos_skills.py · test_pmos_store.py · test_pmos_usecases.py · test_tools_gates.py · test_contract_gates.py  Seventeen runtime and tooling suites, each named for what it covers; test_pmos_invariants.py guards whole defect classes rather than single examples, test_pmos_probe.py covers the EXT-AI probe and the skill rubric with no network reachable, test_pmos_matrix.py covers the model-matrix tool tests, test_tools_gates.py covers the gate-tool suites, and test_contract_gates.py covers the manifest model-id and workspace-contract gate tests
 ├── test_readiness.py  Adversarial regression tests for the readiness evaluator and its verifier registry
 ├── .gitignore  Keeps macOS sidecar files, bytecode, the virtualenv, build outputs, the practice and product workspaces, and .readiness/ out of the tree
 ├── tools/
-│   ├── ci_gate.py  The canonical release suite, nineteen named gates in one pass; CI invokes it first, and --manifest prints the gate list the readiness evaluator checks against
+│   ├── ci_gate.py  The canonical release suite, twenty-one named gates in one pass; CI invokes it first, and --manifest prints the gate list the readiness evaluator checks against
 │   ├── readiness.py  Scores local readiness against docs/readiness/criteria.json; a verifier id resolves through the code registry below, never through a command the rubric carries
 │   ├── readiness_registry.py  The immutable registry those opaque verifier ids resolve through, so point allocation and executable evidence stay separately auditable
 │   ├── readiness_probe.py  One probe per criterion that needs more than a single command, including the mutation checks that break a gate on purpose and prove it notices
@@ -312,12 +312,12 @@ product-manager-OS/
 │   │   ├── SKILL.md  Entry skill for the stage-gated interviewer; the full protocol lives in os/CONDUCTOR.md, the triggering in CLAUDE.md and AGENTS.md
 │   │   └── questions/
 │   │       ├── README.md  Bank file format and the five-class evidence ladder
-│   │       ├── discover.md  Eight core questions, ending at the domain pack that Gate 1's domain line rests on, each with evidence class, cross-examination trigger, and target template field
+│   │       ├── discover.md  Nine core questions, ending at the one-sentence problem statement composed from the accepted answers, with the domain pack at DISCOVER-8
 │   │       ├── define.md  Eight core questions, opening with the WHICH-DOCUMENT weight tree
 │   │       ├── design.md  Seven core questions, including the twice-asked premortem entry
 │   │       ├── build.md  Six core questions against acceptance criteria, edge cases, and the red team
-│   │       ├── deliver.md  Six core questions, rollback proven and the gtm-plan set
-│   │       └── operate.md  Six core questions, the Gate 1 signal measured and the persist-pivot-sunset decision
+│   │       ├── deliver.md  Twelve questions: six core, the gtm-plan block, comms approval and the kill-switch rehearsal
+│   │       └── operate.md  Ten questions: six core, the growth-plan block (the loop behind the metric, the counter-metric, and the kill condition), and the AI overlay's production-eval comparison against Gate 5
 │   ├── product-analyst/SKILL.md  DISCOVER and OPERATE research engine: decompose, three-lens search, one evidence note per source with a verbatim quote, named tensions, committed positions, one adversarial pass before handoff
 │   ├── ai-prd/SKILL.md  Drafts a PRD for an AI-powered feature using templates/definition/prd.md plus the templates/ai/ overlay; two-field frontmatter per section 3
 │   ├── roadmap-builder/SKILL.md  Builds and stress-tests a roadmap from templates/planning/roadmap.md and okrs.md

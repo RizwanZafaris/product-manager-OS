@@ -88,7 +88,7 @@ One table row per stage. Question banks live as files under `skills/conductor/qu
 5. AI overlay: did the eval sets run against the model version that ships, and what happened at each threshold?
 6. What did the red team break, and was every fix re-tested?
 
-### DELIVER: six core questions
+### DELIVER: twelve questions
 
 1. Was the rollback actually performed in pre-production, and how long did it take?
 2. Are UAT exit criteria met with real users or named proxies, and is every severity-1 defect closed?
@@ -97,13 +97,15 @@ One table row per stage. Question banks live as files under `skills/conductor/qu
 5. Do support and on-call know this is coming, and does the runbook exist?
 6. Regulated overlay: are the section 0 answers from Gate 2 still true of the artifact that ships?
 
-### OPERATE: six core questions
+Also in the bank, neither core nor part of the gtm-plan block: DELIVER-11 asks whether comms are drafted and approved per audience, with a named approver; DELIVER-12 asks whether the kill switch was pulled live in the release candidate, dated, timed, and by whom.
+
+### OPERATE: ten questions
 
 1. Was the Gate 1 success signal measured, with the source system and the calculation stated?
 2. For each key result: number versus number. Adjectives are returned unanswered.
 3. Did the input metrics move, or did the headline move for an unrelated reason?
 4. What does this cost to run: incident count, support volume, on-call load?
-5. Which input metric is the next growth bet, and what is the cheapest experiment that would move it? First of the growth-plan questions; the bank file carries the rest (the loop or channel behind the metric, the counter-metric that catches damage, and the kill condition for the experiment).
+5. Which input metric is the next growth bet, and what is the cheapest experiment that would move it? First of the growth-plan questions; the bank file carries the rest (the loop or channel behind the metric, the counter-metric that catches damage, the kill condition for the experiment, and the AI overlay's production-eval comparison against the Gate 5 run).
 6. Persist, pivot, or sunset, and what consequence is scheduled: the next DISCOVER pass, the pivot's Gate 1, or the sunset plan with dates and an owner?
 
 ## 4. Evidence classes and the challenge grammar

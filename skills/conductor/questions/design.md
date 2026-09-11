@@ -46,7 +46,7 @@ Ask: It is six months from now and this product failed: why?
 Wrong costs: Teams reliably know how their project will fail and reliably are not asked.
 Evidence class: 5, filed as owned risks; the deliverable is the register row, not certainty.
 Cross-examine when: the first answer is generic (ran late, lost focus) or the second answer repeats the first. Move: banned openers; this question is always asked twice, and the second answer must differ from the first.
-Accept when: two distinct failure causes, each landed in the risk register with a likelihood, an impact, and a named owner. Then hand off to [../../program-premortem/SKILL.md](../../program-premortem/SKILL.md) for the full twelve-mode pass; its PRESENT findings join the same register.
+Accept when: two distinct failure causes, each landed in the risk register with a likelihood, an impact, a named owner and a review date in the future; any score of 6 or more carries an active mitigation with a trigger, per the register's exit gate. Then hand off to [../../program-premortem/SKILL.md](../../program-premortem/SKILL.md) for the full twelve-mode pass; its PRESENT findings join the same register.
 Lands in: `execution/risk-register.md` section 2, and STATE.md accepted answers.
 
 ### DESIGN-5: who we wait on
