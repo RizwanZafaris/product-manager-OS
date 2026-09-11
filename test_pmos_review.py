@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import unittest
 from unittest.mock import patch
@@ -81,6 +82,43 @@ class IndependentReviewGateTests(unittest.TestCase):
             self.assertNotEqual(first, second)
             self.assertIn("pmos/build/critical.py", {row["path"] for row in first_rows})
             self.assertIn("pmos/build/critical.py", {row["path"] for row in second_rows})
+
+    def test_a_root_level_force_added_file_under_dist_is_reviewed(self):
+        """The same bypass, one directory shallower: a root ROOT_SKIP_DIRS
+        name (dist/, build/, .readiness/) must not exclude a file git
+        actually tracks beneath it, the same way the nested case above and
+        the ._ exclusion are protected."""
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            run = git_repo(root)
+            policy = root / "dist" / "policy.json"
+            policy.parent.mkdir()
+            policy.write_text('{"approved": false}\n', encoding="utf-8")
+            run("add", "-f", "dist/policy.json")
+            run("commit", "-qm", "init")
+            self.assertIn("dist/policy.json", run("ls-files").stdout.split())
+            first, first_rows = tree_digest(root)
+            self.assertIn("dist/policy.json", {row["path"] for row in first_rows})
+            policy.write_text('{"approved": true}\n', encoding="utf-8")
+            second, _second_rows = tree_digest(root)
+            self.assertNotEqual(first, second)
+
+    def test_an_untracked_dist_directory_is_still_skipped(self):
+        """The root-skip exclusion still applies when git tracks nothing
+        beneath it, so an ordinary build scratch directory is not hashed."""
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            run = git_repo(root)
+            (root / "app.py").write_text("SAFE = True\n", encoding="utf-8")
+            run("add", "app.py")
+            run("commit", "-qm", "init")
+            clean, _rows = tree_digest(root)
+            scratch = root / "dist" / "untracked.json"
+            scratch.parent.mkdir()
+            scratch.write_text("{}\n", encoding="utf-8")
+            dirty, rows = tree_digest(root)
+            self.assertEqual(clean, dirty)
+            self.assertNotIn("dist/untracked.json", {row["path"] for row in rows})
 
     def test_parent_swap_uses_pinned_review_tree_descriptor(self):
         with TemporaryDirectory() as directory:
@@ -677,6 +715,122 @@ class DamagedRepositoryTests(unittest.TestCase):
             self.assertTrue(review_gate.git_control_present(root))
 
 
+class RootSkipDirectoryTrackedContentTests(unittest.TestCase):
+    """A root scratch directory name must not excuse tracked content either.
+
+    ROOT_SKIP_DIRS (.readiness, build, dist, venv, .tox, and *.egg-info) was
+    skipped by name before tracked_set() was ever consulted, the same defect
+    class the ._ exclusion was fixed for. `git add -f` overrides .gitignore,
+    so a tracked file can sit inside one of these directories and change
+    content without moving the digest a recorded review is pinned to.
+    """
+
+    def test_a_force_added_root_dist_file_is_reviewed(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            run = git_repo(root)
+            (root / "dist").mkdir()
+            policy = root / "dist" / "policy.json"
+            policy.write_text('{"approved": false}\n', encoding="utf-8")
+            run("add", "-f", "dist/policy.json")
+            run("commit", "-qm", "init")
+            self.assertIn("dist/policy.json", run("ls-files").stdout.split())
+            first, rows = tree_digest(root)
+            self.assertIn("dist/policy.json", {row["path"] for row in rows})
+            policy.write_text('{"approved": true}\n', encoding="utf-8")
+            self.assertNotEqual(first, tree_digest(root)[0])
+
+    def test_an_untracked_root_dist_directory_is_still_excluded(self):
+        """Reproducibility for ordinary build output must survive the tighter rule."""
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            run = git_repo(root)
+            (root / "app.py").write_text("SAFE = True\n", encoding="utf-8")
+            run("add", "app.py")
+            run("commit", "-qm", "init")
+            clean, _rows = tree_digest(root)
+            (root / "dist").mkdir()
+            (root / "dist" / "wheel.whl").write_bytes(b"not tracked")
+            dirty, rows = tree_digest(root)
+            self.assertEqual(clean, dirty)
+            self.assertNotIn("dist/wheel.whl", {row["path"] for row in rows})
+
+
+class RecentAuthorsUnreadableHistoryTests(unittest.TestCase):
+    """recent_authors must not fail open when git history cannot be read.
+
+    It used to return an empty set on any git failure, so record_review could
+    proceed with an arbitrary reviewer identity whenever author history could
+    not be inspected -- the self-attestation defense failed open exactly when
+    it mattered. "git told us nothing" and "git tracks nothing" must not
+    collapse into the same answer, the same distinction tracked_paths() makes
+    for the reviewed tree itself.
+    """
+
+    def _repo_with_unreadable_history(self, root):
+        run = git_repo(root)
+        (root / "app.py").write_text("SAFE = True\n", encoding="utf-8")
+        run("add", "app.py")
+        run("commit", "-qm", "init")
+        os.rename(root / ".git" / "objects", root / ".git" / "objects-unavailable")
+        return run
+
+    def test_recent_authors_returns_none_for_a_damaged_object_store(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._repo_with_unreadable_history(root)
+            self.assertIsNone(review_gate.recent_authors(root))
+
+    def test_recent_authors_is_still_empty_for_a_repository_with_no_commits(self):
+        """The positive, real cases must keep returning an empty set."""
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            git_repo(root)
+            self.assertEqual(set(), review_gate.recent_authors(root))
+
+    def test_recent_authors_is_still_empty_outside_any_repository(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.assertEqual(set(), review_gate.recent_authors(root))
+
+
+class ReadinessRecordCommitFieldTests(unittest.TestCase):
+    """A readiness record's commit field must never pre-fill a literal SHA.
+
+    EXT-USER-session-script.md once pre-filled "Commit under test" with a
+    commit that was already 61 commits behind HEAD by the time a session ran
+    the script, so an observer filling in the block as written would certify
+    stale code. The fix is the same one EXT-TEAM-review-brief.md's "Commit
+    reviewed" field already used: instruct the observer to run
+    `git rev-parse HEAD` themselves rather than reading a value off the page.
+    This guards every docs/readiness/*.md file against the same mistake
+    recurring, not just the one file it was found in.
+    """
+
+    COMMIT_FIELD_RE = re.compile(
+        r"^(Commit under test|Commit reviewed)\s*:\s*([0-9a-f]{7,40})\b",
+        re.MULTILINE)
+
+    def test_no_readiness_doc_pre_fills_a_literal_commit_sha(self):
+        readiness_dir = Path(__file__).resolve().parent / "docs" / "readiness"
+        offenders = []
+        for path in sorted(readiness_dir.glob("*.md")):
+            text = path.read_text(encoding="utf-8")
+            for match in self.COMMIT_FIELD_RE.finditer(text):
+                offenders.append("%s: %r" % (path.name, match.group(0)))
+        self.assertEqual([], offenders,
+                         "a readiness record pre-fills a commit SHA that "
+                         "will go stale rather than asking for "
+                         "`git rev-parse HEAD` at session time")
+
+    def test_the_pattern_itself_catches_a_pre_filled_sha(self):
+        """The regex must actually fire, not just pass vacuously above."""
+        sample = "Commit under test     : ba286db0121e613f5c1a6a6d3bdfa3cc6bee2c27\n"
+        self.assertTrue(self.COMMIT_FIELD_RE.search(sample))
+        safe = "Commit under test     : (output of git rev-parse HEAD)\n"
+        self.assertFalse(self.COMMIT_FIELD_RE.search(safe))
+
+
 class RecordReviewTests(unittest.TestCase):
     """The gate had no way to close it except hand-writing JSON.
 
@@ -743,6 +897,35 @@ class RecordReviewTests(unittest.TestCase):
             self.assertEqual(2, code)
             self.assertFalse((root / review_gate.ATTESTATION).exists(),
                              "a refused self-attestation still wrote a record")
+
+    def test_it_refuses_to_record_when_history_cannot_be_inspected(self):
+        """recent_authors() must fail closed: an unreadable history must
+        refuse the recording rather than be treated as an empty author set
+        (which would let a self-attestation through by accident)."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            run = git_repo(root)
+            (root / "a.md").write_text("content\n", encoding="utf-8")
+            run("add", "a.md")
+            run("commit", "-qm", "init")
+            (root / ".git" / "HEAD").write_text("garbage\n", encoding="utf-8")
+            self.assertIsNone(review_gate.recent_authors(root))
+            code = review_gate.record_review(self._args(root), root)
+            self.assertEqual(2, code)
+            self.assertFalse((root / review_gate.ATTESTATION).exists(),
+                             "a review whose history could not be read still wrote a record")
+
+    def test_it_refuses_to_record_when_recent_authors_returns_none(self):
+        """The fail-open case: a reviewer git cannot vouch for must not slip through."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.md").write_text("content\n", encoding="utf-8")
+            with patch.object(review_gate, "recent_authors", return_value=None):
+                code = review_gate.record_review(
+                    self._args(root, reviewer="Alice"), root)
+            self.assertEqual(2, code)
+            self.assertFalse((root / review_gate.ATTESTATION).exists(),
+                             "a refused record was written despite unreadable history")
 
     def test_it_refuses_a_review_that_ran_nothing(self):
         with TemporaryDirectory() as tmp:

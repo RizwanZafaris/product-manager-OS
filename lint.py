@@ -924,11 +924,21 @@ def tracked_files(root):
     /products/ wholesale, so products/README.md is a file this repository never
     carries. The exception is kept for it anyway, because a user who writes a
     README into their own workspace root gets it linted rather than skipped.
+
+    A ``._`` name alone used to be excluded outright, on the premise that git
+    cannot carry such a file. ``git add -f`` overrides .gitignore, so a
+    tracked ``._real.md`` could be force-added and never linted: it entered
+    the review digest (``tools/review_gate.py`` is tracked-aware) but not this
+    gate. ``SidecarFilter`` makes the same tracked-aware judgement
+    ``tools/review_gate.py`` and every other walker in this tree already use:
+    a genuine untracked AppleDouble sidecar is skipped, but a tracked file is
+    linted no matter what it is named.
     """
     skip = SCRATCH_DIRS
+    sidecars = SidecarFilter(root)
     for path in sorted(root.rglob("*")):
         if path.is_file() and not (skip & set(path.parts)) \
-                and not path.name.startswith("._"):
+                and not sidecars.excused(path):
             rel = path.relative_to(root).parts
             in_workspace = (rel[:1] == ("products",) and rel[1:] != ("README.md",)) \
                 or (rel[:2] == ("learn", "products") and rel[2:] != ("README.md",))

@@ -461,10 +461,20 @@ def recent_authors(root, limit=40):
         return None if git_control_present(root) else set()
     if done.returncode != 0:
         stderr = _as_bytes(done.stderr)
-        if (NOT_A_GIT_REPOSITORY.search(stderr) is not None or
-                NO_COMMITS_YET.search(stderr) is not None):
+        if NO_COMMITS_YET.search(stderr) is not None:
             return set()
-        return None if git_control_present(root) else set()
+        # Control-metadata presence decides before the message does, the
+        # same order tracked_paths() above uses and for the same reason: a
+        # damaged repository (for instance a HEAD file overwritten with
+        # garbage) makes git print the identical "fatal: not a git
+        # repository" line a plain directory gets, so trusting the message
+        # here first would let a self-attestation through on a tree that
+        # very much has commit history git merely could not read.
+        if git_control_present(root):
+            return None
+        if NOT_A_GIT_REPOSITORY.search(stderr) is not None:
+            return set()
+        return None
     stdout = _as_bytes(done.stdout).decode("utf-8", "replace")
     return {line.strip().lower() for line in stdout.splitlines() if line.strip()}
 

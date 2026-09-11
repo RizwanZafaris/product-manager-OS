@@ -400,6 +400,62 @@ class WorkspaceExclusion(unittest.TestCase):
             any(n.endswith("learn/products/README.md") for n in names))
 
 
+class TrackedDotUnderscoreFileIsLinted(unittest.TestCase):
+    """A ``._`` name alone must not excuse tracked content from the OS gate.
+
+    ``tracked_files`` used to exclude every ``._`` name outright, on the
+    premise that git cannot track such a file. ``git add -f`` overrides
+    .gitignore, so a tracked ``._evil.md`` can be force-added and its content
+    -- including a broken link -- never reaches ``os_check`` at all, even
+    though ``tools/review_gate.py`` (tracked-aware) still puts it in the
+    reviewed digest. The rule is tracked-aware here too: a genuine untracked
+    AppleDouble sidecar is still skipped, but a tracked file is linted no
+    matter what it is called.
+    """
+
+    def _git_repo(self, root):
+        import subprocess
+
+        def run(*args):
+            return subprocess.run(("git",) + args, cwd=str(root),
+                                  capture_output=True, text=True, timeout=30)
+        run("init", "-q")
+        run("config", "user.email", "test@example.invalid")
+        run("config", "user.name", "Lint Fixture")
+        return run
+
+    def test_a_force_added_dot_underscore_file_with_a_broken_link_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            run = self._git_repo(root)
+            (root / "docs").mkdir()
+            evil = root / "docs" / "._evil.md"
+            evil.write_text("[broken](nowhere.md)\n", encoding="utf-8")
+            run("add", "-f", "docs/._evil.md")
+            run("commit", "-qm", "init")
+            self.assertIn("docs/._evil.md", run("ls-files").stdout.split())
+            names = [p.relative_to(root).as_posix()
+                     for p in lint.tracked_files(root)]
+            self.assertIn("docs/._evil.md", names)
+            problems = lint.os_check(root)
+            self.assertTrue(any(p[0] == "docs/._evil.md" and p[2] == "LINK"
+                                for p in problems), problems)
+
+    def test_an_untracked_sidecar_is_still_excluded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._git_repo(root)
+            (root / "docs").mkdir()
+            (root / "docs" / "real.md").write_text("A tracked note.\n",
+                                                   encoding="utf-8")
+            (root / "docs" / "._real.md").write_bytes(
+                b"\x00\x05\x16\x07AppleDouble junk")
+            names = [p.relative_to(root).as_posix()
+                     for p in lint.tracked_files(root)]
+            self.assertNotIn("docs/._real.md", names)
+            self.assertIn("docs/real.md", names)
+
+
 class ScratchDirectoryExclusion(unittest.TestCase):
     """Gitignored scratch is not tree content. The vault config is."""
 

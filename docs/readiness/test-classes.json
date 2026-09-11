@@ -21,6 +21,7 @@
       "ScratchDirectoryExclusion",
       "SecretGateTests",
       "SkillDeclarationTests",
+      "TrackedDotUnderscoreFileIsLinted",
       "WikilinkTests",
       "WorkflowTests",
       "WorkspaceExclusion",
@@ -96,7 +97,10 @@
       "GitDiscoveryConservatismTests",
       "GitDiscoveryFailureFailsClosedTests",
       "IndependentReviewGateTests",
+      "ReadinessRecordCommitFieldTests",
+      "RecentAuthorsUnreadableHistoryTests",
       "RecordReviewTests",
+      "RootSkipDirectoryTrackedContentTests",
       "TrackedFilenameByteFidelityTests",
       "TrackedMetadataNameTests",
       "WorktreeGitLinkTests"
