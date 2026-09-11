@@ -34,6 +34,18 @@ Skill: [program-premortem](../../skills/program-premortem/SKILL.md)
 | 1 | Payments team exposes refund status webhook in sandbox | Payments platform | `<name>` | 2026-05-10 | 2026-05-03 | committed | `<name, role>` |
 | | | | | | | | |
 
+### Third-party UI component and library licences
+
+<!-- A dependency on another team's deliverable and a dependency on a UI
+     library both belong to this register: both are commitments made by
+     someone outside this team that the product now relies on. A licence
+     choice is a product decision, not only a legal one; see
+     [knowledge/design/ui-dependency-licensing.md](../../knowledge/design/ui-dependency-licensing.md). -->
+
+| Component or library | Pinned version | Licence, per path (a monorepo can mix licences) | Ships as (server / JavaScript sent to browsers / mobile binary / internal only) | Obligations, as questions for legal | Legal sign-off | Re-check trigger |
+|---|---|---|---|---|---|---|
+| | | | | | | on any major upgrade |
+
 ## 2. Escalation ladder
 
 <!-- Agree the ladder before you need it. An escalation is a service to the project,

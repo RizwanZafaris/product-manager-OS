@@ -146,6 +146,7 @@ FOLDER_FOR_STAGE = {
 # editing the template is what keeps the hash pin honest.
 SPECIAL_DESTINATIONS = {
     "templates/execution/state.md": "STATE.md",
+    "templates/architecture/design-md.md": "DESIGN.md",
     "modules/regulated/templates/regulated-ai-prd-template.md":
         "definition/ai/regulated-ai-prd.md",
 }

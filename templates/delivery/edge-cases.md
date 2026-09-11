@@ -32,7 +32,7 @@ aliases: ["Edge-Case Register", "edge-cases"]
 - [ ] Concurrency (two users, two tabs, two devices)
 - [ ] Permissions and roles (wrong user, expired session, revoked access)
 - [ ] Time (timezones, daylight saving, leap days, clock skew)
-- [ ] Localization and encoding (long names, non-Latin scripts, emoji, RTL text)
+- [ ] Localization and encoding (long names, non-Latin scripts, emoji, RTL text; walk [localisation-rtl-checklist.md](../architecture/localisation-rtl-checklist.md) for a bidi UI)
 - [ ] Network failure, timeout, and partial failure mid-transaction
 - [ ] Malicious input (injection, oversized payloads, unexpected content types)
 - [ ] Volume (the 10x day, the empty account, the account with years of history)

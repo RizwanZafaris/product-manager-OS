@@ -65,7 +65,7 @@ A design sprint compresses months of debate into five working days: map the prob
 
 ## Reading the result
 
-Three outcomes. Proceed: the target moment landed and the sprint questions came back positive; the storyboard becomes the discovery document's hypothesis and the prototype's flow seeds the PRD's user stories. Iterate: mixed results on a question that matters; keep the map, change the storyboard, and run a two-day re-test. Drop: five people flinched at the same place; count the week as the one that saved a quarter, log the assumption as busted, and return to the opportunity tree. Every result also produces new assumptions for the register, usually about trust and consent, which the sprint surfaced but could not settle.
+Three outcomes. Proceed: the target moment landed and the sprint questions came back positive; the storyboard becomes the discovery document's hypothesis and the prototype's flow seeds the PRD's user stories, and links forward into the handoff section of [design-review-record.md](../../templates/architecture/design-review-record.md) once the flow reaches DESIGN. Iterate: mixed results on a question that matters; keep the map, change the storyboard, and run a two-day re-test. Drop: five people flinched at the same place; count the week as the one that saved a quarter, log the assumption as busted, and return to the opportunity tree. Every result also produces new assumptions for the register, usually about trust and consent, which the sprint surfaced but could not settle.
 
 ## ILLUSTRATIVE example
 

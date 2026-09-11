@@ -45,6 +45,7 @@ Skill: [user-interview](../../skills/user-interview/SKILL.md) for moderation and
 | Segment | Count | Screener criteria (behavior in the last n days) | Source | Codes |
 |---|---|---|---|---|
 | | | | | P1 to P[n] |
+| Participants who use assistive technology | [quota, at least one] | bring your own assistive technology (screen reader, switch, magnifier); consent flow and materials are accessible; results are reported as their own row, never averaged into the general result | | AT1 to AT[n] |
 
 ## 3. Tasks
 
@@ -72,7 +73,7 @@ Skill: [user-interview](../../skills/user-interview/SKILL.md) for moderation and
 | Errors per task | wrong paths, recovered or not | [target] | |
 | Assists | facilitator interventions needed | [target] | |
 | Time on task | median, against the max in section 3 | [target] | |
-| Satisfaction | [post-task rating; scale and labels stated] | [target] | |
+| Satisfaction | [name the instrument: a single post-task ease item, SUS, or UMUX-LITE; see [frameworks/design/ux-scorecard.md](../../frameworks/design/ux-scorecard.md)] | [target] | |
 
 ## 5. Script
 
@@ -109,6 +110,8 @@ Skill: [user-interview](../../skills/user-interview/SKILL.md) for moderation and
 | Measure | Target | Result | Met |
 |---|---|---|---|
 | | | | yes / no |
+
+**Readout guard:** task success outranks satisfaction; a high satisfaction score with a failed task is not a pass. Weigh a rosy read against the aesthetic-usability effect (participants forgive a good-looking design) and the peak-end rule (a strong finish inflates the whole rating).
 
 **Decision:** [ship as is / fix findings rated 3 and above and retest / redesign; decided by name, date]
 

@@ -19,8 +19,13 @@ The product triad, PM, design lead, engineering lead, shares one team and splits
 | Can users succeed with it | Design | PM keeps it tied to the outcome; engineering flags feasibility limits on the design |
 | Can we build and run it | Engineering | PM and design state what degrades gracefully and what must not |
 | Scope and sequence within the area | PM, after hearing both | Dissent recorded, then commitment |
+| Who runs a design critique versus who signs the design review record | Design runs the critique (it improves the work, no approval sought); the design review record is signed by the name the release readiness sign-off table names, not automatically the critique's facilitator | PM and engineering attend the critique as invited voices, not approvers; see [templates/architecture/design-review-record.md](../../templates/architecture/design-review-record.md) |
 
 "First voice" means the seat whose call stands when evidence runs out, not the only voice. A first voice used early and often stops being heard as judgment and starts being heard as rank.
+
+Two counterpoints are worth holding against this table rather than smoothing over. Teresa Torres argues the trio should decide together, with joint accountability for all four risks, not one first voice per row; the case for it is the same one that makes step 2 of the dispute path below cheap, weekly customer contact shared across the trio rather than handed to one seat. GitLab's own product handbook splits the call differently again: design and research veto usability directly rather than routing through the PM's "the others flag costs" language above. Neither reading is wrong; a team that never states which model it is actually running discovers only at the first expensive dispute that everyone assumed a different one. How the split shows up specifically for experience-design decisions, and what a PM does without doing the designing, is in [knowledge/design/pm-design-collaboration.md](../design/pm-design-collaboration.md).
+
+**Filled examples at this level:** the [Expense Copilot PRD](../../examples/expense-copilot-prd.md), the PM's value-and-viability call once the evidence runs out; the [Sahulat personas](../../examples/sahulat-personas.md), design's evidence for who can succeed with the product; the [Harbourgate system design](../../examples/harbourgate-system-design.md), engineering's feasibility case for what can be built and run.
 
 ## The partner rule: how might we, never a veto
 
@@ -33,6 +38,8 @@ Three steps, and the third one always ends in the [decision log](../../templates
 1. **Restate the dispute as a falsifiable disagreement.** Which of the four risks is contested, and what evidence would settle it? Most disputes die here, because they turn out to be about taste, and taste disputes go to the first voice by default.
 2. **Buy the evidence at the smallest price.** An interview prompt, a prototype test, a spike, a data pull, timeboxed in days. The [opportunity solution tree](../../templates/discovery/opportunity-solution-tree.md) assumption-test table is the natural home.
 3. **If evidence cannot arrive in time, the first voice decides.** The decision log records the call, the dissent, and the trigger that reopens it. Disagreement is fine; relitigating without new evidence is not. A dispute that survives all three steps leaves the triad through the [escalation skill](../../skills/escalation/SKILL.md), as a brief, not a hallway campaign.
+
+**Filled examples at this level:** the [Sahulat decision log](../../examples/sahulat-decision-log.md), where step 3's call, its dissent, and the trigger that reopens it get written down instead of relitigated; the [Harbourgate stakeholder map](../../examples/harbourgate-stakeholder-map.md), the three triad names the trap section below says to put on a table before the first expensive dispute.
 
 ## Saying no without spending the relationship
 

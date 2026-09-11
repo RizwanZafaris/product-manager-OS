@@ -86,6 +86,15 @@ Cross-examine when: either half is "probably not". Move: banned openers, then: w
 Accept when: both halves answered with grounds. Yes to the model half attaches the AI overlay, eval rows replacing prose criteria via [../../ai-prd/SKILL.md](../../ai-prd/SKILL.md). Yes to the regulator half routes through [../../reg-gap-check/SKILL.md](../../reg-gap-check/SKILL.md) before Gate 2, because the regulated overlay's preconditions freeze here. Yes to both halves activates the regulated overlay itself, which is the rule in [../../../os/STAGE-GATES.md](../../../os/STAGE-GATES.md); a yes on the regulator half alone does not, and STATE.md records what the regulatory owner carries instead.
 Lands in: STATE.md position block (overlays active) and `execution/decision-log.md`, and STATE.md accepted answers.
 
+### DEFINE-9: user-facing surface
+
+Ask: Does this change have a user-facing surface? If so, does the UI state inventory list every screen's states with an owner?
+Wrong costs: A screen whose states are unlisted ships with gaps in behavior, accessibility, and ownership.
+Evidence class: 2, the inventory, or a stated reason the product has no UI.
+Cross-examine when: the answer is "we have a UI" but the inventory is missing or incomplete. Move: banned openers, then: name every screen, name its states, name its owner.
+Accept when: a filled inventory, or a stated reason the product has no UI.
+Lands in: `definition/ui-state-inventory.md` and STATE.md accepted answers.
+
 ## Forced pair
 
 On "advance anyway": DEFINE-5, then DEFINE-8. Untestable requirements and an unexamined overlay are the two skips that multiply in cost with every stage they survive.

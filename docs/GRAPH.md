@@ -20,13 +20,13 @@ One subgraph per stage of the loop in [os/OPERATING-LOOP.md](../os/OPERATING-LOO
 
 | Measure | Count |
 |---|---|
-| Files scanned in the six declaring layers | 306 |
-| Files carrying frontmatter of any shape | 306 |
+| Files scanned in the six declaring layers | 339 |
+| Files carrying frontmatter of any shape | 339 |
 | Files with no frontmatter yet | 0 |
-| Files declaring a `feeds` key | 117 |
-| Nodes in the diagram | 228 |
-| Artifact nodes | 222 |
-| Edges in the diagram | 453 |
+| Files declaring a `feeds` key | 146 |
+| Nodes in the diagram | 257 |
+| Artifact nodes | 251 |
+| Edges in the diagram | 550 |
 | Feeds values that resolved to nothing | 0 |
 
 A file with no frontmatter is not an error, and a file with frontmatter has not necessarily declared a feed: every SKILL.md and agent file carries a name and a description already. The `feeds` pass lands file by file, and until it reaches a file, that file still contributes whatever its Stage header declares.
@@ -83,12 +83,17 @@ flowchart LR
     direction LR
     G2["Gate 2: Requirements signed off"]
     n_frameworks_assessment_product_operating_model_assessment_md_63503108["assessment/product-operating-model-assessment"]
+    n_frameworks_design_design_critique_md_c1ccca18["design/design-critique"]
     n_frameworks_discovery_kano_survey_md_967ebeff["discovery/kano-survey"]
     n_frameworks_execution_raci_md_119fa7dc["execution/raci"]
     n_frameworks_execution_stakeholder_power_interest_md_21f1b0f8["execution/stakeholder-power-interest"]
     n_frameworks_metrics_heart_metrics_md_2d1c674e["metrics/heart-metrics"]
     n_frameworks_prioritization_moscow_md_d737e372["prioritization/moscow"]
     n_frameworks_prioritization_user_story_map_md_ae0f977c["prioritization/user-story-map"]
+    n_knowledge_design_accessibility_regulation_md_dfd9a88a["design/accessibility-regulation"]
+    n_knowledge_design_component_driven_development_md_9ef68b9e["design/component-driven-development"]
+    n_knowledge_design_content_design_and_forms_md_b27c7c86["design/content-design-and-forms"]
+    n_knowledge_design_interaction_design_principles_md_3e16fc81["design/interaction-design-principles"]
     n_knowledge_shape_up_md_1a322650["knowledge/shape-up"]
     n_os_maps_define_md_5bfd64a8["maps/define"]
     n_skills_ai_prd_SKILL_md_c2952b85["skills/ai-prd"]
@@ -107,7 +112,9 @@ flowchart LR
     n_templates_definition_one_pager_md_51aafec8["definition/one-pager"]
     n_templates_definition_prd_md_aa4941e0["definition/prd"]
     n_templates_definition_prfaq_md_e10e4b16["definition/prfaq"]
+    n_templates_definition_ui_state_inventory_md_12cadc49["definition/ui-state-inventory"]
     n_templates_definition_user_stories_md_a49e1cf8["definition/user-stories"]
+    n_templates_definition_ux_writing_guide_md_5da176ac["definition/ux-writing-guide"]
     n_templates_operate_compliance_impact_assessment_md_26f196a7["operate/compliance-impact-assessment"]
   end
   subgraph s_DESIGN["DESIGN"]
@@ -117,6 +124,9 @@ flowchart LR
     n_agents_red_team_agent_md_2e22b587["agents/red-team-agent"]
     n_frameworks_assessment_team_topologies_assessment_md_103f1efa["assessment/team-topologies-assessment"]
     n_frameworks_assessment_tech_debt_assessment_md_6243cfcb["assessment/tech-debt-assessment"]
+    n_frameworks_design_content_microcopy_audit_md_8c136806["design/content-microcopy-audit"]
+    n_frameworks_design_design_system_audit_md_a46f8df2["design/design-system-audit"]
+    n_frameworks_design_heuristic_evaluation_md_2d009a15["design/heuristic-evaluation"]
     n_frameworks_execution_fmea_md_32a78207["execution/fmea"]
     n_frameworks_execution_premortem_worksheet_md_8f901e68["execution/premortem-worksheet"]
     n_frameworks_execution_risk_matrix_md_e187bc77["execution/risk-matrix"]
@@ -124,14 +134,26 @@ flowchart LR
     n_frameworks_prioritization_weighted_decision_matrix_md_adbe5fc7["prioritization/weighted-decision-matrix"]
     n_frameworks_strategy_build_buy_partner_md_b8e5df72["strategy/build-buy-partner"]
     n_frameworks_strategy_wardley_map_md_4c66581a["strategy/wardley-map"]
+    n_knowledge_design_accessibility_and_inclusive_design_md_d3f84fdc["design/accessibility-and-inclusive-design"]
+    n_knowledge_design_ai_interaction_patterns_md_f2238724["design/ai-interaction-patterns"]
+    n_knowledge_design_design_systems_and_tokens_md_09406ab6["design/design-systems-and-tokens"]
+    n_knowledge_design_internationalisation_and_rtl_md_e0b469c0["design/internationalisation-and-rtl"]
+    n_knowledge_design_ui_dependency_licensing_md_3c89fa81["design/ui-dependency-licensing"]
+    n_knowledge_design_usability_heuristics_md_ecc81dbd["design/usability-heuristics"]
+    n_knowledge_design_visual_foundations_md_a016047b["design/visual-foundations"]
     n_os_maps_design_md_752364c2["maps/design"]
     n_skills_conductor_questions_design_md_6f7a0e73["questions/design"]
+    n_skills_design_review_SKILL_md_f7b97f32["skills/design-review"]
     n_skills_program_premortem_SKILL_md_53bd9878["skills/program-premortem"]
     n_templates_architecture_accessibility_checklist_md_cb69b48a["architecture/accessibility-checklist"]
     n_templates_architecture_adr_md_f97d984a["architecture/adr"]
     n_templates_architecture_api_contract_md_5d4f236f["architecture/api-contract"]
+    n_templates_architecture_component_spec_md_1289f89d["architecture/component-spec"]
     n_templates_architecture_data_model_md_80a5f8ca["architecture/data-model"]
+    n_templates_architecture_design_md_md_7556683b["architecture/design-md"]
+    n_templates_architecture_design_review_record_md_4b50f927["architecture/design-review-record"]
     n_templates_architecture_integrations_md_a45e4f74["architecture/integrations"]
+    n_templates_architecture_localisation_rtl_checklist_md_76aa2954["architecture/localisation-rtl-checklist"]
     n_templates_architecture_observability_md_978fba88["architecture/observability"]
     n_templates_architecture_privacy_impact_assessment_md_de6c0459["architecture/privacy-impact-assessment"]
     n_templates_architecture_security_architecture_md_557cfead["architecture/security-architecture"]
@@ -145,6 +167,9 @@ flowchart LR
     direction LR
     G4["Gate 4: Acceptance criteria met"]
     n_agents_acceptance_agent_md_468449b6["agents/acceptance-agent"]
+    n_frameworks_design_choice_symmetry_audit_md_82eb5ea9["design/choice-symmetry-audit"]
+    n_frameworks_design_ux_scorecard_md_2fa19169["design/ux-scorecard"]
+    n_knowledge_design_ux_measurement_md_96d239c7["design/ux-measurement"]
     n_os_maps_build_md_6c277e44["maps/build"]
     n_skills_conductor_questions_build_md_287f6936["questions/build"]
     n_templates_delivery_edge_cases_md_955e9f84["delivery/edge-cases"]
@@ -159,6 +184,7 @@ flowchart LR
     n_agents_release_manager_agent_md_550633f5["agents/release-manager-agent"]
     n_frameworks_metrics_dora_four_keys_md_1c8615be["metrics/dora-four-keys"]
     n_knowledge_crossing_the_chasm_md_ed7d348a["knowledge/crossing-the-chasm"]
+    n_knowledge_design_deceptive_design_md_b7aafb76["design/deceptive-design"]
     n_os_maps_deliver_md_8e6d7ccb["maps/deliver"]
     n_skills_conductor_questions_deliver_md_33cdf285["questions/deliver"]
     n_skills_gtm_launch_planner_SKILL_md_9d7952d6["skills/gtm-launch-planner"]
@@ -263,6 +289,7 @@ flowchart LR
   subgraph s_AI_OVERLAY["AI overlay track"]
     direction LR
     n_templates_ai_agent_architecture_md_bb69f423["ai/agent-architecture"]
+    n_templates_ai_ai_interaction_spec_md_db283ab4["ai/ai-interaction-spec"]
     n_templates_ai_context_management_md_f530678e["ai/context-management"]
     n_templates_ai_eval_spec_md_0940a501["ai/eval-spec"]
     n_templates_ai_guardrails_md_f822b20c["ai/guardrails"]
@@ -282,6 +309,8 @@ flowchart LR
     n_frameworks_assessment_westrum_culture_typology_md_c79f3082["assessment/westrum-culture-typology"]
     n_frameworks_execution_retrospective_formats_md_9d6155d3["execution/retrospective-formats"]
     n_frameworks_execution_theory_of_constraints_md_ccb19eea["execution/theory-of-constraints"]
+    n_knowledge_design_pm_design_collaboration_md_4106bd04["design/pm-design-collaboration"]
+    n_knowledge_design_ux_laws_evidence_md_786b10da["design/ux-laws-evidence"]
     n_knowledge_domains_fintech_md_55ae5dfe["domains/fintech"]
     n_skills_conductor_SKILL_md_bce5c0fb["skills/conductor"]
     n_skills_escalation_SKILL_md_6365f2dc["skills/escalation"]
@@ -297,6 +326,7 @@ flowchart LR
   n_skills_conductor_questions_discover_md_f24491f8 --> G1
   n_skills_conductor_questions_operate_md_4957ded5 --> G6
   n_templates_ai_agent_architecture_md_bb69f423 --> G3
+  n_templates_ai_ai_interaction_spec_md_db283ab4 --> G4
   n_templates_ai_context_management_md_f530678e --> G3
   n_templates_ai_eval_spec_md_0940a501 --> G4
   n_templates_ai_eval_spec_md_0940a501 --> G5
@@ -314,8 +344,15 @@ flowchart LR
   n_templates_architecture_accessibility_checklist_md_cb69b48a --> G4
   n_templates_architecture_adr_md_f97d984a --> G3
   n_templates_architecture_api_contract_md_5d4f236f --> G3
+  n_templates_architecture_component_spec_md_1289f89d --> G3
+  n_templates_architecture_component_spec_md_1289f89d --> G4
   n_templates_architecture_data_model_md_80a5f8ca --> G3
+  n_templates_architecture_design_md_md_7556683b --> G3
+  n_templates_architecture_design_review_record_md_4b50f927 --> G3
+  n_templates_architecture_design_review_record_md_4b50f927 --> G4
   n_templates_architecture_integrations_md_a45e4f74 --> G3
+  n_templates_architecture_localisation_rtl_checklist_md_76aa2954 --> G3
+  n_templates_architecture_localisation_rtl_checklist_md_76aa2954 --> G4
   n_templates_architecture_observability_md_978fba88 --> G3
   n_templates_architecture_privacy_impact_assessment_md_de6c0459 --> G3
   n_templates_architecture_privacy_impact_assessment_md_de6c0459 --> G5
@@ -333,7 +370,10 @@ flowchart LR
   n_templates_definition_one_pager_md_51aafec8 --> G2
   n_templates_definition_prd_md_aa4941e0 --> G2
   n_templates_definition_prfaq_md_e10e4b16 --> G2
+  n_templates_definition_ui_state_inventory_md_12cadc49 --> G2
+  n_templates_definition_ui_state_inventory_md_12cadc49 --> G4
   n_templates_definition_user_stories_md_a49e1cf8 --> G2
+  n_templates_definition_ux_writing_guide_md_5da176ac --> G2
   n_templates_delivery_analytics_instrumentation_spec_md_d96ee1b5 --> G5
   n_templates_delivery_customer_comms_md_88169169 --> G5
   n_templates_delivery_edge_cases_md_955e9f84 --> G4
@@ -445,6 +485,24 @@ flowchart LR
   n_frameworks_assessment_westrum_culture_typology_md_c79f3082 -.-> n_frameworks_execution_retrospective_formats_md_9d6155d3
   n_frameworks_assessment_westrum_culture_typology_md_c79f3082 -.-> n_templates_execution_retrospective_md_85798293
   n_frameworks_assessment_westrum_culture_typology_md_c79f3082 -.-> n_templates_planning_first_90_days_md_9be523cc
+  n_frameworks_design_choice_symmetry_audit_md_82eb5ea9 -.-> n_templates_architecture_design_review_record_md_4b50f927
+  n_frameworks_design_choice_symmetry_audit_md_82eb5ea9 -.-> n_templates_delivery_release_readiness_md_22b1a9d7
+  n_frameworks_design_choice_symmetry_audit_md_82eb5ea9 -.-> n_templates_operate_compliance_impact_assessment_md_26f196a7
+  n_frameworks_design_content_microcopy_audit_md_8c136806 -.-> n_templates_architecture_design_review_record_md_4b50f927
+  n_frameworks_design_content_microcopy_audit_md_8c136806 -.-> n_templates_architecture_localisation_rtl_checklist_md_76aa2954
+  n_frameworks_design_content_microcopy_audit_md_8c136806 -.-> n_templates_definition_ux_writing_guide_md_5da176ac
+  n_frameworks_design_design_critique_md_c1ccca18 -.-> n_templates_architecture_design_review_record_md_4b50f927
+  n_frameworks_design_design_critique_md_c1ccca18 -.-> n_templates_definition_design_brief_md_14e72d21
+  n_frameworks_design_design_critique_md_c1ccca18 -.-> n_templates_execution_decision_log_md_3fafa06d
+  n_frameworks_design_design_system_audit_md_a46f8df2 -.-> n_templates_architecture_component_spec_md_1289f89d
+  n_frameworks_design_design_system_audit_md_a46f8df2 -.-> n_templates_execution_tech_debt_register_md_2a21e713
+  n_frameworks_design_design_system_audit_md_a46f8df2 -.-> n_templates_planning_program_charter_md_73783114
+  n_frameworks_design_heuristic_evaluation_md_2d009a15 -.-> n_templates_architecture_design_review_record_md_4b50f927
+  n_frameworks_design_heuristic_evaluation_md_2d009a15 -.-> n_templates_discovery_usability_test_plan_md_cdb9d0ac
+  n_frameworks_design_heuristic_evaluation_md_2d009a15 -.-> n_templates_execution_risk_register_md_4a73bbfc
+  n_frameworks_design_ux_scorecard_md_2fa19169 -.-> n_frameworks_metrics_heart_metrics_md_2d1c674e
+  n_frameworks_design_ux_scorecard_md_2fa19169 -.-> n_templates_discovery_usability_test_plan_md_cdb9d0ac
+  n_frameworks_design_ux_scorecard_md_2fa19169 -.-> n_templates_operate_metrics_dictionary_md_de7d51ca
   n_frameworks_discovery_assumption_mapping_md_10947104 -.-> n_templates_definition_assumptions_register_md_53c75258
   n_frameworks_discovery_assumption_mapping_md_10947104 -.-> n_templates_discovery_opportunity_solution_tree_md_f29c68a9
   n_frameworks_discovery_assumption_mapping_md_10947104 -.-> n_templates_operate_experiment_brief_md_591ae29b
@@ -616,6 +674,51 @@ flowchart LR
   n_knowledge_crossing_the_chasm_md_ed7d348a -.-> n_frameworks_strategy_positioning_canvas_md_4d3cd58c
   n_knowledge_crossing_the_chasm_md_ed7d348a -.-> n_skills_conductor_questions_deliver_md_33cdf285
   n_knowledge_crossing_the_chasm_md_ed7d348a -.-> n_templates_planning_gtm_plan_md_61b54e46
+  n_knowledge_design_accessibility_and_inclusive_design_md_d3f84fdc -.-> n_templates_architecture_accessibility_checklist_md_cb69b48a
+  n_knowledge_design_accessibility_and_inclusive_design_md_d3f84fdc -.-> n_templates_architecture_design_review_record_md_4b50f927
+  n_knowledge_design_accessibility_and_inclusive_design_md_d3f84fdc -.-> n_templates_discovery_usability_test_plan_md_cdb9d0ac
+  n_knowledge_design_accessibility_regulation_md_dfd9a88a -.-> n_templates_architecture_accessibility_checklist_md_cb69b48a
+  n_knowledge_design_accessibility_regulation_md_dfd9a88a -.-> n_templates_definition_nfr_md_146602a4
+  n_knowledge_design_accessibility_regulation_md_dfd9a88a -.-> n_templates_operate_compliance_impact_assessment_md_26f196a7
+  n_knowledge_design_ai_interaction_patterns_md_f2238724 -.-> n_templates_ai_ai_interaction_spec_md_db283ab4
+  n_knowledge_design_ai_interaction_patterns_md_f2238724 -.-> n_templates_ai_eval_spec_md_0940a501
+  n_knowledge_design_ai_interaction_patterns_md_f2238724 -.-> n_templates_ai_hallucination_controls_md_be61af90
+  n_knowledge_design_component_driven_development_md_9ef68b9e -.-> n_templates_architecture_component_spec_md_1289f89d
+  n_knowledge_design_component_driven_development_md_9ef68b9e -.-> n_templates_definition_ui_state_inventory_md_12cadc49
+  n_knowledge_design_component_driven_development_md_9ef68b9e -.-> n_templates_delivery_testing_strategy_md_95f20197
+  n_knowledge_design_content_design_and_forms_md_b27c7c86 -.-> n_frameworks_design_content_microcopy_audit_md_8c136806
+  n_knowledge_design_content_design_and_forms_md_b27c7c86 -.-> n_templates_definition_acceptance_criteria_md_d879ee6a
+  n_knowledge_design_content_design_and_forms_md_b27c7c86 -.-> n_templates_definition_ux_writing_guide_md_5da176ac
+  n_knowledge_design_deceptive_design_md_b7aafb76 -.-> n_frameworks_design_choice_symmetry_audit_md_82eb5ea9
+  n_knowledge_design_deceptive_design_md_b7aafb76 -.-> n_templates_delivery_release_readiness_md_22b1a9d7
+  n_knowledge_design_deceptive_design_md_b7aafb76 -.-> n_templates_operate_compliance_impact_assessment_md_26f196a7
+  n_knowledge_design_design_systems_and_tokens_md_09406ab6 -.-> n_frameworks_design_design_system_audit_md_a46f8df2
+  n_knowledge_design_design_systems_and_tokens_md_09406ab6 -.-> n_templates_architecture_component_spec_md_1289f89d
+  n_knowledge_design_design_systems_and_tokens_md_09406ab6 -.-> n_templates_architecture_design_md_md_7556683b
+  n_knowledge_design_interaction_design_principles_md_3e16fc81 -.-> n_frameworks_design_heuristic_evaluation_md_2d009a15
+  n_knowledge_design_interaction_design_principles_md_3e16fc81 -.-> n_templates_definition_acceptance_criteria_md_d879ee6a
+  n_knowledge_design_interaction_design_principles_md_3e16fc81 -.-> n_templates_definition_design_brief_md_14e72d21
+  n_knowledge_design_internationalisation_and_rtl_md_e0b469c0 -.-> n_templates_architecture_localisation_rtl_checklist_md_76aa2954
+  n_knowledge_design_internationalisation_and_rtl_md_e0b469c0 -.-> n_templates_definition_ux_writing_guide_md_5da176ac
+  n_knowledge_design_internationalisation_and_rtl_md_e0b469c0 -.-> n_templates_delivery_edge_cases_md_955e9f84
+  n_knowledge_design_pm_design_collaboration_md_4106bd04 -.-> n_frameworks_design_design_critique_md_c1ccca18
+  n_knowledge_design_pm_design_collaboration_md_4106bd04 -.-> n_templates_architecture_design_review_record_md_4b50f927
+  n_knowledge_design_pm_design_collaboration_md_4106bd04 -.-> n_templates_execution_tech_debt_register_md_2a21e713
+  n_knowledge_design_ui_dependency_licensing_md_3c89fa81 -.-> n_frameworks_design_design_system_audit_md_a46f8df2
+  n_knowledge_design_ui_dependency_licensing_md_3c89fa81 -.-> n_frameworks_strategy_build_buy_partner_md_b8e5df72
+  n_knowledge_design_ui_dependency_licensing_md_3c89fa81 -.-> n_templates_execution_dependency_register_md_5edd4dc1
+  n_knowledge_design_usability_heuristics_md_ecc81dbd -.-> n_frameworks_design_heuristic_evaluation_md_2d009a15
+  n_knowledge_design_usability_heuristics_md_ecc81dbd -.-> n_templates_architecture_design_review_record_md_4b50f927
+  n_knowledge_design_usability_heuristics_md_ecc81dbd -.-> n_templates_discovery_usability_test_plan_md_cdb9d0ac
+  n_knowledge_design_ux_laws_evidence_md_786b10da -.-> n_frameworks_design_heuristic_evaluation_md_2d009a15
+  n_knowledge_design_ux_laws_evidence_md_786b10da -.-> n_templates_definition_design_brief_md_14e72d21
+  n_knowledge_design_ux_laws_evidence_md_786b10da -.-> n_templates_definition_nfr_md_146602a4
+  n_knowledge_design_ux_measurement_md_96d239c7 -.-> n_frameworks_design_ux_scorecard_md_2fa19169
+  n_knowledge_design_ux_measurement_md_96d239c7 -.-> n_frameworks_metrics_heart_metrics_md_2d1c674e
+  n_knowledge_design_ux_measurement_md_96d239c7 -.-> n_templates_discovery_usability_test_plan_md_cdb9d0ac
+  n_knowledge_design_visual_foundations_md_a016047b -.-> n_templates_architecture_accessibility_checklist_md_cb69b48a
+  n_knowledge_design_visual_foundations_md_a016047b -.-> n_templates_architecture_design_review_record_md_4b50f927
+  n_knowledge_design_visual_foundations_md_a016047b -.-> n_templates_definition_nfr_md_146602a4
   n_knowledge_domains_fintech_md_55ae5dfe -.-> n_skills_reg_gap_check_SKILL_md_a4973e4c
   n_knowledge_domains_fintech_md_55ae5dfe -.-> n_templates_operate_compliance_impact_assessment_md_26f196a7
   n_knowledge_high_output_management_md_a4422796 -.-> n_templates_execution_decision_log_md_3fafa06d
@@ -666,6 +769,9 @@ flowchart LR
   n_skills_decision_memo_SKILL_md_c01e01b5 -.-> n_templates_execution_decision_log_md_3fafa06d
   n_skills_decision_memo_SKILL_md_c01e01b5 -.-> n_templates_execution_stakeholder_map_md_782efdb3
   n_skills_decision_memo_SKILL_md_c01e01b5 -.-> n_templates_planning_decision_memo_md_7ae1eec5
+  n_skills_design_review_SKILL_md_f7b97f32 -.-> n_templates_architecture_accessibility_checklist_md_cb69b48a
+  n_skills_design_review_SKILL_md_f7b97f32 -.-> n_templates_architecture_design_review_record_md_4b50f927
+  n_skills_design_review_SKILL_md_f7b97f32 -.-> n_templates_architecture_localisation_rtl_checklist_md_76aa2954
   n_skills_escalation_SKILL_md_6365f2dc -.-> n_templates_execution_decision_log_md_3fafa06d
   n_skills_escalation_SKILL_md_6365f2dc -.-> n_templates_execution_risk_register_md_4a73bbfc
   n_skills_escalation_SKILL_md_6365f2dc -.-> n_templates_execution_stakeholder_map_md_782efdb3
@@ -735,8 +841,28 @@ flowchart LR
   n_skills_write_vision_strategy_SKILL_md_0897714a -.-> n_templates_discovery_competitive_analysis_md_a6532c41
   n_skills_write_vision_strategy_SKILL_md_0897714a -.-> n_templates_planning_product_strategy_md_09d425db
   n_skills_write_vision_strategy_SKILL_md_0897714a -.-> n_templates_planning_vision_md_40cadae0
+  n_templates_ai_ai_interaction_spec_md_db283ab4 -.-> n_templates_ai_eval_spec_md_0940a501
+  n_templates_ai_ai_interaction_spec_md_db283ab4 -.-> n_templates_architecture_accessibility_checklist_md_cb69b48a
+  n_templates_architecture_component_spec_md_1289f89d -.-> n_templates_architecture_design_review_record_md_4b50f927
+  n_templates_architecture_component_spec_md_1289f89d -.-> n_templates_delivery_testing_strategy_md_95f20197
+  n_templates_architecture_component_spec_md_1289f89d -.-> n_templates_execution_risk_register_md_4a73bbfc
+  n_templates_architecture_design_md_md_7556683b -.-> n_templates_architecture_accessibility_checklist_md_cb69b48a
+  n_templates_architecture_design_md_md_7556683b -.-> n_templates_architecture_component_spec_md_1289f89d
+  n_templates_architecture_design_md_md_7556683b -.-> n_templates_architecture_design_review_record_md_4b50f927
+  n_templates_architecture_design_review_record_md_4b50f927 -.-> n_templates_execution_decision_log_md_3fafa06d
+  n_templates_architecture_design_review_record_md_4b50f927 -.-> n_templates_execution_risk_register_md_4a73bbfc
+  n_templates_architecture_design_review_record_md_4b50f927 -.-> n_templates_execution_tech_debt_register_md_2a21e713
+  n_templates_architecture_localisation_rtl_checklist_md_76aa2954 -.-> n_templates_architecture_design_review_record_md_4b50f927
+  n_templates_architecture_localisation_rtl_checklist_md_76aa2954 -.-> n_templates_delivery_edge_cases_md_955e9f84
+  n_templates_architecture_localisation_rtl_checklist_md_76aa2954 -.-> n_templates_delivery_testing_strategy_md_95f20197
   n_templates_definition_assumptions_register_md_53c75258 -.-> n_templates_definition_brd_md_094926c4
   n_templates_definition_assumptions_register_md_53c75258 -.-> n_templates_definition_prd_md_aa4941e0
+  n_templates_definition_ui_state_inventory_md_12cadc49 -.-> n_templates_architecture_design_review_record_md_4b50f927
+  n_templates_definition_ui_state_inventory_md_12cadc49 -.-> n_templates_definition_acceptance_criteria_md_d879ee6a
+  n_templates_definition_ui_state_inventory_md_12cadc49 -.-> n_templates_delivery_testing_strategy_md_95f20197
+  n_templates_definition_ux_writing_guide_md_5da176ac -.-> n_templates_architecture_localisation_rtl_checklist_md_76aa2954
+  n_templates_definition_ux_writing_guide_md_5da176ac -.-> n_templates_definition_acceptance_criteria_md_d879ee6a
+  n_templates_definition_ux_writing_guide_md_5da176ac -.-> n_templates_delivery_release_notes_md_63fdc6cb
   G1 ==> G2
   G2 ==> G3
   G3 ==> G4
@@ -752,11 +878,11 @@ flowchart LR
 | Stage | Gates | Artifacts with a declared relationship |
 |---|---|---|
 | DISCOVER | Gate 1 | 40 |
-| DEFINE | Gate 2 | 27 |
-| DESIGN | Gate 3 | 27 |
-| BUILD | Gate 4 | 8 |
-| DELIVER | Gate 5 | 21 |
+| DEFINE | Gate 2 | 34 |
+| DESIGN | Gate 3 | 42 |
+| BUILD | Gate 4 | 11 |
+| DELIVER | Gate 5 | 22 |
 | OPERATE | Gate 6 | 29 |
 | PLANNING track | none | 46 |
-| AI overlay track | none | 10 |
-| ALL STAGES, cross cutting | none | 14 |
+| AI overlay track | none | 11 |
+| ALL STAGES, cross cutting | none | 16 |

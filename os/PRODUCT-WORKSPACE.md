@@ -21,6 +21,7 @@ products/
 └── ledgerline/
     ├── README.md              what this product is, one paragraph, plus the current stage and gate
     ├── STATE.md               the Conductor's running memory: position, accepted answers, evidence ledger
+    ├── DESIGN.md              the product's tokens, components, content, and accessibility rules, where the product has a UI
     ├── discovery/             filled copies of templates/discovery/
     ├── definition/            filled copies of templates/definition/
     │   └── ai/                filled copies of templates/ai/, when the product contains a model
@@ -47,7 +48,7 @@ python3 tools/init_product.py ledgerline --add templates/discovery/discovery-doc
 python3 tools/init_product.py ledgerline --check
 ```
 
-The first builds the folders above and seeds `STATE.md` from `templates/execution/state.md`. Each `--add` after it copies one template into its stage folder: `templates/discovery/` lands in `discovery/`, `templates/ai/` lands in `definition/ai/` because the overlay attaches at DEFINE, and `templates/execution/state.md` is the one file that lands at the workspace root under its own name. Nothing is ever overwritten without `--force`. The research templates land before `discovery-document.md`, because that document rolls their findings up rather than gathering them itself. The last command re-resolves every link in the workspace and reports the ones that do not land.
+The first builds the folders above and seeds `STATE.md` from `templates/execution/state.md`. Each `--add` after it copies one template into its stage folder: `templates/discovery/` lands in `discovery/`, `templates/ai/` lands in `definition/ai/` because the overlay attaches at DEFINE, and `templates/execution/state.md` is the one file that lands at the workspace root under its own name. `templates/architecture/design-md.md` is the second file that lands at the root under its own name, as `DESIGN.md`, because agent tooling that generates or edits UI looks for it there rather than under `architecture/`. Nothing is ever overwritten without `--force`. The research templates land before `discovery-document.md`, because that document rolls their findings up rather than gathering them itself. The last command re-resolves every link in the workspace and reports the ones that do not land.
 
 There is a reason the copy is a tool rather than `cp`, and it is the same reason rule 1 below exists. A template's relative links are computed from where the blank lives, two levels under the repository root. Copied by hand into `products/ledgerline/discovery/`, the discovery document's `../../knowledge/...` link now points at `products/knowledge/...`, which has never existed, and all four of that file's links break at once. `--add` recomputes each link from the real depth of where the copy lands, then re-resolves every one of them from the destination and refuses to leave a copy behind if any fails. A link to another template resolves to your own filled copy once that copy exists, and to the blank until then.
 

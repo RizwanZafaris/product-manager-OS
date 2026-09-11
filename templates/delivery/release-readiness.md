@@ -51,6 +51,7 @@ aliases: ["Release Readiness", "release-readiness"]
 - [ ] The [edge-case register](edge-cases.md) has no open rows
 - [ ] [UAT](uat-plan.md) is signed off, conditions listed below if any
 - [ ] For AI features: eval thresholds met per the [eval spec](../ai/eval-spec.md), and the [red-team review](../ai/red-team-review.md) is closed
+- [ ] For any consent, decline, downgrade, or cancel flow in this release: the [choice-symmetry audit](../../frameworks/design/choice-symmetry-audit.md) result is recorded, checked against [knowledge/design/deceptive-design.md](../../knowledge/design/deceptive-design.md)
 
 ## 3. Known issues shipping with this release
 
@@ -129,6 +130,7 @@ aliases: ["Release Readiness", "release-readiness"]
 | Engineering | | | | |
 | QA | | | | |
 | Design | | | | |
+| Design review, live-build (required only where this release has a user-facing change; see [design-review-record.md](../architecture/design-review-record.md) live-build section) | | | | |
 | Support | | | | |
 | Data | | | | |
 | Legal / Compliance (if section 7 is yes) | | | | |

@@ -114,11 +114,14 @@ templates/discovery/    problem-framing.md, user-research-plan.md, personas.md,
 templates/definition/   brd.md, prd.md, one-pager.md, frd.md, nfr.md,
                business-rules.md, assumptions-register.md,
                acceptance-criteria.md, user-stories.md, prfaq.md,
-               design-brief.md
+               design-brief.md, ui-state-inventory.md, ux-writing-guide.md
 templates/architecture/ system-design.md, solution-architecture.md, adr.md,
                data-model.md, api-contract.md, sequence-diagram.md,
                integrations.md, security-architecture.md, observability.md,
-               privacy-impact-assessment.md, accessibility-checklist.md
+               privacy-impact-assessment.md, accessibility-checklist.md,
+               component-spec.md, design-md.md (the filled copy lands at
+               products/<name>/DESIGN.md, not in a stage subfolder),
+               design-review-record.md, localisation-rtl-checklist.md
 templates/execution/    stakeholder-map.md, risk-register.md, decision-log.md,
                dependency-register.md, state.md (the STATE.md blank the
                Conductor keeps per product), change-request.md,
@@ -145,12 +148,16 @@ templates/planning/     roadmap.md, okrs.md, first-90-days.md, gtm-plan.md,
 templates/ai/           eval-spec.md, guardrails.md, hallucination-controls.md,
                human-approval-gates.md, agent-architecture.md,
                multi-agent-workflow.md, prompt-structure.md,
-               context-management.md, red-team-review.md, model-card.md
-frameworks/    README.md, INDEX.md, and 58 worksheets in eight folders. Each
+               context-management.md, red-team-review.md, model-card.md,
+               ai-interaction-spec.md
+frameworks/    README.md, INDEX.md, and 64 worksheets in nine folders. Each
                sheet carries its scales, its arithmetic written out, the
                inputs it needs first, a worked invented example, its trap and
                its skip line. Ask for a sheet whenever a template field wants
                a number that has to be produced rather than recalled.
+frameworks/design/      choice-symmetry-audit.md, content-microcopy-audit.md,
+               design-critique.md, design-system-audit.md,
+               heuristic-evaluation.md, ux-scorecard.md
 frameworks/discovery/   jtbd-job-map.md, mom-test-interview-guide.md,
                kano-survey.md, assumption-mapping.md, empathy-map.md,
                opportunity-scoring.md, pmf-survey.md,
@@ -204,11 +211,23 @@ knowledge/domains/      README.md, INDEX.md, ecommerce.md,
                embedded-finance-baas.md, wealth-investing.md,
                capital-markets.md, insurance.md, crypto-digital-assets.md,
                regtech-aml-kyc.md, mobile-money-wallets.md,
-               islamic-finance.md
+               islamic-finance.md, aerospace-defence.md, construction-aec.md,
+               sports-betting-igaming.md
+knowledge/design/       README.md, usability-heuristics.md,
+               interaction-design-principles.md, ux-laws-evidence.md,
+               accessibility-and-inclusive-design.md,
+               accessibility-regulation.md, internationalisation-and-rtl.md,
+               content-design-and-forms.md, deceptive-design.md,
+               visual-foundations.md, ux-measurement.md,
+               pm-design-collaboration.md, design-systems-and-tokens.md,
+               component-driven-development.md, ui-dependency-licensing.md,
+               ai-interaction-patterns.md. How a PM reads and judges
+               experience design; sources and licences for the whole layer
+               are in docs/REFERENCES-DESIGN.md, not repeated per card.
 learn/         README.md, INDEX.md, library.md, path-foundations.md,
-               path-transitioning.md, path-senior.md, skills/tutor/SKILL.md,
-               products/README.md
-skills/        README.md plus 28 procedures: conductor, product-analyst,
+               path-transitioning.md, path-senior.md, path-design.md,
+               skills/tutor/SKILL.md, products/README.md
+skills/        README.md plus 29 procedures: conductor, product-analyst,
                write-prd, ai-prd, spec-review, story-writer, roadmap-builder,
                okr-critic, metrics-tree, experiment-designer, market-sizing,
                pricing-packaging, competitive-intel, persona-builder,
@@ -216,7 +235,8 @@ skills/        README.md plus 28 procedures: conductor, product-analyst,
                write-vision-strategy, decision-memo, gtm-launch-planner,
                launch-readiness, program-premortem, reg-gap-check,
                postmortem-facilitator, product-review, stakeholder-update,
-               pm-hiring, escalation, each at skills/<name>/SKILL.md; the
+               pm-hiring, escalation, design-review, each at
+               skills/<name>/SKILL.md; the
                conductor's question banks at skills/conductor/questions/
                (README.md, discover.md, define.md, design.md, build.md,
                deliver.md, operate.md)
@@ -269,7 +289,136 @@ examples/      README.md, expense-copilot-discovery.md,
                harbourgate-release-readiness.md,
                harbourgate-incident-postmortem.md,
                harbourgate-sunset-eol-plan.md,
-               harbourgate-compliance-impact-assessment.md
+               harbourgate-compliance-impact-assessment.md. Ten further
+               standalone examples, each its own small invented company:
+               example-brd.md, example-design-brief.md, example-frd.md,
+               example-heart-metrics.md, example-lean-canvas.md,
+               example-prfaq.md, example-privacy-impact-assessment.md,
+               example-program-charter.md, example-risk-matrix.md,
+               example-unit-economics.md. Forty-one industry examples, one
+               per knowledge/domains/ card's "Filled in this repo" line:
+               domain-aerospace-defence-analytics-instrumentation-spec.md,
+               domain-agritech-business-case.md,
+               domain-automotive-mobility-risk-register.md,
+               domain-capital-markets-nfr.md,
+               domain-card-issuing-risk-register.md,
+               domain-construction-aec-business-rules.md,
+               domain-consumer-social-failure-scenarios.md,
+               domain-core-banking-sla-slo-definition.md,
+               domain-crypto-digital-assets-nfr.md,
+               domain-cybersecurity-grc-nfr.md, domain-devtools-api-nfr.md,
+               domain-ecommerce-metrics-review.md,
+               domain-edtech-compliance-impact-assessment.md,
+               domain-embedded-finance-baas-integrations.md,
+               domain-energy-utilities-sla-slo-definition.md,
+               domain-erp-nfr.md,
+               domain-food-delivery-quick-commerce-risk-register.md,
+               domain-gaming-release-readiness.md,
+               domain-hardware-iot-nfr.md,
+               domain-healthtech-compliance-impact-assessment.md,
+               domain-hr-tech-eval-spec.md,
+               domain-insurance-business-rules.md,
+               domain-islamic-finance-decision-log.md,
+               domain-legaltech-data-model.md,
+               domain-lending-credit-risk-register.md,
+               domain-logistics-failure-scenarios.md,
+               domain-manufacturing-industrial-nfr.md,
+               domain-marketplaces-north-star-metric.md,
+               domain-martech-adtech-metrics-dictionary.md,
+               domain-media-publishing-business-rules.md,
+               domain-pharma-life-sciences-eval-spec.md,
+               domain-proptech-real-estate-data-model.md,
+               domain-public-sector-govtech-release-readiness.md,
+               domain-regtech-aml-kyc-business-rules.md,
+               domain-remittances-failure-scenarios.md,
+               domain-sports-betting-igaming-metrics-dictionary.md,
+               domain-streaming-ott-dependency-register.md,
+               domain-telecom-nfr.md,
+               domain-transaction-banking-failure-scenarios.md,
+               domain-travel-hospitality-failure-scenarios.md,
+               domain-wealth-investing-business-rules.md. Thirty-five more
+               artifacts and two supplementary data sheets added to the
+               Ledgerline journey: ledgerline-agent-architecture.md,
+               ledgerline-ai-interaction-spec.md, ledgerline-backlog.md,
+               ledgerline-build-buy-partner.md,
+               ledgerline-choice-symmetry-audit.md,
+               ledgerline-context-management.md,
+               ledgerline-coverage-sheet.md, ledgerline-decision-doors.md,
+               ledgerline-decision-memo.md, ledgerline-design-critique.md,
+               ledgerline-design-sheet.md, ledgerline-design-system-audit.md,
+               ledgerline-discovery-synthesis.md, ledgerline-exec-update.md,
+               ledgerline-gabor-granger.md, ledgerline-growth-loops.md,
+               ledgerline-guardrails.md,
+               ledgerline-hallucination-controls.md,
+               ledgerline-human-approval-gates.md, ledgerline-model-card.md,
+               ledgerline-multi-agent-workflow.md,
+               ledgerline-now-next-later.md,
+               ledgerline-opportunity-solution-tree.md,
+               ledgerline-packaging-good-better-best.md,
+               ledgerline-playing-to-win.md,
+               ledgerline-porters-five-forces.md,
+               ledgerline-positioning-canvas.md,
+               ledgerline-product-strategy.md,
+               ledgerline-prompt-structure.md,
+               ledgerline-qbr-board-update.md, ledgerline-red-team-review.md,
+               ledgerline-retrospective.md, ledgerline-roadmap.md,
+               ledgerline-seven-powers-audit.md, ledgerline-swot-tows.md,
+               ledgerline-ux-scorecard.md, ledgerline-van-westendorp.md,
+               ledgerline-wardley-map.md,
+               ledgerline-weighted-decision-matrix.md,
+               ledgerline-wsjf-cost-of-delay.md. Twenty-six more artifacts
+               and two supplementary data sheets added to the Sahulat
+               journey: sahulat-aarrr-funnel.md, sahulat-ansoff-matrix.md,
+               sahulat-assumption-mapping.md,
+               sahulat-business-model-canvas.md, sahulat-cohort-retention.md,
+               sahulat-competitive-analysis.md,
+               sahulat-content-microcopy-audit.md, sahulat-coverage-sheet.md,
+               sahulat-design-sheet.md, sahulat-design-sprint-runbook.md,
+               sahulat-empathy-map.md, sahulat-evidence-note.md,
+               sahulat-first-90-days.md, sahulat-hiring-scorecard.md,
+               sahulat-impact-mapping.md, sahulat-journey-map.md,
+               sahulat-jtbd-spec.md, sahulat-localisation-rtl-checklist.md,
+               sahulat-market-sizing.md, sahulat-mom-test-interview-guide.md,
+               sahulat-moscow.md, sahulat-opportunity-scoring.md,
+               sahulat-pestle.md, sahulat-pmf-survey.md,
+               sahulat-service-blueprint.md, sahulat-state.md,
+               sahulat-survey-design.md, sahulat-ui-state-inventory.md,
+               sahulat-usability-test-plan.md, sahulat-user-story-map.md,
+               sahulat-ux-writing-guide.md,
+               sahulat-value-proposition-canvas.md. Thirty-five more
+               artifacts and two supplementary data sheets added to the
+               Harbourgate journey: harbourgate-accessibility-checklist.md,
+               harbourgate-capacity-plan.md,
+               harbourgate-causal-loop-diagram.md,
+               harbourgate-change-request.md, harbourgate-component-spec.md,
+               harbourgate-coverage-sheet.md, harbourgate-customer-comms.md,
+               harbourgate-cynefin.md, harbourgate-design-md.md,
+               harbourgate-design-review-record.md,
+               harbourgate-design-sheet.md, harbourgate-dora-four-keys.md,
+               harbourgate-edge-cases.md, harbourgate-estimation-sheet.md,
+               harbourgate-failure-scenarios.md,
+               harbourgate-five-whys-fishbone.md, harbourgate-fmea.md,
+               harbourgate-heuristic-evaluation.md,
+               harbourgate-iceberg-model.md, harbourgate-leverage-points.md,
+               harbourgate-operational-readiness-review.md,
+               harbourgate-partner-integration-brief.md,
+               harbourgate-premortem-worksheet.md,
+               harbourgate-product-operating-model-assessment.md,
+               harbourgate-raci.md, harbourgate-release-notes.md,
+               harbourgate-retrospective-formats.md,
+               harbourgate-sequence-diagram.md,
+               harbourgate-sla-slo-definition.md,
+               harbourgate-solution-architecture.md,
+               harbourgate-space-framework.md,
+               harbourgate-stakeholder-power-interest.md,
+               harbourgate-support-runbook.md,
+               harbourgate-team-topologies-assessment.md,
+               harbourgate-tech-debt-assessment.md,
+               harbourgate-tech-debt-register.md,
+               harbourgate-testing-strategy.md,
+               harbourgate-theory-of-constraints.md, harbourgate-uat-plan.md,
+               harbourgate-westrum-culture-typology.md. All indexed in
+               [examples/README.md](../examples/README.md).
 modules/regulated/      README.md (its activation wording is older and
                broader than the rule above, which governs), SKILL.md and its
                templates; quote, never paraphrase
@@ -283,7 +432,10 @@ docs/          PHILOSOPHY.md (why each rule above exists, with the
                CONDUCTOR-DESIGN.md, RUNTIME-QUICKSTART.md, THREAT-MODEL.md,
                ACCESSIBILITY.md, COMPATIBILITY.md (what has actually
                been run, on which models and hosts, with what result), GRAPH.md
-               (generated from each file's declaration). Reference
+               (generated from each file's declaration), REFERENCES-DESIGN.md
+               (the source and licence register for the experience-design
+               layer), RENDERING.md (how to read the tree as a site or a
+               knowledge base in GitHub, Obsidian, MkDocs or Quartz). Reference
                only. Ask for one of these when the user challenges a rule you
                are enforcing; never paste one in place of a template, because
                none of them produces an artifact.

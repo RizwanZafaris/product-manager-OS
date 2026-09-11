@@ -22,6 +22,8 @@ Two people rituals, one calibration source. Hiring decides who joins the [ladder
 
 **The trap: interviewing for polish.** Confident storytelling and framework fluency predict interview success and almost nothing else. Candidates who narrate tradeoffs, cite what they would undo, and say "I do not know" about the right things routinely lose rooms to candidates who never hesitate. The rubric and the blind vote are the two mechanical defenses; use both.
 
+**Filled examples at this level:** the kind of draft a structured project hands a candidate to critique or re-sequence, such as the [Expense Copilot discovery document](../../examples/expense-copilot-discovery.md) (a thin problem case) and the [Sahulat problem framing](../../examples/sahulat-problem-framing.md) (a messy statement to re-sequence with reasoning shown); the loop's own output is filled in the [Sahulat hiring scorecard](../../examples/sahulat-hiring-scorecard.md), the scorecard for Sahulat's first PM seat, decided with dissent recorded before the req opened.
+
 ## The manager rituals
 
 **The weekly 1:1.** Grove's rule, kept: it is the report's meeting, and its output is the manager's leverage. A workable shape in three beats: identify what actually matters this week (which is rarely the first thing raised), understand it with questions before advising, and close with one concrete support action the manager personally carries. Status is banned; it has channels, the [product review](../../skills/product-review/SKILL.md) and [STATE.md](../../templates/execution/state.md), and a 1:1 spent reciting them is the classic decay. The test: if the manager cancels the meeting and nothing is lost, it was a status meeting wearing a 1:1's clothing.
@@ -29,6 +31,8 @@ Two people rituals, one calibration source. Hiring decides who joins the [ladder
 **The career conversation.** Quarterly, deliberately separate from both the weekly 1:1 and the compensation cycle, because a growth conversation held inside a money conversation is a negotiation. Calibrate against the [ladder](ladder.md): which rung behaviors does the evidence already show, which are missing, and which current work could supply the missing evidence. Scope moves first and the title follows, usually by six to eighteen months, so the conversation's output is a scope plan, not a title promise.
 
 **Where the notes live.** Coaching and evaluation notes belong in the company's people system, not in this repository, consistent with the [ladder's](ladder.md) Group PM entry. What belongs here is the calibration source they cite.
+
+**Filled examples at this level:** the [Sahulat decision log](../../examples/sahulat-decision-log.md), the kind of dated, evidence-backed record a career conversation checks against instead of relying on memory of who said what; the calibrated scope plan a career conversation produces is filled in the [Sahulat first-90-days plan](../../examples/sahulat-first-90-days.md), Hira Baig's mandate, three learning questions, and day-90 close.
 
 ## Sources
 

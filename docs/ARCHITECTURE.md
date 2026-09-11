@@ -51,7 +51,7 @@ The deletion proof remains deliberately narrow: it concerns the legacy harness a
 
 **Deleting a content layer is a different event again.** `skills/`, `agents/`, `system/`, `routing/`, and `modules/regulated/` are all safe to delete in the sense that nothing depends upward on them and every remaining document still fills and still passes a human gate. They are also link targets: each template's `Skill:` header points up at the procedure that drives it, so the four AI layers together carry hundreds of inbound links and the link gate fails on all of them. Usable without a layer, not lint-clean without it. The tree keeps the cross-references because they are what makes it navigable, and states the limit instead of promising the stronger property.
 
-Since v0.3.0 the knowledge layer carries two sub-layers, `knowledge/roles/` (WHO each product title is) and `knowledge/domains/` (WHERE the product plays, forty-four market cards in two tables, general and financial services, the fintech card a pointer to the regulated module), and a further layer sits beside the rest: `learn/` (three study paths, a library, a tutor skill, and a practice workspace). `learn/` depends downward only, on `knowledge/`, `frameworks/`, `templates/`, the `os/` loop files, and the Conductor's question banks, all read-only; nothing outside `learn/` depends on it existing.
+Since v0.3.0 the knowledge layer carries three sub-layers, `knowledge/roles/` (WHO each product title is), `knowledge/domains/` (WHERE the product plays, forty-four market cards in two tables, general and financial services, the fintech card a pointer to the regulated module), and `knowledge/design/` (how a PM reads and judges experience design, never the DESIGN stage itself), and a further layer sits beside the rest: `learn/` (three study paths, a library, a tutor skill, and a practice workspace). `learn/` depends downward only, on `knowledge/`, `frameworks/`, `templates/`, the `os/` loop files, and the Conductor's question banks, all read-only; nothing outside `learn/` depends on it existing.
 
 The frameworks layer arrived in v0.5.0 to close a gap the first four versions left open: the knowledge layer said why a method exists, the templates said what artifact a stage owes, and nothing in the tree was the sheet you fill in when someone says "let's do a Kano". A method available only as an essay gets performed from memory, and its arithmetic ends up unauditable. Each worksheet states its scales and its formula, names what it feeds, and carries a skip line so the layer never teaches that every method is worth its overhead. A worksheet ships only when a template, a skill, or a gate consumes its output; otherwise the method stays a one-line entry in the knowledge index.
 
@@ -134,6 +134,8 @@ product-manager-OS/
 │   ├── RUNTIME-QUICKSTART.md  The pmos golden path end to end: install, init, answer, gate, what a rejection does to the revision, migration and recovery, provenance
 │   ├── THREAT-MODEL.md  Local evidence against external evidence at a commit, assets and trust boundaries, threats with their controls, the dependency surface and exception inventory, and release evidence
 │   ├── ACCESSIBILITY.md  What the operator-documentation contract checks, how to read and operate the system, the evidence limits, and the authoring rules
+│   ├── REFERENCES-DESIGN.md  The single source-and-licence register for the experience-design layer: every studied source, its reuse class, and the licence of record at the pinned commit
+│   ├── RENDERING.md  How to read the tree as a site or a knowledge base in GitHub, Obsidian, MkDocs with Material or Quartz, and what to avoid so links and diagrams keep rendering
 │   └── readiness/  The readiness rubric and its recorded evidence: criteria.json, external-gates.json, independent-review.json, task-ledger.json, skill-rubric.json, test-classes.json (the TestCase classes each root test module must define), the main-branch ruleset proposal, and the two external-session documents
 ├── os/
 │   ├── README.md  Rendered directory face: the loop in miniature, what each of the six governing files holds, the stage maps beside them, and a read order for a first-timer
@@ -169,6 +171,7 @@ product-manager-OS/
 │   │   ├── stage-shift.md  Startup vs scale-up vs enterprise per title; the title-inflation trap
 │   │   ├── triad-decision-rights.md  Who decides value, usability, feasibility; the how-might-we-never-a-veto rule; the three-step dispute path ending in the decision log; the saying-no pattern
 │   │   └── pm-hiring-and-growth.md  Structured hiring loop (screens, project, blind-vote debrief) and the manager 1:1 and career conversation, both calibrated against ladder.md
+│   ├── design/  How a PM reads and judges experience design, never the DESIGN stage itself: usability-heuristics, interaction-design-principles, ux-laws-evidence, accessibility-and-inclusive-design, accessibility-regulation, internationalisation-and-rtl, content-design-and-forms, deceptive-design, visual-foundations, ux-measurement, pm-design-collaboration, design-systems-and-tokens, component-driven-development, ui-dependency-licensing, ai-interaction-patterns
 │   └── domains/
 │       ├── README.md  The canonical rendered index: the pick-your-domain table and the financial-services table, the Conductor usage note, and the card-to-template-pack graduation rule
 │       ├── INDEX.md  Two-line pointer stub to README.md
@@ -180,8 +183,8 @@ product-manager-OS/
 │       ├── core-banking.md · transaction-banking.md · remittances.md · payments-acquiring.md · card-issuing.md · lending-credit.md · embedded-finance-baas.md  Financial-services cards, the second table in README.md, where the licence holder has a veto and every rail has its own rulebook
 │       ├── wealth-investing.md · capital-markets.md · insurance.md · crypto-digital-assets.md · regtech-aml-kyc.md · mobile-money-wallets.md · islamic-finance.md  Financial-services cards, continued
 │       └── fintech.md  Pointer card only: routes to modules/regulated and skills/reg-gap-check, duplicates nothing
-├── frameworks/  58 runnable worksheets: scales, arithmetic, invented example, trap, skip line, and what each feeds
-│   ├── README.md  Rendered directory face and layer index: how frameworks differ from knowledge and templates, all 58 by group with originator and year
+├── frameworks/  64 runnable worksheets: scales, arithmetic, invented example, trap, skip line, and what each feeds
+│   ├── README.md  Rendered directory face and layer index: how frameworks differ from knowledge and templates, all 64 by group with originator and year
 │   ├── INDEX.md  Two-line pointer to README.md, kept so older links resolve
 │   ├── strategy/  strategy-kernel, playing-to-win, seven-powers-audit, wardley-map, swot-tows, porters-five-forces, pestle, ansoff-matrix, business-model-canvas, lean-canvas, value-proposition-canvas, market-sizing, build-buy-partner, positioning-canvas
 │   ├── discovery/  mom-test-interview-guide, jtbd-job-map, opportunity-scoring, assumption-mapping, empathy-map, kano-survey, pmf-survey, design-sprint-runbook
@@ -190,9 +193,10 @@ product-manager-OS/
 │   ├── pricing/  van-westendorp, gabor-granger, packaging-good-better-best
 │   ├── execution/  raci, stakeholder-power-interest, five-whys-fishbone, retrospective-formats, estimation-sheet, risk-matrix, premortem-worksheet, fmea, theory-of-constraints
 │   ├── systems/  The diagnostic group, added in v0.6.0 because the other six groups all take the problem as given: iceberg-model, cynefin, causal-loop-diagram, leverage-points
-│   └── assessment/  Scores the organization the plan lands in rather than the plan: product-operating-model-assessment, team-topologies-assessment, tech-debt-assessment, westrum-culture-typology
+│   ├── assessment/  Scores the organization the plan lands in rather than the plan: product-operating-model-assessment, team-topologies-assessment, tech-debt-assessment, westrum-culture-typology
+│   └── design/  Experience-design worksheets, not the DESIGN stage: heuristic-evaluation, content-microcopy-audit, design-critique, choice-symmetry-audit, design-system-audit, ux-scorecard
 ├── templates/
-│   ├── README.md  Rendered directory face: the full catalog, one table per stage directory, all 100 templates with what each is and when to reach for it; carries the three-line header the gate demands of every file here
+│   ├── README.md  Rendered directory face: the full catalog, one table per stage directory, all 107 templates with what each is and when to reach for it; carries the three-line header the gate demands of every file here
 │   ├── discovery/
 │   │   ├── discovery-document.md  Trigger, target user, pain, hypothesis, success signal, go or no-go
 │   │   ├── problem-framing.md  One problem statement, evidence, cost of inaction, owner
@@ -221,7 +225,9 @@ product-manager-OS/
 │   │   ├── acceptance-criteria.md  Given/when/then blocks, edge and negative cases, measurable thresholds
 │   │   ├── prfaq.md  Working backwards: mock press release, customer quote, external and internal FAQ, availability
 │   │   ├── user-stories.md  The canonical story register: ids defined once, epics, the release slice, the INVEST check, six splitting patterns, and traceability run in both directions, so a signed PRD is never edited to hold stories
-│   │   └── design-brief.md  The product and design agreement: problem, users, constraints, success, out of scope, deliverables, review dates
+│   │   ├── design-brief.md  The product and design agreement: problem, users, constraints, success, out of scope, deliverables, review dates
+│   │   ├── ux-writing-guide.md  The product-level writing guide every interface string is audited against: voice, message patterns, banned words, glossary
+│   │   └── ui-state-inventory.md  The single owner of the list of states a screen or component must render, referenced rather than restated elsewhere
 │   ├── architecture/
 │   │   ├── system-design.md  Goals, non-goals, diagram, components, alternatives considered, tradeoffs
 │   │   ├── solution-architecture.md  Context diagram, capability map, integration points, build vs buy rationale
@@ -233,7 +239,11 @@ product-manager-OS/
 │   │   ├── security-architecture.md  STRIDE walk per component, trust boundaries, risk score, mitigation owner
 │   │   ├── observability.md  SLOs, logs, traces, alert thresholds, dashboard owner, synthetic failure check
 │   │   ├── privacy-impact-assessment.md  Data inventory, lawful-basis fields, risks and mitigations, DPO sign-off; structures the questions, never answers them for you
-│   │   └── accessibility-checklist.md  Conformance level set once, then checks by component type with an evidence column and a sign-off line
+│   │   ├── accessibility-checklist.md  Conformance level set once, then checks by component type with an evidence column and a sign-off line
+│   │   ├── design-review-record.md  The one signed record of an experience-design review, across the Gate 3 review and the Gate 4 live-build check
+│   │   ├── localisation-rtl-checklist.md  A walkable localisation and bidi checklist for a right-to-left or multilingual UI
+│   │   ├── component-spec.md  One shared component's specification, written only when two or more surfaces use it
+│   │   └── design-md.md  The product's own DESIGN.md: tokens, components, content, and accessibility rules, landing at products/<name>/DESIGN.md
 │   ├── execution/
 │   │   ├── stakeholder-map.md  Name, interest, influence, RACI tag, cadence, concerns
 │   │   ├── risk-register.md  Risk, likelihood, impact, score, mitigation, owner, review date
@@ -340,7 +350,8 @@ product-manager-OS/
 │   ├── decision-memo/SKILL.md  Options, door type, recommendation, dissent captured; lands in the decision log
 │   ├── postmortem-facilitator/SKILL.md  Blameless timeline, five whys, corrective actions with owners and verification
 │   ├── launch-readiness/SKILL.md  Walks the Gate 5 checklist and returns go, no-go, or conditional-go with named conditions
-│   └── pm-hiring/SKILL.md  Role scorecard, interview loop design, calibration, and the decision
+│   ├── pm-hiring/SKILL.md  Role scorecard, interview loop design, calibration, and the decision
+│   └── design-review/SKILL.md  One evaluator against the design brief's own objectives: critique prep, a Gate 3 review, a live-build check before Gate 4, or an accessibility, content, localisation, or deceptive-design pass; routes findings by severity and never signs
 ├── agents/
 │   ├── README.md  Rendered directory face: identities versus procedures, all twelve role files plus the team protocol, and who invokes each
 │   ├── research-agent.md  Instruction file: gathers evidence, cites sources, never asserts beyond them; feeds discovery templates

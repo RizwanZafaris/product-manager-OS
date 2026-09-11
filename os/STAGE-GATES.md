@@ -90,7 +90,7 @@ Closes DEFINE. Feeds DESIGN.
 
 **Product:** <name> · **Gate run date:** <YYYY-MM-DD> · **Attempt:** <n>
 
-**Inputs on the table:** the definition set at the weight chosen in [WHICH-DOCUMENT.md](WHICH-DOCUMENT.md). Three weights reach this gate. At BRD-stack weight that is the completed BRD, PRD, FRD, NFR, business rules, assumptions register, and acceptance criteria from `../templates/definition/`. At full-PRD weight it is the completed PRD, NFR, and acceptance criteria, without a BRD. At one-pager weight it is a completed `../templates/definition/one-pager.md` with its acceptance criteria attached. The checklist below is the same at every weight: a lighter document answers these questions in fewer words, not in fewer answers.
+**Inputs on the table:** the definition set at the weight chosen in [WHICH-DOCUMENT.md](WHICH-DOCUMENT.md). Three weights reach this gate. At BRD-stack weight that is the completed BRD, PRD, FRD, NFR, business rules, assumptions register, and acceptance criteria from `../templates/definition/`. At full-PRD weight it is the completed PRD, NFR, and acceptance criteria, without a BRD. At one-pager weight it is a completed `../templates/definition/one-pager.md` with its acceptance criteria attached. Where the product has a UI, the completed `../templates/definition/ui-state-inventory.md` comes with it. The checklist below is the same at every weight: a lighter document answers these questions in fewer words, not in fewer answers. The Conductor asks for the inventory as DEFINE-9.
 
 - [ ] Every PRD objective traces to the Gate 1 problem statement, and every FRD requirement traces to a PRD item
 - [ ] Every acceptance criterion can fail: it has a condition, an expected result, and a measurable threshold
@@ -132,7 +132,7 @@ Closes DESIGN. Feeds BUILD.
 
 **Product:** <name> · **Gate run date:** <YYYY-MM-DD> · **Attempt:** <n>
 
-**Inputs on the table:** the `../templates/architecture/` set as applicable (system design, solution architecture, ADRs, data model, API contracts, sequence diagrams, integrations, security architecture, observability), plus the full `../templates/execution/` set (stakeholder map, risk register, decision log, dependency register).
+**Inputs on the table:** the `../templates/architecture/` set as applicable (system design, solution architecture, ADRs, data model, API contracts, sequence diagrams, integrations, security architecture, observability), plus the full `../templates/execution/` set (stakeholder map, risk register, decision log, dependency register). Where the product has a UI, `../templates/architecture/design-md.md` (filed as the product's own DESIGN.md); where the change has a user-facing surface, the completed `../templates/architecture/design-review-record.md` and `../templates/architecture/accessibility-checklist.md` also come with it. The Conductor asks for the design review record and the accessibility checklist evidence as DESIGN-8; neither is a checklist line.
 
 - [ ] The system design lists at least one alternative that was seriously considered and rejected, with the tradeoff recorded as an ADR
 - [ ] Every integration names its owner, protocol, SLA, and failure behavior; "we will figure it out" appears nowhere
@@ -174,7 +174,7 @@ Closes BUILD. Feeds DELIVER.
 
 **Product:** <name> · **Gate run date:** <YYYY-MM-DD> · **Attempt:** <n>
 
-**Inputs on the table:** the acceptance criteria from Gate 2, the testing strategy, edge-case table, and failure-scenario table from `../templates/delivery/`, and the test results themselves.
+**Inputs on the table:** the acceptance criteria from Gate 2, the testing strategy, edge-case table, and failure-scenario table from `../templates/delivery/`, and the test results themselves. Where the change has a user-facing surface, the live-build section of `../templates/architecture/design-review-record.md` also comes with it.
 
 - [ ] Every acceptance criterion from Gate 2 is demonstrated passing, or listed below as a miss with an owner and a decision
 - [ ] The edge-case table has no row marked "to be decided"; every case has an expected behavior and a linked test

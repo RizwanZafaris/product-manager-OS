@@ -53,12 +53,19 @@ Skill: [architect agent](../../agents/architect-agent.md)
 
 <!-- Items are facts about the system, stated so that a new engineer could verify
      them. "The parser is messy" is an opinion; "the parser has no test harness, so
-     every change is verified by hand" is debt. The italic row is ILLUSTRATIVE. -->
+     every change is verified by hand" is debt. The italic row is ILLUSTRATIVE.
+     Debt type separates code the compiler would flag from debt a user feels
+     (a UX debt item is a rework or workaround the interface forces on a user;
+     a design-system debt item is a snowflake component that should be a
+     shared one). Severity, frequency, and journey location are NN/g's
+     prioritisation inputs for UX debt: how bad the friction is, how often
+     users hit it, and where in the journey it sits; see
+     [knowledge/design/pm-design-collaboration.md](../../knowledge/design/pm-design-collaboration.md). -->
 
-| # | Item (a fact about the system) | Where | Taken on when, why, and where recorded | Interest (team-days per quarter) | Principal (team-days, low to high) | Ratio (interest / likely principal) | Trend (growing / flat / shrinking) | Owner | Status |
-|---|---|---|---|---|---|---|---|---|---|
-| | | | | | | | | | |
-| *1* | *receipt parser has no test harness; every change is verified by hand (ILLUSTRATIVE)* | *extraction service* | *two quarters ago, to hit the pilot date, ADR-[n]* | *6* | *8 to 12* | *0.6* | *growing* | *[name]* | *scheduled next quarter* |
+| # | Item (a fact about the system) | Where | Debt type (technical / UX / design system) | Severity | Frequency | Journey location | Taken on when, why, and where recorded | Interest (team-days per quarter) | Principal (team-days, low to high) | Ratio (interest / likely principal) | Trend (growing / flat / shrinking) | Owner | Status |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| | | | | | | | | | | | | | |
+| *1* | *receipt parser has no test harness; every change is verified by hand (ILLUSTRATIVE)* | *extraction service* | *technical* | *n/a* | *n/a* | *n/a* | *two quarters ago, to hit the pilot date, ADR-[n]* | *6* | *8 to 12* | *0.6* | *growing* | *[name]* | *scheduled next quarter* |
 
 ## 3. Payoff rule and budget
 
@@ -76,11 +83,13 @@ Skill: [architect agent](../../agents/architect-agent.md)
 ## 5. Accepted debt
 
 <!-- Debt someone chose to carry, signed. The signature is what makes "later" honest.
-     Revisit when names an event, not a season. -->
+     Revisit when names an event, not a season. Deliberate debt: decided by
+     names who accepted it and repaid by names the date or event it gets paid
+     off by, so "later" resolves to something checkable. -->
 
-| Register # | Accepted by (name, role) | Rationale in one sentence | Revisit when | Date |
-|---|---|---|---|---|
-| | | | | |
+| Register # | Accepted by (name, role) | Rationale in one sentence | Revisit when | Deliberate debt: decided by | Deliberate debt: repaid by | Date |
+|---|---|---|---|---|---|---|
+| | | | | | | |
 
 ## 6. Interest total
 

@@ -127,6 +127,19 @@ The other groups score the work. This one scores the place the work has to happe
 | [Tech debt assessment](assessment/tech-debt-assessment.md) | Give every known compromise a carrying cost, a removal cost, and a quadrant | Ward Cunningham (1992); Fowler's quadrant (2009) |
 | [Westrum culture typology](assessment/westrum-culture-typology.md) | Score how bad news travels, so you know how far to discount what you are told | Ron Westrum (2004) |
 
+## Design
+
+Experience design, not the DESIGN stage: these worksheets run inspection and measurement methods a PM commissions or reads, not the stage every product passes through. Five originated with the experience-design layer's first pass; the sixth, the design system audit, followed once the layer's templates needed a foundation-choice step.
+
+| Worksheet | What you run it for | Originator |
+|---|---|---|
+| [Heuristic evaluation](design/heuristic-evaluation.md) | Run a small panel against a fixed list of usability principles, or a task-based cognitive walkthrough, and consolidate findings on the same severity scale a moderated test uses | Jakob Nielsen and Rolf Molich (1990); Nielsen (1994) |
+| [Content and microcopy audit](design/content-microcopy-audit.md) | Walk every user-facing string, in every state, against a fixed pass-or-fail rule set instead of a feeling that the copy reads fine | after GOV.UK content design guidance and NN/g error-message research |
+| [UX scorecard](design/ux-scorecard.md) | Score a usability round's six numbers side by side, arithmetic written out: task success, time on task, errors, ease rating, SUS, and UMUX-LITE | Brooke (1996); Lewis, Utesch and Maher (2013); Agresti and Coull (1998) |
+| [Design critique](design/design-critique.md) | Run the feedback half of a design review against agreed objectives, before anyone is ready for the separate go or no-go event | Sarah Gibbons, NN/g (2016); Scott Berkun (2003) |
+| [Choice symmetry audit](design/choice-symmetry-audit.md) | Count the effort a consent, decline, opt-out, downgrade or cancel flow spends going the business's way against going the user's own, on a fixed rule rather than taste | after the EU DSA, CCPA regulations, and the FTC's 2025 Amazon order |
+| [Design system audit](design/design-system-audit.md) | Score how much of a shipped interface actually comes from the shared system, on two maturity ladders, plus a foundation-choice step where no system exists yet | after Brad Frost, USWDS, the GOV.UK Design System, Callahan and Curtis |
+
 ## Adding a worksheet
 
 The bar is the same as the knowledge layer's: a worksheet ships when a template, a skill, or a gate in this repository needs its output, not because the method is famous. It carries named attribution, its own words, a skip line, stated arithmetic, an invented example, and a trap drawn from practice rather than a caution drawn from the abstract. A worksheet that cannot name what it feeds is a method catalog entry, and those live in the [knowledge index](../knowledge/INDEX.md) as one line until something depends on them.
