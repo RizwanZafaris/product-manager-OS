@@ -117,7 +117,11 @@ Skill: [stakeholder-update](../../skills/stakeholder-update/SKILL.md)
      dropped commitment is named rather than omitted. Delete once real
      content exists. -->
 
-**Headline.** *Receipt extraction ships to one market on 12 June. We need a decision on the second market by 5 June or it slips a quarter.*
+**Headline.**
+
+- **Situation:** *Receipt extraction ships to one market on 12 June.*
+- **Complication:** *Second-market pricing was not agreed, so market two is unscheduled.*
+- **Resolution:** *We need a decision on the second market by 5 June or it slips a quarter.*
 
 **Ask.** *Approve support headcount for a second queue, or confirm we launch market two in Q4. Decision needed by 5 June, owner: you.*
 

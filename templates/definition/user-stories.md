@@ -81,12 +81,16 @@ Skill: [story-writer](../../skills/story-writer/SKILL.md)
 
      Estimate is whatever unit the team actually uses. Leave it blank rather
      than guessing: an invented number is worse than an absent one, because
-     somebody will plan against it. -->
+     somebody will plan against it.
 
-| ID | Story | Persona | Priority | Acceptance criteria | Estimate | Status | Notes |
-|---|---|---|---|---|---|---|---|
-| US1 | As a [persona], I want [action], so that [outcome]. | | must | AC-[n] | | | |
-| US2 | | | should | | | | |
+     INVEST is where the section 4 verdict is written down: "pass", or the
+     letters it fails and what was done about them. An empty cell on a must
+     means the check has not been run, which is what the exit gate reads. -->
+
+| ID | Story | Persona | Priority | Acceptance criteria | Estimate | Status | INVEST | Notes |
+|---|---|---|---|---|---|---|---|---|
+| US1 | As a [persona], I want [action], so that [outcome]. | | must | AC-[n] | | | pass, or the failing letters | |
+| US2 | | | should | | | | | |
 
 **Killed or superseded stories.** Never delete a row; move it here so the id stays spent.
 
@@ -103,8 +107,8 @@ Skill: [story-writer](../../skills/story-writer/SKILL.md)
      Run this on every must before Gate 2. The check is not a formality: each
      letter catches a specific and common way a story fails, and the failures
      below are the ones that actually appear in real backlogs rather than the
-     tidy ones in the textbook. Record the verdict; a check nobody wrote down
-     did not happen. -->
+     tidy ones in the textbook. Record the verdict in the INVEST column of the
+     section 3 register; a check nobody wrote down did not happen. -->
 
 | Letter | It fails when | The question to ask |
 |---|---|---|

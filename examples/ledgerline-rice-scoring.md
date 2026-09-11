@@ -53,8 +53,8 @@ Row 5 scores 0.25 on purpose. Batch approval saves reviewer hours and moves firs
 
 Scores are buckets. Rows within about 20 percent of each other tie, and any row at 0.5 confidence gets a discovery task, not a build slot, however high it scores.
 
-- **Top bucket, rows 1 and 2.** Both go to the roadmap; 4 person-months of the 6.2 available after the mandate. Row 1 first, because it needs no review step and row 2 does.
-- **Middle bucket, rows 3 to 7.** Row 3 leads it but sits at opinion-level confidence with a four-month effort, so it gets a two-week count of how many bounced reports actually carry a card transaction. Row 4, at 0.8, takes 1.5 of the remaining 2.2 person-months. Rows 5 to 7 wait; row 6 was also deferred at Gate 2 for an eval reason (the receipt set could not hold a threshold on overlapping receipts), and the [Kano survey](ledgerline-kano-survey.md) classed it one-dimensional. A middling score overrules neither fact; it says KR 1 is not the argument for it.
+- **Top bucket, rows 1 and 2.** Both go to the roadmap; 4 person-months of the 7.2 available after the mandate. Row 1 first, because it needs no review step and row 2 does.
+- **Middle bucket, rows 3 to 7.** Row 3 leads it but sits at opinion-level confidence with a four-month effort, so it gets a two-week count of how many bounced reports actually carry a card transaction. Row 4, at 0.8, takes 1.5 of the remaining 3.2 person-months. Row 5 takes 1 of the 1.7 then left, because it is the last row in the bucket at 0.8 confidence and it fits; its 0.25 impact is already priced into the score, and the reviewer-hours case for it stays in the business case. Rows 6 and 7 wait on both counts: each sits at 0.5 confidence, which buys a discovery task rather than a build slot however it scores, and neither fits the 0.7 person-months remaining. Row 6 was also deferred at Gate 2 for an eval reason (the receipt set could not hold a threshold on overlapping receipts), and the [Kano survey](ledgerline-kano-survey.md) classed it one-dimensional. A middling score overrules neither fact; it says KR 1 is not the argument for it.
 - **Bottom bucket, rows 8 and 9.** Not this quarter. Row 9 is scored on zero interviews with its own user, so even 0.5 is generous.
 
 The row 4 over row 3 call, with the count as the condition to reopen it, goes to the decision log.
@@ -66,6 +66,6 @@ The row 4 over row 3 call, with the count as the condition to reopen it, goes to
 
 ## Feeds
 
-- [templates/planning/roadmap.md](../templates/planning/roadmap.md): the top bucket fills Now; row 4 and the row 3 discovery task fill Next, each with its precondition.
+- [templates/planning/roadmap.md](../templates/planning/roadmap.md): the top bucket fills Now; rows 4 and 5 and the row 3 discovery task fill Next, each with its precondition.
 - [templates/execution/decision-log.md](../templates/execution/decision-log.md): the tie-break and the row 3 deferral, with the options that lost.
 - Method: [knowledge/rice-prioritization.md](../knowledge/rice-prioritization.md), and the blank worksheet at `frameworks/prioritization/rice-scoring-sheet.md`.
