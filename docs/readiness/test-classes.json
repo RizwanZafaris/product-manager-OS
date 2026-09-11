@@ -94,6 +94,7 @@
     "test_pmos_review": [
       "AppleDoubleSidecarTests",
       "AttestationParentSymlinkTests",
+      "AttestationReadPathTests",
       "AttestationSymlinkTests",
       "DamagedRepositoryTests",
       "GitDiscoveryConservatismTests",

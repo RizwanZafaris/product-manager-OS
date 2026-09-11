@@ -889,10 +889,13 @@ class AttestationSymlinkTests(unittest.TestCase):
                 canonical.parent.mkdir(parents=True, exist_ok=True)
                 canonical.symlink_to(outside)
 
-                # An absolute --attestation path is used as-is (main() only
-                # joins REPO for a relative one), so this exercises the read
-                # path without touching the real repository tree.
-                code = review_gate.main(["--attestation", str(canonical)])
+                # main() resolves --attestation against, and validates
+                # against, the module-level REPO; patch it to this tmp tree
+                # (now that _read_attestation requires an in-root path) so
+                # the read path is exercised end to end without touching the
+                # real repository tree.
+                with patch.object(review_gate, "REPO", root):
+                    code = review_gate.main(["--attestation", str(canonical)])
 
                 self.assertEqual(1, code)
             finally:
@@ -907,10 +910,20 @@ class AttestationSymlinkTests(unittest.TestCase):
                 canonical = root / "independent-review.json"
                 canonical.symlink_to(outside)
                 with self.assertRaises(OSError):
-                    review_gate._write_attestation(canonical, "{}\n")
+                    review_gate._write_attestation(canonical, "{}\n", root)
                 self.assertEqual("do not touch\n", outside.read_text(encoding="utf-8"))
             finally:
                 outside.unlink(missing_ok=True)
+
+    def test_write_attestation_helper_requires_root(self):
+        """root used to be optional, with a fallback that reached the parent
+        directory by plain pathname resolution -- the round-2 bug again,
+        just reachable through this helper's own default. Finding P3-1: make
+        it required so that fallback cannot exist to reintroduce."""
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "independent-review.json"
+            with self.assertRaises(TypeError):
+                review_gate._write_attestation(path, "{}\n")
 
     def test_read_attestation_helper_rejects_a_symlink_directly(self):
         with TemporaryDirectory() as tmp:
@@ -921,7 +934,7 @@ class AttestationSymlinkTests(unittest.TestCase):
                 canonical = root / "independent-review.json"
                 canonical.symlink_to(outside)
                 with self.assertRaises(OSError):
-                    review_gate._read_attestation(canonical)
+                    review_gate._read_attestation(canonical, root)
             finally:
                 outside.unlink(missing_ok=True)
 
@@ -1084,6 +1097,142 @@ class AttestationParentSymlinkTests(unittest.TestCase):
             self.assertEqual(2, code)
             self.assertFalse((root.parent / "outside").exists())
             self.assertFalse((root / "outside").exists())
+
+
+class AttestationReadPathTests(unittest.TestCase):
+    """The read side (``_read_attestation``, exercised through ``main()``)
+    needs the same parent-directory protection the write side already has.
+
+    Commit 2c3485f fixed ``_write_attestation`` for a symlinked ``docs`` or
+    ``docs/readiness``: pathname resolution follows a symlink at any
+    component that is not the final one, so a symlink at either parent
+    directory sent a write wherever it pointed while ``record_review``
+    still reported success. ``_read_attestation`` had the identical bug on
+    the read side -- ``O_NOFOLLOW`` on a bare ``os.open(str(path), ...)``
+    only refuses a symlink at the *final* component -- so a symlinked
+    ``docs`` or ``docs/readiness`` holding an otherwise well-formed,
+    digest-matching attestation validated cleanly even though the file
+    actually read was never inside the reviewed tree: the writer refused
+    that layout, but the gate would read and accept it. Every test here
+    patches the module-level ``REPO`` to a throwaway tree so the real
+    repository is never touched, and proves the case fails against the
+    pre-fix reader (a plain ``os.open`` with leaf-only ``O_NOFOLLOW``) before
+    proving it is refused by the fixed one.
+    """
+
+    def test_refuses_when_docs_is_a_symlink_to_outside_the_tree(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.md").write_text("content\n", encoding="utf-8")
+            outside = root.parent / ("attn-read-docs-%d" % os.getpid())
+            (outside / "readiness").mkdir(parents=True)
+            try:
+                (root / "docs").symlink_to(outside, target_is_directory=True)
+                # A well-formed attestation, digest-matching root, planted
+                # exactly where the docs/ symlink resolves it to.
+                (outside / "readiness" / "independent-review.json").write_text(
+                    json.dumps(attestation(root)), encoding="utf-8")
+
+                with patch.object(review_gate, "REPO", root):
+                    code = review_gate.main([])
+
+                self.assertEqual(
+                    1, code,
+                    "a symlinked docs/ let the gate read and accept an "
+                    "attestation living outside the reviewed tree")
+            finally:
+                import shutil
+                shutil.rmtree(outside, ignore_errors=True)
+
+    def test_refuses_when_docs_readiness_is_a_symlink_to_outside_the_tree(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.md").write_text("content\n", encoding="utf-8")
+            (root / "docs").mkdir()
+            outside = root.parent / ("attn-read-readiness-%d" % os.getpid())
+            outside.mkdir()
+            try:
+                (root / "docs" / "readiness").symlink_to(
+                    outside, target_is_directory=True)
+                (outside / "independent-review.json").write_text(
+                    json.dumps(attestation(root)), encoding="utf-8")
+
+                with patch.object(review_gate, "REPO", root):
+                    code = review_gate.main([])
+
+                self.assertEqual(
+                    1, code,
+                    "a symlinked docs/readiness/ let the gate read and "
+                    "accept an attestation living outside the reviewed tree")
+            finally:
+                import shutil
+                shutil.rmtree(outside, ignore_errors=True)
+
+    def test_a_normal_attestation_still_validates(self):
+        """The ordinary case the fix must not break: a real docs/readiness/,
+        a well-formed attestation sitting where it belongs, read and
+        accepted through main() exactly as before."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.md").write_text("content\n", encoding="utf-8")
+            canonical = root / review_gate.ATTESTATION
+            canonical.parent.mkdir(parents=True, exist_ok=True)
+            canonical.write_text(json.dumps(attestation(root)), encoding="utf-8")
+
+            with patch.object(review_gate, "REPO", root):
+                code = review_gate.main([])
+
+            self.assertEqual(0, code)
+
+    def test_refuses_a_dot_dot_component_in_the_attestation_argument(self):
+        """Confirms the earlier finding stays fixed on the read path too:
+        ``docs/../../outside/escape.json`` walks into the real ``docs/``
+        first, then back out through literal ``..`` entries, which a plain
+        ``os.open(str(path), ...)`` resolves like any other pathname."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.md").write_text("content\n", encoding="utf-8")
+            (root / "docs").mkdir()
+            outside_dir = root.parent / "outside"
+            outside_dir.mkdir()
+            try:
+                (outside_dir / "escape.json").write_text(
+                    json.dumps(attestation(root)), encoding="utf-8")
+
+                with patch.object(review_gate, "REPO", root):
+                    code = review_gate.main(
+                        ["--attestation", "docs/../../outside/escape.json"])
+
+                self.assertEqual(
+                    1, code,
+                    "a '..' component in --attestation let the gate read "
+                    "and accept an attestation living outside the reviewed "
+                    "tree")
+            finally:
+                import shutil
+                shutil.rmtree(outside_dir, ignore_errors=True)
+
+    def test_refuses_an_absolute_attestation_argument_outside_root(self):
+        """No symlink and no ``..`` at all here -- just a plain absolute
+        path outside the tree, holding a well-formed, digest-matching
+        attestation. Before the containment check this validated cleanly,
+        because an absolute --attestation is used as-is and nothing then
+        checked it was actually inside the reviewed tree."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.md").write_text("content\n", encoding="utf-8")
+            outside = root.parent / ("attn-read-outside-%d" % os.getpid())
+            outside.write_text(json.dumps(attestation(root)), encoding="utf-8")
+            try:
+                with patch.object(review_gate, "REPO", root):
+                    code = review_gate.main(["--attestation", str(outside)])
+
+                self.assertEqual(
+                    1, code,
+                    "an absolute --attestation path outside root was read "
+                    "and accepted instead of refused")
+            finally:
+                outside.unlink(missing_ok=True)
 
 
 class RecordReviewTests(unittest.TestCase):
