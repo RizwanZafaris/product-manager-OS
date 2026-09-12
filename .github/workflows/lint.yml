@@ -99,6 +99,15 @@ jobs:
       - name: Graph freshness
         run: python3 tools/graph.py --check
 
+      # The phase index is generated from the templates, the frameworks whose
+      # feeds name them and the examples that fill them, so a commit that
+      # changes any of those without regenerating leaves an index that points
+      # a reader at the wrong framework or example. This step is what makes
+      # docs/PHASE-INDEX.md a reading of the repository rather than a second
+      # copy of it.
+      - name: Phase index freshness
+        run: python3 tools/phase_index.py --check
+
       # The router table in CLAUDE.md is the human face of the task list and
       # harness/MANIFEST.json is the machine face. They are two descriptions of
       # one contract, so a row added to either without the other is a silent

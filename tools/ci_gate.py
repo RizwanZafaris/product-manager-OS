@@ -83,6 +83,11 @@ GATES = (
     # it passes however stale the committed measurement is.
     Gate("skill-rubric-freshness", ("python3", "tools/skill_rubric.py",
          "--check")),
+    # Same instrument as graph-freshness, for docs/PHASE-INDEX.md, which a
+    # reader uses to find a phase's frameworks, templates, filled examples
+    # and working-copy IDs, so a stale copy points them at the wrong one.
+    Gate("phase-index-freshness", ("python3", "tools/phase_index.py",
+         "--check")),
     Gate("manifest-contract", ("python3", "tools/check_manifest.py",
          "--quiet")),
     Gate("frontmatter", ("python3", "tools/frontmatter_init.py", "--dry-run"),
