@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 from typing import Any, Sequence
 
-from .banks import LEGACY_ONBOARDING, banks_from_contract, parse_contract, shipped_banks
+from .banks import CONTRACT_PATH, LEGACY_ONBOARDING, banks_from_contract, parse_contract, shipped_banks
 from .conductor import Conductor, QuestionBank, TurnOutcome
 from .migrations import migrate_workspace, recover_workspace, rollback_workspace
 from .release import build_provenance, verify_provenance
@@ -211,10 +211,18 @@ def _paths(path: str | Path) -> tuple[Path, Path]:
 
 def _run_new_user(root: Path, product_id: str) -> dict[str, Any]:
     _root, database = _paths(root)
+    # The shipped contract is read and checked before the product exists, so a
+    # broken install fails init without leaving a product that has no pin.
+    raw = CONTRACT_PATH.read_bytes()
+    parse_contract(raw)
     with Store(database) as store:
-        store.create_product(product_id)
+        head = store.create_product(product_id)
+        published = store.commit(product_id, {PIN_PATH: raw}, expected_revision=head,
+                                 metadata={"reason": "pin the question bank contract"})
+        if not published.committed:
+            raise StoreError("could not pin the question bank contract")
         conductor = Conductor(store, product_id, _product_banks(store, product_id))
-        pending = conductor.next_turn(expected_revision=0)
+        pending = conductor.next_turn(expected_revision=published.head)
         if pending.status != "question" or pending.question is None:
             raise StoreError("onboarding did not produce a deterministic first question")
         verified = store.verify()

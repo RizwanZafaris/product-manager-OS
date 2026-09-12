@@ -30,7 +30,8 @@ class CliTests(unittest.TestCase):
             self.assertEqual(main(["--json", "status", "--path", folder]), 0)
             self.assertEqual(main(["verify", "--path", folder, "--json"]), 0)
             with Store(Path(folder) / ".pmos/runtime.sqlite") as store:
-                self.assertEqual(store.head("checkout").revision, 0)
+                self.assertEqual(store.head("checkout").revision, 1)
+                self.assertIn(PIN_PATH, store.read_snapshot("checkout").files)
 
     def status(self, folder: str) -> dict:
         output = StringIO()
@@ -44,22 +45,38 @@ class CliTests(unittest.TestCase):
             self.assertEqual(main(["status", "--path", folder, "--product-id", "checkout"]), 0)
         return output.getvalue()
 
-    def answer(self, folder: str, evidence: dict, token: str, turn_id: str) -> dict:
+    def answer(self, folder: str, evidence: dict, token: str, turn_id: str,
+               question_id: str = "DISCOVER-1") -> dict:
         output = StringIO()
         with redirect_stdout(output):
-            main(["answer", "--path", folder, "--product-id", "checkout", "--question-id", "first-outcome",
+            main(["answer", "--path", folder, "--product-id", "checkout", "--question-id", question_id,
                   "--answer", "A real outcome", "--evidence", json.dumps(evidence),
                   "--expected-revision", token, "--turn-id", turn_id, "--json"])
         return json.loads(output.getvalue())
+
+    def answer_bank(self, folder: str, prefix: str) -> dict:
+        for _ in range(20):
+            status = self.status(folder)
+            if status["interview"] != "question":
+                return status
+            question_id = status["question"]["id"]
+            result = self.answer(folder, {"class": "observed_behavior", "source": "interview-001",
+                                          "date": "2026-09-04", "location": "customer-call"},
+                                 status["revision_token"], prefix + "-" + question_id,
+                                 question_id=question_id)
+            self.assertEqual(result["outcome"]["status"], "accepted")
+        self.fail("the bank did not finish")
 
     def test_status_alone_resumes_the_interview_after_init(self):
         with TemporaryDirectory() as parent:
             folder = str(Path(parent) / "work space")
             self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
             status = self.status(folder)
-            self.assertEqual(status["revision_token"], "0:-")
-            self.assertEqual((status["interview"], status["question"]["id"]), ("question", "first-outcome"))
-            self.assertIn("--expected-revision 0:-", status["next"])
+            # init commits the pinned contract, so the product starts at revision 1, not 0:-.
+            with Store(Path(folder) / ".pmos/runtime.sqlite") as store:
+                self.assertEqual(status["revision_token"], store.head("checkout").token)
+            self.assertEqual((status["interview"], status["question"]["id"]), ("question", "DISCOVER-1"))
+            self.assertIn("--expected-revision " + shlex.quote(status["revision_token"]), status["next"])
             self.assertIn(shlex.quote(str(Path(folder).resolve())), status["next"])
             human = self.human_status(folder)
             for value in (status["revision_token"], status["question"]["id"], status["next"]):
@@ -81,7 +98,13 @@ class CliTests(unittest.TestCase):
     def test_a_product_without_a_pin_keeps_the_legacy_bank(self):
         with TemporaryDirectory() as folder:
             self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
-            status = self.status(folder)
+            # init pins now, so a product created through the Store alone stands for one made before the pin.
+            with Store(Path(folder) / ".pmos/runtime.sqlite") as store:
+                store.create_product("legacy")
+            output = StringIO()
+            with redirect_stdout(output):
+                self.assertEqual(main(["--json", "status", "--path", folder, "--product-id", "legacy"]), 0)
+            status = json.loads(output.getvalue())
             self.assertEqual(status["question"]["id"], "first-outcome")
             self.assertEqual(status["question_banks"]["pinned"], {"onboarding": "v1"})
             self.assertEqual(set(status["question_banks"]["shipped"]),
@@ -92,7 +115,6 @@ class CliTests(unittest.TestCase):
     def test_a_pinned_product_runs_the_pinned_banks(self):
         with TemporaryDirectory() as folder:
             self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
-            self.pin(folder, CONTRACT_PATH.read_bytes())
             status = self.status(folder)
             self.assertEqual(status["current_bank_id"], "discover")
             self.assertEqual(status["question"]["id"], "DISCOVER-1")
@@ -154,13 +176,13 @@ class CliTests(unittest.TestCase):
             for label in ("bad1", "bad2", "bad3"):
                 token = self.answer(folder, {"class": "observed_behavior", "source": "real interview"},
                                     token, label)["outcome"]["revision"]
-            status = self.status(folder)
-            self.assertEqual(status["revision_token"], token)
+            # Parking DISCOVER-1 moves the cursor on; the reopen is next once the rest of the bank is answered.
+            status = self.answer_bank(folder, "rest")
             (parked,) = status["parked"]
-            self.assertEqual(parked["question_id"], "first-outcome")
+            self.assertEqual(parked["question_id"], "DISCOVER-1")
             self.assertEqual(status["next"], parked["reopen"])
-            for part in ("pmos reopen --path", "--product-id checkout", "--question-id first-outcome",
-                         "--expected-revision %s" % token, "--turn-id '<new turn id>'"):
+            for part in ("pmos reopen --path", "--product-id checkout", "--question-id DISCOVER-1",
+                         "--expected-revision %s" % status["revision_token"], "--turn-id '<new turn id>'"):
                 self.assertIn(part, parked["reopen"])
             self.assertIn(parked["reopen"], self.human_status(folder))
 
@@ -173,19 +195,17 @@ class CliTests(unittest.TestCase):
                                           "date": "2026-09-04", "location": "customer-call"},
                                  self.status(folder)["revision_token"], "answer-verified")
             self.assertEqual(result["outcome"]["status"], "accepted")
-            status = self.status(folder)
-            self.assertEqual((status["source_verified"], status["supplied_unverified"]), (1, 0))
+            status = self.answer_bank(folder, "rest")
+            self.assertEqual((status["source_verified"], status["supplied_unverified"]), (1, 8))
             self.assertEqual(status["interview"], "blocked")
             self.assertIn("pmos gate", status["next"])
-            self.assertIn("--bank-id onboarding", status["next"])
+            self.assertIn("--bank-id discover", status["next"])
 
     def test_status_reports_a_stale_gate_with_the_command_that_proves_it_again(self):
         with TemporaryDirectory() as folder:
             self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
-            result = self.answer(folder, {"class": "observed_behavior", "source": "interview-001",
-                                          "date": "2026-09-04", "location": "customer-call"},
-                                 self.status(folder)["revision_token"], "answer-1")
-            self.assertEqual(self.status(folder)["supplied_unverified"], 1)
+            status = self.answer_bank(folder, "a")
+            self.assertEqual(status["supplied_unverified"], 9)
             proof = Path(folder, "onboarding-approval.txt")
             proof.write_bytes(b"reviewed onboarding evidence\n")
             gate = {"source": "onboarding-approval.txt", "source_sha256": hashlib.sha256(proof.read_bytes()).hexdigest(),
@@ -193,15 +213,16 @@ class CliTests(unittest.TestCase):
                     "approved_at": "2026-09-04T00:00:00Z"}
             output = StringIO()
             with redirect_stdout(output):
-                self.assertEqual(main(["gate", "--path", folder, "--product-id", "checkout", "--bank-id", "onboarding",
+                self.assertEqual(main(["gate", "--path", folder, "--product-id", "checkout", "--bank-id", "discover",
                                        "--evidence", json.dumps(gate), "--expected-revision",
-                                       result["outcome"]["revision"], "--turn-id", "gate-1", "--json"]), 0)
-            self.assertEqual(self.status(folder)["interview"], "completed")
+                                       status["revision_token"], "--turn-id", "gate-1", "--json"]), 0)
+            after = self.status(folder)
+            self.assertEqual((after["interview"], after["current_bank_id"]), ("question", "define"))
             proof.write_bytes(b"changed after approval\n")
             status = self.status(folder)
             self.assertEqual(status["interview"], "stale")
             (stale,) = status["stale_banks"]
-            self.assertEqual(stale["bank_id"], "onboarding")
+            self.assertEqual(stale["bank_id"], "discover")
             self.assertEqual(status["next"], stale["gate"])
             self.assertIn("pmos gate", stale["gate"])
 
@@ -258,9 +279,7 @@ class CliTests(unittest.TestCase):
     def test_a_stale_gate_can_be_proved_again_through_the_cli(self):
         with TemporaryDirectory() as folder:
             self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
-            result = self.answer(folder, {"class": "observed_behavior", "source": "interview-001",
-                                          "date": "2026-09-04", "location": "customer-call"},
-                                 self.status(folder)["revision_token"], "answer-1")
+            status = self.answer_bank(folder, "a")
             proof = Path(folder, "onboarding-approval.txt")
 
             def gate(data: bytes, turn_id: str, token: str) -> dict:
@@ -270,18 +289,19 @@ class CliTests(unittest.TestCase):
                             "approved_at": "2026-09-04T00:00:00Z"}
                 output = StringIO()
                 with redirect_stdout(output):
-                    main(["gate", "--path", folder, "--product-id", "checkout", "--bank-id", "onboarding",
+                    main(["gate", "--path", folder, "--product-id", "checkout", "--bank-id", "discover",
                           "--evidence", json.dumps(evidence), "--expected-revision", token,
                           "--turn-id", turn_id, "--json"])
                 return json.loads(output.getvalue())
 
-            self.assertTrue(gate(b"reviewed onboarding evidence\n", "gate-1", result["outcome"]["revision"])["ok"])
+            self.assertTrue(gate(b"reviewed onboarding evidence\n", "gate-1", status["revision_token"])["ok"])
             proof.write_bytes(b"changed after approval\n")
             stale = self.status(folder)
             self.assertEqual(stale["interview"], "stale")
             again = gate(b"re-reviewed onboarding evidence\n", "gate-2", stale["revision_token"])
-            self.assertEqual((again["ok"], again["outcome"]["status"]), (True, "completed"))
-            self.assertEqual(self.status(folder)["interview"], "completed")
+            # Re-proving DISCOVER moves the interview on again; five banks are still to come.
+            self.assertEqual((again["ok"], again["outcome"]["status"]), (True, "advanced"))
+            self.assertEqual(self.status(folder)["interview"], "question")
 
     def test_gitignore_covers_pmos_runtime_and_sqlite_sidecars(self):
         """F07: .gitignore must ignore .pmos/ at any depth and SQLite sidecar
@@ -339,7 +359,7 @@ class CliTests(unittest.TestCase):
             valid = {"class": "observed_behavior", "source": "interview-001",
                      "date": "2026-09-04", "location": "customer-call"}
             self.assertEqual(main(["answer", "--path", folder, "--product-id", "checkout",
-                                   "--question-id", "first-outcome", "--answer", "A real outcome",
+                                   "--question-id", "DISCOVER-1", "--answer", "A real outcome",
                                    "--evidence", json.dumps(valid), "--expected-revision", current,
                                    "--turn-id", "v1", "--json"]), 0)
             output = StringIO()
@@ -354,34 +374,36 @@ class CliTests(unittest.TestCase):
             self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
             self.assertEqual(main(["init", "--path", folder, "--product-id", "billing"]), 0)
             with Store(Path(folder) / ".pmos/runtime.sqlite") as store:
-                self.assertEqual(store.head("billing").revision, 0)
+                self.assertEqual(store.head("billing").revision, 1)
 
     def test_user_supplied_evidence_flow_rejects_invalid_and_stale_submissions(self):
         with TemporaryDirectory() as folder:
             self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            with Store(Path(folder) / ".pmos/runtime.sqlite") as store:
+                initial = store.head("checkout").token
             invalid = {"class": "observed_behavior", "source": "real interview"}
             self.assertEqual(main(["answer", "--path", folder, "--product-id", "checkout",
-                                   "--question-id", "first-outcome", "--answer", "A real outcome",
-                                   "--evidence", json.dumps(invalid), "--expected-revision", "0:-",
+                                   "--question-id", "DISCOVER-1", "--answer", "A real outcome",
+                                   "--evidence", json.dumps(invalid), "--expected-revision", initial,
                                    "--turn-id", "invalid-v1", "--json"]), 1)
             valid = {"class": "observed_behavior", "source": "interview-001",
                      "date": "2026-09-04", "location": "customer-call"}
             # The invalid attempt advanced the durable revision; using the old
             # token must fail closed rather than overwrite the challenge.
             self.assertEqual(main(["answer", "--path", folder, "--product-id", "checkout",
-                                   "--question-id", "first-outcome", "--answer", "A real outcome",
-                                   "--evidence", json.dumps(valid), "--expected-revision", "0:-",
+                                   "--question-id", "DISCOVER-1", "--answer", "A real outcome",
+                                   "--evidence", json.dumps(valid), "--expected-revision", initial,
                                    "--turn-id", "stale-v1", "--json"]), 1)
             with Store(Path(folder) / ".pmos/runtime.sqlite") as store:
                 current = store.head("checkout").token
             answer_output = StringIO()
             with redirect_stdout(answer_output):
                 self.assertEqual(main(["answer", "--path", folder, "--product-id", "checkout",
-                                       "--question-id", "first-outcome", "--answer", "A real outcome",
+                                       "--question-id", "DISCOVER-1", "--answer", "A real outcome",
                                        "--evidence", json.dumps(valid), "--expected-revision", current,
                                        "--turn-id", "valid-v1", "--json"]), 0)
-            accepted = json.loads(answer_output.getvalue())
-            next_revision = accepted["outcome"]["revision"]
+            self.assertEqual(json.loads(answer_output.getvalue())["outcome"]["status"], "accepted")
+            status = self.answer_bank(folder, "flow")
             proof_bytes = b"reviewed onboarding evidence\n"
             Path(folder, "onboarding-approval.txt").write_bytes(proof_bytes)
             gate_evidence = {
@@ -395,12 +417,13 @@ class CliTests(unittest.TestCase):
             gate_output = StringIO()
             with redirect_stdout(gate_output):
                 self.assertEqual(main(["gate", "--path", folder, "--product-id", "checkout",
-                                       "--bank-id", "onboarding", "--evidence",
+                                       "--bank-id", "discover", "--evidence",
                                        json.dumps(gate_evidence),
-                                       "--expected-revision", next_revision,
+                                       "--expected-revision", status["revision_token"],
                                        "--turn-id", "gate-v1", "--json"]), 0)
             gated = json.loads(gate_output.getvalue())
-            self.assertTrue(gated["outcome"]["completed"])
+            # A gate that moves the interview on is ok without completing it.
+            self.assertEqual((gated["outcome"]["status"], gated["outcome"]["completed"]), ("advanced", False))
 
     def test_reopen_parked_question_then_answer_with_fresh_evidence(self):
         with TemporaryDirectory() as folder:
@@ -418,24 +441,24 @@ class CliTests(unittest.TestCase):
             invalid = {"class": "observed_behavior", "source": "real interview"}
             for label in ("bad1", "bad2", "bad3"):
                 self.assertEqual(main(["answer", "--path", folder, "--product-id", "checkout",
-                                       "--question-id", "first-outcome", "--answer", "A real outcome",
+                                       "--question-id", "DISCOVER-1", "--answer", "A real outcome",
                                        "--evidence", json.dumps(invalid),
                                        "--expected-revision", token(), "--turn-id", label, "--json"]), 1)
             reopen_args = ["reopen", "--path", folder, "--product-id", "checkout",
-                           "--question-id", "first-outcome", "--reason", "found the call recording",
+                           "--question-id", "DISCOVER-1", "--reason", "found the call recording",
                            "--expected-revision", token(), "--turn-id", "reopen-1", "--json"]
             reopen_output = StringIO()
             with redirect_stdout(reopen_output):
                 self.assertEqual(main(reopen_args), 0)
             reopened = json.loads(reopen_output.getvalue())
             self.assertEqual((reopened["ok"], reopened["outcome"]["status"]), (True, "reopened"))
-            self.assertEqual(reopened["outcome"]["question"]["id"], "first-outcome")
+            self.assertEqual(reopened["outcome"]["question"]["id"], "DISCOVER-1")
             valid = {"class": "observed_behavior", "source": "interview-001",
                      "date": "2026-09-04", "location": "customer-call"}
             answer_output = StringIO()
             with redirect_stdout(answer_output):
                 self.assertEqual(main(["answer", "--path", folder, "--product-id", "checkout",
-                                       "--question-id", "first-outcome", "--answer", "A real outcome",
+                                       "--question-id", "DISCOVER-1", "--answer", "A real outcome",
                                        "--evidence", json.dumps(valid),
                                        "--expected-revision", reopened["outcome"]["revision"],
                                        "--turn-id", "good-after-reopen", "--json"]), 0)
@@ -527,7 +550,7 @@ class CliTests(unittest.TestCase):
             restored = rollback_workspace(destination)
             self.assertTrue(restored.ok)
             with Store(destination / ".pmos/runtime.sqlite") as store:
-                self.assertEqual(store.head("checkout").revision, 0)
+                self.assertEqual(store.head("checkout").revision, 1)
 
             fresh = root / "fresh"
             create_legacy_fixture(fresh)
@@ -547,7 +570,7 @@ class CliTests(unittest.TestCase):
             with self.assertRaises(MigrationError):
                 migrate_workspace(legacy, destination, product_id="checkout", fault_injector=fail)
             with Store(destination / ".pmos/runtime.sqlite") as store:
-                self.assertEqual(store.head("checkout").revision, 0)
+                self.assertEqual(store.head("checkout").revision, 1)
             existing_journal = json.loads((destination / ".pmos/migration-journal.json").read_text(encoding="utf-8"))
             self.assertEqual(existing_journal["state"], "prepared")
 
@@ -865,7 +888,7 @@ class CliTests(unittest.TestCase):
             self.assertEqual(recover_workspace(destination).status, "rolled_back")
             self.assertEqual(rollback_workspace(destination).status, "rolled_back")
             with Store(runtime) as store:
-                self.assertEqual(store.head("checkout").revision, 0)
+                self.assertEqual(store.head("checkout").revision, 1)
 
     def test_planned_file_symlink_swap_and_migration_limits_fail_closed(self):
         with TemporaryDirectory() as folder, TemporaryDirectory() as outside:
