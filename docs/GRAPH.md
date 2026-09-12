@@ -26,7 +26,7 @@ One subgraph per stage of the loop in [os/OPERATING-LOOP.md](../os/OPERATING-LOO
 | Files declaring a `feeds` key | 146 |
 | Nodes in the diagram | 257 |
 | Artifact nodes | 251 |
-| Edges in the diagram | 550 |
+| Edges in the diagram | 552 |
 | Feeds values that resolved to nothing | 0 |
 
 A file with no frontmatter is not an error, and a file with frontmatter has not necessarily declared a feed: every SKILL.md and agent file carries a name and a description already. The `feeds` pass lands file by file, and until it reaches a file, that file still contributes whatever its Stage header declares.
@@ -116,6 +116,9 @@ flowchart LR
     n_templates_definition_user_stories_md_a49e1cf8["definition/user-stories"]
     n_templates_definition_ux_writing_guide_md_5da176ac["definition/ux-writing-guide"]
     n_templates_operate_compliance_impact_assessment_md_26f196a7["operate/compliance-impact-assessment"]
+    n_templates_planning_product_strategy_md_09d425db["planning/product-strategy"]
+    n_templates_planning_roadmap_md_2afb97a8["planning/roadmap"]
+    n_templates_planning_vision_md_40cadae0["planning/vision"]
   end
   subgraph s_DESIGN["DESIGN"]
     direction LR
@@ -281,10 +284,7 @@ flowchart LR
     n_templates_planning_okrs_md_0ec1515d["planning/okrs"]
     n_templates_planning_positioning_md_bfa6b195["planning/positioning"]
     n_templates_planning_pricing_packaging_md_5a0c4db5["planning/pricing-packaging"]
-    n_templates_planning_product_strategy_md_09d425db["planning/product-strategy"]
     n_templates_planning_program_charter_md_73783114["planning/program-charter"]
-    n_templates_planning_roadmap_md_2afb97a8["planning/roadmap"]
-    n_templates_planning_vision_md_40cadae0["planning/vision"]
   end
   subgraph s_AI_OVERLAY["AI overlay track"]
     direction LR
@@ -437,7 +437,9 @@ flowchart LR
   n_templates_planning_growth_plan_md_ab26a0ea --> G6
   n_templates_planning_gtm_plan_md_61b54e46 --> G5
   n_templates_planning_pricing_packaging_md_5a0c4db5 --> G5
+  n_templates_planning_product_strategy_md_09d425db --> G2
   n_templates_planning_program_charter_md_73783114 --> G2
+  n_templates_planning_vision_md_40cadae0 --> G2
   n_agents_acceptance_agent_md_468449b6 -.-> n_agents_drafting_agent_md_57d815a7
   n_agents_acceptance_agent_md_468449b6 -.-> n_agents_release_manager_agent_md_550633f5
   n_agents_acceptance_agent_md_468449b6 -.-> n_templates_delivery_uat_plan_md_71125f94
@@ -878,11 +880,11 @@ flowchart LR
 | Stage | Gates | Artifacts with a declared relationship |
 |---|---|---|
 | DISCOVER | Gate 1 | 40 |
-| DEFINE | Gate 2 | 34 |
+| DEFINE | Gate 2 | 37 |
 | DESIGN | Gate 3 | 42 |
 | BUILD | Gate 4 | 11 |
 | DELIVER | Gate 5 | 22 |
 | OPERATE | Gate 6 | 29 |
-| PLANNING track | none | 46 |
+| PLANNING track | none | 43 |
 | AI overlay track | none | 11 |
 | ALL STAGES, cross cutting | none | 16 |

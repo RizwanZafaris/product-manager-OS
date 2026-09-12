@@ -1,14 +1,14 @@
 ---
 layer: templates
-stage: PLANNING
-gate: 1
+stage: DEFINE
+gate: 2
 feeds: []
 method: "knowledge/cagan-product-teams.md"
 aliases: ["Product Vision", "vision"]
 ---
 # Product Vision: [product name]
 
-**Stage:** PLANNING track (feeds every stage of the [operating loop](../../os/OPERATING-LOOP.md))
+**Stage:** DEFINE, the first artifact of the stage, approved at [Gate 2](../../os/STAGE-GATES.md) by the business sponsor; see the [operating loop](../../os/OPERATING-LOOP.md)
 **Knowledge:** [Cagan on product teams](../../knowledge/cagan-product-teams.md)
 **Skill:** [write-vision-strategy](../../skills/write-vision-strategy/SKILL.md)
 
@@ -113,4 +113,4 @@ This vision is fit to publish when:
 - [ ] Every non-goal carries a reason and a revisit condition
 - [ ] A team could use this document to say no to a plausible feature request
 
-Signed: [name], [role], [YYYY-MM-DD]
+Approved at Gate 2 by the business sponsor: [name], [YYYY-MM-DD]

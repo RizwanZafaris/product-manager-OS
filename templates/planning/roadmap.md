@@ -1,14 +1,14 @@
 ---
 layer: templates
-stage: PLANNING
-gate: 1
+stage: DEFINE
+gate: 2
 feeds: []
 method: "knowledge/rice-prioritization.md"
 aliases: ["Roadmap"]
 ---
 # Roadmap: [product name]
 
-**Stage:** PLANNING track (feeds every stage of the [operating loop](../../os/OPERATING-LOOP.md))
+**Stage:** DEFINE, after the vision and strategy, approved at [Gate 2](../../os/STAGE-GATES.md) by the product owner and the engineering lead. At portfolio level (which products enter the loop and when) the same template is PLANNING track work that feeds every stage of the [operating loop](../../os/OPERATING-LOOP.md), reviewed on its own cadence.
 **Knowledge:** [RICE prioritization](../../knowledge/rice-prioritization.md)
 **Skill:** [roadmap builder](../../skills/roadmap-builder/SKILL.md)
 
@@ -125,4 +125,6 @@ This roadmap is fit to share when:
 - [ ] At least one thing has been parked or killed since the last review, or the owner has written why not
 - [ ] The change log shows the roadmap is alive, not laminated
 
-Signed: [name], [role], [YYYY-MM-DD]
+Product roadmap, approved at Gate 2 by the product owner: [name], [YYYY-MM-DD]
+Product roadmap, approved at Gate 2 by the engineering lead: [name], [YYYY-MM-DD]
+Portfolio roadmap, reviewed on the planning cadence by: [name], [role], [YYYY-MM-DD]

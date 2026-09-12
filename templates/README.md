@@ -140,12 +140,12 @@ OPERATE, feeding Gate 6: outcomes verified, learn or sunset. Skipping this stage
 
 ## planning (16 templates)
 
-The PLANNING track. Most of these feed every stage and are reviewed on their own cadence rather than at a gate. The GTM plan and the growth plan are the exceptions: they are written at DELIVER and OPERATE and feed Gate 5 and Gate 6.
+The PLANNING track. Most of these feed every stage and are reviewed on their own cadence rather than at a gate. A product's vision, strategy and roadmap are the exceptions at the start of the loop: they open DEFINE and are approved at Gate 2. The GTM plan and the growth plan are exceptions too: they are written at DELIVER and OPERATE and feed Gate 5 and Gate 6.
 
 | Template | What it is | Reach for it when |
 |---|---|---|
 | [business-case.md](planning/business-case.md) | Options compared in money over time, with sensitivities, recommending one and labeling every number ILLUSTRATIVE until finance agrees the method | Money or headcount is being allocated across years and a sponsor needs the alternatives priced, not just the winner |
-| [roadmap.md](planning/roadmap.md) | Now, Next, Later horizons with theme, initiative, target period, confidence, dependencies, status, and an expectations-not-commitments preamble | Deciding which products enter the loop and roughly when |
+| [roadmap.md](planning/roadmap.md) | Now, Next, Later horizons with theme, initiative, target period, confidence, dependencies, status, and an expectations-not-commitments preamble | Deciding which products enter the loop and roughly when, or ordering one product's phases, each with an outcome, in DEFINE |
 | [okrs.md](planning/okrs.md) | An objective with three to five key results, each carrying a baseline and a target, plus a scoring cadence | The targets Gate 6 will verify have to exist before the work starts |
 | [vision.md](planning/vision.md) | Future-state narrative, why now, who for, north-star tie-in, non-goals | A team needs a shared picture concrete enough to decide with when you are not in the room |
 | [product-strategy.md](planning/product-strategy.md) | Strategic context, where-to-play bets, differentiation, sequencing, key risks | Choice under constraint has to be written down. A goals slide is not a strategy |
