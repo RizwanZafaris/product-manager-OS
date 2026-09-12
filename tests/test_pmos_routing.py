@@ -1,7 +1,13 @@
+import datetime as _dt
 import os
+import subprocess
+import sys
 import time
+import tempfile
 import unittest
 from dataclasses import replace
+from pathlib import Path
+from unittest import mock
 
 from pmos.routing import (
     EnvironmentSecrets,
@@ -15,6 +21,13 @@ from pmos.routing import (
     RiskTrustPolicy,
     RouteStatus,
     RoutingRequest,
+)
+from pmos.spend import (
+    BudgetExceeded,
+    SpendLedger,
+    UnresolvedCharge,
+    day_scope,
+    default_path,
 )
 
 
@@ -175,6 +188,163 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(len(second.calls), 0)
         self.assertIn("fallback budget exhausted",
                       [attempt.reason for attempt in bounded.attempts])
+
+    def test_spend_reservation_fit_succeeds_and_exceed_records_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "spend.sqlite"
+            ledger = SpendLedger(path)
+            ledger.reserve("fit", 0.4, {"day:2026-09-12": 1.0})
+            self.assertAlmostEqual(ledger.committed("day:2026-09-12"), 0.4)
+            ledger.settle("fit", 0.35)
+            self.assertAlmostEqual(ledger.committed("day:2026-09-12"), 0.35)
+            with self.assertRaises(BudgetExceeded):
+                ledger.reserve("overflow", 0.9, {"day:2026-09-12": 1.0})
+            ledger.close()
+            reopen = SpendLedger(path)
+            self.assertAlmostEqual(reopen.committed("day:2026-09-12"), 0.35)
+            reopen.close()
+
+    def test_spend_two_objects_on_one_file_cannot_together_exceed_cap(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "spend.sqlite"
+            first = SpendLedger(path)
+            second = SpendLedger(path)
+            first.reserve("first", 0.6, {"day:2026-09-12": 1.0})
+            with self.assertRaises(BudgetExceeded):
+                second.reserve("second", 0.6, {"day:2026-09-12": 1.0})
+            self.assertAlmostEqual(second.committed("day:2026-09-12"), 0.6)
+            first.close()
+            second.close()
+
+    def test_spend_two_processes_started_together_share_cap(self):
+        script = (
+            "import sys, time\n"
+            "from pathlib import Path\n"
+            "from pmos.spend import SpendLedger\n"
+            "path = Path(sys.argv[1])\n"
+            "release = Path(sys.argv[2])\n"
+            "timeout = float(sys.argv[3])\n"
+            "deadline = time.time() + timeout\n"
+            "while not release.exists() and time.time() < deadline:\n"
+            "    time.sleep(0.01)\n"
+            "if not release.exists():\n"
+            "    sys.exit(2)\n"
+            "try:\n"
+            "    ledger = SpendLedger(str(path))\n"
+            "    ledger.reserve('worker-' + str(sys.argv[4]), 0.6, "
+            "{'day:2026-09-12': 1.0})\n"
+            "    ledger.close()\n"
+            "    sys.exit(0)\n"
+            "except Exception as exc:\n"
+            "    sys.stderr.write(str(exc) + '\\n')\n"
+            "    sys.exit(1)\n"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "spend.sqlite"
+            release = Path(tmp) / "release"
+            env = dict(os.environ)
+            root = Path(__file__).resolve().parents[1]
+            existing = env.get("PYTHONPATH", "")
+            env["PYTHONPATH"] = str(root) + (os.pathsep + existing if existing else "")
+            procs = [subprocess.Popen(
+                [sys.executable, "-c", script, str(path), str(release), "30", name],
+                env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            ) for name in ("a", "b")]
+            time.sleep(0.1)
+            release.touch()
+            results = [proc.communicate(timeout=60) for proc in procs]
+            err_a, err_b = (err.decode("utf-8", "replace") for _out, err in results)
+            outcomes = [proc.returncode for proc in procs]
+            self.assertIn("exceeded", err_a + err_b)
+            self.assertIn(0, outcomes)
+            self.assertIn(1, outcomes)
+            self.assertEqual(outcomes.count(0), 1)
+            self.assertEqual(outcomes.count(1), 1)
+            self.assertNotEqual(err_a + err_b, "")
+
+    def test_spend_settle_with_real_cost_charges_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "spend.sqlite"
+            ledger = SpendLedger(path)
+            ledger.reserve("call", 0.1, {"day:2026-09-12": 1.0})
+            ledger.settle("call", 0.08)
+            self.assertAlmostEqual(ledger.committed("day:2026-09-12"), 0.08)
+            ledger.close()
+
+    def test_spend_settle_none_keeps_reservation_and_blocks_until_reconcile(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "spend.sqlite"
+            ledger = SpendLedger(path)
+            ledger.reserve("unknown", 0.1, {"day:2026-09-12": 1.0})
+            ledger.settle("unknown", None)
+            self.assertAlmostEqual(ledger.committed("day:2026-09-12"), 0.1)
+            with self.assertRaises(UnresolvedCharge):
+                ledger.reserve("next", 0.1, {"day:2026-09-12": 1.0})
+            ledger.reconcile("unknown", 0.07)
+            ledger.reserve("next", 0.1, {"day:2026-09-12": 1.0})
+            ledger.close()
+
+    def test_spend_reservation_never_settled_still_counts_after_reopen(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "spend.sqlite"
+            ledger = SpendLedger(path)
+            ledger.reserve("abandoned", 0.4, {"day:2026-09-12": 1.0})
+            ledger.close()
+            reopen = SpendLedger(path)
+            self.assertAlmostEqual(reopen.committed("day:2026-09-12"), 0.4)
+            reopen.close()
+
+    def test_spend_invalid_amounts_raise_value_error(self):
+        cases = [float("nan"), float("inf"), float("-inf"), -0.1, True, False]
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "spend.sqlite"
+            ledger = SpendLedger(path)
+            for value in cases:
+                with self.assertRaises(ValueError):
+                    ledger.reserve("k-%s" % id(value), value, {"day:2026-09-12": 1.0})
+                with self.assertRaises(ValueError):
+                    ledger.reserve("k-cap-%s" % id(value), 0.1,
+                                   {"day:2026-09-12": value})
+                with self.assertRaises(ValueError):
+                    ledger.reserve("k-ext-%s" % id(value), 0.1,
+                                   {"day:2026-09-12": 1.0},
+                                   external={"day:2026-09-12": value})
+            ledger.reserve("good", 0.1, {"day:2026-09-12": 1.0})
+            for value in cases:
+                with self.assertRaises(ValueError):
+                    ledger.settle("good", value)
+            ledger.close()
+
+    def test_spend_default_path_honours_env_and_avoids_repository(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "ledger.sqlite"
+            with mock.patch.dict(os.environ, {"PMOS_SPEND_LEDGER": str(target)}):
+                self.assertEqual(default_path(), target)
+            with mock.patch.dict(os.environ):
+                os.environ.pop("PMOS_SPEND_LEDGER", None)
+                self.assertTrue(default_path().is_absolute())
+                repo = Path(__file__).resolve().parents[1]
+                self.assertFalse(str(default_path()).startswith(str(repo)))
+
+    def test_spend_day_and_task_scopes_refuse_when_either_exceeded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "spend.sqlite"
+            ledger = SpendLedger(path)
+            scope = day_scope(_dt.datetime(2026, 9, 12, 12, 0, 0,
+                                           tzinfo=_dt.timezone.utc))
+            self.assertEqual(scope, "day:2026-09-12")
+            limits = {scope: 1.0, "task:build": 0.5}
+            ledger.reserve("first", 0.4, limits)
+            with self.assertRaises(BudgetExceeded) as ctx1:
+                ledger.reserve("day-breach", 0.7, limits)
+            self.assertIn(scope, str(ctx1.exception))
+            with self.assertRaises(BudgetExceeded) as ctx2:
+                ledger.reserve("task-breach", 0.2, limits)
+            self.assertIn("task:build", str(ctx2.exception))
+            ledger.close()
+        self.assertEqual(day_scope(_dt.datetime(2026, 9, 12)), "day:2026-09-12")
 
     def test_bounded_budget_call_under_the_cap_is_not_rejected(self):
         provider = FakeProvider({"output": "answer", "input_tokens": 4,
