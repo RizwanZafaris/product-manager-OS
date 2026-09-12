@@ -1,4 +1,5 @@
 import datetime as _dt
+import json
 import os
 import subprocess
 import sys
@@ -345,6 +346,139 @@ class RoutingTests(unittest.TestCase):
             self.assertIn("task:build", str(ctx2.exception))
             ledger.close()
         self.assertEqual(day_scope(_dt.datetime(2026, 9, 12)), "day:2026-09-12")
+
+    def _run_spend_cli(self, args, env):
+        proc = subprocess.run(
+            [sys.executable, "-m", "pmos.spend"] + list(args),
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=60,
+        )
+        return proc.returncode, (proc.stdout or b"").decode("utf-8", "replace"), \
+            (proc.stderr or b"").decode("utf-8", "replace")
+
+    def _spend_env(self):
+        env = dict(os.environ)
+        root = Path(__file__).resolve().parents[1]
+        existing = env.get("PYTHONPATH", "")
+        env["PYTHONPATH"] = str(root) + (os.pathsep + existing if existing else "")
+        return env
+
+    def test_spend_cli_status_missing_ledger_reports_without_creating_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "spend.sqlite"
+            env = self._spend_env()
+            code, out, err = self._run_spend_cli(
+                ["--ledger", str(path), "status"], env)
+            self.assertEqual(code, 0, err)
+            self.assertIn("no ledger exists", out)
+            self.assertIn(str(path), out)
+            self.assertFalse(path.exists())
+
+    def test_spend_cli_status_lists_unknown_and_open_reservations(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "spend.sqlite"
+            ledger = SpendLedger(path)
+            ledger.reserve("unknown", 0.1, {"day:2026-09-12": 1.0})
+            ledger.settle("unknown", None)
+            ledger.reserve("open", 0.2, {"task:build": 1.0})
+            ledger.close()
+            env = self._spend_env()
+            code, out, err = self._run_spend_cli(
+                ["--ledger", str(path), "status"], env)
+            self.assertEqual(code, 0, err)
+            lines = out.splitlines()
+            # The ledger path, one line per reservation, then the two counts.
+            self.assertEqual(len(lines), 5, out)
+            self.assertIn("ledger: %s" % path, lines[0])
+            self.assertIn("unknown", lines[1])
+            self.assertIn("open", lines[2])
+            self.assertIn("unresolved: 1", lines)
+            self.assertIn("open: 1", lines)
+            code, out, err = self._run_spend_cli(
+                ["--ledger", str(path), "status", "--json"], env)
+            self.assertEqual(code, 0, err)
+            payload = json.loads(out)
+            self.assertEqual(payload["path"], str(path))
+            self.assertEqual(len(payload["unresolved"]), 1)
+            self.assertEqual(len(payload["open"]), 1)
+            self.assertEqual(payload["unresolved"][0]["key"], "unknown")
+            self.assertEqual(payload["open"][0]["key"], "open")
+
+    def test_spend_cli_reconcile_with_evidence_settles_reservation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "spend.sqlite"
+            ledger = SpendLedger(path)
+            ledger.reserve("unknown", 0.1, {"day:2026-09-12": 1.0})
+            ledger.settle("unknown", None)
+            ledger.close()
+            env = self._spend_env()
+            code, out, err = self._run_spend_cli(
+                ["--ledger", str(path), "reconcile", "unknown", "0.07",
+                 "invoice", "2026-09", "shows", "seven", "cents"], env)
+            self.assertEqual(code, 0, err)
+            self.assertIn("unknown", out)
+            self.assertIn("0.07", out)
+            reopen = SpendLedger(path)
+            self.assertEqual(reopen.unresolved(), [])
+            entries = reopen.reservations("settled")
+            self.assertEqual(len(entries), 1)
+            self.assertIn("invoice 2026-09 shows seven cents", entries[0]["note"])
+            reopen.close()
+
+    def test_spend_cli_reconcile_rejects_bad_amounts_evidence_and_keys(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "spend.sqlite"
+            ledger = SpendLedger(path)
+            ledger.reserve("unknown", 0.1, {"day:2026-09-12": 1.0})
+            ledger.settle("unknown", None)
+            ledger.reserve("openly", 0.2, {"task:build": 1.0})
+            ledger.close()
+            env = self._spend_env()
+            evidence = "invoice 2026-09"
+            bad_cases = [
+                ("unknown", "nan", evidence),
+                ("unknown", "-0.5", evidence),
+                ("unknown", "0.07", "short"),
+                ("openly", "0.07", evidence),
+            ]
+            for key, usd, evidence_value in bad_cases:
+                words = evidence_value.split(" ")
+                code, out, err = self._run_spend_cli(
+                    ["--ledger", str(path), "reconcile", key, usd] + words, env)
+                self.assertEqual(code, 2, (key, usd, evidence_value, out, err))
+                self.assertNotEqual(err, "")
+                reopen = SpendLedger(path)
+                entry = reopen.reservations()[0]
+                self.assertEqual(entry["state"], "unknown")
+                reopen.close()
+            code, out, err = self._run_spend_cli(
+                ["--ledger", str(path), "reconcile", "missing", "0.07"] +
+                evidence.split(" "), env)
+            self.assertEqual(code, 2, err)
+            reopen = SpendLedger(path)
+            self.assertEqual(len(reopen.reservations("unknown")), 1)
+            reopen.close()
+
+    def test_spend_cli_reconcile_refuses_a_missing_ledger_without_creating_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "spend.sqlite"
+            code, out, err = self._run_spend_cli(
+                ["--ledger", str(path), "reconcile", "missing", "0.07",
+                 "invoice", "2026-09", "total"], self._spend_env())
+            self.assertEqual(code, 2, err)
+            self.assertIn("no ledger exists", err)
+            self.assertFalse(path.exists())
+
+    def test_spend_reservations_rejects_unknown_state(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "spend.sqlite"
+            ledger = SpendLedger(path)
+            ledger.reserve("call", 0.1, {"day:2026-09-12": 1.0})
+            with self.assertRaises(ValueError):
+                ledger.reservations(state="bogus")
+            ledger.close()
 
     def test_bounded_budget_call_under_the_cap_is_not_rejected(self):
         provider = FakeProvider({"output": "answer", "input_tokens": 4,

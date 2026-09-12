@@ -8,10 +8,13 @@ after dispatch never refunds an unknown charge.
 
 from __future__ import annotations
 
+import argparse
 import datetime as _dt
+import json
 import math
 import os
 import sqlite3
+import sys
 import time
 from pathlib import Path
 from typing import Mapping, Optional, Sequence
@@ -312,10 +315,23 @@ class SpendLedger:
             conn.rollback()
             raise
 
-    def reconcile(self, key: str, actual_usd: object) -> None:
-        """Reconcile an 'unknown' reservation with a finite nonnegative cost."""
+    def reconcile(
+        self,
+        key: str,
+        actual_usd: object,
+        evidence: Optional[str] = None,
+    ) -> None:
+        """Reconcile an 'unknown' reservation with a finite nonnegative cost.
+
+        When ``evidence`` is given it is validated with the text rules and
+        recorded in the note as ``reconciled: `` followed by the evidence.
+        """
         key_text = _validate_text(key, "key")
         amount = _validate_amount(actual_usd, "actual_usd")
+        if evidence is None:
+            note = "reconciled after an unknown cost"
+        else:
+            note = "reconciled: " + _validate_text(evidence, "evidence")
         conn = self._conn
         conn.execute("BEGIN IMMEDIATE")
         try:
@@ -324,10 +340,166 @@ class SpendLedger:
                 raise ValueError("reservation %s is not unknown" % key_text)
             self._execute(
                 "UPDATE reservations SET state = 'settled', charged_usd = ?, "
-                "note = 'reconciled after an unknown cost' WHERE key = ?",
-                (amount, key_text),
+                "note = ? WHERE key = ?",
+                (amount, note, key_text),
             )
             conn.commit()
         except Exception:
             conn.rollback()
             raise
+
+    def reservations(self, state: Optional[str] = None) -> list[dict[str, object]]:
+        """Return reservations, oldest first, optionally filtered by ``state``.
+
+        Each entry is a dict with key, reserved_usd, charged_usd, state,
+        created_at, note and a sorted list of scopes.
+        """
+        if state is not None and state not in ("open", "settled", "unknown"):
+            raise ValueError("unknown reservation state: %s" % state)
+        if state is None:
+            rows = self._execute(
+                "SELECT key, reserved_usd, charged_usd, state, created_at, note "
+                "FROM reservations ORDER BY created_at ASC, key ASC"
+            ).fetchall()
+        else:
+            rows = self._execute(
+                "SELECT key, reserved_usd, charged_usd, state, created_at, note "
+                "FROM reservations WHERE state = ? "
+                "ORDER BY created_at ASC, key ASC",
+                (state,),
+            ).fetchall()
+        result: list[dict[str, object]] = []
+        for key, reserved_usd, charged_usd, row_state, created_at, note in rows:
+            scopes = self._execute(
+                "SELECT scope FROM reservation_scopes WHERE key = ? ORDER BY scope ASC",
+                (key,),
+            ).fetchall()
+            result.append(
+                {
+                    "key": str(key),
+                    "reserved_usd": float(reserved_usd),
+                    "charged_usd": (
+                        float(charged_usd) if charged_usd is not None else None
+                    ),
+                    "state": str(row_state),
+                    "created_at": float(created_at),
+                    "note": str(note),
+                    "scopes": [str(row[0]) for row in scopes],
+                }
+            )
+        return result
+
+
+def _format_created(value: float) -> str:
+    return _dt.datetime.fromtimestamp(
+        value, _dt.timezone.utc
+    ).isoformat()
+
+
+def _print_reservation(prefix: str, entry: Mapping[str, object]) -> None:
+    print(
+        "%s %s reserved=%s scopes=%s created=%s"
+        % (
+            prefix,
+            entry["key"],
+            entry["reserved_usd"],
+            ",".join(entry["scopes"]),
+            _format_created(float(entry["created_at"])),
+        )
+    )
+
+
+def _cmd_status(ledger: SpendLedger, path: Path, as_json: bool) -> int:
+    unresolved = ledger.reservations("unknown")
+    open_entries = ledger.reservations("open")
+    if as_json:
+        print(
+            json.dumps(
+                {
+                    "path": str(path),
+                    "unresolved": unresolved,
+                    "open": open_entries,
+                }
+            )
+        )
+        return 0
+    print("ledger: %s" % path)
+    for entry in unresolved:
+        _print_reservation("unknown", entry)
+    for entry in open_entries:
+        _print_reservation("open", entry)
+    print("unresolved: %d" % len(unresolved))
+    print("open: %d" % len(open_entries))
+    return 0
+
+
+def _cmd_reconcile(args: argparse.Namespace) -> int:
+    path = Path(args.ledger)
+    evidence = " ".join(args.evidence)
+    if len(evidence) < 10:
+        sys.stderr.write("evidence must be at least 10 characters\n")
+        return 2
+    if not path.exists():
+        # Reconciling against a ledger that does not exist would create an
+        # empty one and then fail on the missing key; refuse it plainly.
+        sys.stderr.write("no ledger exists at %s\n" % path)
+        return 2
+    ledger: Optional[SpendLedger] = None
+    try:
+        # Parsed inside the try: a NaN, a negative or a non-number is an
+        # operator error with exit status 2, never a traceback.
+        amount = _validate_amount(float(args.usd), "usd")
+        ledger = SpendLedger(path)
+        ledger.reconcile(args.key, amount, evidence)
+    except (ValueError, KeyError) as exc:
+        sys.stderr.write("%s\n" % exc)
+        return 2
+    finally:
+        if ledger is not None:
+            ledger.close()
+    print("reconciled %s %s" % (args.key, amount))
+    return 0
+
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    """Run the operator command line and return an exit status."""
+    parser = argparse.ArgumentParser(
+        prog="pmos.spend",
+        description="Inspect and reconcile the shared spend ledger.",
+    )
+    parser.add_argument(
+        "--ledger",
+        default=str(default_path()),
+        help="path to the spend ledger (default: %(default)s)",
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    status_parser = subparsers.add_parser(
+        "status", help="show unresolved and open reservations"
+    )
+    status_parser.add_argument(
+        "--json", action="store_true", help="print one JSON object"
+    )
+    reconcile_parser = subparsers.add_parser(
+        "reconcile", help="reconcile an unknown reservation with evidence"
+    )
+    reconcile_parser.add_argument("key", help="reservation key")
+    reconcile_parser.add_argument("usd", help="actual cost in USD")
+    reconcile_parser.add_argument(
+        "evidence", nargs="+", help="evidence words for the reconciliation"
+    )
+    args = parser.parse_args(argv)
+    path = Path(args.ledger)
+    if args.command == "status":
+        if not path.exists():
+            print("no ledger exists at %s" % path)
+            return 0
+        ledger = SpendLedger(path)
+        try:
+            return _cmd_status(ledger, path, args.json)
+        finally:
+            ledger.close()
+    return _cmd_reconcile(args)
+
+
+if __name__ == '__main__':
+    sys.exit(main())
