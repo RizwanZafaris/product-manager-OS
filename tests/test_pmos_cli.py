@@ -1,4 +1,5 @@
 import json
+import shlex
 import hashlib
 import os
 import signal
@@ -13,7 +14,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from pmos.cli import _local_gate_verifier, _paths, main
+from pmos.cli import _cli_source_resolver, _local_gate_verifier, _paths, main
 from pmos.migrations import (create_legacy_fixture, migrate_workspace, recover_workspace,
                               rollback_workspace, MigrationError)
 from pmos.store import Store
@@ -28,6 +29,121 @@ class CliTests(unittest.TestCase):
             self.assertEqual(main(["verify", "--path", folder, "--json"]), 0)
             with Store(Path(folder) / ".pmos/runtime.sqlite") as store:
                 self.assertEqual(store.head("checkout").revision, 0)
+
+    def status(self, folder: str) -> dict:
+        output = StringIO()
+        with redirect_stdout(output):
+            self.assertEqual(main(["--json", "status", "--path", folder, "--product-id", "checkout"]), 0)
+        return json.loads(output.getvalue())
+
+    def human_status(self, folder: str) -> str:
+        output = StringIO()
+        with redirect_stdout(output):
+            self.assertEqual(main(["status", "--path", folder, "--product-id", "checkout"]), 0)
+        return output.getvalue()
+
+    def answer(self, folder: str, evidence: dict, token: str, turn_id: str) -> dict:
+        output = StringIO()
+        with redirect_stdout(output):
+            main(["answer", "--path", folder, "--product-id", "checkout", "--question-id", "first-outcome",
+                  "--answer", "A real outcome", "--evidence", json.dumps(evidence),
+                  "--expected-revision", token, "--turn-id", turn_id, "--json"])
+        return json.loads(output.getvalue())
+
+    def test_status_alone_resumes_the_interview_after_init(self):
+        with TemporaryDirectory() as parent:
+            folder = str(Path(parent) / "work space")
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            status = self.status(folder)
+            self.assertEqual(status["revision_token"], "0:-")
+            self.assertEqual((status["interview"], status["question"]["id"]), ("question", "first-outcome"))
+            self.assertIn("--expected-revision 0:-", status["next"])
+            self.assertIn(shlex.quote(str(Path(folder).resolve())), status["next"])
+            human = self.human_status(folder)
+            for value in (status["revision_token"], status["question"]["id"], status["next"]):
+                self.assertIn(value, human)
+            result = self.answer(folder, {"class": "observed_behavior", "source": "interview-001",
+                                          "date": "2026-09-04", "location": "customer-call"},
+                                 status["revision_token"], "answer-001")
+            self.assertEqual(result["outcome"]["status"], "accepted")
+
+    def test_status_shows_a_parked_question_with_its_reopen_command(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            token = self.status(folder)["revision_token"]
+            for label in ("bad1", "bad2", "bad3"):
+                token = self.answer(folder, {"class": "observed_behavior", "source": "real interview"},
+                                    token, label)["outcome"]["revision"]
+            status = self.status(folder)
+            self.assertEqual(status["revision_token"], token)
+            (parked,) = status["parked"]
+            self.assertEqual(parked["question_id"], "first-outcome")
+            self.assertEqual(status["next"], parked["reopen"])
+            for part in ("pmos reopen --path", "--product-id checkout", "--question-id first-outcome",
+                         "--expected-revision %s" % token, "--turn-id '<new turn id>'"):
+                self.assertIn(part, parked["reopen"])
+            self.assertIn(parked["reopen"], self.human_status(folder))
+
+    def test_status_counts_a_verified_answer_and_names_the_gate(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            Path(folder, "notes").mkdir()
+            Path(folder, "notes", "call.md").write_text("customer call notes\n", encoding="utf-8")
+            result = self.answer(folder, {"class": "observed_behavior", "source": "notes/call.md",
+                                          "date": "2026-09-04", "location": "customer-call"},
+                                 self.status(folder)["revision_token"], "answer-verified")
+            self.assertEqual(result["outcome"]["status"], "accepted")
+            status = self.status(folder)
+            self.assertEqual((status["source_verified"], status["supplied_unverified"]), (1, 0))
+            self.assertEqual(status["interview"], "blocked")
+            self.assertIn("pmos gate", status["next"])
+            self.assertIn("--bank-id onboarding", status["next"])
+
+    def test_status_reports_a_stale_gate_with_the_command_that_proves_it_again(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            result = self.answer(folder, {"class": "observed_behavior", "source": "interview-001",
+                                          "date": "2026-09-04", "location": "customer-call"},
+                                 self.status(folder)["revision_token"], "answer-1")
+            self.assertEqual(self.status(folder)["supplied_unverified"], 1)
+            proof = Path(folder, "onboarding-approval.txt")
+            proof.write_bytes(b"reviewed onboarding evidence\n")
+            gate = {"source": "onboarding-approval.txt", "source_sha256": hashlib.sha256(proof.read_bytes()).hexdigest(),
+                    "actor_id": "local-reviewer", "requester_id": "local-operator", "decision": "approved",
+                    "approved_at": "2026-09-04T00:00:00Z"}
+            output = StringIO()
+            with redirect_stdout(output):
+                self.assertEqual(main(["gate", "--path", folder, "--product-id", "checkout", "--bank-id", "onboarding",
+                                       "--evidence", json.dumps(gate), "--expected-revision",
+                                       result["outcome"]["revision"], "--turn-id", "gate-1", "--json"]), 0)
+            self.assertEqual(self.status(folder)["interview"], "completed")
+            proof.write_bytes(b"changed after approval\n")
+            status = self.status(folder)
+            self.assertEqual(status["interview"], "stale")
+            (stale,) = status["stale_banks"]
+            self.assertEqual(stale["bank_id"], "onboarding")
+            self.assertEqual(status["next"], stale["gate"])
+            self.assertIn("pmos gate", stale["gate"])
+
+    def test_an_answer_citing_a_missing_local_file_is_refused(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            result = self.answer(folder, {"class": "observed_behavior", "source": "notes/does-not-exist.txt",
+                                          "date": "2026-09-04", "location": "customer-call"},
+                                 self.status(folder)["revision_token"], "missing-1")
+            self.assertEqual((result["ok"], result["outcome"]["status"]), (False, "challenge"))
+            self.assertIn("could not be resolved", result["outcome"]["message"])
+
+    def test_the_source_resolver_leaves_free_text_unchecked(self):
+        with TemporaryDirectory() as folder:
+            resolve = _cli_source_resolver(Path(folder))
+            Path(folder, "notes.md").write_text("x", encoding="utf-8")
+            self.assertIs(resolve("notes.md"), True)
+            self.assertIs(resolve("notes/missing.md"), False)
+            self.assertIs(resolve("../outside.md"), False)
+            self.assertIsNone(resolve("real interview"))
+            self.assertIsNone(resolve("Q3 review v1.2"))
+            self.assertIsNone(resolve("interview-001"))
 
     def test_gitignore_covers_pmos_runtime_and_sqlite_sidecars(self):
         """F07: .gitignore must ignore .pmos/ at any depth and SQLite sidecar
@@ -153,12 +269,13 @@ class CliTests(unittest.TestCase):
             self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
 
             def token() -> str:
-                # The current revision token, read the way the flow test above
-                # reads it. `pmos status` prints revision and commit_hash but no
-                # ready-made token yet (its commit_hash is null at revision 0,
-                # where the token is 0:-); F11 adds one.
-                with Store(Path(folder) / ".pmos/runtime.sqlite") as store:
-                    return store.head("checkout").token
+                # The current revision token, taken from `pmos status`, which
+                # now prints a ready-made revision_token field so a caller never
+                # composes <revision>:<commit_hash> by hand (F11).
+                output = StringIO()
+                with redirect_stdout(output):
+                    self.assertEqual(main(["--json", "status", "--path", folder, "--product-id", "checkout"]), 0)
+                return json.loads(output.getvalue())["revision_token"]
 
             invalid = {"class": "observed_behavior", "source": "real interview"}
             for label in ("bad1", "bad2", "bad3"):

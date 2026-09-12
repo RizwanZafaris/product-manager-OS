@@ -27,8 +27,11 @@ public Conductor API.  It never invents a customer answer or gate proof. Add
 pmos --json status --path ./products/my-product
 ```
 
-Continue only with evidence you actually collected. The revision and question
-ID come from `init`/`status`; the evidence fields are checked by the conductor:
+Continue only with evidence you actually collected. The revision token and
+question ID come from `init`/`status`, and `status` also prints a `next` line
+with the one command to run next: the answer, the reopen command for a parked
+question, or the gate command for a bank ready for approval or whose approval
+went stale. The evidence fields are checked by the conductor:
 
 ```bash
 pmos answer --path ./products/my-product --product-id checkout \
@@ -54,8 +57,8 @@ revision and a reused turn ID leave the revision where it was, and so does a
 request refused before the conductor reads it: a question ID that is not well
 formed, evidence that is not a JSON object, or a bank ID that does not exist.
 Replaying a turn ID with the identical request returns its original result.
-Read the next revision from `pmos status`, which prints `revision` and
-`commit_hash` (the token is `<revision>:<commit_hash>`, and `0:-` before
+Read the next revision from `pmos status`, which prints `revision_token`
+(the exact token to pass as `--expected-revision`; it is `0:-` before
 anything is committed), or, for a rejection that wrote a record, from that
 rejection's own `revision` field. After a rejection that wrote a record, the
 revision `answer` returned is stale and retrying with it is refused as a

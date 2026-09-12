@@ -7,6 +7,8 @@ import hashlib
 import hmac
 import json
 import os
+import re
+import shlex
 import sqlite3
 import stat
 import sys
@@ -72,6 +74,59 @@ def _local_gate_verifier(root: Path):
                     pass
 
     return verify
+
+
+def _looks_like_local_path(source: str) -> bool:
+    """Heuristic: does ``source`` look like a workspace-relative path?"""
+    if not source:
+        return False
+    if "\\" in source:
+        return True
+    if source.startswith(("./", ".\\", "~", "../", "..\\")):
+        return True
+    if source in {".", "..", "~"}:
+        return True
+    if "/" in source:
+        return True
+    # A bare name with a file extension ("notes.md"). Free text such as
+    # "Q3 review v1.2" has spaces or a numeric suffix and stays free text.
+    if not re.search(r"\s", source) and re.search(r"\.[A-Za-z][A-Za-z0-9]{0,11}$", source):
+        return True
+    return False
+
+
+def _cli_source_resolver(root: Path):
+    """Resolve a caller-supplied source the way the gate verifier bounds it.
+
+    Returns True when the source is a regular file that exists below the
+    workspace root, False when it looks like a local path but is missing or
+    escapes the root, and None when it does not look like a local path at all
+    (free text or an interview id), so the conductor records it as supplied
+    unverified instead of refusing the answer.
+    """
+    resolved_root = root.resolve()
+
+    def resolve(source: str):
+        if not isinstance(source, str) or not source:
+            return None
+        if "://" in source:
+            return None
+        if not _looks_like_local_path(source):
+            return None
+        relative = Path(source)
+        if relative.is_absolute() or ".." in relative.parts or relative.parts and relative.parts[0] == ".pmos":
+            return False
+        try:
+            candidate = (resolved_root / relative).resolve(strict=False)
+        except (OSError, ValueError):
+            return False
+        try:
+            candidate.relative_to(resolved_root)
+        except ValueError:
+            return False
+        return candidate.is_file()
+
+    return resolve
 
 
 def _emit(value: Any, as_json: bool) -> None:
@@ -194,10 +249,78 @@ def _status(args: argparse.Namespace) -> dict[str, Any]:
         head = store.head(product_id)
         report = store.verify()
         snapshot = store.read_snapshot(product_id)
-        return {"ok": report.ok, "status": "ready" if report.ok else "corrupt",
-                "root": str(root), "database": str(database), "product_id": product_id,
-                "revision": head.revision, "commit_hash": head.commit_hash,
-                "file_count": len(snapshot.files), "errors": list(report.errors)}
+        result = {"ok": report.ok, "status": "ready" if report.ok else "corrupt",
+                  "root": str(root), "database": str(database), "product_id": product_id,
+                  "revision": head.revision, "commit_hash": head.commit_hash,
+                  # The exact value to pass as --expected-revision: composing
+                  # <revision>:<commit_hash> by hand gives 0:None at revision 0.
+                  "revision_token": head.token,
+                  "file_count": len(snapshot.files), "errors": list(report.errors)}
+        if report.ok:
+            try:
+                result.update(_interview_status(store, root, product_id, head.token))
+            except (ValidationError, StoreError) as exc:
+                result["interview_error"] = str(exc)
+        return result
+
+
+def _interview_status(store: Store, root: Path, product_id: str, token: str) -> dict[str, Any]:
+    """Where the interview stands and the one next safe command, so status alone lets a user resume.
+
+    Position and staleness come from the Conductor itself (next_turn re-checks every gate proof), so status can
+    never disagree with what answer, reopen and gate would do. Commands are shell-quoted and carry the current
+    revision token; only the answer, reason, evidence and turn id are left as placeholders.
+    """
+    conductor = Conductor(store, product_id, _banks(), gate_source_verifier=_local_gate_verifier(root),
+                          source_resolver=_cli_source_resolver(root))
+    position = conductor.next_turn()
+    state = conductor.state()
+
+    def command(name: str, *parts: str) -> str:
+        return " ".join(["pmos", name, "--path", shlex.quote(str(root)), "--product-id", shlex.quote(product_id),
+                         *parts, "--expected-revision", shlex.quote(token), "--turn-id", "'<new turn id>'"])
+
+    parked, verified, unverified = [], 0, 0
+    for bank in _banks():
+        bank_state = state["banks"].get(bank.id, {})
+        for question_id in bank_state.get("parked", []):
+            parked.append({"bank_id": bank.id, "question_id": question_id,
+                           "reopen": command("reopen", "--question-id", shlex.quote(question_id),
+                                             "--reason", "'<why you are reopening it>'")})
+        for record in bank_state.get("answers", {}).values():
+            if record.get("parked"):
+                continue
+            # An answer stored before evidence verification carries no label: it was never checked.
+            if record.get("verification") == "source_verified":
+                verified += 1
+            else:
+                unverified += 1
+    stale = []
+    if position.status == "stale":
+        stale.append({"bank_id": position.bank_id, "message": position.message,
+                      "gate": command("gate", "--bank-id", shlex.quote(position.bank_id),
+                                      "--evidence", "'<gate evidence json>'")})
+    question = None
+    if position.question is not None:
+        question = {"id": position.question.id, "prompt": position.question.prompt,
+                    "evidence_class": position.question.required_evidence.value}
+    if stale:
+        next_command = stale[0]["gate"]
+    elif position.status == "question" and question is not None:
+        next_command = command("answer", "--question-id", shlex.quote(question["id"]),
+                               "--answer", "'<your answer>'", "--evidence", "'<evidence json>'")
+    elif parked:
+        next_command = parked[0]["reopen"]
+    elif position.status == "blocked" and position.bank_id:
+        next_command = command("gate", "--bank-id", shlex.quote(position.bank_id),
+                               "--evidence", "'<gate evidence json>'")
+    else:
+        next_command = None
+    return {"interview": position.status, "interview_message": position.message,
+            "current_bank_id": position.bank_id, "question": question,
+            "parked": parked, "stale_banks": stale,
+            "source_verified": verified, "supplied_unverified": unverified,
+            "next": next_command}
 
 
 def _verify(args: argparse.Namespace) -> dict[str, Any]:
@@ -231,7 +354,8 @@ def _answer(args: argparse.Namespace) -> dict[str, Any]:
         raise ValidationError("runtime is missing; run `pmos init --path %s`" % root)
     with Store(database) as store:
         conductor = Conductor(store, args.product_id, _banks(),
-                              gate_source_verifier=_local_gate_verifier(root))
+                              gate_source_verifier=_local_gate_verifier(root),
+                              source_resolver=_cli_source_resolver(root))
         outcome = conductor.submit_answer(args.question_id, args.answer, _evidence(args.evidence),
                                           expected_revision=args.expected_revision, turn_id=args.turn_id)
         result = {"ok": outcome.accepted, "product_id": args.product_id,
@@ -247,7 +371,8 @@ def _reopen(args: argparse.Namespace) -> dict[str, Any]:
         raise ValidationError("runtime is missing; run `pmos init --path %s`" % root)
     with Store(database) as store:
         conductor = Conductor(store, args.product_id, _banks(),
-                              gate_source_verifier=_local_gate_verifier(root))
+                              gate_source_verifier=_local_gate_verifier(root),
+                              source_resolver=_cli_source_resolver(root))
         outcome = conductor.reopen(args.question_id, expected_revision=args.expected_revision,
                                     turn_id=args.turn_id, reason=args.reason)
         result = {"ok": outcome.status == "reopened", "product_id": args.product_id,
@@ -263,7 +388,8 @@ def _gate(args: argparse.Namespace) -> dict[str, Any]:
         raise ValidationError("runtime is missing; run `pmos init --path %s`" % root)
     with Store(database) as store:
         conductor = Conductor(store, args.product_id, _banks(),
-                              gate_source_verifier=_local_gate_verifier(root))
+                              gate_source_verifier=_local_gate_verifier(root),
+                              source_resolver=_cli_source_resolver(root))
         outcome = conductor.prove_gate(args.bank_id, _evidence(args.evidence),
                                        expected_revision=args.expected_revision, turn_id=args.turn_id)
         result = {"ok": outcome.completed, "product_id": args.product_id,
