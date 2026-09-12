@@ -49,7 +49,7 @@ This repository is the whole loop in one place, and it works without any AI at a
 
 One product runs through six stages. Each stage ends at a gate: a named checklist to be worked before the next stage opens. Gates are documents, not ceremonies. A gate passes when its checklist is filled in and signed, and a stage opened without that leaves a waiver on the record saying so.
 
-What a gate is worth is worth stating plainly, because the overclaim is easy to write and easy to break. A gate is prose plus a human signature. Nothing binds a signature to the bytes of the artifact it approved, so editing an approved PRD does not stale its approval; nothing checks a typed name; nothing stops an author from signing their own document. What you get is that an unreviewed document is visibly unreviewed and a skipped gate carries a named waiver instead of silence. That is a discipline, not a control, and it will not stop a person willing to lie to it.
+What a gate is worth is worth stating plainly, because the overclaim is easy to write and easy to break. A gate is prose plus a human signature. Nothing binds a signature to the bytes of the artifact it approved, so editing an approved PRD does not stale its approval; nothing checks a typed name; nothing stops an author from signing their own document. What you get is that an unreviewed document is visibly unreviewed and a skipped gate carries a named waiver instead of silence. That is a discipline, not a control, and it will not stop a person willing to lie to it. The local runtime (Method 4, `pmos`) is narrower and stronger: its gate proof records the SHA-256 of the approval source, refuses self-approval and actors outside the bank's pinned approvers, and marks the gate stale when that source file changes or disappears; it binds the proof file, not the artifact the proof discusses unless the proof source is that artifact, and actor ids are typed, not authenticated.
 
 ```mermaid
 flowchart LR
@@ -129,7 +129,7 @@ The document workspace above is the portable record. Use the optional local runt
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install --no-build-isolation .
+python -m pip install --no-index .
 pmos init --path ./products/my-product --product-id my-product
 pmos status --path ./products/my-product
 pmos verify --path ./products/my-product
