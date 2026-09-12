@@ -14,7 +14,7 @@ Skill: [the Conductor](../skills/conductor/SKILL.md) fills these by interview; i
 
 A template is the blank a stage produces and a gate reads. Every one opens with the same three-line header this page carries, naming the stage it serves and the gate it feeds, the knowledge card behind it, and the skill or agent that drives it, so a copy you fill in still knows where it came from and which checklist will judge it. Nothing here needs a model: the blanks are fields, the gates are checklists, and a pencil finishes the job. Before some of these blanks get filled, a worksheet in [frameworks/](../frameworks/README.md) has often done the arithmetic that lands in them, the reconciled TAM/SAM/SOM a business case argues from, the RICE score a roadmap sequences by.
 
-Eight directories, 107 templates. Six carry stage work: `discovery` and `definition` sit under DISCOVER and DEFINE, `architecture` holds the DESIGN artifacts while `execution` holds the registers and logs that open early and stay open, `delivery` carries BUILD through DELIVER, and `operate` closes the loop at Gate 6. The last two, `planning` and `ai`, are the tracks that run across every stage rather than inside one. The stage definitions are in [os/OPERATING-LOOP.md](../os/OPERATING-LOOP.md); the checklists these feed are in [os/STAGE-GATES.md](../os/STAGE-GATES.md).
+Eight directories, 108 templates. Six carry stage work: `discovery` and `definition` sit under DISCOVER and DEFINE, `architecture` holds the DESIGN artifacts while `execution` holds the registers and logs that open early and stay open, `delivery` carries BUILD through DELIVER, and `operate` closes the loop at Gate 6. The last two, `planning` and `ai`, are the tracks that run across every stage rather than inside one. The stage definitions are in [os/OPERATING-LOOP.md](../os/OPERATING-LOOP.md); the checklists these feed are in [os/STAGE-GATES.md](../os/STAGE-GATES.md).
 
 Which frameworks feed each template, which filled examples show it, and the ID its working copy gets are listed phase by phase in [the phase index](../docs/PHASE-INDEX.md), generated from these files.
 
@@ -61,7 +61,7 @@ DEFINE, feeding Gate 2: requirements signed off. Pick the weight before you pick
 | [ui-state-inventory.md](definition/ui-state-inventory.md) | The single owner of the list of states a screen or component must render, across empty, loading, populated, error, offline and permission-denied | A component spec, content audit, review record or localisation checklist needs that list and would otherwise each restate it differently |
 | [ux-writing-guide.md](definition/ux-writing-guide.md) | The product's own voice, terminology and message patterns, so every string is audited against one standard instead of reinvented per squad | Written with the design brief, before Gate 2, and kept current through OPERATE |
 
-## architecture (15 templates)
+## architecture (16 templates)
 
 DESIGN, feeding Gate 3: architecture and risks reviewed. Alternatives get considered on paper here, while changing your mind is still free.
 
@@ -73,6 +73,7 @@ DESIGN, feeding Gate 3: architecture and risks reviewed. Alternatives get consid
 | [data-model.md](architecture/data-model.md) | Entities, relationships, keys, a data dictionary, PII classification | Before the migration, because the data model outlives the code that uses it |
 | [privacy-impact-assessment.md](architecture/privacy-impact-assessment.md) | The processing description, necessity and proportionality questions, risks to the individuals whose data it is, and the mitigations, structured but never answered here | A regulator or data-protection regime is in scope, or the design profiles people or applies a model to personal data |
 | [api-contract.md](architecture/api-contract.md) | Endpoint, schema, auth, errors, versioning, and a worked OpenAPI-style micro-example | Consumers you will never meet will build against exactly what is written here |
+| [development-handoff.md](architecture/development-handoff.md) | The development-ready package at the DESIGN exit: each section links the artifact that carries it, and a missing source is named rather than filled | Engineering receives one artifact that points to the required source artifacts instead of duplicated text |
 | [sequence-diagram.md](architecture/sequence-diagram.md) | A Mermaid skeleton with sync, async, and error-path conventions | A flow crosses a system boundary, or holds money, data, or a user in suspense |
 | [integrations.md](architecture/integrations.md) | System, direction, protocol, auth, SLA, owner, and failure behavior for every line that crosses a boundary | The counterparty can change under you and nobody has written down who watches for it |
 | [security-architecture.md](architecture/security-architecture.md) | A STRIDE walk per component: trust boundaries, risk score, mitigation owner | Before Gate 3, and again whenever a trust boundary moves |

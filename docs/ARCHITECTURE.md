@@ -198,7 +198,7 @@ product-manager-OS/
 │   ├── assessment/  Scores the organization the plan lands in rather than the plan: product-operating-model-assessment, team-topologies-assessment, tech-debt-assessment, westrum-culture-typology
 │   └── design/  Experience-design worksheets, not the DESIGN stage: heuristic-evaluation, content-microcopy-audit, design-critique, choice-symmetry-audit, design-system-audit, ux-scorecard
 ├── templates/
-│   ├── README.md  Rendered directory face: the full catalog, one table per stage directory, all 107 templates with what each is and when to reach for it; carries the three-line header the gate demands of every file here
+│   ├── README.md  Rendered directory face: the full catalog, one table per stage directory, all 108 templates with what each is and when to reach for it; carries the three-line header the gate demands of every file here
 │   ├── discovery/
 │   │   ├── discovery-document.md  Trigger, target user, pain, hypothesis, success signal, go or no-go
 │   │   ├── problem-framing.md  One problem statement, evidence, cost of inaction, owner

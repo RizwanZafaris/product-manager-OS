@@ -20,13 +20,13 @@ One subgraph per stage of the loop in [os/OPERATING-LOOP.md](../os/OPERATING-LOO
 
 | Measure | Count |
 |---|---|
-| Files scanned in the six declaring layers | 339 |
-| Files carrying frontmatter of any shape | 339 |
+| Files scanned in the six declaring layers | 340 |
+| Files carrying frontmatter of any shape | 340 |
 | Files with no frontmatter yet | 0 |
 | Files declaring a `feeds` key | 146 |
-| Nodes in the diagram | 257 |
-| Artifact nodes | 251 |
-| Edges in the diagram | 552 |
+| Nodes in the diagram | 258 |
+| Artifact nodes | 252 |
+| Edges in the diagram | 553 |
 | Feeds values that resolved to nothing | 0 |
 
 A file with no frontmatter is not an error, and a file with frontmatter has not necessarily declared a feed: every SKILL.md and agent file carries a name and a description already. The `feeds` pass lands file by file, and until it reaches a file, that file still contributes whatever its Stage header declares.
@@ -155,6 +155,7 @@ flowchart LR
     n_templates_architecture_data_model_md_80a5f8ca["architecture/data-model"]
     n_templates_architecture_design_md_md_7556683b["architecture/design-md"]
     n_templates_architecture_design_review_record_md_4b50f927["architecture/design-review-record"]
+    n_templates_architecture_development_handoff_md_64b0eebc["architecture/development-handoff"]
     n_templates_architecture_integrations_md_a45e4f74["architecture/integrations"]
     n_templates_architecture_localisation_rtl_checklist_md_76aa2954["architecture/localisation-rtl-checklist"]
     n_templates_architecture_observability_md_978fba88["architecture/observability"]
@@ -350,6 +351,7 @@ flowchart LR
   n_templates_architecture_design_md_md_7556683b --> G3
   n_templates_architecture_design_review_record_md_4b50f927 --> G3
   n_templates_architecture_design_review_record_md_4b50f927 --> G4
+  n_templates_architecture_development_handoff_md_64b0eebc --> G3
   n_templates_architecture_integrations_md_a45e4f74 --> G3
   n_templates_architecture_localisation_rtl_checklist_md_76aa2954 --> G3
   n_templates_architecture_localisation_rtl_checklist_md_76aa2954 --> G4
@@ -881,7 +883,7 @@ flowchart LR
 |---|---|---|
 | DISCOVER | Gate 1 | 40 |
 | DEFINE | Gate 2 | 37 |
-| DESIGN | Gate 3 | 42 |
+| DESIGN | Gate 3 | 43 |
 | BUILD | Gate 4 | 11 |
 | DELIVER | Gate 5 | 22 |
 | OPERATE | Gate 6 | 29 |

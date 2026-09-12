@@ -130,9 +130,9 @@ class TemplateInventoryGateTests(unittest.TestCase):
             self.rewrite(catalog, "(16 templates)", "(15 templates)", 1)
             self.rewrite(catalog, "(11 templates)", "(10 templates)", 1)
             for name, before, after in (
-                    (self.CATALOG, "107 templates", "105 templates"),
-                    ("README.md", "all 107 blanks", "all 105 blanks"),
-                    ("docs/ARCHITECTURE.md", "all 107 templates",
+                    (self.CATALOG, "108 templates", "105 templates"),
+                    ("README.md", "all 108 blanks", "all 105 blanks"),
+                    ("docs/ARCHITECTURE.md", "all 108 templates",
                      "all 105 templates")):
                 self.rewrite(root / name, before, after)
             reported = {path for path, _message in self.findings(root)}
@@ -171,9 +171,9 @@ class TemplateInventoryGateTests(unittest.TestCase):
     def test_dropping_the_claim_is_not_a_way_to_pass(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = copy_tree(tmp)
-            self.rewrite(root / "README.md", "all 107 blanks", "the blanks")
+            self.rewrite(root / "README.md", "all 108 blanks", "the blanks")
             self.rewrite(root / "docs" / "ARCHITECTURE.md",
-                         "all 107 templates", "the templates")
+                         "all 108 templates", "the templates")
             messages = [message for _path, message in self.findings(root)]
             self.assertTrue(any(message.startswith("no operator document "
                                                    "states the template "
@@ -188,7 +188,7 @@ class TemplateInventoryGateTests(unittest.TestCase):
             root = copy_tree(tmp)
             self.assertEqual([], [item for item in check_docs(root)
                                   if item.severity == "error"])
-            self.rewrite(root / "README.md", "all 107 blanks", "all 98 blanks")
+            self.rewrite(root / "README.md", "all 108 blanks", "all 98 blanks")
             codes = {item.code for item in check_docs(root)
                      if item.severity == "error"}
             self.assertIn("inventory-count", codes)
