@@ -45,6 +45,17 @@ class EvidenceClass(str, Enum):
     TEAM_BELIEF = "team_belief"
 
 
+# The evidence ladder, rung 1 the strongest. An answer may carry its question's
+# class or a stronger one (the ladder in skills/conductor/questions/README.md).
+EVIDENCE_RUNG = {
+    EvidenceClass.OBSERVED_BEHAVIOR: 1,
+    EvidenceClass.ARTIFACT: 2,
+    EvidenceClass.NAMED_COMMITMENT: 3,
+    EvidenceClass.INTERVIEW_CLAIM: 4,
+    EvidenceClass.TEAM_BELIEF: 5,
+}
+
+
 @dataclass(frozen=True)
 class Question:
     """A stable question definition.  ``id`` must never be recycled."""
@@ -723,9 +734,15 @@ class Conductor:
         lowered = answer.strip().lower()
         if question.required_evidence is not EvidenceClass.TEAM_BELIEF and any(lowered.startswith(item) for item in _BANNED_OPENERS):
             return False, "answer starts with a banned unsupported generalization", normal, ""
-        evidence_class = normal.get("class")
-        if evidence_class != question.required_evidence.value:
-            return False, "evidence class must be " + question.required_evidence.value, normal, ""
+        # The ladder is a minimum: evidence of the question's class or a stronger
+        # one is accepted, and the fields checked are those of the class supplied.
+        # An unknown or missing class is refused like a weaker one.
+        try:
+            supplied = EvidenceClass(normal.get("class"))
+        except ValueError:
+            supplied = None
+        if supplied is None or EVIDENCE_RUNG[supplied] > EVIDENCE_RUNG[question.required_evidence]:
+            return False, "evidence class must be " + question.required_evidence.value + " or stronger", normal, ""
         required: dict[EvidenceClass, tuple[str, ...]] = {
             EvidenceClass.OBSERVED_BEHAVIOR: ("source", "date", "location"),
             EvidenceClass.ARTIFACT: ("source", "location"),
@@ -733,7 +750,7 @@ class Conductor:
             EvidenceClass.INTERVIEW_CLAIM: ("person", "source", "date"),
             EvidenceClass.TEAM_BELIEF: ("source",),
         }
-        missing = [field for field in required[question.required_evidence] if not _truthy_text(normal.get(field))]
+        missing = [field for field in required[supplied] if not _truthy_text(normal.get(field))]
         if missing:
             return False, "missing evidence fields: " + ", ".join(missing), normal, ""
         # A supplied date must parse whatever the evidence class: a malformed

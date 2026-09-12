@@ -14,7 +14,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from pmos.conductor import Conductor, EvidenceClass, Question, QuestionBank, TurnOutcome
-from pmos.store import Store
+from pmos.store import Store, ValidationError
+from pmos.banks import LEGACY_ONBOARDING, banks_from_contract, load_contract, shipped_banks
 
 
 BANKS = (
@@ -66,6 +67,120 @@ class ConductorTest(unittest.TestCase):
         verifier = lambda source, digest: source == "gate-1.md" and digest == GATE_HASH
         return store, Conductor(store, "payments", BANKS,
                                 gate_source_verifier=verifier)
+
+    def cost_offered(self, conductor: Conductor) -> TurnOutcome:
+        """Answer discover.person, so that discover.cost is the question offered."""
+        first = conductor.next_turn()
+        conductor.submit_answer("discover.person", "Mina exported the failures.", observed(),
+                                expected_revision=first.revision, turn_id="person")
+        offered = conductor.next_turn()
+        self.assertEqual((offered.status, offered.question.id), ("question", "discover.cost"))
+        return offered
+
+    def test_evidence_stronger_than_the_question_asks_is_accepted(self) -> None:
+        store, conductor = self.opening()
+        offered = self.cost_offered(conductor)
+        accepted = conductor.submit_answer("discover.cost", "Support exported 41 failed payouts.", observed(),
+                                           expected_revision=offered.revision, turn_id="cost-observed")
+        self.assertEqual(accepted.status, "accepted")
+        record = conductor.state()["banks"]["discover"]["answers"]["discover.cost"]
+        # The record names the question's minimum; its evidence keeps the class supplied.
+        self.assertEqual((record["evidence_class"], record["evidence"]["class"]),
+                         ("artifact", "observed_behavior"))
+        self.assertEqual(conductor.next_turn().status, "blocked")
+        store.close()
+
+    def test_evidence_weaker_than_the_question_asks_is_refused_and_the_question_stays(self) -> None:
+        store, conductor = self.opening()
+        first = conductor.next_turn()
+        refused = conductor.submit_answer("discover.person", "Mina exported the failures.", artifact(),
+                                          expected_revision=first.revision, turn_id="person-artifact")
+        self.assertEqual((refused.status, refused.message),
+                         ("challenge", "evidence class must be observed_behavior or stronger"))
+        self.assertEqual(conductor.next_turn().question.id, "discover.person")
+        store.close()
+
+    def test_the_fields_checked_are_those_of_the_class_supplied(self) -> None:
+        store, conductor = self.opening()
+        offered = self.cost_offered(conductor)
+        undated = observed()
+        del undated["date"]
+        refused = conductor.submit_answer("discover.cost", "Support exported 41 failed payouts.", undated,
+                                          expected_revision=offered.revision, turn_id="cost-undated")
+        self.assertEqual((refused.status, refused.message), ("challenge", "missing evidence fields: date"))
+        store.close()
+
+    def test_an_unknown_or_missing_evidence_class_is_refused(self) -> None:
+        store, conductor = self.opening()
+        revision = self.cost_offered(conductor).revision
+        unknown = dict(artifact(), **{"class": "rumor"})
+        missing = {key: value for key, value in artifact().items() if key != "class"}
+        for label, evidence in (("unknown", unknown), ("missing", missing)):
+            with self.subTest(label=label):
+                refused = conductor.submit_answer("discover.cost", "Support exported 41 failed payouts.", evidence,
+                                                  expected_revision=revision, turn_id="cost-" + label)
+                self.assertEqual((refused.status, refused.message),
+                                 ("challenge", "evidence class must be artifact or stronger"))
+                revision = refused.revision
+        store.close()
+
+    def test_the_shipped_contract_loads_six_banks_in_loop_order(self) -> None:
+        contract = load_contract()
+        self.assertEqual((contract["schema"], len(contract["banks"])), (1, 6))
+        banks = shipped_banks()
+        self.assertEqual([bank.id for bank in banks],
+                         ["discover", "define", "design", "build", "deliver", "operate"])
+        self.assertEqual([bank.version for bank in banks],
+                         [bank["version"] for bank in contract["banks"]])
+        first = banks[0].questions[0]
+        self.assertEqual((first.id, first.prompt), ("DISCOVER-1", contract["banks"][0]["questions"][0]["ask"]))
+        for bank in banks:
+            self.assertEqual(bank.gate_approvers, ("local-reviewer",))
+            for question in bank.questions:
+                self.assertIsInstance(question.required_evidence, EvidenceClass)
+
+    def test_shipped_definition_hashes_are_stable(self) -> None:
+        self.assertEqual([bank.definition_hash for bank in shipped_banks()],
+                         [bank.definition_hash for bank in shipped_banks()])
+
+    def test_the_legacy_onboarding_bank_keeps_its_definition_hash(self) -> None:
+        # The hash of the one bank pmos/cli.py builds today. Saved state pins it,
+        # so a product that started on that bank would be refused on any other.
+        self.assertEqual(LEGACY_ONBOARDING[0].definition_hash,
+                         "06f90a11b758a58ac0d2c0f2022deb8244c1009a73a4139a6f528a73b5958dfa")
+
+    def test_a_contract_file_that_cannot_be_used_is_a_validation_error(self) -> None:
+        good = load_contract()
+        payloads = {
+            "missing": None,
+            "not UTF-8": b"\xff\xfe",
+            "not JSON": b"{",
+            "not an object": b"[]",
+            "schema 2": json.dumps(dict(good, schema=2)).encode("utf-8"),
+            "no banks": json.dumps(dict(good, banks=[])).encode("utf-8"),
+        }
+        with TemporaryDirectory() as temp:
+            for label, payload in payloads.items():
+                with self.subTest(label=label):
+                    path = Path(temp) / (label.replace(" ", "-") + ".json")
+                    if payload is not None:
+                        path.write_bytes(payload)
+                    with self.assertRaises(ValidationError):
+                        load_contract(path)
+
+    def test_a_malformed_bank_is_a_validation_error(self) -> None:
+        bank = load_contract()["banks"][0]
+        question = bank["questions"][0]
+        broken = {
+            "no version": {key: value for key, value in bank.items() if key != "version"},
+            "questions that are not a list": dict(bank, questions=7),
+            "an unknown evidence class": dict(bank, questions=[dict(question, evidence_class="rumor")]),
+            "an empty ask": dict(bank, questions=[dict(question, ask="")]),
+        }
+        for label, value in broken.items():
+            with self.subTest(label=label):
+                with self.assertRaises(ValidationError):
+                    banks_from_contract({"schema": 1, "banks": [value]})
 
     def test_three_turns_survive_reopen_and_subprocess_exit(self) -> None:
         store, conductor = self.opening()
