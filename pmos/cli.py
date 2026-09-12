@@ -431,12 +431,14 @@ def _gate(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def _gate_result(outcome: TurnOutcome, product_id: str) -> dict[str, Any]:
-    result = {"ok": outcome.completed, "product_id": product_id, "outcome": _outcome_dict(outcome)}
+    # A gate that moves the interview to the next bank is a success even though the interview is not complete.
+    ok = outcome.status in ("advanced", "completed")
+    result = {"ok": ok, "product_id": product_id, "outcome": _outcome_dict(outcome)}
     if outcome.status == "stale":
         # A re-proof can be recorded while another approval is still stale:
         # name it, and never report completion.
         result["error"] = outcome.message
-    elif not outcome.completed:
+    elif not ok:
         result["error"] = "gate proof was not accepted; provide a real source and current revision"
     return result
 

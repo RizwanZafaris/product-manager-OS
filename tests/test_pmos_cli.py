@@ -233,6 +233,28 @@ class CliTests(unittest.TestCase):
         self.assertEqual((result["ok"], result["outcome"]["completed"]), (False, False))
         self.assertEqual(result["error"], outcome.message)
 
+    def test_a_gate_that_moves_to_the_next_bank_is_ok_but_not_complete(self):
+        advanced = TurnOutcome("advanced", "5:abc", bank_id="discover",
+                               message="gate proof recorded")
+        advanced_result = _gate_result(advanced, "checkout")
+        self.assertEqual((advanced_result["ok"], advanced_result["outcome"]["completed"]), (True, False))
+        self.assertNotIn("error", advanced_result)
+
+        completed = TurnOutcome("completed", "6:abc", bank_id="operate",
+                                message="gate proof recorded", completed=True)
+        completed_result = _gate_result(completed, "checkout")
+        self.assertEqual((completed_result["ok"], completed_result["outcome"]["completed"]), (True, True))
+        self.assertNotIn("error", completed_result)
+
+        blocked = TurnOutcome("blocked", "5:abc", bank_id="discover",
+                              message="gate source could not be verified")
+        blocked_result = _gate_result(blocked, "checkout")
+        self.assertEqual((blocked_result["ok"], blocked_result["outcome"]["completed"]), (False, False))
+        self.assertEqual(
+            blocked_result["error"],
+            "gate proof was not accepted; provide a real source and current revision",
+        )
+
     def test_a_stale_gate_can_be_proved_again_through_the_cli(self):
         with TemporaryDirectory() as folder:
             self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
