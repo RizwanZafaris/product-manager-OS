@@ -20,7 +20,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Callable, Mapping
 
-from .cli import main as cli_main, _product_banks
+from .cli import main as cli_main
 from .conductor import Conductor
 from .domain import (
     ApprovalError,
@@ -39,6 +39,7 @@ from .operations import (
     SourceControlAdapter,
     TransactionalOutbox,
 )
+from .product import product_banks
 from .routing import (
     ModelRouter,
     ModelSpec,
@@ -713,7 +714,7 @@ def new_user() -> UseCaseResult:
         runtime = root / ".pmos/runtime.sqlite"
         with Store(runtime) as store:
             store.assert_verified()
-            position = Conductor(store, product_id, _product_banks(store, product_id)).next_turn()
+            position = Conductor(store, product_id, product_banks(store, product_id)).next_turn()
             moved_on = position.status == "question" and position.bank_id != gated_bank_id
             if position.status != "completed" and not moved_on:
                 raise AssertionError("CLI conductor state did not survive Store reopen")
