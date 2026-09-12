@@ -4,176 +4,226 @@
   "reviewer_kind": "independent-agent",
   "independent_implementation": true,
   "identity_assurance": "unauthenticated-local-claim",
-  "reviewed_at": "2026-09-11T23:48:28Z",
-  "reviewed_tree_sha256": "a1ea5f2c8307380f03b2dc07e61f9d9938de51e7a141c76c7ded6e6720c78ba8",
+  "reviewed_at": "2026-09-12T00:20:10Z",
+  "reviewed_tree_sha256": "615ff734dc6e3da770db0483a6956322d2b29d182ab32077dcb672f0df6092ff",
   "scope": [
-    "Exact documentation delta af0f892f1736d88a082c22599bfb46d7096c0a4b over 29bba38678840297366901daf123677626c3de3f: all nine changed lines in five files, source meaning, attribution, quotation ceiling, questionnaire exception and administrator decision record.",
-    "Full local CI and readiness suite on the exact 776-file tree; supporting design cards, UX worksheet, source rules and primary sources; pre-existing lower-severity findings retained. Ruleset live state could not be verified.",
+    "Exact tree e172cdd5a629810d900a65eef36ca19a02bd20b8 over accepted parent 583b749: all 32 changed paths, nineteen test moves, unchanged test identities, registry and class inventory, path references, clone-local imports, mutation discovery, and fresh-checkout workflow commands.",
+    "Complete local CI/readiness checks and supporting runner/record integrity inspection; three content corrections checked against source card and primary sources. No P0 or P1 found; one P3 attribution precision issue remains. Hosted GitHub execution, live ruleset state and seven external evidence gates are not independently verified by this local review.",
     "Release gates and readiness integrity; reviewer implemented none of the reviewed tree; model: GPT-6"
   ],
   "evidence": [
     {
-      "command": "rg -n 'CI-6",
-      "result": "review_gate|29bba38' /Users/rizwanzafar/.codex/memories/MEMORY.md|Exit 127: rg unavailable; no memory file contents retrieved or relied upon."
+      "command": "/opt/homebrew/bin/python3.12 tools/ci_gate.py",
+      "result": "Exit 1; 20/21 gates pass. Only readiness-local fails on stale CI-6. Root, harness, regulated, security, docs, graph and remaining gates pass."
+    },
+    {
+      "command": "/opt/homebrew/bin/python3.12 tools/readiness.py",
+      "result": "Exit 1; 99/100, 48 passing criteria, only CI-6 stale. CI-1 full suite and CI-3 fresh-tree mutations pass. Seven external evidence gates remain required; tree clean and stable."
     },
     {
       "command": "git status --short",
-      "result": "Clean before review."
+      "result": "Clean before review and during inspection."
     },
     {
-      "command": "git show --format=fuller --stat HEAD",
-      "result": "af0f892f1736d88a082c22599bfb46d7096c0a4b; five files, nine insertions and nine deletions."
-    },
-    {
-      "command": "git show --format= HEAD",
-      "result": "Reviewed all changed lines; only the five stated documentation files changed."
+      "command": "git show --stat HEAD",
+      "result": "e172cdd5a629810d900a65eef36ca19a02bd20b8; 32 changed paths including nineteen test renames."
     },
     {
       "command": "cat os/OPERATING-LOOP.md",
-      "result": "Read operating-loop context; this is repository release-readiness review, not a product-stage sign-off."
+      "result": "Read release-review context; no product-stage gate signed."
     },
     {
-      "command": "PYTHONDONTWRITEBYTECODE=1 /opt/homebrew/bin/python3.12 tools/ci_gate.py",
-      "result": "Exit 1; 20/21 gates pass; only readiness-local fails because CI-6 review is stale."
+      "command": "rg -n (CI-6/review_gate/583b749) /Users/rizwanzafar/.codex/memories/MEMORY.md",
+      "result": "Exit 127; rg unavailable. Used git grep and grep thereafter."
     },
     {
-      "command": "PYTHONDONTWRITEBYTECODE=1 /opt/homebrew/bin/python3.12 tools/readiness.py",
-      "result": "Exit 1; 99/100, 48 passing criteria; only CI-6 fails because tree digest changed. Seven external gates remain required."
+      "command": "grep -nE (CI-6/review_gate/583b749) /Users/rizwanzafar/.codex/memories/MEMORY.md",
+      "result": "Historical search hits only; no historical claim relied upon for this exact-tree judgment."
     },
     {
-      "command": "gh api repos/RizwanZafaris/product-manager-OS/rulesets/22968065",
-      "result": "Exit 1: error connecting to api.github.com. Ruleset id 22968065, applied 2026-09-12, name main: measured merges only, active enforcement, empty bypass list, extra-approval default and prior green hosted run are administrator statements, not independently verified live."
+      "command": "git show HEAD --format=fuller",
+      "result": "Read commit diff; followed with targeted reads where output was truncated."
     },
     {
-      "command": "git show --format= HEAD -- knowledge/design/visual-foundations.md",
-      "result": "Both replaced source quotations preserve meaning; the eight-point-grid convention remains a convention, not research."
+      "command": "cat tools/ci_gate.py tools/readiness_probe.py",
+      "result": "Inspected runner and probe code; targeted reads completed truncated output."
     },
     {
-      "command": "cat tools/review_gate.py",
-      "result": "Inspected exact-tree binding, record schema, writer and author refusal; identity remains an unauthenticated local claim."
+      "command": "git show HEAD -- tools/ci_gate.py tools/readiness.py tools/readiness_probe.py tests lint.py frameworks/design/ux-scorecard.md knowledge/design/visual-foundations.md",
+      "result": "Inspected content changes and code; path-limited test additions expanded output, followed by rename-aware diff."
     },
     {
-      "command": "cat knowledge/design/visual-foundations.md knowledge/design/deceptive-design.md frameworks/design/ux-scorecard.md",
-      "result": "Inspected cards and worksheet, followed by targeted reads for truncated sections. Cards each retain one source quotation (W3C 13 words; DSA six words); quoted terms, titles and illustrative dialogue excluded."
+      "command": "sed -n '1,210p' tools/readiness_probe.py",
+      "result": "Read tracked-tree copying and cwd-relative import environment."
     },
     {
-      "command": "git rev-parse HEAD HEAD^",
-      "result": "HEAD af0f892f1736d88a082c22599bfb46d7096c0a4b; immediate parent 29bba38678840297366901daf123677626c3de3f."
+      "command": "cat .github/workflows/lint.yml",
+      "result": "Both changed direct commands address tests/test_lint.py; regulated-module command remains in its own directory; fresh-checkout Python matrix and harness-deletion job inspected."
     },
     {
-      "command": "git status --porcelain=v1 --untracked-files=all",
-      "result": "Clean before and after initial gates; no review implementation changes."
+      "command": "cat knowledge/design/ux-measurement.md",
+      "result": "Confirmed Sauro and Dumas CHI 2009 source and distinction from later SEQ naming/benchmarks."
     },
     {
-      "command": "cat docs/readiness/main-ruleset-proposal.md docs/readiness/independent-review.json",
-      "result": "Decision rows match user-supplied administrator statement; prior review is inherited and stale for this tree."
+      "command": "git show HEAD --format= --find-renames (sed from test_contract_gates diff onward)",
+      "result": "Read rename-aware hunks for moved tests, import paths, required modules, inventory and mutation discovery."
     },
     {
-      "command": "grep -n -E 'quot",
-      "result": "fifteen|15 words' CONTRIBUTING.md|Line 8 sets one attributed source quotation under 15 words for knowledge cards."
+      "command": "sed -n '1,155p' tools/readiness_probe.py",
+      "result": "Confirmed run replaces PYTHONPATH with cwd/tests and substitutes sys.executable for python3."
     },
     {
-      "command": "sed -n '1,100p' tools/ci_gate.py",
-      "result": "Canonical gate list inspected."
+      "command": "sed -n '1,115p' tools/ci_gate.py",
+      "result": "All nineteen module names retained in canonical root suite; environment imports tests/."
     },
     {
-      "command": "grep -n -E 'https",
-      "result": "\"|\u201c|\u201d' knowledge/design/deceptive-design.md|Reviewed source attribution and quotation occurrences."
+      "command": "grep -n -A22 'def clean_env' tools/readiness.py",
+      "result": "Verifier subprocesses receive checkout tests/ on PYTHONPATH."
     },
     {
-      "command": "sed -n '150,210p' knowledge/design/visual-foundations.md",
-      "result": "Read remaining card sections and Reading source list."
+      "command": "git grep -nE 'test_[A-Za-z_]+\\.py' -- excluding independent-review.json and regulated import",
+      "result": "All active executable/evidence references resolve. Remaining bare names are historical entries, module basenames, fixtures, or contextual prose; no broken root test invocation found."
     },
     {
-      "command": "sed -n '75,140p' frameworks/design/ux-scorecard.md",
-      "result": "Confirmed attributed UMUX-LITE item stems and stale SUS quotation-limit comment."
-    },
-    {
-      "command": "sed -n '100,160p' tools/ci_gate.py",
-      "result": "Child Python commands use sys.executable; bytecode writing disabled."
-    },
-    {
-      "command": "sed -n '60,88p' frameworks/design/ux-scorecard.md",
-      "result": "Post-task ease item and anchors read; named attribution absent in worksheet."
-    },
-    {
-      "command": "grep -n '\"' knowledge/design/visual-foundations.md",
-      "result": "One source sentence quotation remains; other quotation marks identify terms, titles or illustrative speech."
+      "command": "PYTHONDONTWRITEBYTECODE=1 /opt/homebrew/bin/python3.12 -m unittest tests/test_lint.py",
+      "result": "Exit 0; 129 tests, OK."
     },
     {
       "command": "git diff --check HEAD^ HEAD",
       "result": "Exit 0; no whitespace errors."
     },
     {
-      "command": "sed -n '1,36p' frameworks/design/ux-scorecard.md",
-      "result": "Opening attribution does not name the post-task ease source."
+      "command": "git log -2 --oneline",
+      "result": "HEAD e172cdd; immediate parent 583b749 matches supplied baseline."
     },
     {
-      "command": "grep -n -E 'ease",
-      "result": "Sauro|Single|Lewis|8.point|Spec' knowledge/design/ux-measurement.md docs/REFERENCES-DESIGN.md|Method card names Sauro and Dumas 2009 and links their paper; later SEQ benchmarks explicitly not claimed."
+      "command": "sed -n '300,395p' tools/readiness_probe.py",
+      "result": "Full-suite probe reads canonical root argv, enforces required modules, positive counts and no skipped/expected failures."
     },
     {
-      "command": "sed -n '210,230p' knowledge/design/visual-foundations.md",
-      "result": "Read end of Reading list."
+      "command": "sed -n '1,160p' tools/review_gate.py",
+      "result": "Read exact-tree Git discovery and fail-closed behavior."
     },
     {
-      "command": "cat docs/readiness/external-gates.json",
-      "result": "External evidence requirements remain separate and unclosed by local acceptance."
+      "command": "git show HEAD --format= --find-renames (sed test_pmos_review through test_pmos_usecases)",
+      "result": "Completed moved-test path hunks; no class or method deletion."
     },
     {
-      "command": "ps -axo pid,ppid,etime,command ",
-      "result": " grep -E 'ci_gate|readiness|unittest'|Process inspection denied by sandbox; gate outcomes instead obtained from original command sessions."
+      "command": "sed -n '305,395p' tools/readiness_probe.py",
+      "result": "Confirmed all found modules run and counts are checked."
     },
     {
-      "command": "nl -ba frameworks/design/ux-scorecard.md ",
-      "result": " sed -n '68,96p'|Verified finding locations: item at 76 and superseded quotation-limit comment at 86-91."
+      "command": "ps -eo pid,ppid,etime,command (filtered for gate processes)",
+      "result": "Sandbox denied ps; no process-inspection evidence claimed. Awaited original command sessions to completion."
     },
     {
-      "command": "nl -ba knowledge/design/visual-foundations.md ",
-      "result": " sed -n '99,111p'|Verified pre-existing reflow direction error at 104."
+      "command": "sed -n '410,620p' tools/review_gate.py",
+      "result": "Read protected record writer and closed attestation schema; identity is an unauthenticated local claim."
     },
     {
-      "command": "sed -n '1,110p' tools/readiness.py",
-      "result": "Default output is stdout; local review and external evidence boundaries inspected."
+      "command": "cat docs/readiness/independent-review.json (first 60 lines)",
+      "result": "Existing record is for prior digest; baseline review examined as historical checkout evidence."
+    },
+    {
+      "command": "sed -n '620,820p' tools/review_gate.py",
+      "result": "Read recent-author check, record validation and CLI. Only --record is used to modify the record."
+    },
+    {
+      "command": "grep -nE (executor/Thread/timeout/workers/as_completed/subprocess) tools/readiness.py tools/ci_gate.py",
+      "result": "Checked subprocess execution, timeouts and current-interpreter substitution."
+    },
+    {
+      "command": "sed -n '1,125p' knowledge/design/README.md",
+      "result": "Read worksheet questionnaire exception; revised SUS comment is consistent."
+    },
+    {
+      "command": "sed -n '64,100p' frameworks/design/ux-scorecard.md",
+      "result": "Attribution is present; retained higher-is-easier polarity needs adaptation disclosure relative to 2009 study."
+    },
+    {
+      "command": "sed -n '350,430p' tools/readiness.py",
+      "result": "Reviewed exact-test count checks and evidence verifier."
+    },
+    {
+      "command": "sed -n '1,95p' tools/readiness_registry.py",
+      "result": "Read fixed argv and pinned-id contracts."
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 /opt/homebrew/bin/python3.12 tools/readiness_probe.py deletable-harness",
+      "result": "Exit 0; tree gate, manifest, workspace contract and lint suite pass with harness deleted."
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 /opt/homebrew/bin/python3.12 - (inline AST and inventory inspection)",
+      "result": "Exit 0; nineteen modules, 673 unique test ids; every inventory class present; imports resolve to checkout tests/; all moved class/method names unchanged from HEAD^."
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 /opt/homebrew/bin/python3.12 - (inline registry resolution and mocked subprocess inspection)",
+      "result": "Exit 0; 335 unique registry-pinned ids each load one test; clone cwd/PYTHONPATH follow clone tests/, replace host path, preserve Python executable. Mock inspection created no files."
+    },
+    {
+      "command": "sed -n '660,770p' tools/readiness.py",
+      "result": "Read readiness exit-status and optional output behavior; no output file requested."
+    },
+    {
+      "command": "sed -n '150,220p' tools/ci_gate.py",
+      "result": "Confirmed canonical suite reports all gate results and nonzero on any failure."
+    },
+    {
+      "command": "git diff --name-only",
+      "result": "No implementation changes."
+    },
+    {
+      "command": "git status --porcelain=v1 --untracked-files=all",
+      "result": "Clean after gates and before recording."
+    },
+    {
+      "command": "git grep -nE (unittest/discover) -- .github README.md CONTRIBUTING.md tools tests (tail 50)",
+      "result": "Cross-checked executable suite references."
+    },
+    {
+      "command": "sed -n '632,665p' tools/readiness.py",
+      "result": "Read printed hard gates and external-evidence limitations."
+    },
+    {
+      "command": "sed -n '50,95p' docs/readiness/independent-review.json",
+      "result": "Read prior record provenance; did not treat old results as current verification."
+    },
+    {
+      "command": "git show HEAD --numstat",
+      "result": "Confirmed changes confined to stated move and three content fixes."
+    },
+    {
+      "command": "git grep -n 'Path(__file__)' -- tests",
+      "result": "All repository-root references in moved tests now resolve via parent.parent; conductor intentionally includes tests and repo root."
+    },
+    {
+      "command": "sed -n '425,515p' tools/readiness.py",
+      "result": "Checked stable-tree comparison, verifier caching and criterion reporting."
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 /opt/homebrew/bin/python3.12 - (existing deletable-harness probe with direct workflow unittest argv)",
+      "result": "Exit 0; tests/test_lint.py invocation also passes on the tracked temporary tree after deleting harness. Only existing probe performs temporary fixture operations."
     },
     {
       "command": "PYTHONDONTWRITEBYTECODE=1 /opt/homebrew/bin/python3.12 tools/review_gate.py --digest",
-      "result": "776 files; sha256 a1ea5f2c8307380f03b2dc07e61f9d9938de51e7a141c76c7ded6e6720c78ba8."
+      "result": "776 files; SHA256 615ff734dc6e3da770db0483a6956322d2b29d182ab32077dcb672f0df6092ff."
     },
     {
-      "command": "git diff --name-only HEAD",
-      "result": "Empty before recording."
+      "command": "nl -ba frameworks/design/ux-scorecard.md (lines 66-80)",
+      "result": "Finding located at line 76; worksheet forbids imported benchmarks but does not disclose source-scale reversal."
     },
     {
-      "command": "git show --format= --numstat HEAD",
-      "result": "1/1 GLOSSARY; 2/2 ruleset proposal; 1/1 design README; 3/3 deceptive design; 2/2 visual foundations."
-    },
-    {
-      "command": "web.run primary-source verification",
-      "result": "Verified glossary version and reflow direction at https://www.w3.org/TR/WCAG21/ and https://www.w3.org/WAI/WCAG22/Understanding/reflow.html; CCPA 7004(b),(c) paraphrases against effective-2026 text https://cppa.ca.gov/regulations/pdf/ccpa_statute_eff_20260101.pdf pp19-20; CMA phrase https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/1066524/Online_choice_architecture_discussion_paper.pdf p5; Apple phrase via indexed official HIG https://developer.apple.com/design/human-interface-guidelines/accessibility?changes=____5_8_2; grid benefit https://spec.fm/specifics/8-pt-grid. Sauro/Dumas paper indexed at https://measuringu.com/papers/Sauro_Dumas_CHI2009.pdf confirms item stem, but direct fetch failed; later MeasuringU evolution page direct fetch returned 403. No live GitHub verification."
+      "command": "web source lookup: WCAG21 and WCAG22 Reflow; Sauro_Dumas_CHI2009; MeasuringU evolution-of-seq",
+      "result": "W3C primary criteria confirm corrected orientation, dimensions and conditional exception. Direct MeasuringU fetch returned 403; indexed primary paper Figure 1 and author article confirm 2009 Very Easy-to-Very Difficult polarity, opposite worksheet. URLs: https://www.w3.org/TR/WCAG21/#reflow ; https://www.w3.org/TR/WCAG22/#reflow ; https://measuringu.com/papers/Sauro_Dumas_CHI2009.pdf ; https://measuringu.com/evolution-of-seq/"
     }
   ],
   "findings": [
     {
       "id": "R1",
-      "severity": "P2",
-      "status": "open",
-      "summary": "Reflow table assigns the 256 CSS-pixel height test to the wrong scrolling direction.",
-      "evidence": "knowledge/design/visual-foundations.md:104 says vertical-scrolling; W3C SC 1.4.10 assigns 256 CSS px height to horizontally scrolling content. Change vertical to horizontal and qualify exceptions as content requiring two-dimensional layout for usage or meaning. https://www.w3.org/WAI/WCAG22/Understanding/reflow.html"
-    },
-    {
-      "id": "R2",
       "severity": "P3",
       "status": "open",
-      "summary": "Post-task ease quotation lacks a named source in the worksheet required by the new questionnaire exception.",
-      "evidence": "frameworks/design/ux-scorecard.md:76 quotes the item without naming its source; its opening attribution lists Brooke, Lewis/Utesch/Maher and Agresti/Coull, not the post-task item source. Name and link the source and specify the chosen scale polarity; knowledge/design/ux-measurement.md:79 points to Sauro and Dumas 2009."
-    },
-    {
-      "id": "R3",
-      "severity": "P3",
-      "status": "open",
-      "summary": "SUS guidance still claims a one-quotation limit that the new worksheet exception supersedes.",
-      "evidence": "frameworks/design/ux-scorecard.md:86-91 says its one-quote-per-file allowance is spent on UMUX-LITE, conflicting with knowledge/design/README.md:53. Update this explanation to reference the questionnaire exception; retaining the external SUS link is fine."
+      "summary": "Post-task scale reverses the cited 2009 instrument without identifying the adaptation.",
+      "evidence": "frameworks/design/ux-scorecard.md:76 uses 1 Very difficult to 7 Very easy. Sauro and Dumas CHI 2009 Figure 1 uses Very Easy on the left and Very Difficult on the right; author history confirms the reversal (https://measuringu.com/evolution-of-seq/). Label the worksheet as adapted with reversed polarity, or cite the later version and reconcile the source note; keep scoring direction explicit."
     }
   ],
   "verdict": "accepted"
