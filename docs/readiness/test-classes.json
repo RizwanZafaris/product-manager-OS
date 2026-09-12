@@ -30,6 +30,9 @@
     "test_phase_index": [
       "PhaseIndexTests"
     ],
+    "test_pmos_artifacts": [
+      "ArtifactManifestTests"
+    ],
     "test_pmos_cli": [
       "CliTests"
     ],
