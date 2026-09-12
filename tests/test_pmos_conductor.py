@@ -7,6 +7,7 @@ import hashlib
 import subprocess
 import sys
 import unittest
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -43,10 +44,11 @@ GATE_HASH = hashlib.sha256(GATE_BYTES).hexdigest()
 
 
 def gate_proof(*, actor: str = "asha", requester: str = "mina",
-               source: str = "gate-1.md", source_hash: str = GATE_HASH) -> dict[str, str]:
+               source: str = "gate-1.md", source_hash: str = GATE_HASH,
+               approved_at: str = "2026-09-03T00:00:00Z") -> dict[str, str]:
     return {"source": source, "source_sha256": source_hash,
             "actor_id": actor, "requester_id": requester,
-            "decision": "approved", "approved_at": "2026-09-03T00:00:00Z",
+            "decision": "approved", "approved_at": approved_at,
             "signed_by": actor}
 
 
@@ -233,6 +235,38 @@ class ConductorTest(unittest.TestCase):
         persisted = conductor.state()["gates"]["discover"]
         self.assertEqual(persisted["proof"]["source_sha256"], GATE_HASH)
         self.assertEqual(len(persisted["proof_sha256"]), 64)
+        store.close()
+
+    def test_prove_gate_rejects_invalid_and_future_timestamps(self) -> None:
+        store, conductor = self.opening()
+        current = conductor.next_turn()
+        a1 = conductor.submit_answer("discover.person", "Mina exported it.", observed(),
+                                     expected_revision=current.revision, turn_id="ts-a1")
+        current = conductor.next_turn()
+        a2 = conductor.submit_answer("discover.cost", "Cost is in export.", artifact(),
+                                     expected_revision=current.revision, turn_id="ts-a2")
+        revision = a2.revision
+        future = (datetime.now(timezone.utc) + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        past = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        invalid_cases = [
+            ("2026-99-99T99:99:99Z", "ts-impossible"),
+            ("2026-02-30T10:00:00Z", "ts-feb30"),
+            ("2026-09-03T00:00:00", "ts-no-tz"),
+            ("2026-09-03T00:00:00+05:00", "ts-offset"),
+            (future, "ts-future"),
+        ]
+        for approved_at, turn_id in invalid_cases:
+            result = conductor.prove_gate("discover", gate_proof(approved_at=approved_at),
+                                          expected_revision=revision, turn_id=turn_id)
+            self.assertEqual(result.status, "blocked", approved_at)
+            self.assertFalse(result.completed)
+            revision = result.revision
+        self.assertEqual(conductor.state()["gates"], {})
+        self.assertEqual(conductor.state()["current_bank"], 0)
+        valid = conductor.prove_gate("discover", gate_proof(approved_at=past),
+                                    expected_revision=revision, turn_id="ts-valid")
+        self.assertEqual(valid.status, "advanced")
+        self.assertIn("discover", conductor.state()["gates"])
         store.close()
 
     def test_question_bank_freezes_all_sequences(self) -> None:

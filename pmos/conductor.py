@@ -12,6 +12,7 @@ import hashlib
 import json
 import re
 from dataclasses import asdict, dataclass, field
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Callable, Mapping, Optional, Sequence
 
@@ -295,7 +296,8 @@ class Conductor:
             return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
                 "blocked", snapshot.head.token, bank_id=bank_id,
                 message="gate actor is not authorized by the pinned question bank"))
-        if supplied["decision"] != "approved" or not _UTC.match(supplied["approved_at"]):
+        if (supplied["decision"] != "approved" or not _UTC.match(supplied["approved_at"])
+                or not _valid_approved_at(supplied["approved_at"])):
             return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
                 "blocked", snapshot.head.token, bank_id=bank_id,
                 message="gate decision or UTC approval timestamp is invalid"))
@@ -573,6 +575,24 @@ def _parked_answer_text(value: Any) -> str:
 
 def _truthy_text(value: Any) -> bool:
     return isinstance(value, str) and bool(value.strip())
+
+
+def _valid_approved_at(value: Any) -> bool:
+    """Strictly parse an ISO 8601 timestamp with an explicit timezone."""
+    if not isinstance(value, str):
+        return False
+    text = value
+    if text.endswith("Z"):
+        text = text[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return False
+    if parsed.tzinfo is None:
+        return False
+    if parsed > datetime.now(timezone.utc) + timedelta(seconds=300):
+        return False
+    return True
 
 
 def _evidence_mapping(value: Mapping[str, Any]) -> dict[str, str]:
