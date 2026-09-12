@@ -201,8 +201,7 @@ class Conductor:
         position = self._position(snapshot.head.token, state)
         if position.status != "question":
             return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
-                "blocked" if position.status == "blocked" else position.status, snapshot.head.token,
-                bank_id=position.bank_id, message=position.message, completed=position.completed))
+                position.status, snapshot.head.token, bank_id=position.bank_id, message=position.message, completed=position.completed))
         if position.question is None or position.question.id != question_id:
             return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
                 "conflict", snapshot.head.token, bank_id=position.bank_id,
@@ -269,7 +268,14 @@ class Conductor:
         if conflict:
             return conflict
         index = int(state["current_bank"])
-        if index >= len(self.banks) or self.banks[index].id != bank_id:
+        position = self._position(snapshot.head.token, state)
+        # The earliest stale bank may be proved again; while it is stale,
+        # nothing later is gated on top of the approval that stopped verifying.
+        reproof = position.status == "stale" and position.bank_id == bank_id
+        if position.status == "stale" and not reproof:
+            return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
+                "stale", snapshot.head.token, bank_id=position.bank_id, message=position.message))
+        if not reproof and (index >= len(self.banks) or self.banks[index].id != bank_id):
             return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
                 "blocked", snapshot.head.token, bank_id=bank_id, message="only the current completed bank may be gated"))
         bank = self._by_id[bank_id]
@@ -330,10 +336,20 @@ class Conductor:
                 "blocked", snapshot.head.token, bank_id=bank_id,
                 message="gate signer does not match the authorized actor"))
         proof = dict(supplied)
-        state["gates"][bank_id] = {
-            "proof": proof,
-            "proof_sha256": hashlib.sha256(canonical_json(proof)).hexdigest(),
-        }
+        record = {"proof": proof, "proof_sha256": hashlib.sha256(canonical_json(proof)).hexdigest()}
+        if reproof:
+            # The approval that stopped verifying is kept, never deleted: a
+            # copy moves to an append-only list with when and why it was
+            # superseded. The bank cursor does not move.
+            archived = dict(state["gates"][bank_id], reason="superseded after proof changed",
+                            superseded_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+            state.setdefault("superseded_gates", {}).setdefault(bank_id, []).append(archived)
+            state["gates"][bank_id] = record
+            status = "completed" if state["current_bank"] == len(self.banks) else "advanced"
+            return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
+                status, snapshot.head.token, bank_id=bank_id, completed=status == "completed",
+                message="gate proof recorded again; the earlier approval is kept as superseded"))
+        state["gates"][bank_id] = record
         state["current_bank"] += 1
         status = "completed" if state["current_bank"] == len(self.banks) else "advanced"
         return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
@@ -374,8 +390,11 @@ class Conductor:
     def _validate_state(self, state: Any) -> None:
         if not isinstance(state, dict) or state.get("schema") != STATE_VERSION:
             raise ValidationError("unsupported conductor state")
-        if set(state) != {"schema", "current_bank", "banks", "gates", "turn_results"}:
-            raise ValidationError("conductor state has unknown or missing fields")
+        allowed_keys = {"schema", "current_bank", "banks", "gates", "turn_results", "superseded_gates"}
+        if not set(state).issubset(allowed_keys):
+            raise ValidationError("conductor state has unknown fields")
+        if not {"schema", "current_bank", "banks", "gates", "turn_results"}.issubset(set(state)):
+            raise ValidationError("conductor state has missing fields")
         if not isinstance(state["current_bank"], int) or not 0 <= state["current_bank"] <= len(self.banks):
             raise ValidationError("conductor state has invalid cursor")
         if not isinstance(state["banks"], dict) or set(state["banks"]) != set(self._by_id):
@@ -407,6 +426,20 @@ class Conductor:
         completed_ids = {bank.id for bank in self.banks[:state["current_bank"]]}
         if set(state["gates"]) != completed_ids:
             raise ValidationError("conductor gates do not match the durable bank cursor")
+        if "superseded_gates" in state:
+            if not isinstance(state["superseded_gates"], dict):
+                raise ValidationError("conductor superseded gates is invalid")
+            for gid, records in state["superseded_gates"].items():
+                if gid not in completed_ids:
+                    raise ValidationError("conductor superseded gate id is not a completed bank")
+                if not isinstance(records, list):
+                    raise ValidationError("conductor superseded gate records is invalid")
+                for rec in records:
+                    if (not isinstance(rec, dict)
+                            or set(rec) != {"proof", "proof_sha256", "reason", "superseded_at"}
+                            or not isinstance(rec["proof"], dict)
+                            or rec["proof_sha256"] != hashlib.sha256(canonical_json(rec["proof"])).hexdigest()):
+                        raise ValidationError("conductor superseded gate record is invalid")
         for bank in self.banks[:state["current_bank"]]:
             saved = state["banks"][bank.id]
             if saved["cursor"] != len(bank.questions) or saved["parked"]:
@@ -516,6 +549,26 @@ class Conductor:
         return None
 
     def _position(self, revision: str, state: Mapping[str, Any]) -> TurnOutcome:
+        # An approval is only as good as the proof it points at. With a
+        # verifier configured, each gated bank's recorded proof is checked
+        # again, earliest bank first; one that no longer verifies (changed or
+        # missing) makes the interview stale until that bank is proved again.
+        # pmos/domain.py has its own, separate evidence-invalidation path.
+        if self._gate_source_verifier is not None:
+            for bank in self.banks:
+                gate = state["gates"].get(bank.id)
+                if not gate:
+                    continue
+                source = gate["proof"].get("source")
+                try:
+                    verified = self._gate_source_verifier(source, gate["proof"].get("source_sha256"))
+                except Exception:
+                    verified = False
+                if verified is not True:
+                    return TurnOutcome("stale", revision, bank_id=bank.id,
+                                       message="gate proof %s for %s no longer verifies (changed or missing); "
+                                               "prove the gate again" % (source, bank.id))
+
         index = int(state["current_bank"])
         if index >= len(self.banks):
             return TurnOutcome("completed", revision, message="all banks and gates are complete", completed=True)
@@ -689,7 +742,7 @@ def _outcome_from_data(data: Any) -> TurnOutcome:
     except (TypeError, ValueError) as exc:
         raise ValidationError("stored turn result is invalid") from exc
     if (outcome.status not in {"question", "challenge", "blocked", "parked", "accepted",
-                              "advanced", "completed", "conflict"} or
+                              "advanced", "completed", "conflict", "stale"} or
             not isinstance(outcome.challenge_count, int) or
             isinstance(outcome.challenge_count, bool) or
             outcome.challenge_count < 0 or outcome.challenge_count > 2 or

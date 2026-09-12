@@ -269,6 +269,127 @@ class ConductorTest(unittest.TestCase):
         self.assertIn("discover", conductor.state()["gates"])
         store.close()
 
+    def gated_discover(self) -> tuple[Conductor, Path]:
+        """Gate the first bank against a real proof file, checked by hash the way the CLI checks it."""
+        root = Path(self.temp.name)
+        proof = root / "gate-1.md"
+        proof.write_bytes(GATE_BYTES)
+
+        def verifier(source: str, digest: str) -> bool:
+            path = root / source
+            return path.is_file() and hashlib.sha256(path.read_bytes()).hexdigest() == digest
+
+        conductor = Conductor(Store(self.path), "payments", BANKS, gate_source_verifier=verifier)
+        turn = conductor.next_turn()
+        conductor.submit_answer("discover.person", "Mina exported the failures.", observed(),
+                                expected_revision=turn.revision, turn_id="f06-a1")
+        turn = conductor.next_turn()
+        conductor.submit_answer("discover.cost", "The export reports the weekly cost.", artifact(),
+                                expected_revision=turn.revision, turn_id="f06-a2")
+        turn = conductor.next_turn()
+        gated = conductor.prove_gate("discover", gate_proof(), expected_revision=turn.revision, turn_id="f06-g1")
+        self.assertEqual(gated.status, "advanced")
+        return conductor, proof
+
+    def test_changed_gate_proof_makes_the_bank_stale(self) -> None:
+        conductor, proof = self.gated_discover()
+        self.assertEqual(conductor.next_turn().question.id, "define.sponsor")
+        proof.write_bytes(b"changed after approval\n")
+        stale = conductor.next_turn()
+        self.assertEqual((stale.status, stale.bank_id), ("stale", "discover"))
+        self.assertIn("gate-1.md", stale.message)
+        conductor.store.close()
+
+    def test_removed_gate_proof_makes_the_bank_stale(self) -> None:
+        conductor, proof = self.gated_discover()
+        proof.unlink()
+        stale = conductor.next_turn()
+        self.assertEqual((stale.status, stale.bank_id), ("stale", "discover"))
+        conductor.store.close()
+
+    def test_answers_are_refused_while_an_approval_is_stale(self) -> None:
+        conductor, proof = self.gated_discover()
+        proof.write_bytes(b"changed after approval\n")
+        turn = conductor.next_turn()
+        refused = conductor.submit_answer("define.sponsor", "Mina approved scope.", commitment(),
+                                          expected_revision=turn.revision, turn_id="f06-a3")
+        self.assertEqual((refused.status, refused.bank_id), ("stale", "discover"))
+        self.assertEqual(conductor.state()["banks"]["define"]["answers"], {})
+        conductor.store.close()
+
+    def test_a_later_bank_cannot_be_gated_on_a_stale_approval(self) -> None:
+        conductor, proof = self.gated_discover()
+        turn = conductor.next_turn()
+        accepted = conductor.submit_answer("define.sponsor", "Mina approved scope.", commitment(),
+                                           expected_revision=turn.revision, turn_id="f06-a3")
+        self.assertEqual(accepted.status, "accepted")
+        second = Path(self.temp.name) / "gate-2.md"
+        second.write_bytes(b"define approval\n")
+        proof.write_bytes(b"changed after approval\n")
+        turn = conductor.next_turn()
+        refused = conductor.prove_gate("define", gate_proof(source="gate-2.md",
+                                                            source_hash=hashlib.sha256(b"define approval\n").hexdigest()),
+                                       expected_revision=turn.revision, turn_id="f06-g2")
+        self.assertEqual((refused.status, refused.bank_id), ("stale", "discover"))
+        state = conductor.state()
+        self.assertEqual(state["current_bank"], 1)
+        self.assertNotIn("define", state["gates"])
+        conductor.store.close()
+
+    def test_reproving_a_stale_bank_restores_it_and_keeps_the_superseded_approval(self) -> None:
+        conductor, proof = self.gated_discover()
+        proof.write_bytes(b"revised approval\n")
+        turn = conductor.next_turn()
+        self.assertEqual(turn.status, "stale")
+        malformed = conductor.prove_gate("discover", {"source": "gate-1.md"},
+                                         expected_revision=turn.revision, turn_id="f06-bad")
+        self.assertEqual(malformed.status, "blocked")
+        self.assertNotIn("superseded_gates", conductor.state())
+        new_hash = hashlib.sha256(b"revised approval\n").hexdigest()
+        turn = conductor.next_turn()
+        reproved = conductor.prove_gate("discover", gate_proof(source_hash=new_hash),
+                                        expected_revision=turn.revision, turn_id="f06-g1-again")
+        self.assertEqual(reproved.status, "advanced")
+        self.assertEqual(conductor.next_turn().question.id, "define.sponsor")
+        state = conductor.state()
+        self.assertEqual(state["current_bank"], 1)
+        self.assertEqual(state["gates"]["discover"]["proof"]["source_sha256"], new_hash)
+        (archived,) = state["superseded_gates"]["discover"]
+        self.assertEqual(archived["proof"]["source_sha256"], GATE_HASH)
+        self.assertEqual(archived["reason"], "superseded after proof changed")
+        self.assertRegex(archived["superseded_at"], r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+        conductor.store.close()
+
+    def test_an_unchanged_proof_stays_completed(self) -> None:
+        conductor, proof = self.gated_discover()
+        turn = conductor.next_turn()
+        conductor.submit_answer("define.sponsor", "Mina approved scope.", commitment(),
+                                expected_revision=turn.revision, turn_id="f06-a3")
+        turn = conductor.next_turn()
+        done = conductor.prove_gate("define", gate_proof(), expected_revision=turn.revision, turn_id="f06-g2")
+        self.assertEqual(done.status, "completed")
+        self.assertEqual(conductor.next_turn().status, "completed")
+        self.assertNotIn("superseded_gates", conductor.state())
+        conductor.store.close()
+
+    def test_without_a_verifier_recorded_proof_is_not_rechecked(self) -> None:
+        conductor, proof = self.gated_discover()
+        conductor.store.close()
+        proof.write_bytes(b"changed after approval\n")
+        store = Store(self.path)
+        unverified = Conductor(store, "payments", BANKS)
+        self.assertEqual(unverified.next_turn().question.id, "define.sponsor")
+        store.close()
+
+    def test_a_replayed_gate_turn_returns_its_recorded_outcome_while_stale(self) -> None:
+        conductor, proof = self.gated_discover()
+        proof.write_bytes(b"changed after approval\n")
+        turn = conductor.next_turn()
+        replay = conductor.prove_gate("discover", gate_proof(), expected_revision=turn.revision, turn_id="f06-g1")
+        self.assertEqual(replay.status, "advanced")
+        self.assertNotIn("superseded_gates", conductor.state())
+        conductor.store.close()
+
     def test_question_bank_freezes_all_sequences(self) -> None:
         questions = [Question("q", "What happened?", EvidenceClass.OBSERVED_BEHAVIOR)]
         prerequisites = ["signed_by"]
