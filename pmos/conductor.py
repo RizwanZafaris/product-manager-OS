@@ -437,7 +437,14 @@ class Conductor:
                             superseded_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
             state.setdefault("superseded_gates", {}).setdefault(bank_id, []).append(archived)
             state["gates"][bank_id] = record
-            status = "completed" if state["current_bank"] == len(self.banks) else "advanced"
+            # The outcome comes from the refreshed position: re-proving one
+            # bank cannot complete the interview while another gate is stale.
+            after = self._position(snapshot.head.token, state)
+            if after.status == "stale":
+                return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
+                    "stale", snapshot.head.token, bank_id=after.bank_id,
+                    message="gate proof for %s recorded again; %s" % (bank_id, after.message)))
+            status = "completed" if after.status == "completed" else "advanced"
             return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
                 status, snapshot.head.token, bank_id=bank_id, completed=status == "completed",
                 message="gate proof recorded again; the earlier approval is kept as superseded"))

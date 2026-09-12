@@ -526,6 +526,52 @@ class ConductorTest(unittest.TestCase):
         self.assertEqual(parked.status, "parked")
         store.close()
 
+    def gated_both(self) -> tuple[Conductor, Path, Path]:
+        """Gate discover and define, each against its own real proof file."""
+        conductor, first = self.gated_discover()
+        second = Path(self.temp.name) / "gate-2.md"
+        second.write_bytes(b"define approval\n")
+        turn = conductor.next_turn()
+        conductor.submit_answer("define.sponsor", "Mina approved scope.", commitment(),
+                                expected_revision=turn.revision, turn_id="f06-a3")
+        turn = conductor.next_turn()
+        done = conductor.prove_gate("define", gate_proof(source="gate-2.md",
+                                                         source_hash=hashlib.sha256(second.read_bytes()).hexdigest()),
+                                    expected_revision=turn.revision, turn_id="f06-g2")
+        self.assertEqual(done.status, "completed")
+        return conductor, first, second
+
+    def test_reproving_one_of_two_stale_gates_does_not_complete_the_interview(self) -> None:
+        conductor, first, second = self.gated_both()
+        first.write_bytes(b"revised discover approval\n")
+        second.write_bytes(b"revised define approval\n")
+        self.assertEqual(conductor.next_turn().bank_id, "discover")
+        reproved = conductor.prove_gate("discover", gate_proof(source_hash=hashlib.sha256(first.read_bytes()).hexdigest()),
+                                        expected_revision=conductor.next_turn().revision, turn_id="f06-g1-again")
+        self.assertEqual((reproved.status, reproved.bank_id, reproved.completed), ("stale", "define", False))
+        self.assertIn("recorded again", reproved.message)
+        position = conductor.next_turn()
+        self.assertEqual((position.status, position.bank_id), ("stale", "define"))
+        conductor.store.close()
+        # The recorded re-proof and the remaining stale gate survive a restart.
+        root = Path(self.temp.name)
+
+        def verifier(source: str, digest: str) -> bool:
+            path = root / source
+            return path.is_file() and hashlib.sha256(path.read_bytes()).hexdigest() == digest
+
+        resumed = Conductor(Store(self.path), "payments", BANKS, gate_source_verifier=verifier)
+        position = resumed.next_turn()
+        self.assertEqual((position.status, position.bank_id), ("stale", "define"))
+        done = resumed.prove_gate("define", gate_proof(source="gate-2.md",
+                                                       source_hash=hashlib.sha256(second.read_bytes()).hexdigest()),
+                                  expected_revision=position.revision, turn_id="f06-g2-again")
+        self.assertEqual((done.status, done.completed), ("completed", True))
+        self.assertEqual(resumed.next_turn().status, "completed")
+        superseded = resumed.state()["superseded_gates"]
+        self.assertEqual((len(superseded["discover"]), len(superseded["define"])), (1, 1))
+        resumed.store.close()
+
     def test_question_bank_freezes_all_sequences(self) -> None:
         questions = [Question("q", "What happened?", EvidenceClass.OBSERVED_BEHAVIOR)]
         prerequisites = ["signed_by"]

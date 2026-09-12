@@ -14,7 +14,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from pmos.cli import _cli_source_resolver, _local_gate_verifier, _paths, main
+from pmos.cli import _cli_source_resolver, _gate_result, _local_gate_verifier, _paths, main
+from pmos.conductor import TurnOutcome
 from pmos.migrations import (create_legacy_fixture, migrate_workspace, recover_workspace,
                               rollback_workspace, MigrationError)
 from pmos.store import Store
@@ -144,6 +145,42 @@ class CliTests(unittest.TestCase):
             self.assertIsNone(resolve("real interview"))
             self.assertIsNone(resolve("Q3 review v1.2"))
             self.assertIsNone(resolve("interview-001"))
+
+    def test_a_gate_result_never_reports_completion_while_another_gate_is_stale(self):
+        outcome = TurnOutcome("stale", "3:abc", bank_id="define",
+                              message="gate proof for discover recorded again; gate proof gate-2.md for define "
+                                      "no longer verifies (changed or missing); prove the gate again")
+        result = _gate_result(outcome, "checkout")
+        self.assertEqual((result["ok"], result["outcome"]["completed"]), (False, False))
+        self.assertEqual(result["error"], outcome.message)
+
+    def test_a_stale_gate_can_be_proved_again_through_the_cli(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            result = self.answer(folder, {"class": "observed_behavior", "source": "interview-001",
+                                          "date": "2026-09-04", "location": "customer-call"},
+                                 self.status(folder)["revision_token"], "answer-1")
+            proof = Path(folder, "onboarding-approval.txt")
+
+            def gate(data: bytes, turn_id: str, token: str) -> dict:
+                proof.write_bytes(data)
+                evidence = {"source": "onboarding-approval.txt", "source_sha256": hashlib.sha256(data).hexdigest(),
+                            "actor_id": "local-reviewer", "requester_id": "local-operator", "decision": "approved",
+                            "approved_at": "2026-09-04T00:00:00Z"}
+                output = StringIO()
+                with redirect_stdout(output):
+                    main(["gate", "--path", folder, "--product-id", "checkout", "--bank-id", "onboarding",
+                          "--evidence", json.dumps(evidence), "--expected-revision", token,
+                          "--turn-id", turn_id, "--json"])
+                return json.loads(output.getvalue())
+
+            self.assertTrue(gate(b"reviewed onboarding evidence\n", "gate-1", result["outcome"]["revision"])["ok"])
+            proof.write_bytes(b"changed after approval\n")
+            stale = self.status(folder)
+            self.assertEqual(stale["interview"], "stale")
+            again = gate(b"re-reviewed onboarding evidence\n", "gate-2", stale["revision_token"])
+            self.assertEqual((again["ok"], again["outcome"]["status"]), (True, "completed"))
+            self.assertEqual(self.status(folder)["interview"], "completed")
 
     def test_gitignore_covers_pmos_runtime_and_sqlite_sidecars(self):
         """F07: .gitignore must ignore .pmos/ at any depth and SQLite sidecar

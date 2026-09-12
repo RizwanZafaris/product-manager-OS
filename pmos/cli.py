@@ -392,11 +392,18 @@ def _gate(args: argparse.Namespace) -> dict[str, Any]:
                               source_resolver=_cli_source_resolver(root))
         outcome = conductor.prove_gate(args.bank_id, _evidence(args.evidence),
                                        expected_revision=args.expected_revision, turn_id=args.turn_id)
-        result = {"ok": outcome.completed, "product_id": args.product_id,
-                  "outcome": _outcome_dict(outcome)}
-        if not outcome.completed:
-            result["error"] = "gate proof was not accepted; provide a real source and current revision"
-        return result
+        return _gate_result(outcome, args.product_id)
+
+
+def _gate_result(outcome: TurnOutcome, product_id: str) -> dict[str, Any]:
+    result = {"ok": outcome.completed, "product_id": product_id, "outcome": _outcome_dict(outcome)}
+    if outcome.status == "stale":
+        # A re-proof can be recorded while another approval is still stale:
+        # name it, and never report completion.
+        result["error"] = outcome.message
+    elif not outcome.completed:
+        result["error"] = "gate proof was not accepted; provide a real source and current revision"
+    return result
 
 
 def _parser() -> argparse.ArgumentParser:
