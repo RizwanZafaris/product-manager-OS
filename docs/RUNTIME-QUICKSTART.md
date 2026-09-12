@@ -51,8 +51,8 @@ pmos gate --path ./products/my-product --product-id checkout --bank-id discover 
   --expected-revision '<revision_token from pmos status>' --turn-id gate-001 --json
 ```
 
-A rejection never records a gate approval, and the answer it refused is not
-accepted. Most rejections are still committed as a turn record, so the store
+A refusal never records a gate approval, and the answer it refused is not
+accepted. Most refusals are still committed as a turn record, so the store
 revision advances: insufficient evidence, an answer to any question other
 than the one offered (an unknown question ID included), and an unverifiable
 gate source each write a record and move the revision on. A stale expected
@@ -63,17 +63,17 @@ Replaying a turn ID with the identical request returns its original result.
 Read the next revision from `pmos status`, which prints `revision_token`
 (the exact token to pass as `--expected-revision`; a product made by `init`
 is already at revision 1 because `init` commits the pinned contract, and
-`pmos status` always prints the exact token), or, for a rejection that
-wrote a record, from that rejection's own `revision` field. After a
-rejection that wrote a record, the revision `answer` returned is stale and
-retrying with it is refused as a
+`pmos status` always prints the exact token), or, for a refusal that wrote a
+record, from that refusal's own `revision` field. After a refusal that wrote
+a record, the revision `answer` returned is stale and retrying with it is
+refused as a
 conflict; `pmos status` is current either way.
-A third rejected submission, after two challenges, parks it: the answer is
+A third refused submission, after two challenges, parks it: the answer is
 filed as offered and marked parked, the cursor moves on, and the bank's
 remaining questions can still be answered. The bank's gate proof is refused
 while any of its answers is parked. To recover, reopen the parked question
 with its question ID, a reason, the current revision, and a new turn ID, then
-answer it with fresh evidence, because evidence identical to a rejected
+answer it with fresh evidence, because evidence identical to a refused
 submission is refused afterwards.
 Replace every angle-bracket value with a real, traceable source; the source
 must be a regular, non-symlink file inside the workspace (but outside
@@ -81,6 +81,26 @@ must be a regular, non-symlink file inside the workspace (but outside
 as the gate approver and reject self-approval where requester and reviewer
 are the same. Placeholders are intentionally not accepted as evidence by the
 runtime.
+
+When `pmos gate` records an approval, it also records a manifest: every file
+in the workspace whose artifact block names that bank's gate (DISCOVER is
+gate 1, and so on to OPERATE, gate 6), each with its path and revision (the
+SHA-256 of its body after the block), plus the artifacts they depend on. A
+gate whose artifacts depend on one the workspace does not have yet is
+refused, and the error names it. Every later command checks each approval's
+source file and manifest again, and an edited or deleted artifact makes that
+approval stale. `pmos status` then lists every stale bank under
+`stale_banks`, earliest first, each with `changed` (the artifact, its
+reviewed and its current revision) and `reconcile` (the approved artifacts
+that depend on a changed one), and `next` is the gate command for the
+earliest. Proving a stale bank again records the current revisions, keeps
+the earlier approval as superseded history and moves nothing else; another
+bank whose approval still binds the old revision stays stale until it is
+approved again. A gate submitted with `"decision":"rejected"` is recorded,
+reported with `rejection_recorded` and listed under `rejections` in status,
+and it never advances the interview. Every approval is labelled a local
+attestation (`approvals` in status), because actor IDs are typed, not
+authenticated.
 
 An answer may carry the evidence class its question asks for or a stronger
 one, observed behavior being the strongest. A product keeps the contract it
