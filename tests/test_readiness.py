@@ -651,6 +651,29 @@ class DistributionMetadataTests(unittest.TestCase):
                 self.assertEqual(wheel.read(shipped),
                                  (REPO / "LICENSE").read_bytes())
 
+    def test_the_built_wheel_ships_the_question_bank_contract(self):
+        # pmos/banks.py reads pmos/question_banks.json from the installed
+        # package, but the backend loop packed .py and py.typed only, so a
+        # wheel built here dropped the contract and an install had no banks.
+        with tempfile.TemporaryDirectory() as directory:
+            with self.built_wheel(directory) as wheel:
+                shipped = next(entry for entry in wheel.namelist()
+                               if entry == "pmos/question_banks.json")
+                self.assertEqual(wheel.read(shipped),
+                                 (REPO / "pmos" / "question_banks.json").read_bytes())
+
+    def test_a_missing_question_bank_contract_fails_the_build(self):
+        # If the contract is absent, the build must fail by naming it rather
+        # than silently shipping a wheel that imports to no banks.
+        with tempfile.TemporaryDirectory() as directory:
+            package_dir = Path(directory) / "pmos"
+            package_dir.mkdir()
+            (package_dir / "__init__.py").write_bytes(b"")
+            with patch.object(pmos_build_backend, "ROOT", Path(directory)):
+                with self.assertRaises(ValueError) as raised:
+                    pmos_build_backend._package_entries()
+            self.assertIn("question_banks.json", str(raised.exception))
+
     def test_build_sdist_refuses_in_the_way_a_frontend_can_report(self):
         # PEP 517 makes the hook mandatory. Leaving it out did not narrow this
         # backend to wheels; it made python -m build die with an

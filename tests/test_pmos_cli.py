@@ -879,6 +879,16 @@ class CliTests(unittest.TestCase):
                 text=True, timeout=20)
             self.assertEqual(skills.returncode, 0, skills.stderr)
             self.assertEqual(len(skills.stdout.strip().split(",")), 7)
+            banks = subprocess.run(
+                [interpreter, "-c",
+                 "from pmos.banks import shipped_banks; "
+                 "print(','.join(bank.id for bank in shipped_banks()))"],
+                cwd=str(folder_path), env=env, shell=False,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                text=True, timeout=20)
+            self.assertEqual(banks.returncode, 0, banks.stderr)
+            self.assertEqual(banks.stdout.strip(),
+                             "discover,define,design,build,deliver,operate")
 
 
 if __name__ == "__main__":
