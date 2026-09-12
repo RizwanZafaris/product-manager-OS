@@ -42,7 +42,7 @@ flowchart LR
   end
   G6 -->|PERSIST or PIVOT| D1
   G6 -->|SUNSET| SUN[Sunset plan]
-  PLAN[PLANNING overlay] -.->|mandate and targets| D1
+  PLAN[PLANNING overlay] -.->|portfolio themes and targets| D1
   PLAN -.-> G6
   AI[AI overlay] -.->|eval thresholds| G2
   AI -.-> G4
@@ -80,10 +80,10 @@ Find a problem worth solving and prove someone has it.
 
 ### 2. DEFINE
 
-Turn the validated problem into requirements someone can build, test, and sign.
+Turn the validated problem into requirements someone can build, test, and sign. DEFINE opens with the product's vision, strategy, and roadmap with phased outcomes, in that order, before the definition set.
 
 - **Entry:** Gate 1 signed.
-- **Work:** business case (`../templates/definition/brd.md`), product requirements (`../templates/definition/prd.md`, or `../templates/definition/one-pager.md` at the lighter weight), functional detail (`../templates/definition/frd.md`), non-functional targets (`../templates/definition/nfr.md`), business rules, the assumptions register, and acceptance criteria that can actually fail. Pick the weight first with `WHICH-DOCUMENT.md`; the gate asks the same questions either way.
+- **Work:** the product vision (`../templates/planning/vision.md`), strategy (`../templates/planning/product-strategy.md`), and roadmap with phased outcomes (`../templates/planning/roadmap.md`), then the business case (`../templates/definition/brd.md`), product requirements (`../templates/definition/prd.md`, or `../templates/definition/one-pager.md` at the lighter weight), functional detail (`../templates/definition/frd.md`), non-functional targets (`../templates/definition/nfr.md`), business rules, the assumptions register, and acceptance criteria that can actually fail. Pick the weight first with `WHICH-DOCUMENT.md`; the gate asks the same questions either way.
 - **Exit:** Gate 2, requirements signed off. Every requirement testable, every assumption registered, sponsor named. Products under the regulated overlay (an AI or machine-learning feature, with a financial or data regulator applying to it) answer its precondition questions here, before design starts, because a license condition beats a sprint plan every time.
 
 **Entry test.** A signed Gate 1 attempt in `products/<name>/gates/`, plus a weight decision logged per [WHICH-DOCUMENT.md](WHICH-DOCUMENT.md). Opening a PRD before the weight question is answered is how a two-week change acquires twelve sections nobody reads.
@@ -162,7 +162,7 @@ Run it, measure it, and let the numbers decide what happens next.
 
 Three tracks run across the loop rather than inside one stage.
 
-**PLANNING** feeds every stage. The roadmap (`../templates/planning/roadmap.md`) says which products enter the loop and when; OKRs (`../templates/planning/okrs.md`) supply the targets that Gate 6 verifies. A new owner taking over a product in flight starts at `../templates/planning/first-90-days.md`. Planning artifacts are reviewed on their own cadence, not at a gate.
+**PLANNING** owns the portfolio. The roadmap (`../templates/planning/roadmap.md`) says which products enter the loop and when; OKRs (`../templates/planning/okrs.md`) supply the targets that Gate 6 verifies. A new owner taking over a product in flight starts at `../templates/planning/first-90-days.md`. Portfolio artifacts are reviewed on their own cadence, not at a gate. One product's own vision, strategy, and roadmap are written inside DEFINE and approved at Gate 2; the roadmap template serves both levels, portfolio queue and product phases.
 
 The consequence worth internalizing: planning owns the portfolio's queue, the loop owns one product's sequence. Confusing them produces the roadmap that lists stages ("Q3: design phase") instead of outcomes, which tells a reader when work happens and never whether it should. If a roadmap row cannot name the problem statement it will produce at Gate 1, it is a schedule, not a plan.
 

@@ -90,9 +90,12 @@ Closes DEFINE. Feeds DESIGN.
 
 **Product:** <name> · **Gate run date:** <YYYY-MM-DD> · **Attempt:** <n>
 
-**Inputs on the table:** the definition set at the weight chosen in [WHICH-DOCUMENT.md](WHICH-DOCUMENT.md). Three weights reach this gate. At BRD-stack weight that is the completed BRD, PRD, FRD, NFR, business rules, assumptions register, and acceptance criteria from `../templates/definition/`. At full-PRD weight it is the completed PRD, NFR, and acceptance criteria, without a BRD. At one-pager weight it is a completed `../templates/definition/one-pager.md` with its acceptance criteria attached. Where the product has a UI, the completed `../templates/definition/ui-state-inventory.md` comes with it. The checklist below is the same at every weight: a lighter document answers these questions in fewer words, not in fewer answers. The Conductor asks for the inventory as DEFINE-9.
+**Inputs on the table:** the definition set at the weight chosen in [WHICH-DOCUMENT.md](WHICH-DOCUMENT.md), preceded by the product vision, product strategy, and roadmap (`../templates/planning/vision.md`, `../templates/planning/product-strategy.md`, `../templates/planning/roadmap.md`), in that order, at every weight. At one-pager weight the one-pager may carry the vision, strategy, and roadmap in a few lines each. Three weights reach this gate. At BRD-stack weight that is the completed BRD, PRD, FRD, NFR, business rules, assumptions register, and acceptance criteria from `../templates/definition/`. At full-PRD weight it is the completed PRD, NFR, and acceptance criteria, without a BRD. At one-pager weight it is a completed `../templates/definition/one-pager.md` with its acceptance criteria attached. Where the product has a UI, the completed `../templates/definition/ui-state-inventory.md` comes with it. The checklist below is the same at every weight: a lighter document answers these questions in fewer words, not in fewer answers. The Conductor asks for the inventory as DEFINE-9.
 
-- [ ] Every PRD objective traces to the Gate 1 problem statement, and every FRD requirement traces to a PRD item
+- [ ] The product vision (`../templates/planning/vision.md`) states who it serves, which Gate 1 problem it answers, and the change it aims for; approved by the business sponsor
+- [ ] The product strategy (`../templates/planning/product-strategy.md`) names where to play, how to win, and what the product will not do, and traces to the vision; approved by the product owner and the business sponsor
+- [ ] The roadmap (`../templates/planning/roadmap.md`) orders phases, each with an outcome, a success measure, and its dependencies, and traces to the strategy; approved by the product owner and the engineering lead
+- [ ] Every PRD objective traces to the Gate 1 problem statement and to a roadmap phase outcome, and every FRD requirement traces to a PRD item
 - [ ] Every acceptance criterion can fail: it has a condition, an expected result, and a measurable threshold
 - [ ] Every NFR target is a number, or names the owner who will produce the number by a dated deadline
 - [ ] The assumptions register exists, and every assumption carries a confidence, a validation method, and a validate-by date
@@ -109,6 +112,8 @@ Closes DEFINE. Feeds DESIGN.
 | Engineering lead | <name> | <date> |
 | Business sponsor | <name> | <date> |
 | Regulatory owner (regulated products only) | <name or N/A because <reason>> | <date> |
+
+> **Artifact approvals at this gate:** the business sponsor approves the vision; the product owner and the business sponsor approve the strategy; the product owner and the engineering lead approve the roadmap.
 
 > **If you skip this gate:** requirements defects found after build are the most expensive class of defect there is; decades of software engineering economics agree the cost multiplies with every stage a defect survives. The unsigned assumption is the one that resurfaces in the launch review, and for regulated products, a deferred precondition can resurface with a regulator's reference number attached.
 
