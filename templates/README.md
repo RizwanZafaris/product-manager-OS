@@ -16,6 +16,8 @@ A template is the blank a stage produces and a gate reads. Every one opens with 
 
 Eight directories, 107 templates. Six carry stage work: `discovery` and `definition` sit under DISCOVER and DEFINE, `architecture` holds the DESIGN artifacts while `execution` holds the registers and logs that open early and stay open, `delivery` carries BUILD through DELIVER, and `operate` closes the loop at Gate 6. The last two, `planning` and `ai`, are the tracks that run across every stage rather than inside one. The stage definitions are in [os/OPERATING-LOOP.md](../os/OPERATING-LOOP.md); the checklists these feed are in [os/STAGE-GATES.md](../os/STAGE-GATES.md).
 
+Which frameworks feed each template, which filled examples show it, and the ID its working copy gets are listed phase by phase in [the phase index](../docs/PHASE-INDEX.md), generated from these files.
+
 ## discovery (16 templates)
 
 DISCOVER, feeding Gate 1: problem worth solving. A no-go here is a success, because it cost a week rather than a quarter.

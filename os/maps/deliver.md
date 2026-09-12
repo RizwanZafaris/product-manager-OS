@@ -70,6 +70,8 @@ Per [agents/TEAM.md](../../agents/TEAM.md), section 1.
 
 No agent signs a gate, and no agent invents a number or a name.
 
+Every template of this stage, with the frameworks that feed it, its filled examples and the ID its working copy gets: [DELIVER in the phase index](../../docs/PHASE-INDEX.md#deliver).
+
 ## Where this sits in the loop
 
 Entry is a signed Gate 4 and a release candidate a non-engineer can open. Exit feeds [operate.md](operate.md), and the Gate 6 review window is chosen here, before the numbers exist. The interview path through the same stage is [skills/conductor/questions/deliver.md](../../skills/conductor/questions/deliver.md).

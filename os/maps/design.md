@@ -85,6 +85,8 @@ Per [agents/TEAM.md](../../agents/TEAM.md), section 1.
 
 No agent signs a gate, and no agent invents a number or a name.
 
+Every template of this stage, with the frameworks that feed it, its filled examples and the ID its working copy gets: [DESIGN in the phase index](../../docs/PHASE-INDEX.md#design).
+
 ## Where this sits in the loop
 
 Entry is a signed Gate 2 with the requirement set frozen enough that an architect can be wrong about it. Exit feeds [build.md](build.md). The interview path through the same stage is [skills/conductor/questions/design.md](../../skills/conductor/questions/design.md).

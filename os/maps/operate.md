@@ -81,6 +81,8 @@ Per [agents/TEAM.md](../../agents/TEAM.md), section 1.
 
 No agent signs a gate, and no agent invents a number or a name.
 
+Every template of this stage, with the frameworks that feed it, its filled examples and the ID its working copy gets: [OPERATE in the phase index](../../docs/PHASE-INDEX.md#operate).
+
 ## Where this sits in the loop
 
 Entry is a signed Gate 5, live in production, with the instrumentation emitting. Exit is the loop closing: persist, pivot, or sunset, each of which returns to [discover.md](discover.md) with what was learned. The interview path through the same stage is [skills/conductor/questions/operate.md](../../skills/conductor/questions/operate.md).
