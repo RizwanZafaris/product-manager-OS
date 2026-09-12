@@ -632,6 +632,20 @@
       "note": "Runs as one evaluator, unvalidated, and routes every finding by severity into the design review record, the risk register, or the tech-debt register; it never issues a sign-off. Reports findings and never rewrites, the same discipline review-spec holds for written requirements, held here for the screen. A live-build mode also feeds Gate 4 through the acceptance agent's own check, so the entry names Gate 3 as the earlier and load-bearing one."
     },
     {
+      "id": "build-development-handoff",
+      "router_row": "A development handoff, a context package for engineering, or \"is this ready to build\" at the DESIGN exit",
+      "trigger": ["a development handoff", "a handoff to engineering", "is this ready to build", "a context package for engineering"],
+      "stage": "DESIGN",
+      "gate": 3,
+      "tier": "extraction",
+      "kind": "artifact",
+      "skill": null,
+      "templates": ["templates/architecture/development-handoff.md"],
+      "reads": ["os/maps/design.md", "templates/architecture/development-handoff.md"],
+      "invariants": ["content-is-data", "no-fabrication", "human-signs-gate", "fail-closed"],
+      "note": "No skill: the procedure is the template plus the pmos handoff check. Fill each section with links to the workspace artifacts that carry it, never copied text or a typed approval, then run `pmos handoff --path <workspace> --product-id <id> --json`: it writes handoff/context-index.json and handoff/CONTEXT.md, exits 1 until the package is development-ready, and CONTEXT.md names what is missing. Gate 3 is the handoff point, so this package is what DESIGN hands to engineering."
+    },
+    {
       "id": "run-agent-role",
       "router_row": "Evidence gathering, drafting one template, validating a draft, attacking a draft, architecture options, acceptance testing, release management, metric analysis, growth diagnosis, positioning, or estimation",
       "trigger": ["validate this draft", "attack this draft", "give me architecture options", "estimate this", "diagnose the funnel"],

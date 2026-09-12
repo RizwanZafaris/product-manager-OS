@@ -123,7 +123,8 @@ templates/architecture/ system-design.md, solution-architecture.md, adr.md,
                privacy-impact-assessment.md, accessibility-checklist.md,
                component-spec.md, design-md.md (the filled copy lands at
                products/<name>/DESIGN.md, not in a stage subfolder),
-               design-review-record.md, localisation-rtl-checklist.md
+               design-review-record.md, localisation-rtl-checklist.md,
+               development-handoff.md
 templates/execution/    stakeholder-map.md, risk-register.md, decision-log.md,
                dependency-register.md, state.md (the STATE.md blank the
                Conductor keeps per product), change-request.md,
