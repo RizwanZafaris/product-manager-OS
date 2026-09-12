@@ -434,7 +434,10 @@ docs/          PHILOSOPHY.md (why each rule above exists, with the
                CONDUCTOR-DESIGN.md, RUNTIME-QUICKSTART.md, THREAT-MODEL.md,
                ACCESSIBILITY.md, COMPATIBILITY.md (what has actually
                been run, on which models and hosts, with what result), GRAPH.md
-               (generated from each file's declaration), REFERENCES-DESIGN.md
+               (generated from each file's declaration), PHASE-INDEX.md
+               (generated: each phase's templates with the frameworks that feed
+               them, their filled examples and their working-copy IDs),
+               REFERENCES-DESIGN.md
                (the source and licence register for the experience-design
                layer), RENDERING.md (how to read the tree as a site or a
                knowledge base in GitHub, Obsidian, MkDocs or Quartz). Reference

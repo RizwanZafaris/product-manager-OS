@@ -27,6 +27,9 @@
       "WorkspaceExclusion",
       "WorkspaceModeTests"
     ],
+    "test_phase_index": [
+      "PhaseIndexTests"
+    ],
     "test_pmos_cli": [
       "CliTests"
     ],
