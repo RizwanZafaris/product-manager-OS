@@ -225,6 +225,8 @@ class CliTests(unittest.TestCase):
             self.assertEqual(status["interview"], "stale")
             (stale,) = status["stale_banks"]
             self.assertEqual(stale["bank_id"], "discover")
+            # The approval source changed, not an artifact, so there is nothing to reconcile.
+            self.assertEqual((stale["changed"], stale["reconcile"]), ([], []))
             self.assertEqual(status["next"], stale["gate"])
             self.assertIn("pmos gate", stale["gate"])
 
@@ -365,6 +367,65 @@ class CliTests(unittest.TestCase):
             after = self.status(folder)
             self.assertEqual(after["interview"], "blocked")
             self.assertEqual(after["current_bank_id"], "discover")
+
+    def test_status_lists_the_approvals_with_their_artifacts(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            status = self.answer_bank(folder, "a")
+            self.write_artifact(folder, "discovery/problem-framing.md",
+                                "checkout/discovery/problem-framing", "DISCOVER", 1, [],
+                                "templates/discovery/problem-framing.md", "A real outcome")
+            rc, parsed = self.gate(folder, status["revision_token"], "gate-1", "approved")
+            self.assertEqual((rc, parsed["ok"]), (0, True))
+            after = self.status(folder)
+            self.assertEqual(after["approvals"], [{
+                "bank_id": "discover", "attestation": "local", "actor_id": "local-reviewer",
+                "approved_at": "2026-09-04T00:00:00Z", "artifacts": ["checkout/discovery/problem-framing"],
+                "dependencies": [], "superseded": 0}])
+            self.assertEqual(after["rejections"], [])
+
+    def test_status_names_the_changed_artifact_of_a_stale_approval(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            status = self.answer_bank(folder, "a")
+            path = self.write_artifact(folder, "discovery/problem-framing.md",
+                                       "checkout/discovery/problem-framing", "DISCOVER", 1, [],
+                                       "templates/discovery/problem-framing.md", "A real outcome")
+            reviewed = artifact_revision(path.read_text(encoding="utf-8"))
+            rc, parsed = self.gate(folder, status["revision_token"], "gate-1", "approved")
+            self.assertEqual((rc, parsed["ok"]), (0, True))
+            self.write_artifact(folder, "discovery/problem-framing.md",
+                                "checkout/discovery/problem-framing", "DISCOVER", 1, [],
+                                "templates/discovery/problem-framing.md", "A changed outcome")
+            current = artifact_revision(path.read_text(encoding="utf-8"))
+            self.assertNotEqual(reviewed, current)
+            after = self.status(folder)
+            self.assertEqual(after["interview"], "stale")
+            (stale,) = after["stale_banks"]
+            self.assertEqual(stale["bank_id"], "discover")
+            self.assertEqual(stale["changed"], [{"id": "checkout/discovery/problem-framing",
+                                                 "path": "discovery/problem-framing.md",
+                                                 "reviewed": reviewed, "current": current}])
+            self.assertEqual(stale["reconcile"], [])
+            self.assertEqual(after["next"], stale["gate"])
+
+    def test_status_keeps_a_rejection_after_the_approval_that_follows_it(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            status = self.answer_bank(folder, "a")
+            self.write_artifact(folder, "discovery/problem-framing.md",
+                                "checkout/discovery/problem-framing", "DISCOVER", 1, [],
+                                "templates/discovery/problem-framing.md", "A real outcome")
+            rc, parsed = self.gate(folder, status["revision_token"], "gate-1", "rejected")
+            self.assertEqual((rc, parsed["ok"]), (1, False))
+            rc, parsed = self.gate(folder, self.status(folder)["revision_token"], "gate-2", "approved")
+            self.assertEqual((rc, parsed["ok"]), (0, True))
+            after = self.status(folder)
+            (rejection,) = after["rejections"]
+            self.assertEqual((rejection["bank_id"], rejection["actor_id"], rejection["artifacts"]),
+                             ("discover", "local-reviewer", ["checkout/discovery/problem-framing"]))
+            self.assertRegex(rejection["rejected_at"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
+            self.assertEqual([approval["bank_id"] for approval in after["approvals"]], ["discover"])
 
     def test_a_rejected_gate_result_carries_the_message(self):
         outcome = TurnOutcome("rejected", "5:abc", bank_id="discover",

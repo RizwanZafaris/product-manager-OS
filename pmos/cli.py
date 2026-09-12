@@ -359,17 +359,31 @@ def _interview_status(store: Store, root: Path, product_id: str, token: str) -> 
                 verified += 1
             else:
                 unverified += 1
-    stale = []
+    stale_banks: list[dict[str, Any]] = []
     if position.status == "stale":
-        stale.append({"bank_id": position.bank_id, "message": position.message,
-                      "gate": command("gate", "--bank-id", shlex.quote(position.bank_id),
-                                      "--evidence", "'<gate evidence json>'")})
+        stale_gates = conductor.stale_gates()
+        if stale_gates and stale_gates[0]["bank_id"] == position.bank_id:
+            for entry in stale_gates:
+                bank_id = entry["bank_id"]
+                stale_banks.append({
+                    "bank_id": bank_id,
+                    "message": entry["message"],
+                    "changed": entry["changed"],
+                    "reconcile": entry["reconcile"],
+                    "gate": command("gate", "--bank-id", shlex.quote(bank_id),
+                                    "--evidence", "'<gate evidence json>'"),
+                })
+        else:
+            stale_banks.append({"bank_id": position.bank_id, "message": position.message,
+                                "changed": [], "reconcile": [],
+                                "gate": command("gate", "--bank-id", shlex.quote(position.bank_id),
+                                                "--evidence", "'<gate evidence json>'")})
     question = None
     if position.question is not None:
         question = {"id": position.question.id, "prompt": position.question.prompt,
                     "evidence_class": position.question.required_evidence.value}
-    if stale:
-        next_command = stale[0]["gate"]
+    if stale_banks:
+        next_command = stale_banks[0]["gate"]
     elif position.status == "question" and question is not None:
         next_command = command("answer", "--question-id", shlex.quote(question["id"]),
                                "--answer", "'<your answer>'", "--evidence", "'<evidence json>'")
@@ -394,11 +408,46 @@ def _interview_status(store: Store, root: Path, product_id: str, token: str) -> 
                    "and moving a product to it is not supported yet.")
     else:
         message = "This product runs the shipped question banks."
+    approvals: list[dict[str, Any]] = []
+    for bank in banks:
+        if bank.id not in state["gates"]:
+            continue
+        record = state["gates"][bank.id]
+        proof = record.get("proof", {})
+        manifest = record.get("manifest")
+        if manifest is None:
+            artifacts = None
+            dependencies = None
+        else:
+            artifacts = [item["id"] for item in manifest.get("artifacts", [])]
+            dependencies = [item["id"] for item in manifest.get("dependencies", [])]
+        superseded = len(state.get("superseded_gates", {}).get(bank.id, []))
+        approvals.append({
+            "bank_id": bank.id,
+            "attestation": record.get("attestation", "local"),
+            "actor_id": proof.get("actor_id"),
+            "approved_at": proof.get("approved_at"),
+            "artifacts": artifacts,
+            "dependencies": dependencies,
+            "superseded": superseded,
+        })
+    rejections: list[dict[str, Any]] = []
+    for bank in banks:
+        # The Conductor validates a rejection record on load: it always has its proof, manifest and rejected_at.
+        for record in state.get("gate_rejections", {}).get(bank.id, []):
+            rejections.append({
+                "bank_id": bank.id,
+                "actor_id": record["proof"]["actor_id"],
+                "rejected_at": record["rejected_at"],
+                "artifacts": [item["id"] for item in record["manifest"]["artifacts"]],
+            })
     return {"interview": position.status, "interview_message": position.message,
             "current_bank_id": position.bank_id, "question": question,
-            "parked": parked, "stale_banks": stale,
+            "parked": parked, "stale_banks": stale_banks,
             "source_verified": verified, "supplied_unverified": unverified,
             "next": next_command,
+            "approvals": approvals,
+            "rejections": rejections,
             "question_banks": {"pinned": pinned, "shipped": shipped,
                                "current": current, "message": message}}
 
