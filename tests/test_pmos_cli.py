@@ -276,6 +276,41 @@ class CliTests(unittest.TestCase):
             "gate proof was not accepted; provide a real source and current revision",
         )
 
+    def test_a_blank_workspace_reaches_completed_through_the_cli_alone(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            for bank_id in ("discover", "define", "design", "build", "deliver", "operate"):
+                status = self.answer_bank(folder, bank_id)
+                self.assertEqual(status["interview"], "blocked")
+                self.assertEqual(status["current_bank_id"], bank_id)
+                proof_name = "gate-" + bank_id + ".txt"
+                proof_bytes = bank_id.encode()
+                Path(folder, proof_name).write_bytes(proof_bytes)
+                evidence = {
+                    "source": proof_name,
+                    "source_sha256": hashlib.sha256(proof_bytes).hexdigest(),
+                    "actor_id": "local-reviewer",
+                    "requester_id": "local-operator",
+                    "decision": "approved",
+                    "approved_at": "2026-09-04T00:00:00Z",
+                }
+                output = StringIO()
+                with redirect_stdout(output):
+                    rc = main(["gate", "--path", folder, "--product-id", "checkout",
+                               "--bank-id", bank_id, "--evidence", json.dumps(evidence),
+                               "--expected-revision", status["revision_token"],
+                               "--turn-id", "gate-" + bank_id, "--json"])
+                self.assertEqual(rc, 0)
+                result = json.loads(output.getvalue())
+                self.assertTrue(result["ok"])
+                if bank_id == "operate":
+                    self.assertEqual(result["outcome"]["status"], "completed")
+                else:
+                    self.assertEqual(result["outcome"]["status"], "advanced")
+            final = self.status(folder)
+            self.assertEqual(final["interview"], "completed")
+            self.assertEqual(final["source_verified"] + final["supplied_unverified"], 54)
+
     def test_a_stale_gate_can_be_proved_again_through_the_cli(self):
         with TemporaryDirectory() as folder:
             self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)

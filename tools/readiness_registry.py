@@ -320,6 +320,7 @@ CLI_TESTS = tuple(
         "test_planned_file_symlink_swap_and_migration_limits_fail_closed",
         "test_recovery_and_rollback_refuse_unknown_active_runtime",
         "test_isolated_install_imports_console_script",
+        "test_a_blank_workspace_reaches_completed_through_the_cli_alone",
     ))
 
 RELEASE_TESTS = tuple(
