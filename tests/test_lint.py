@@ -1087,7 +1087,10 @@ class WorkspaceModeTests(unittest.TestCase):
     """Defect A. products/ is out of Git and out of tree mode, both correctly,
     and the cost was that a user's work was checked by nothing at all. This is
     the opt-in. Every fixture is built in a temporary directory, never under
-    the live repository, and never removed from it."""
+    the live repository, and never removed from it. The exceptions are the
+    init_product tests, which run the real tools/init_product.py the way
+    tools/readiness_probe.py does, on a slug no workspace uses, and remove
+    that slug's folder under products/ again."""
 
     DRAFT = ("# Discovery: demo\n\nStage: DISCOVER\n\n"
              "A filled draft that violates nothing.\n")
@@ -1137,6 +1140,104 @@ class WorkspaceModeTests(unittest.TestCase):
             ws.artifact_id_for("demo", "products/other/planning/vision.md")
         with self.assertRaises(ws.WorkspaceError):
             ws.artifact_id_for("demo", "products/demo/planning/vision.txt")
+
+    def _scratch_slug(self):
+        """A slug no workspace uses yet, whose folder is removed after the test."""
+        import os
+        import shutil
+        import time
+        slug = "stamp-test-%d-%d" % (os.getpid(), time.time_ns() % 1000000)
+        folder = REPO / "products" / slug
+        self.assertFalse(folder.exists(), folder)
+        self.addCleanup(shutil.rmtree, folder, ignore_errors=True)
+        return slug, folder
+
+    def _init_product(self, *args):
+        import subprocess
+        import sys
+        return subprocess.run(
+            [sys.executable, str(REPO / "tools" / "init_product.py"), *args],
+            cwd=str(REPO), capture_output=True, text=True, timeout=60)
+
+    def _new_workspace_with_strategy(self):
+        slug, folder = self._scratch_slug()
+        for args in ((slug,),
+                     (slug, "--add", "templates/planning/product-strategy.md")):
+            done = self._init_product(*args)
+            self.assertEqual(0, done.returncode, done.stderr)
+        return slug, folder
+
+    def test_init_product_stamps_the_copy_it_adds(self):
+        ws = self._workspace()
+        slug, folder = self._new_workspace_with_strategy()
+        fields = ws.parse_artifact((folder / "planning" / "product-strategy.md")
+                                   .read_text(encoding="utf-8"))
+        self.assertEqual(fields["artifact_id"], "%s/planning/product-strategy" % slug)
+        self.assertEqual(fields["phase"], "DEFINE")
+        self.assertEqual(fields["gate"], 2)
+        self.assertEqual(fields["status"], "draft")
+        self.assertEqual(fields["depends_on"], ["%s/planning/vision" % slug])
+        self.assertEqual(fields["template"], "templates/planning/product-strategy.md")
+        # The journal at the workspace root is not an artifact.
+        self.assertIsNone(ws.parse_artifact(
+            (folder / "STATE.md").read_text(encoding="utf-8")))
+
+    def test_init_product_stamp_restores_a_removed_block_and_reports_the_rest(self):
+        ws = self._workspace()
+        slug, folder = self._new_workspace_with_strategy()
+        copy = folder / "planning" / "product-strategy.md"
+        stamped = copy.read_text(encoding="utf-8")
+        copy.write_text(stamped[ws.FRONTMATTER_RE.match(stamped).end():],
+                        encoding="utf-8")
+        # Never artifacts: README.md and STATE.md at the workspace root,
+        # anything under gates/, a run log beside a copy and a route's report.
+        (folder / "README.md").write_text("# Demo\n", encoding="utf-8")
+        (folder / "gates" / "gate-2.md").write_text("# Gate 2\n", encoding="utf-8")
+        (folder / "planning" / "product-strategy.md.run-log.md").write_text(
+            "# Run log\n", encoding="utf-8")
+        (folder / "discovery" / "critique-strategy-report.md").write_text(
+            "# Report\n", encoding="utf-8")
+        done = self._init_product(slug, "--stamp")
+        self.assertEqual(0, done.returncode, done.stderr)
+        self.assertIn("stamp: 1 stamped, 0 already stamped, 0 unidentified file(s).",
+                      done.stdout)
+        # The same block comes back, and the body is untouched.
+        self.assertEqual(copy.read_text(encoding="utf-8"), stamped)
+        done = self._init_product(slug, "--stamp")
+        self.assertIn("stamp: 0 stamped, 1 already stamped, 0 unidentified file(s).",
+                      done.stdout)
+        notes = folder / "planning" / "hand-written-notes.md"
+        notes.write_text("# Notes\n\nNo template makes this file.\n", encoding="utf-8")
+        done = self._init_product(slug, "--stamp")
+        self.assertEqual(0, done.returncode, done.stderr)
+        self.assertIn("no identifiable template: products/%s/planning/"
+                      "hand-written-notes.md" % slug, done.stdout)
+        self.assertIn("stamp: 0 stamped, 1 already stamped, 1 unidentified file(s).",
+                      done.stdout)
+        self.assertEqual(notes.read_text(encoding="utf-8"),
+                         "# Notes\n\nNo template makes this file.\n")
+
+    def test_init_product_stamp_does_not_combine_with_add(self):
+        slug, folder = self._scratch_slug()
+        done = self._init_product(slug, "--stamp", "--add",
+                                  "templates/planning/product-strategy.md")
+        self.assertEqual(1, done.returncode)
+        self.assertIn("--stamp copies nothing", done.stderr)
+        self.assertFalse(folder.exists())
+
+    def test_stamp_artifact_takes_the_folder_stage_when_a_template_declares_none(self):
+        # The regulated AI PRD has no frontmatter. Its copy lands in
+        # definition/ai, the one folder of the AI OVERLAY stage. --add-all
+        # stopped on it before this fallback existed.
+        ws = self._workspace()
+        template_rel = "modules/regulated/templates/regulated-ai-prd-template.md"
+        text = ws.read_text(REPO / template_rel)
+        self.assertIsNone(ws.declared_stage(text))
+        fields = ws.parse_artifact(ws.stamp_artifact(text, template_rel, "demo"))
+        self.assertEqual(fields["artifact_id"], "demo/definition/ai/regulated-ai-prd")
+        self.assertEqual(fields["phase"], "AI OVERLAY")
+        self.assertIsNone(fields["gate"])
+        self.assertEqual(fields["template"], template_rel)
 
     def test_stamp_artifact_on_product_strategy_for_demo(self):
         ws = self._workspace()

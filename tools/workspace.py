@@ -525,6 +525,19 @@ def render_artifact_block(fields):
     return "\n".join(lines) + "\n"
 
 
+def not_an_artifact(inside):
+    """True for a workspace file that never carries the artifact block.
+
+    inside is the file's path relative to the workspace, in posix form. The
+    root README.md and STATE.md, anything under gates/, the run log the runner
+    writes beside a copy, and a report route's findings are records of the
+    work rather than artifacts of it, so --stamp leaves them alone and the
+    workspace gate does not ask them for the block.
+    """
+    return (inside in ("README.md", "STATE.md") or inside.startswith("gates/")
+            or inside.endswith(".run-log.md") or inside.endswith("-report.md"))
+
+
 def stamp_artifact(text, template_rel, slug, previous=None):
     """One copy's text with the artifact block stamped onto its frontmatter.
 
@@ -540,6 +553,14 @@ def stamp_artifact(text, template_rel, slug, previous=None):
         return text
     artifact_id = artifact_id_for(slug, destination_rel)
     phase = declared_stage(template_text)
+    if phase is None:
+        # The regulated AI PRD has no frontmatter, so it declares no stage. A
+        # copy like it takes the stage whose folder it lands in, when exactly
+        # one stage has that folder (execution has two: BUILD and ALL STAGES).
+        folder = destination_rel[len("products/%s/" % slug):].rpartition("/")[0]
+        stages = [stage for stage, where in FOLDER_FOR_STAGE.items()
+                  if where == folder]
+        phase = stages[0] if len(stages) == 1 else None
     if phase not in ARTIFACT_PHASES:
         raise WorkspaceError(
             "%s declares stage %r, which is not one of the artifact phases."
