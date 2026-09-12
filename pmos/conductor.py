@@ -151,7 +151,9 @@ class Conductor:
 
     def __init__(self, store: Store, product_id: str, banks: Sequence[QuestionBank], *,
                  gate_source_verifier: Optional[Callable[[str, str], bool]] = None,
-                 source_resolver: Optional[Callable[[str], Optional[bool]]] = None) -> None:
+                 source_resolver: Optional[Callable[[str], Optional[bool]]] = None,
+                 gate_manifest: Optional[Callable[[str], Any]] = None,
+                 manifest_verifier: Optional[Callable[[Any], Any]] = None) -> None:
         if not isinstance(store, Store):
             raise ValidationError("store must be a Store")
         _identifier(product_id, "product id")
@@ -171,6 +173,12 @@ class Conductor:
         if source_resolver is not None and not callable(source_resolver):
             raise ValidationError("source_resolver must be callable")
         self._source_resolver = source_resolver
+        if gate_manifest is not None and not callable(gate_manifest):
+            raise ValidationError("gate_manifest must be callable")
+        self._gate_manifest = gate_manifest
+        if manifest_verifier is not None and not callable(manifest_verifier):
+            raise ValidationError("manifest_verifier must be callable")
+        self._manifest_verifier = manifest_verifier
         try:
             self.store.head(product_id)
         except NotFoundError:
@@ -412,7 +420,7 @@ class Conductor:
             return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
                 "blocked", snapshot.head.token, bank_id=bank_id,
                 message="gate actor is not authorized by the pinned question bank"))
-        if (supplied["decision"] != "approved" or not _UTC.match(supplied["approved_at"])
+        if (supplied["decision"] not in ("approved", "rejected") or not _UTC.match(supplied["approved_at"])
                 or not _valid_approved_at(supplied["approved_at"])):
             return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
                 "blocked", snapshot.head.token, bank_id=bank_id,
@@ -438,8 +446,33 @@ class Conductor:
             return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
                 "blocked", snapshot.head.token, bank_id=bank_id,
                 message="gate signer does not match the authorized actor"))
+        manifest = None
+        if self._gate_manifest is not None:
+            try:
+                manifest = self._gate_manifest(bank_id)
+            except ValidationError as exc:
+                return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
+                    "blocked", snapshot.head.token, bank_id=bank_id, message=str(exc)))
+        if manifest is None:
+            manifest = {"artifacts": [], "dependencies": []}
+        if not _manifest_ok(manifest):
+            return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
+                "blocked", snapshot.head.token, bank_id=bank_id,
+                message="gate manifest is malformed"))
+        manifest_sha256 = hashlib.sha256(canonical_json(manifest)).hexdigest()
         proof = dict(supplied)
-        record = {"proof": proof, "proof_sha256": hashlib.sha256(canonical_json(proof)).hexdigest()}
+        if supplied["decision"] == "rejected":
+            rejection = {"proof": proof,
+                         "proof_sha256": hashlib.sha256(canonical_json(proof)).hexdigest(),
+                         "manifest": manifest, "manifest_sha256": manifest_sha256,
+                         "attestation": "local",
+                         "rejected_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
+            state.setdefault("gate_rejections", {}).setdefault(bank_id, []).append(rejection)
+            return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
+                "rejected", snapshot.head.token, bank_id=bank_id,
+                message="gate rejected by %s; the bank stays open until its current revisions are approved" % actor_id))
+        record = {"proof": proof, "proof_sha256": hashlib.sha256(canonical_json(proof)).hexdigest(),
+                  "manifest": manifest, "manifest_sha256": manifest_sha256, "attestation": "local"}
         if reproof:
             # The approval that stopped verifying is kept, never deleted: a
             # copy moves to an append-only list with when and why it was
@@ -501,7 +534,7 @@ class Conductor:
     def _validate_state(self, state: Any) -> None:
         if not isinstance(state, dict) or state.get("schema") != STATE_VERSION:
             raise ValidationError("unsupported conductor state")
-        allowed_keys = {"schema", "current_bank", "banks", "gates", "turn_results", "superseded_gates"}
+        allowed_keys = {"schema", "current_bank", "banks", "gates", "turn_results", "superseded_gates", "gate_rejections"}
         if not set(state).issubset(allowed_keys):
             raise ValidationError("conductor state has unknown fields")
         if not {"schema", "current_bank", "banks", "gates", "turn_results"}.issubset(set(state)):
@@ -572,26 +605,31 @@ class Conductor:
                 if not isinstance(records, list):
                     raise ValidationError("conductor superseded gate records is invalid")
                 for rec in records:
-                    if (not isinstance(rec, dict)
-                            or set(rec) != {"proof", "proof_sha256", "reason", "superseded_at"}
-                            or not isinstance(rec["proof"], dict)
-                            or rec["proof_sha256"] != hashlib.sha256(canonical_json(rec["proof"])).hexdigest()):
-                        raise ValidationError("conductor superseded gate record is invalid")
+                    _validate_gate_record(rec, "superseded")
+        if "gate_rejections" in state:
+            if not isinstance(state["gate_rejections"], dict):
+                raise ValidationError("conductor gate rejections is invalid")
+            for rid, records in state["gate_rejections"].items():
+                if rid not in self._by_id:
+                    raise ValidationError("conductor gate rejection id is not a known bank")
+                if not isinstance(records, list):
+                    raise ValidationError("conductor gate rejection records is invalid")
+                for rec in records:
+                    _validate_gate_record(rec, "rejection")
+                    if rec["proof"].get("decision") != "rejected":
+                        raise ValidationError("conductor gate rejection record is invalid")
         for bank in self.banks[:state["current_bank"]]:
             saved = state["banks"][bank.id]
             if saved["cursor"] != len(bank.questions) or saved["parked"] or saved.get("reopened"):
                 raise ValidationError("gated bank is not complete")
         for bank_id, gate in state["gates"].items():
-            if not isinstance(gate, dict) or set(gate) != {"proof", "proof_sha256"} or \
-                    not isinstance(gate["proof"], dict):
-                raise ValidationError("stored gate proof is malformed")
-            actual = hashlib.sha256(canonical_json(gate["proof"])).hexdigest()
-            if gate.get("proof_sha256") != actual:
-                raise ValidationError("stored gate proof hash does not match")
+            _validate_gate_record(gate, "gate")
             bank = self._by_id[bank_id]
             base = {"source", "source_sha256", "actor_id", "requester_id",
                     "decision", "approved_at", *bank.gate_prerequisites}
             if set(gate["proof"]) != base or gate["proof"].get("actor_id") not in bank.gate_approvers:
+                raise ValidationError("stored gate proof violates its pinned policy")
+            if gate["proof"].get("decision") != "approved":
                 raise ValidationError("stored gate proof violates its pinned policy")
         if len(state["turn_results"]) > MAX_TURN_RESULTS:
             raise ValidationError("conductor idempotency record limit exceeded")
@@ -705,6 +743,35 @@ class Conductor:
                     return TurnOutcome("stale", revision, bank_id=bank.id,
                                        message="gate proof %s for %s no longer verifies (changed or missing); "
                                                "prove the gate again" % (source, bank.id))
+                if self._manifest_verifier is not None and "manifest" in gate:
+                    try:
+                        check = self._manifest_verifier(gate["manifest"])
+                    except Exception:
+                        return TurnOutcome("stale", revision, bank_id=bank.id,
+                                           message="approved artifacts for %s could not be checked; "
+                                                   "prove the gate again" % bank.id)
+                    if not isinstance(check, dict) or not isinstance(check.get("changed"), list) or \
+                            not isinstance(check.get("reconcile"), list):
+                        return TurnOutcome("stale", revision, bank_id=bank.id,
+                                           message="approved artifacts for %s could not be checked; "
+                                                   "prove the gate again" % bank.id)
+                    if check["changed"]:
+                        parts = []
+                        for item in check["changed"]:
+                            if not isinstance(item, dict) or "id" not in item or "reviewed" not in item \
+                                    or "current" not in item:
+                                return TurnOutcome("stale", revision, bank_id=bank.id,
+                                                   message="approved artifacts for %s could not be checked; "
+                                                           "prove the gate again" % bank.id)
+                            current = item["current"]
+                            current_prefix = "missing" if current is None else str(current)[:8]
+                            parts.append("%s (reviewed %s, now %s)" % (
+                                item["id"], str(item["reviewed"])[:8], current_prefix))
+                        message = "approved artifacts for %s changed: %s" % (bank.id, "; ".join(parts))
+                        if check["reconcile"]:
+                            message += "; needs reconciliation: " + ", ".join(str(x) for x in check["reconcile"])
+                        message += "; prove the gate again"
+                        return TurnOutcome("stale", revision, bank_id=bank.id, message=message)
 
         index = int(state["current_bank"])
         if index >= len(self.banks):
@@ -881,6 +948,58 @@ def _outcome_data(outcome: TurnOutcome) -> dict[str, Any]:
     return data
 
 
+def _manifest_entry_ok(entry: Any) -> bool:
+    return (isinstance(entry, dict) and isinstance(entry.get("id"), str) and isinstance(entry.get("path"), str)
+            and isinstance(entry.get("revision"), str) and isinstance(entry.get("depends_on"), list)
+            and all(isinstance(x, str) for x in entry["depends_on"]))
+
+
+def _manifest_ok(manifest: Any) -> bool:
+    if not isinstance(manifest, dict):
+        return False
+    artifacts = manifest.get("artifacts")
+    dependencies = manifest.get("dependencies")
+    if not isinstance(artifacts, list) or not isinstance(dependencies, list):
+        return False
+    if not all(_manifest_entry_ok(entry) for entry in artifacts):
+        return False
+    if not all(_manifest_entry_ok(entry) for entry in dependencies):
+        return False
+    return True
+
+
+_GATE_RECORD_SHAPES = (frozenset({"proof", "proof_sha256"}),
+                       frozenset({"proof", "proof_sha256", "manifest", "manifest_sha256", "attestation"}))
+_REJECTION_KEYS = frozenset({"proof", "proof_sha256", "manifest", "manifest_sha256", "attestation", "rejected_at"})
+_RECORD_ERRORS = {"gate": "stored gate proof is malformed",
+                  "superseded": "conductor superseded gate record is invalid",
+                  "rejection": "conductor gate rejection record is invalid"}
+
+
+def _validate_gate_record(record: Any, kind: str) -> None:
+    """Check one stored gate, superseded or rejection record: its shape and its hashes.
+
+    A gate recorded before manifests keeps the two-key shape {proof, proof_sha256}, so a product that
+    passed a gate before this change still loads; one recorded since also carries the manifest it
+    approved, that manifest's hash and the local attestation label. A superseded record adds reason and
+    superseded_at to either shape, and a rejection record always carries its manifest.
+    """
+    if kind == "rejection":
+        allowed = (_REJECTION_KEYS,)
+    elif kind == "superseded":
+        allowed = tuple(shape | {"reason", "superseded_at"} for shape in _GATE_RECORD_SHAPES)
+    else:
+        allowed = _GATE_RECORD_SHAPES
+    if not isinstance(record, dict) or frozenset(record) not in allowed or not isinstance(record["proof"], dict):
+        raise ValidationError(_RECORD_ERRORS[kind])
+    if record["proof_sha256"] != hashlib.sha256(canonical_json(record["proof"])).hexdigest():
+        raise ValidationError("stored gate proof hash does not match" if kind == "gate" else _RECORD_ERRORS[kind])
+    if "manifest" in record and (
+            not _manifest_ok(record["manifest"]) or record["attestation"] != "local"
+            or record["manifest_sha256"] != hashlib.sha256(canonical_json(record["manifest"])).hexdigest()):
+        raise ValidationError(_RECORD_ERRORS[kind])
+
+
 def _outcome_from_data(data: Any) -> TurnOutcome:
     fields = {"status", "revision", "bank_id", "question", "message",
               "challenge_count", "accepted", "completed", "conflict_revision"}
@@ -898,7 +1017,7 @@ def _outcome_from_data(data: Any) -> TurnOutcome:
     except (TypeError, ValueError) as exc:
         raise ValidationError("stored turn result is invalid") from exc
     if (outcome.status not in {"question", "challenge", "blocked", "parked", "accepted",
-                              "advanced", "completed", "conflict", "stale", "reopened"} or
+                              "advanced", "completed", "conflict", "stale", "reopened", "rejected"} or
             not isinstance(outcome.challenge_count, int) or
             isinstance(outcome.challenge_count, bool) or
             outcome.challenge_count < 0 or outcome.challenge_count > 2 or

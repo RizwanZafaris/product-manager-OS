@@ -13,7 +13,7 @@ from unittest.mock import patch
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from pmos.conductor import Conductor, EvidenceClass, Question, QuestionBank, TurnOutcome
+from pmos.conductor import STATE_PATH, Conductor, EvidenceClass, Question, QuestionBank, TurnOutcome, canonical_json
 from pmos.store import Store, ValidationError
 from pmos.banks import LEGACY_ONBOARDING, banks_from_contract, load_contract, shipped_banks
 
@@ -472,9 +472,193 @@ class ConductorTest(unittest.TestCase):
         self.assertEqual(state["gates"]["discover"]["proof"]["source_sha256"], new_hash)
         (archived,) = state["superseded_gates"]["discover"]
         self.assertEqual(archived["proof"]["source_sha256"], GATE_HASH)
+        self.assertIn("manifest", archived)
+        self.assertIn("manifest_sha256", archived)
+        self.assertEqual(archived["attestation"], "local")
         self.assertEqual(archived["reason"], "superseded after proof changed")
         self.assertRegex(archived["superseded_at"], r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
         conductor.store.close()
+
+    def _manifested(self, *, changed=None, reconcile=None, manifest=None):
+        store = Store(self.path)
+        verifier = lambda source, digest: source == "gate-1.md" and digest == GATE_HASH
+        fixed_manifest = manifest if manifest is not None else {"artifacts": [], "dependencies": []}
+        result = {"changed": changed or [], "reconcile": reconcile or []}
+
+        def manifest_builder(bank_id):
+            return fixed_manifest
+
+        def manifest_checker(manifest):
+            self.assertEqual(manifest, fixed_manifest)
+            return result
+
+        return store, Conductor(store, "payments", BANKS,
+                                gate_source_verifier=verifier,
+                                gate_manifest=manifest_builder,
+                                manifest_verifier=manifest_checker), result
+
+    def _gate_two_answers(self, conductor: Conductor) -> TurnOutcome:
+        turn = conductor.next_turn()
+        conductor.submit_answer("discover.person", "Mina exported the failures.", observed(),
+                                expected_revision=turn.revision, turn_id="m-a1")
+        turn = conductor.next_turn()
+        conductor.submit_answer("discover.cost", "The export reports the weekly cost.", artifact(),
+                                expected_revision=turn.revision, turn_id="m-a2")
+        return conductor.next_turn()
+
+    def test_approved_gate_stores_manifest_hash_and_local_attestation(self) -> None:
+        store, conductor, _ = self._manifested(manifest={"artifacts": [
+            {"id": "spec", "path": "spec.md", "revision": "rev-1234567890abcdef", "depends_on": []}],
+            "dependencies": []})
+        turn = self._gate_two_answers(conductor)
+        approved = conductor.prove_gate("discover", gate_proof(), expected_revision=turn.revision, turn_id="m-g1")
+        self.assertEqual(approved.status, "advanced")
+        gate = conductor.state()["gates"]["discover"]
+        self.assertEqual(set(gate), {"proof", "proof_sha256", "manifest", "manifest_sha256", "attestation"})
+        self.assertEqual(gate["manifest"]["artifacts"][0]["id"], "spec")
+        self.assertEqual(gate["manifest_sha256"], hashlib.sha256(canonical_json(gate["manifest"])).hexdigest())
+        self.assertEqual(gate["attestation"], "local")
+        reloaded = Conductor(store, "payments", BANKS, gate_source_verifier=lambda *a: True)
+        self.assertEqual(reloaded.state()["gates"]["discover"]["manifest_sha256"], gate["manifest_sha256"])
+        store.close()
+
+    def test_manifest_change_makes_next_turn_stale(self) -> None:
+        store, conductor, result = self._manifested(changed=[
+            {"id": "spec", "reviewed": "rev-aaaabbbbccccdddd", "current": "rev-eeeeffff111122223"}],
+            reconcile=["dep-1"])
+        turn = self._gate_two_answers(conductor)
+        conductor.prove_gate("discover", gate_proof(), expected_revision=turn.revision, turn_id="mc-g1")
+        stale = conductor.next_turn()
+        self.assertEqual(stale.status, "stale")
+        self.assertEqual(stale.bank_id, "discover")
+        self.assertIn("spec (reviewed rev-aaaa, now rev-eeee)", stale.message)
+        self.assertIn("needs reconciliation: dep-1", stale.message)
+        self.assertTrue(stale.message.endswith("; prove the gate again"))
+        store.close()
+
+    def test_manifest_change_with_missing_revision_reports_missing(self) -> None:
+        store, conductor, result = self._manifested(changed=[
+            {"id": "spec", "reviewed": "rev-aaaabbbbccccdddd", "current": None}])
+        turn = self._gate_two_answers(conductor)
+        conductor.prove_gate("discover", gate_proof(), expected_revision=turn.revision, turn_id="miss-g1")
+        stale = conductor.next_turn()
+        self.assertEqual(stale.status, "stale")
+        self.assertIn("spec (reviewed rev-aaaa, now missing)", stale.message)
+        store.close()
+
+    def test_reproving_keeps_superseded_manifest_and_question_position(self) -> None:
+        # A stub workspace that behaves like pmos/artifacts.py: the builder binds each artifact's current
+        # revision, and the verifier reports the entries whose recorded revision no longer matches.
+        current = {"spec": "a" * 64}
+
+        def build(bank_id):
+            return {"artifacts": [{"id": aid, "path": aid + ".md", "revision": rev, "depends_on": []}
+                                  for aid, rev in sorted(current.items())], "dependencies": []}
+
+        def check(manifest):
+            changed = [{"id": entry["id"], "path": entry["path"], "reviewed": entry["revision"],
+                        "current": current.get(entry["id"])}
+                       for entry in manifest["artifacts"] if current.get(entry["id"]) != entry["revision"]]
+            return {"changed": changed, "reconcile": []}
+
+        store = Store(self.path)
+        verifier = lambda source, digest: source == "gate-1.md" and digest == GATE_HASH
+        conductor = Conductor(store, "payments", BANKS, gate_source_verifier=verifier,
+                              gate_manifest=build, manifest_verifier=check)
+        turn = self._gate_two_answers(conductor)
+        first = conductor.prove_gate("discover", gate_proof(), expected_revision=turn.revision, turn_id="re-g1")
+        self.assertEqual(first.status, "advanced")
+        self.assertEqual(conductor.next_turn().question.id, "define.sponsor")
+        current["spec"] = "b" * 64  # an approved artifact changes, so its gate is stale
+        stale = conductor.next_turn()
+        self.assertEqual((stale.status, stale.bank_id), ("stale", "discover"))
+        self.assertIn("spec (reviewed aaaaaaaa, now bbbbbbbb)", stale.message)
+        reproved = conductor.prove_gate("discover", gate_proof(), expected_revision=stale.revision,
+                                        turn_id="re-g1-again")
+        self.assertEqual(reproved.status, "advanced")
+        state = conductor.state()
+        self.assertEqual(state["gates"]["discover"]["manifest"]["artifacts"][0]["revision"], "b" * 64)
+        (archived,) = state["superseded_gates"]["discover"]
+        self.assertEqual(archived["manifest"]["artifacts"][0]["revision"], "a" * 64)
+        self.assertEqual(set(archived), {"proof", "proof_sha256", "manifest", "manifest_sha256",
+                                         "attestation", "reason", "superseded_at"})
+        self.assertEqual(state["current_bank"], 1)
+        self.assertEqual(conductor.next_turn().question.id, "define.sponsor")
+        store.close()
+
+    def test_rejection_is_recorded_and_does_not_advance(self) -> None:
+        store, conductor, _ = self._manifested()
+        turn = self._gate_two_answers(conductor)
+        self.assertEqual(conductor.state()["current_bank"], 0)
+        rejected = conductor.prove_gate("discover", dict(gate_proof(), decision="rejected"),
+                                        expected_revision=turn.revision, turn_id="rj-g1")
+        self.assertEqual(rejected.status, "rejected")
+        self.assertEqual(rejected.bank_id, "discover")
+        self.assertIn("gate rejected by asha", rejected.message)
+        self.assertEqual(conductor.state()["current_bank"], 0)
+        self.assertNotIn("discover", conductor.state()["gates"])
+        rejections = conductor.state()["gate_rejections"]["discover"]
+        (one,) = rejections
+        self.assertEqual(set(one), {"proof", "proof_sha256", "manifest", "manifest_sha256",
+                                   "attestation", "rejected_at"})
+        self.assertEqual(one["proof"]["decision"], "rejected")
+        self.assertEqual(one["attestation"], "local")
+        self.assertRegex(one["rejected_at"], r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+        approved = conductor.prove_gate("discover", gate_proof(),
+                                        expected_revision=rejected.revision, turn_id="rj-g2")
+        self.assertEqual(approved.status, "advanced")
+        self.assertEqual(conductor.state()["current_bank"], 1)
+        store.close()
+
+    def test_builder_validation_error_blocks_and_records_no_gate(self) -> None:
+        store = Store(self.path)
+        verifier = lambda source, digest: source == "gate-1.md" and digest == GATE_HASH
+
+        def builder(bank_id):
+            raise ValidationError("manifest service is down")
+
+        conductor = Conductor(store, "payments", BANKS, gate_source_verifier=verifier,
+                              gate_manifest=builder)
+        turn = self._gate_two_answers(conductor)
+        blocked = conductor.prove_gate("discover", gate_proof(), expected_revision=turn.revision, turn_id="bv-g1")
+        self.assertEqual(blocked.status, "blocked")
+        self.assertEqual(blocked.message, "manifest service is down")
+        self.assertNotIn("discover", conductor.state().get("gates", {}))
+        self.assertNotIn("discover", conductor.state().get("gate_rejections", {}))
+        store.close()
+
+    def test_malformed_manifest_blocks_gate(self) -> None:
+        store = Store(self.path)
+        verifier = lambda source, digest: source == "gate-1.md" and digest == GATE_HASH
+        conductor = Conductor(store, "payments", BANKS, gate_source_verifier=verifier,
+                              gate_manifest=lambda bank_id: {"artifacts": "nope", "dependencies": []})
+        turn = self._gate_two_answers(conductor)
+        blocked = conductor.prove_gate("discover", gate_proof(), expected_revision=turn.revision, turn_id="mm-g1")
+        self.assertEqual(blocked.status, "blocked")
+        self.assertIn("manifest", blocked.message)
+        store.close()
+
+    def test_old_two_key_gate_record_still_loads(self) -> None:
+        # A product that passed a gate before manifests holds {proof, proof_sha256} only; it must still load.
+        store = Store(self.path)
+        verifier = lambda source, digest: source == "gate-1.md" and digest == GATE_HASH
+        conductor = Conductor(store, "payments", BANKS, gate_source_verifier=verifier)
+        turn = self._gate_two_answers(conductor)
+        conductor.prove_gate("discover", gate_proof(), expected_revision=turn.revision, turn_id="ok-g1")
+        snapshot = store.read_snapshot("payments")
+        state = json.loads(snapshot.files[STATE_PATH])
+        proof = state["gates"]["discover"]["proof"]
+        state["gates"]["discover"] = {"proof": proof,
+                                      "proof_sha256": hashlib.sha256(canonical_json(proof)).hexdigest()}
+        files = dict(snapshot.files)
+        files[STATE_PATH] = canonical_json(state)
+        self.assertTrue(store.commit("payments", files, expected_revision=snapshot.head,
+                                     metadata={"reason": "a gate recorded before manifests"}).committed)
+        loaded = Conductor(store, "payments", BANKS, gate_source_verifier=verifier,
+                           manifest_verifier=lambda manifest: self.fail("an old record has no manifest"))
+        self.assertEqual(set(loaded.state()["gates"]["discover"]), {"proof", "proof_sha256"})
+        self.assertEqual(loaded.next_turn().question.id, "define.sponsor")
+        store.close()
 
     def test_an_unchanged_proof_stays_completed(self) -> None:
         conductor, proof = self.gated_discover()
