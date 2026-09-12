@@ -1687,7 +1687,9 @@ class SpendSession:
             raise QueuedWork(
                 "an earlier call's cost is unknown, so the spend ledger at %s "
                 "refuses new reservations in its scopes until that charge is "
-                "reconciled with the billed amount: %s"
+                "reconciled with the billed amount: %s. List the unresolved "
+                "charges with python3 -m pmos.spend status, and reconcile one "
+                "with python3 -m pmos.spend reconcile <key> <usd> <evidence>."
                 % (self.display_path, exc))
         except BudgetExceeded as exc:
             raise QueuedWork(

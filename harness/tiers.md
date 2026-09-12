@@ -60,6 +60,11 @@ The config sets this as `limits.onCapReached: halt-tier-and-queue`. [runner.py](
 | The answering model is not the model that was certified | The response header naming the model came back with a different id, or with no id at all. The run did not happen on the model the artifact would claim, so there is nothing to write. It queues without trying the next link in the chain, because a gateway that reroutes one named model reroutes the next one too |
 | The daily spend cap is reached | Read from the variable `limits.dailySpendCapUsdEnv` names, with spend to date from `OMNIROUTE_DAILY_SPEND_USD`, and checked before the probe so a capped run spends nothing. At or over the cap the work queues and that is terminal |
 | A cap is set and no meter reports spend | An unavailable checker. Fail-closed answers that by queueing, never by running and hoping |
+| A call's reservation would pass the daily or task cap | Every call first reserves the most it could bill in the shared ledger at its tier's price ceiling, across processes, so two runs cannot both take the last allowance |
+| An earlier call's cost is unknown | Its full reservation stays charged, and new reservations in its scopes queue until someone reconciles it with the billed amount: `python3 -m pmos.spend status` lists them, and `python3 -m pmos.spend reconcile <key> <usd> <evidence>` clears one |
+| A cap is in force and the tier has no price ceiling | The most the call could bill is unknown, so nothing can be reserved; set `tiers.<tier>.priceCeilingUsdPerMTok` |
+
+The spend rows apply to every tier, not only judgment. The gateway's daily figure can include calls the ledger already recorded, so the same spend may be counted twice; that errs toward stopping early, never toward overspending.
 
 There is one sanctioned way to run judgment work on a cheaper model, and it is loud: set `tiers.judgment.keylessFallback.enabled` to true in the config. It is off by default. Every artifact produced under it carries the line `judgment tier: degraded, reviewed by a person before use` on its face, because an artifact that does not say it was degraded will be read as one that was not.
 

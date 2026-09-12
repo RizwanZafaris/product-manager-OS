@@ -1400,6 +1400,7 @@ class ConfiguredRoutingTests(unittest.TestCase):
                 runner.transport_call(cfg, "drafting", [{"content": "x"}],
                                       "http", max_tokens=600)
             self.assertIn("unknown", str(caught.exception).lower())
+            self.assertIn("pmos.spend reconcile", str(caught.exception))
             self.assertEqual(called["n"], 1)
         finally:
             runner._dispatch = saved_dispatch
