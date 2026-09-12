@@ -209,8 +209,17 @@ class Conductor:
         question = position.question
         valid, reason, normalized_evidence, verification = self._validate_answer(question, answer, evidence)
         bank_state = state["banks"][position.bank_id]
+        _ensure_reopen_fields(bank_state)
+        # Fresh evidence is required: a submission repeating the evidence of an
+        # earlier rejected submission for this question is itself refused, even
+        # when it would otherwise pass.
+        earlier = [event.get("evidence") for event in bank_state["rejected"].get(question.id, [])
+                   if event.get("event") in ("challenged", "parked")]
+        if valid and normalized_evidence in earlier:
+            valid, reason = False, "this evidence was already rejected for this question; supply fresh evidence"
         if not valid:
             previous = int(bank_state["challenges"].get(question.id, 0))
+            rejected_events = bank_state["rejected"].setdefault(question.id, [])
             if previous >= 2:
                 # Two pushes are spent; this third invalid submission parks
                 # the question, per the protocol in os/CONDUCTOR.md: the
@@ -227,13 +236,27 @@ class Conductor:
                     "parked": True,
                     "verification": "failed_validation",
                 }
-                bank_state["cursor"] += 1
+                if question.id in bank_state["reopened"]:
+                    # Parked again after a reopen: it is behind the cursor already.
+                    bank_state["reopened"].remove(question.id)
+                else:
+                    bank_state["cursor"] += 1
+                rejected_events.append({
+                    "event": "parked", "turn_id": turn_id,
+                    "answer": _parked_answer_text(answer), "evidence": normalized_evidence,
+                    "reason": reason,
+                })
                 outcome = TurnOutcome("parked", snapshot.head.token, bank_id=position.bank_id,
                                       question=question, message="question parked after two challenges: " + reason,
                                       challenge_count=2)
             else:
                 count = previous + 1
                 bank_state["challenges"][question.id] = count
+                rejected_events.append({
+                    "event": "challenged", "turn_id": turn_id,
+                    "answer": _parked_answer_text(answer), "evidence": normalized_evidence,
+                    "reason": reason,
+                })
                 outcome = TurnOutcome("challenge", snapshot.head.token, bank_id=position.bank_id,
                                       question=question, message=reason, challenge_count=count)
             return self._record(snapshot, state, turn_id, request_hash, outcome)
@@ -243,12 +266,81 @@ class Conductor:
             "evidence_class": question.required_evidence.value,
             "verification": verification,
         }
-        bank_state["cursor"] += 1
+        if question.id in bank_state["reopened"]:
+            bank_state["reopened"].remove(question.id)
+        else:
+            bank_state["cursor"] += 1
         outcome = TurnOutcome("accepted", snapshot.head.token, bank_id=position.bank_id, question=question,
                               message="answer accepted", accepted=True)
         return self._record(snapshot, state, turn_id, request_hash, outcome)
 
     answer = submit_answer
+
+    def reopen(self, question_id: str, *, expected_revision: str | int | ProductHead,
+               turn_id: str, reason: str) -> TurnOutcome:
+        """Reopen a parked question in the current bank, retaining rejected history.
+
+        A parked question blocks its bank's gate for good without this: three
+        invalid submissions leave no public path back to answering it again.
+        Reopening appends a durable ``reopened`` event, removes the question
+        from the parked set, clears its accepted/challenged state so it earns
+        two fresh challenges, and moves nothing else.  The rejected history
+        stays in ``rejected``; fresh evidence is required to answer it again.
+        """
+        _identifier(question_id, "question id")
+        _identifier(turn_id, "turn id", MAX_TURN_ID_CHARS)
+        _bounded_text(reason, "reopen reason", MAX_TEXT_CHARS)
+        request_hash = _request_hash("reopen", {
+            "question_id": question_id, "reason": reason,
+        })
+        snapshot, state = self._load()
+        duplicate = self._duplicate(state, turn_id, request_hash, snapshot.head.token)
+        if duplicate is not None:
+            return duplicate
+        conflict = self._expected_conflict(expected_revision, snapshot.head)
+        if conflict:
+            return conflict
+        position = self._position(snapshot.head.token, state)
+        if position.status == "stale":
+            return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
+                "stale", snapshot.head.token, bank_id=position.bank_id, message=position.message))
+        index = int(state["current_bank"])
+        if index >= len(self.banks):
+            return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
+                "blocked", snapshot.head.token, message="only the current bank can be reopened"))
+        bank = self.banks[index]
+        bank_state = state["banks"][bank.id]
+        _ensure_reopen_fields(bank_state)
+        if question_id not in {question.id for question in bank.questions}:
+            return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
+                "blocked", snapshot.head.token, bank_id=bank.id,
+                message="only a parked question in the current bank can be reopened"))
+        if question_id not in bank_state["parked"]:
+            return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
+                "blocked", snapshot.head.token, bank_id=bank.id,
+                message="only a parked question in the current bank can be reopened"))
+        rejected = bank_state["rejected"].setdefault(question_id, [])
+        if sum(1 for event in rejected if event["event"] == "reopened") >= 3:
+            return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
+                "blocked", snapshot.head.token, bank_id=bank.id,
+                message="reopen limit reached for this question"))
+        history = rejected
+        if not history or history[-1]["event"] != "parked":
+            # A question parked before this history was kept: file its stored
+            # parked answer first, so nothing rejected is lost.
+            parked_record = bank_state["answers"][question_id]
+            history.append({"event": "parked", "turn_id": "", "answer": parked_record.get("answer", ""),
+                            "evidence": parked_record.get("evidence", {}),
+                            "reason": "parked before the rejected history was kept"})
+        bank_state["parked"].remove(question_id)
+        del bank_state["answers"][question_id]
+        bank_state["challenges"].pop(question_id, None)
+        bank_state["reopened"].append(question_id)
+        history.append({"event": "reopened", "turn_id": turn_id, "reason": reason})
+        outcome = TurnOutcome("reopened", snapshot.head.token, bank_id=bank.id,
+                              question=next(q for q in bank.questions if q.id == question_id),
+                              message="question reopened; answer it with fresh evidence")
+        return self._record(snapshot, state, turn_id, request_hash, outcome)
 
     def prove_gate(self, bank_id: str, evidence: Mapping[str, Any], *, expected_revision: str | int | ProductHead,
                    turn_id: str) -> TurnOutcome:
@@ -280,7 +372,7 @@ class Conductor:
                 "blocked", snapshot.head.token, bank_id=bank_id, message="only the current completed bank may be gated"))
         bank = self._by_id[bank_id]
         bank_state = state["banks"][bank_id]
-        if bank_state["cursor"] != len(bank.questions) or bank_state["parked"]:
+        if bank_state["cursor"] != len(bank.questions) or bank_state["parked"] or bank_state.get("reopened"):
             return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
                 "blocked", snapshot.head.token, bank_id=bank_id, message="all questions must be accepted before gate proof"))
         required_fields = {"source", "source_sha256", "actor_id", "requester_id",
@@ -382,7 +474,8 @@ class Conductor:
             "schema": STATE_VERSION,
             "current_bank": 0,
             "banks": {bank.id: {"version": bank.version, "definition_hash": bank.definition_hash,
-                                  "cursor": 0, "answers": {}, "challenges": {}, "parked": []}
+                                  "cursor": 0, "answers": {}, "challenges": {}, "parked": [],
+                                  "reopened": [], "rejected": {}}
                       for bank in self.banks},
             "gates": {}, "turn_results": {},
         }
@@ -407,20 +500,46 @@ class Conductor:
                 raise ValidationError("conductor bank cursor is invalid")
             if not isinstance(saved.get("answers"), dict) or not isinstance(saved.get("challenges"), dict) or not isinstance(saved.get("parked"), list):
                 raise ValidationError("conductor bank state is invalid")
+            # reopened and rejected arrived with reopen (F03); states saved
+            # before it lack both and load as empty.
+            reopened = saved.get("reopened", [])
+            rejected = saved.get("rejected", {})
+            if not isinstance(reopened, list) or not isinstance(rejected, dict):
+                raise ValidationError("conductor bank state is invalid")
+            if len(reopened) != len(set(reopened)):
+                raise ValidationError("conductor reopened ids must be unique")
             question_ids = {question.id for question in bank.questions}
             if (not set(saved["answers"]).issubset(question_ids) or
                     not set(saved["challenges"]).issubset(question_ids) or
                     not set(saved["parked"]).issubset(question_ids) or
+                    not set(reopened).issubset(question_ids) or
+                    not set(rejected).issubset(question_ids) or
                     len(saved["parked"]) != len(set(saved["parked"]))):
                 raise ValidationError("conductor bank has unknown question state")
-            expected_answer_ids = {question.id for question in bank.questions[:saved["cursor"]]}
-            if set(saved["answers"]) != expected_answer_ids:
+            behind_cursor = {question.id for question in bank.questions[:saved["cursor"]]}
+            if not set(reopened).issubset(behind_cursor) or set(reopened) & set(saved["parked"]):
+                raise ValidationError("conductor reopened questions are invalid")
+            if set(saved["answers"]) != behind_cursor - set(reopened):
                 raise ValidationError("conductor answers do not match the durable cursor")
             for question_id, count in saved["challenges"].items():
                 if not isinstance(count, int) or isinstance(count, bool) or not 1 <= count <= 2:
                     raise ValidationError("conductor challenge count is invalid")
                 if question_id in saved["parked"] and count != 2:
                     raise ValidationError("parked question lacks two challenges")
+            known_events = {"challenged", "parked", "reopened"}
+            for rejected_id, events in rejected.items():
+                if not isinstance(events, list) or not events:
+                    raise ValidationError("conductor rejected history is invalid")
+                for event in events:
+                    if not isinstance(event, dict) or event.get("event") not in known_events:
+                        raise ValidationError("conductor rejected event is invalid")
+                    if "turn_id" not in event:
+                        raise ValidationError("conductor rejected event is invalid")
+                    if event["event"] in ("challenged", "parked") and not all(
+                            key in event for key in ("answer", "evidence", "reason")):
+                        raise ValidationError("conductor rejected event is invalid")
+                    if event["event"] == "reopened" and "reason" not in event:
+                        raise ValidationError("conductor rejected event is invalid")
         if not isinstance(state["gates"], dict) or not isinstance(state["turn_results"], dict):
             raise ValidationError("conductor state is invalid")
         completed_ids = {bank.id for bank in self.banks[:state["current_bank"]]}
@@ -442,7 +561,7 @@ class Conductor:
                         raise ValidationError("conductor superseded gate record is invalid")
         for bank in self.banks[:state["current_bank"]]:
             saved = state["banks"][bank.id]
-            if saved["cursor"] != len(bank.questions) or saved["parked"]:
+            if saved["cursor"] != len(bank.questions) or saved["parked"] or saved.get("reopened"):
                 raise ValidationError("gated bank is not complete")
         for bank_id, gate in state["gates"].items():
             if not isinstance(gate, dict) or set(gate) != {"proof", "proof_sha256"} or \
@@ -575,6 +694,11 @@ class Conductor:
         bank = self.banks[index]
         saved = state["banks"][bank.id]
         cursor = int(saved["cursor"])
+        if saved.get("reopened"):
+            # A reopened question is offered before the cursor's next one.
+            reopened_id = saved["reopened"][0]
+            return TurnOutcome("question", revision, bank_id=bank.id,
+                               question=next(q for q in bank.questions if q.id == reopened_id))
         if cursor == len(bank.questions):
             if saved["parked"]:
                 return TurnOutcome("blocked", revision, bank_id=bank.id,
@@ -628,6 +752,14 @@ class Conductor:
             if found is True:
                 verification = "source_verified"
         return True, "", normal, verification
+
+
+def _ensure_reopen_fields(bank_state: dict[str, Any]) -> None:
+    """Backfill reopened and rejected on older states loaded from disk."""
+    if "reopened" not in bank_state:
+        bank_state["reopened"] = []
+    if "rejected" not in bank_state:
+        bank_state["rejected"] = {}
 
 
 def _coerce_bank(value: QuestionBank) -> QuestionBank:
@@ -742,7 +874,7 @@ def _outcome_from_data(data: Any) -> TurnOutcome:
     except (TypeError, ValueError) as exc:
         raise ValidationError("stored turn result is invalid") from exc
     if (outcome.status not in {"question", "challenge", "blocked", "parked", "accepted",
-                              "advanced", "completed", "conflict", "stale"} or
+                              "advanced", "completed", "conflict", "stale", "reopened"} or
             not isinstance(outcome.challenge_count, int) or
             isinstance(outcome.challenge_count, bool) or
             outcome.challenge_count < 0 or outcome.challenge_count > 2 or

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import hashlib
+import json
 import subprocess
 import sys
 import unittest
@@ -12,7 +13,7 @@ from unittest.mock import patch
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from pmos.conductor import Conductor, EvidenceClass, Question, QuestionBank
+from pmos.conductor import Conductor, EvidenceClass, Question, QuestionBank, TurnOutcome
 from pmos.store import Store
 
 
@@ -389,6 +390,141 @@ class ConductorTest(unittest.TestCase):
         self.assertEqual(replay.status, "advanced")
         self.assertNotIn("superseded_gates", conductor.state())
         conductor.store.close()
+
+    def park(self, conductor: Conductor, revision: str, prefix: str) -> TurnOutcome:
+        """Three insufficient answers to discover.person: challenge, challenge, parked."""
+        invalid = {"class": "observed_behavior", "source": "heard it"}
+        outcome = None
+        for index in range(3):
+            outcome = conductor.submit_answer("discover.person", "Still vague.", invalid,
+                                              expected_revision=revision, turn_id="%s-%d" % (prefix, index))
+            revision = outcome.revision
+        self.assertEqual(outcome.status, "parked")
+        return outcome
+
+    def test_a_reopened_question_recovers_and_the_bank_reaches_its_gate(self) -> None:
+        store, conductor = self.opening()
+        parked = self.park(conductor, conductor.next_turn().revision, "recover")
+        self.assertEqual(conductor.next_turn().question.id, "discover.cost")
+        reopened = conductor.reopen("discover.person", expected_revision=parked.revision,
+                                    turn_id="recover-reopen", reason="found the recording")
+        self.assertEqual((reopened.status, reopened.question.id), ("reopened", "discover.person"))
+        self.assertEqual(conductor.next_turn().question.id, "discover.person")
+        accepted = conductor.submit_answer("discover.person", "Mina exported the failures.", observed(),
+                                           expected_revision=reopened.revision, turn_id="recover-good-1")
+        self.assertEqual(accepted.status, "accepted")
+        self.assertEqual(conductor.state()["banks"]["discover"]["cursor"], 1)
+        turn = conductor.next_turn()
+        self.assertEqual(turn.question.id, "discover.cost")
+        accepted = conductor.submit_answer("discover.cost", "The export reports the weekly cost.", artifact(),
+                                           expected_revision=turn.revision, turn_id="recover-good-2")
+        gate = conductor.prove_gate("discover", gate_proof(), expected_revision=accepted.revision,
+                                    turn_id="recover-gate")
+        self.assertEqual(gate.status, "advanced")
+        store.close()
+        store, reloaded = self.opening()
+        self.assertEqual(reloaded.next_turn().question.id, "define.sponsor")
+        self.assertEqual(reloaded.state()["banks"]["discover"]["reopened"], [])
+        store.close()
+
+    def test_replaying_a_reopen_changes_nothing_twice(self) -> None:
+        store, conductor = self.opening()
+        parked = self.park(conductor, conductor.next_turn().revision, "idem")
+        first = conductor.reopen("discover.person", expected_revision=parked.revision,
+                                 turn_id="idem-reopen", reason="found the recording")
+        replay = conductor.reopen("discover.person", expected_revision=first.revision,
+                                  turn_id="idem-reopen", reason="found the recording")
+        self.assertEqual((replay.status, replay.revision), (first.status, first.revision))
+        events = conductor.state()["banks"]["discover"]["rejected"]["discover.person"]
+        self.assertEqual([event["event"] for event in events].count("reopened"), 1)
+        store.close()
+
+    def test_a_reopen_with_a_stale_revision_conflicts(self) -> None:
+        store, conductor = self.opening()
+        first = conductor.next_turn()
+        self.park(conductor, first.revision, "stale-rev")
+        conflict = conductor.reopen("discover.person", expected_revision=first.revision,
+                                    turn_id="stale-rev-reopen", reason="found the recording")
+        self.assertEqual(conflict.status, "conflict")
+        self.assertIn("discover.person", conductor.state()["banks"]["discover"]["parked"])
+        store.close()
+
+    def test_rejected_evidence_is_refused_after_a_reopen(self) -> None:
+        store, conductor = self.opening()
+        turn = conductor.next_turn()
+        for index in range(3):
+            turn = conductor.submit_answer("discover.person", "Everyone needs it.", observed(),
+                                           expected_revision=turn.revision, turn_id="fresh-%d" % index)
+        self.assertEqual(turn.status, "parked")
+        reopened = conductor.reopen("discover.person", expected_revision=turn.revision,
+                                    turn_id="fresh-reopen", reason="rewrite the answer")
+        same = conductor.submit_answer("discover.person", "Mina exported the failures.", observed(),
+                                       expected_revision=reopened.revision, turn_id="fresh-same")
+        self.assertEqual(same.status, "challenge")
+        self.assertIn("already rejected", same.message)
+        different = conductor.submit_answer("discover.person", "Mina exported the failures.",
+                                            dict(observed(), location="replay/18"),
+                                            expected_revision=same.revision, turn_id="fresh-new")
+        self.assertEqual(different.status, "accepted")
+        store.close()
+
+    def test_only_a_parked_question_in_the_current_bank_can_be_reopened(self) -> None:
+        store, conductor = self.opening()
+        blocked = conductor.reopen("discover.person", expected_revision=conductor.next_turn().revision,
+                                   turn_id="not-parked", reason="nothing to reopen")
+        self.assertEqual(blocked.status, "blocked")
+        self.assertIn("only a parked question", blocked.message)
+        store.close()
+
+    def test_the_rejected_history_is_kept_in_order(self) -> None:
+        store, conductor = self.opening()
+        parked = self.park(conductor, conductor.next_turn().revision, "hist")
+        conductor.reopen("discover.person", expected_revision=parked.revision,
+                         turn_id="hist-reopen", reason="found the recording")
+        events = conductor.state()["banks"]["discover"]["rejected"]["discover.person"]
+        self.assertEqual([event["event"] for event in events], ["challenged", "challenged", "parked", "reopened"])
+        self.assertEqual(events[-1]["reason"], "found the recording")
+        store.close()
+
+    def test_a_reopen_is_refused_while_an_earlier_approval_is_stale(self) -> None:
+        conductor, proof = self.gated_discover()
+        turn = conductor.next_turn()
+        invalid = {"class": "named_commitment", "source": "approval email"}
+        for index in range(3):
+            turn = conductor.submit_answer("define.sponsor", "Mina approved scope.", invalid,
+                                           expected_revision=turn.revision, turn_id="stale-park-%d" % index)
+        self.assertEqual(turn.status, "parked")
+        proof.write_bytes(b"changed after approval\n")
+        refused = conductor.reopen("define.sponsor", expected_revision=conductor.next_turn().revision,
+                                   turn_id="stale-reopen", reason="found the email")
+        self.assertEqual((refused.status, refused.bank_id), ("stale", "discover"))
+        self.assertIn("define.sponsor", conductor.state()["banks"]["define"]["parked"])
+        conductor.store.close()
+
+    def test_the_fourth_reopen_of_one_question_is_blocked(self) -> None:
+        store, conductor = self.opening()
+        turn = self.park(conductor, conductor.next_turn().revision, "limit-0")
+        statuses = []
+        for cycle in range(1, 5):
+            turn = conductor.reopen("discover.person", expected_revision=turn.revision,
+                                    turn_id="limit-reopen-%d" % cycle, reason="another look")
+            statuses.append(turn.status)
+            if turn.status == "reopened":
+                turn = self.park(conductor, turn.revision, "limit-%d" % cycle)
+        self.assertEqual(statuses, ["reopened", "reopened", "reopened", "blocked"])
+        self.assertIn("reopen limit", turn.message)
+        store.close()
+
+    def test_a_state_saved_before_reopen_existed_still_loads(self) -> None:
+        store, conductor = self.opening()
+        parked = self.park(conductor, conductor.next_turn().revision, "legacy")
+        saved = json.loads(json.dumps(conductor.state()))
+        for bank_state in saved["banks"].values():
+            bank_state.pop("reopened", None)
+            bank_state.pop("rejected", None)
+        conductor._validate_state(saved)
+        self.assertEqual(parked.status, "parked")
+        store.close()
 
     def test_question_bank_freezes_all_sequences(self) -> None:
         questions = [Question("q", "What happened?", EvidenceClass.OBSERVED_BEHAVIOR)]
