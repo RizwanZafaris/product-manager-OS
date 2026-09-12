@@ -72,6 +72,9 @@
       "OutboxTests",
       "ResearchTests"
     ],
+    "test_pmos_phases": [
+      "PhaseReportTests"
+    ],
     "test_pmos_probe": [
       "AdapterContractTests",
       "BodyCostTypingReachesTheRunLoopTests",
