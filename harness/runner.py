@@ -267,6 +267,9 @@ import workspace                                          # noqa: E402
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 from pmos.sidecars import SidecarFilter                    # noqa: E402
+from pmos.spend import (BudgetExceeded, SpendLedger,       # noqa: E402
+                        UnresolvedCharge, day_scope,
+                        default_path)
 
 CONFIG_PATH = REPO / "routing" / "omniroute.config.json"
 MANIFEST_PATH = REPO / "harness" / "MANIFEST.json"
@@ -324,6 +327,9 @@ MODEL_HEADER = "x-omniroute-model"
 # Spend to date, in USD, as the operator's own meter reports it. The cap it is
 # measured against comes from the variable limits.dailySpendCapUsdEnv names.
 SPEND_ENV = "OMNIROUTE_DAILY_SPEND_USD"
+
+# The spend session of the run in progress, None when no cap is in force.
+_SPEND = None
 
 # A model id still carrying the config's angle-bracket placeholder shape. The
 # fixedFallback block ships with these, so an operator who enables the block
@@ -1168,10 +1174,19 @@ def call_cli(cfg, tier, messages, max_tokens=None, temperature=None,
     return reply
 
 
-def transport_call(cfg, tier, messages, transport, **kwargs):
+def _dispatch(cfg, tier, messages, transport, **kwargs):
     if transport == "cli":
         return call_cli(cfg, tier, messages, **kwargs)
     return call_http(cfg, tier, messages, **kwargs)
+
+
+def transport_call(cfg, tier, messages, transport, **kwargs):
+    if _SPEND is None:
+        return _dispatch(cfg, tier, messages, transport, **kwargs)
+    key = _SPEND.reserve(cfg, tier, messages, kwargs.get('max_tokens'))
+    reply = _dispatch(cfg, tier, messages, transport, **kwargs)
+    _SPEND.settle(cfg, key, reply)
+    return reply
 
 
 # --------------------------------------------------------------- tier probe
@@ -1635,6 +1650,111 @@ def spend_gate(cfg):
             % (spend, cap, name))
     return ("daily spend cap: %s USD spent of the %s USD cap in %s, so the "
             "run proceeded" % (spend, cap, name))
+
+
+class SpendSession:
+    """A run's spend ledger session, or None when no cap is in force."""
+
+    def __init__(self, path, limits, external, prefix):
+        self.path = path
+        # The run log lands beside the artifact, so it names the ledger with
+        # the home directory folded to ~ rather than the operator's own path.
+        home = str(Path.home())
+        self.display_path = ("~" + str(path)[len(home):]
+                             if str(path).startswith(home + os.sep)
+                             else str(path))
+        self.limits = limits
+        self.external = external
+        self.prefix = prefix
+        self.ledger = SpendLedger(path)
+        self.counter = 0
+
+    def reserve(self, cfg, tier, messages, max_tokens):
+        amount = call_reservation(cfg, tier, messages, max_tokens)
+        if amount is None:
+            raise QueuedWork(
+                "a spend cap is in force and "
+                "tiers.%s.priceCeilingUsdPerMTok is not set in "
+                "routing/omniroute.config.json, so the most the call could "
+                "bill is unknown and nothing can be reserved. The work "
+                "queues (fail closed)." % tier)
+        self.counter += 1
+        key = self.prefix + ':' + str(self.counter) + ':' + tier
+        try:
+            self.ledger.reserve(key, amount, self.limits,
+                                external=self.external)
+        except UnresolvedCharge as exc:
+            raise QueuedWork(
+                "an earlier call's cost is unknown, so the spend ledger at %s "
+                "refuses new reservations in its scopes until that charge is "
+                "reconciled with the billed amount: %s"
+                % (self.display_path, exc))
+        except BudgetExceeded as exc:
+            raise QueuedWork(
+                "this call's reservation of %.6f USD would pass a spend cap: "
+                "%s. This is terminal for the run, not a reason to route the "
+                "work to a cheaper tier." % (amount, exc))
+        return key
+
+    def settle(self, cfg, key, reply):
+        self.ledger.settle(key, billed_cost(cfg, reply))
+
+    def close(self):
+        self.ledger.close()
+
+
+def open_spend_session(cfg, task_id, started_at):
+    """The session for one run, or None when no cap is in force."""
+    limits = cfg.get("limits") or {}
+    limits_to_use = {}
+    external = {}
+    name = str(limits.get("dailySpendCapUsdEnv") or "").strip()
+    if name:
+        raw_cap = os.environ.get(name, "").strip()
+        if raw_cap:
+            cap = _usd(raw_cap, name)
+            scope = day_scope()
+            limits_to_use[scope] = cap
+            raw_spend = os.environ.get(SPEND_ENV, "").strip()
+            if not raw_spend:
+                raise QueuedWork(
+                    "%s sets a daily cap of %s USD and %s carries no spend "
+                    "to date, so the cap cannot be checked. The fail-closed "
+                    "invariant answers an unavailable checker by queueing: "
+                    "set %s from your gateway's own meter, or unset the cap. "
+                    "The config's own limits.onCapReached is %s." %
+                    (name, cap, SPEND_ENV, SPEND_ENV,
+                     limits.get("onCapReached") or "halt-tier-and-queue"))
+            spend = _usd(raw_spend, SPEND_ENV)
+            external[scope] = spend
+    task_cap = limits.get("taskSpendCapUsd")
+    if task_cap is not None:
+        if isinstance(task_cap, bool) or not isinstance(task_cap,
+                                                         (int, float)):
+            raise RunnerError("limits.taskSpendCapUsd is not a number")
+        if task_cap != task_cap or task_cap == float('inf') or \
+                task_cap == float('-inf'):
+            raise RunnerError("limits.taskSpendCapUsd is not finite")
+        if task_cap < 0:
+            raise RunnerError("limits.taskSpendCapUsd is negative")
+        limits_to_use['task:' + task_id + ':' + started_at] = float(task_cap)
+    if not limits_to_use:
+        return None
+    return SpendSession(default_path(), limits_to_use, external,
+                        'run:' + task_id + ':' + started_at)
+
+
+def start_spend_session(cfg, task_id, started_at):
+    global _SPEND
+    _SPEND = open_spend_session(cfg, task_id, started_at)
+    return _SPEND
+
+
+def close_spend_session():
+    global _SPEND
+    if _SPEND is not None:
+        _SPEND.close()
+        _SPEND = None
 
 
 # ------------------------------------------------------- call with fallback
@@ -2919,6 +3039,8 @@ def run_task(args, cfg, tasks, manifest_note):
             pass
         return report_queued(product, args.task, str(queued), started_at,
                              tier, args)
+    finally:
+        close_spend_session()
 
 
 def _run_task(args, cfg, tasks, manifest_note, product, started_at):
@@ -2984,6 +3106,15 @@ def _run_task(args, cfg, tasks, manifest_note, product, started_at):
     cap_note = spend_gate(cfg)
     log.append(cap_note)
     say("spend:     %s" % cap_note)
+
+    spend_session = start_spend_session(cfg, str(task.get('id')), started_at)
+    if spend_session is not None:
+        scopes = ", ".join("%s: %s USD" % (scope, cap)
+                           for scope, cap in spend_session.limits.items())
+        spend_line = "spend ledger: %s, caps %s" % (
+            spend_session.display_path, scopes)
+        log.append(spend_line)
+        say("spend:     %s" % spend_line)
 
     results, probed = resolve_probe(args, cfg, tier, log)
     candidates = build_candidates(cfg, tier, results, probed=probed, log=log)

@@ -25,11 +25,17 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import unittest
 import urllib.error
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+PMOS_SPEND_LEDGER_DIR = tempfile.mkdtemp(prefix="pmos-spend-test-")
+os.environ["PMOS_SPEND_LEDGER"] = str(
+    Path(PMOS_SPEND_LEDGER_DIR) / "spend.sqlite")
 
 import runner                                            # noqa: E402
 
@@ -1333,6 +1339,215 @@ class ConfiguredRoutingTests(unittest.TestCase):
         reply.text = "rate limited"
         self.assertIsNone(runner.billed_cost(self.shipped, reply))
 
+    def _ceiling_cfg(self):
+        cfg = copy.deepcopy(self.shipped)
+        cfg["tiers"]["drafting"]["priceCeilingUsdPerMTok"] = {
+            "prompt": 0.0, "completion": 1000.0}
+        return cfg
+
+    def _spend_session(self, limits=None):
+        path = str(Path(tempfile.mkdtemp(prefix="pmos-spend-test-")) /
+                   "spend.sqlite")
+        if limits is None:
+            limits = {runner.day_scope(): 0.5}
+        session = runner.SpendSession(path, limits, {}, "run:test:started")
+        return session, path
+
+    def test_reservation_over_cap_raises_queued_work(self):
+        cfg = self._ceiling_cfg()
+        session, _ = self._spend_session({runner.day_scope(): 0.5})
+        saved_spend = runner._SPEND
+        saved_dispatch = runner._dispatch
+        runner._SPEND = session
+        called = {"n": 0}
+
+        def stub(*a, **kw):
+            called["n"] += 1
+            return runner.Reply("drafting", "auto/coding")
+
+        runner._dispatch = stub
+        try:
+            with self.assertRaises(runner.QueuedWork):
+                runner.transport_call(cfg, "drafting", [{"content": "x"}],
+                                      "http", max_tokens=600)
+            self.assertEqual(called["n"], 0)
+        finally:
+            runner._dispatch = saved_dispatch
+            runner._SPEND = saved_spend
+            session.close()
+
+    def test_unknown_cost_settle_blocks_next_call(self):
+        cfg = self._ceiling_cfg()
+        session, _ = self._spend_session({runner.day_scope(): 1.0})
+        saved_spend = runner._SPEND
+        saved_dispatch = runner._dispatch
+        runner._SPEND = session
+        called = {"n": 0}
+
+        def stub(*a, **kw):
+            called["n"] += 1
+            reply = runner.Reply("drafting", "auto/coding")
+            reply.status = 200
+            reply.text = "ok"
+            return reply
+
+        runner._dispatch = stub
+        try:
+            runner.transport_call(cfg, "drafting", [{"content": "x"}],
+                                  "http", max_tokens=600)
+            self.assertEqual(called["n"], 1)
+            with self.assertRaises(runner.QueuedWork) as caught:
+                runner.transport_call(cfg, "drafting", [{"content": "x"}],
+                                      "http", max_tokens=600)
+            self.assertIn("unknown", str(caught.exception).lower())
+            self.assertEqual(called["n"], 1)
+        finally:
+            runner._dispatch = saved_dispatch
+            runner._SPEND = saved_spend
+            session.close()
+
+    def test_dispatch_crash_keeps_full_reservation(self):
+        cfg = self._ceiling_cfg()
+        session, _ = self._spend_session({runner.day_scope(): 1.0})
+        saved_spend = runner._SPEND
+        saved_dispatch = runner._dispatch
+        runner._SPEND = session
+        called = {"n": 0}
+
+        def stub(*a, **kw):
+            called["n"] += 1
+            raise RuntimeError("boom")
+
+        runner._dispatch = stub
+        try:
+            with self.assertRaises(RuntimeError):
+                runner.transport_call(cfg, "drafting", [{"content": "x"}],
+                                      "http", max_tokens=600)
+            self.assertEqual(called["n"], 1)
+            self.assertAlmostEqual(
+                session.ledger.committed(runner.day_scope()), 0.6)
+        finally:
+            runner._dispatch = saved_dispatch
+            runner._SPEND = saved_spend
+            session.close()
+
+    def test_reply_429_settles_at_zero(self):
+        cfg = self._ceiling_cfg()
+        session, _ = self._spend_session({runner.day_scope(): 1.0})
+        saved_spend = runner._SPEND
+        saved_dispatch = runner._dispatch
+        runner._SPEND = session
+        called = {"n": 0}
+
+        def stub(*a, **kw):
+            called["n"] += 1
+            reply = runner.Reply("drafting", "auto/coding")
+            reply.status = 429
+            reply.text = ""
+            return reply
+
+        runner._dispatch = stub
+        try:
+            runner.transport_call(cfg, "drafting", [{"content": "x"}],
+                                  "http", max_tokens=600)
+            self.assertEqual(called["n"], 1)
+            self.assertAlmostEqual(
+                session.ledger.committed(runner.day_scope()), 0.0)
+        finally:
+            runner._dispatch = saved_dispatch
+            runner._SPEND = saved_spend
+            session.close()
+
+    def test_no_price_ceiling_raises_queued_work(self):
+        cfg = copy.deepcopy(self.shipped)
+        session, _ = self._spend_session({runner.day_scope(): 1.0})
+        saved_spend = runner._SPEND
+        saved_dispatch = runner._dispatch
+        runner._SPEND = session
+        called = {"n": 0}
+
+        def stub(*a, **kw):
+            called["n"] += 1
+            return runner.Reply("drafting", "auto/coding")
+
+        runner._dispatch = stub
+        try:
+            with self.assertRaises(runner.QueuedWork) as caught:
+                runner.transport_call(cfg, "drafting", [{"content": "x"}],
+                                      "http", max_tokens=600)
+            self.assertIn("priceCeilingUsdPerMTok", str(caught.exception))
+            self.assertEqual(called["n"], 0)
+        finally:
+            runner._dispatch = saved_dispatch
+            runner._SPEND = saved_spend
+            session.close()
+
+    def test_two_sessions_one_ledger_file(self):
+        cfg = self._ceiling_cfg()
+        path = str(Path(tempfile.mkdtemp(prefix="pmos-spend-test-")) /
+                   "spend.sqlite")
+        saved_spend = runner._SPEND
+        saved_dispatch = runner._dispatch
+        runner._dispatch = lambda *a, **kw: None
+
+        def make_reply(cost):
+            reply = runner.Reply("drafting", "auto/coding")
+            reply.cost_usd = cost
+            return reply
+
+        try:
+            session1 = runner.SpendSession(
+                path, {runner.day_scope(): 1.0}, {}, "run:one:started")
+            runner._SPEND = session1
+            runner._dispatch = lambda *a, **kw: make_reply(0.6)
+            runner.transport_call(cfg, "drafting", [{"content": "x"}],
+                                  "http", max_tokens=600)
+            session1.close()
+
+            session2 = runner.SpendSession(
+                path, {runner.day_scope(): 1.0}, {}, "run:two:started")
+            runner._SPEND = session2
+            runner._dispatch = lambda *a, **kw: make_reply(0.0)
+            with self.assertRaises(runner.QueuedWork):
+                runner.transport_call(cfg, "drafting", [{"content": "x"}],
+                                      "http", max_tokens=600)
+            session2.close()
+        finally:
+            runner._dispatch = saved_dispatch
+            runner._SPEND = saved_spend
+
+    def test_open_spend_session_returns_none_with_no_cap(self):
+        cfg = copy.deepcopy(self.shipped)
+        env = {k: v for k, v in os.environ.items()
+               if k != "OMNIROUTE_DAILY_CAP_USD" and k != runner.SPEND_ENV}
+        with mock.patch.dict(os.environ, env, clear=True):
+            self.assertIsNone(runner.open_spend_session(cfg, "t", "s"))
+
+    def test_open_spend_session_uses_spend_env_as_external(self):
+        cfg = copy.deepcopy(self.shipped)
+        cfg["limits"] = cfg.get("limits", {})
+        cfg["limits"]["dailySpendCapUsdEnv"] = "OMNIROUTE_DAILY_CAP_USD"
+        # clear=True would also drop the module's temporary PMOS_SPEND_LEDGER
+        # and open the operator's real ledger, so it is carried over.
+        env = {"OMNIROUTE_DAILY_CAP_USD": "10", runner.SPEND_ENV: "1",
+               "PMOS_SPEND_LEDGER": os.environ["PMOS_SPEND_LEDGER"]}
+        with mock.patch.dict(os.environ, env, clear=True):
+            session = runner.open_spend_session(cfg, "t", "s")
+            self.assertIsNotNone(session)
+            self.assertEqual(Path(session.path),
+                             Path(os.environ["PMOS_SPEND_LEDGER"]),
+                             "a test session opened the operator's real ledger")
+            self.assertAlmostEqual(
+                session.external[runner.day_scope()], 1.0)
+            session.close()
+
+    def test_open_spend_session_raises_for_nan_task_cap(self):
+        cfg = copy.deepcopy(self.shipped)
+        cfg["limits"] = cfg.get("limits", {})
+        cfg["limits"]["taskSpendCapUsd"] = float('nan')
+        with self.assertRaises(runner.RunnerError):
+            runner.open_spend_session(cfg, "t", "s")
+
     # ---- no-probe
 
     def test_no_probe_without_pins_refuses_to_run(self):
@@ -1504,6 +1719,31 @@ class QueueOutcomeTests(unittest.TestCase):
         self.assertEqual(called["n"], 0)
         self.assertFalse(self.artifact.exists())
         self.assertIn("QUEUED", self._state())
+
+    def test_the_cap_queues_at_first_model_call_with_ledger(self):
+        called = {"n": 0}
+
+        def stub(*a, **kw):
+            called["n"] += 1
+            raise AssertionError("a model was called past the spend cap")
+
+        real_dispatch = runner._dispatch
+        runner._dispatch = stub
+        # clear=True would also drop the module's temporary PMOS_SPEND_LEDGER
+        # and open the operator's real ledger, so it is carried over.
+        env = {"OMNIROUTE_DAILY_CAP_USD": "10", runner.SPEND_ENV: "1",
+               "PMOS_SPEND_LEDGER": os.environ["PMOS_SPEND_LEDGER"]}
+        try:
+            with mock.patch.dict(os.environ, env, clear=True):
+                self.assertEqual(
+                    _quiet_run(self._args(), self.cfg, self.tasks),
+                    runner.EXIT_QUEUED)
+            self.assertEqual(called["n"], 0)
+            self.assertFalse(self.artifact.exists())
+            self.assertIn("QUEUED", self._state())
+            self.assertIsNone(runner._SPEND)
+        finally:
+            runner._dispatch = real_dispatch
 
     def test_a_tier_with_no_target_queues_rather_than_failing(self):
         def stub(*a, **kw):
