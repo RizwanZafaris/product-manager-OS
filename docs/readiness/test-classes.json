@@ -59,6 +59,9 @@
       "TestClassesCannotVanish",
       "TransportsShareOneContract"
     ],
+    "test_pmos_journey": [
+      "JourneyRuntimeTests"
+    ],
     "test_pmos_matrix": [
       "GraderTests",
       "RecordTests",
