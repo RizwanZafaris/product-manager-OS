@@ -14,6 +14,7 @@ from typing import Any, Sequence
 from .banks import CONTRACT_PATH, LEGACY_ONBOARDING, parse_contract, shipped_banks
 from .conductor import TurnOutcome
 from .migrations import migrate_workspace, recover_workspace, rollback_workspace
+from .phases import phase_report
 from .product import PIN_PATH, local_gate_verifier, pinned_contract, product_banks, product_conductor, source_resolver
 from .release import build_provenance, verify_provenance
 from .store import NotFoundError, Store, StoreError, ValidationError
@@ -282,15 +283,28 @@ def _interview_status(store: Store, root: Path, product_id: str, token: str) -> 
                 "rejected_at": record["rejected_at"],
                 "artifacts": [item["id"] for item in record["manifest"]["artifacts"]],
             })
-    return {"interview": position.status, "interview_message": position.message,
-            "current_bank_id": position.bank_id, "question": question,
-            "parked": parked, "stale_banks": stale_banks,
-            "source_verified": verified, "supplied_unverified": unverified,
-            "next": next_command,
-            "approvals": approvals,
-            "rejections": rejections,
-            "question_banks": {"pinned": pinned, "shipped": shipped,
-                               "current": current, "message": message}}
+    # The report carries data, not shell commands, so it goes in verbatim. It can
+    # scan the workspace (for example a symlinked artifact file) and raise
+    # ValidationError; that must not hide the rest of status.
+    phases_error = None
+    try:
+        phases = phase_report(conductor, pinned_contract(store, product_id), root)
+    except ValidationError as exc:
+        phases = []
+        phases_error = str(exc)
+    result = {"interview": position.status, "interview_message": position.message,
+              "current_bank_id": position.bank_id, "question": question,
+              "parked": parked, "stale_banks": stale_banks,
+              "source_verified": verified, "supplied_unverified": unverified,
+              "next": next_command,
+              "approvals": approvals,
+              "rejections": rejections,
+              "question_banks": {"pinned": pinned, "shipped": shipped,
+                                 "current": current, "message": message},
+              "phases": phases}
+    if phases_error is not None:
+        result["phases_error"] = phases_error
+    return result
 
 
 def _verify(args: argparse.Namespace) -> dict[str, Any]:

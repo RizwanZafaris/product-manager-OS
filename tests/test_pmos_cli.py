@@ -20,7 +20,7 @@ from pmos.banks import CONTRACT_PATH
 from pmos.conductor import TurnOutcome
 from pmos.migrations import (create_legacy_fixture, migrate_workspace, recover_workspace,
                               rollback_workspace, MigrationError)
-from pmos.store import Store
+from pmos.store import Store, ValidationError
 from pmos.artifacts import artifact_revision
 import pmos.migrations as migrations
 
@@ -229,6 +229,87 @@ class CliTests(unittest.TestCase):
             self.assertEqual((stale["changed"], stale["reconcile"]), ([], []))
             self.assertEqual(status["next"], stale["gate"])
             self.assertIn("pmos gate", stale["gate"])
+
+    def test_status_phases_report_tracks_discover_through_approval_and_staleness(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            contract = json.loads(CONTRACT_PATH.read_bytes())
+            status = self.status(folder)
+            phases = status["phases"]
+            self.assertEqual([phase["bank_id"] for phase in phases],
+                             ["discover", "define", "design", "build", "deliver", "operate"])
+            discover = phases[0]
+            self.assertEqual(discover["state"], "in_progress")
+            self.assertEqual(discover["next_action"],
+                             {"action": "answer", "bank_id": "discover", "question_id": "DISCOVER-1"})
+            self.assertEqual(discover["required_approver"],
+                             {"runtime": ["local-reviewer"], "attestation": "local",
+                              "signoff_roles": contract["signoffs"]["1"]})
+            for phase in phases[1:]:
+                self.assertEqual(phase["state"], "not_started")
+                self.assertIsNone(phase["next_action"])
+
+            status = self.answer_bank(folder, "a")
+            phases = {phase["bank_id"]: phase for phase in status["phases"]}
+            self.assertEqual(phases["discover"]["state"], "awaiting_approval")
+            self.assertEqual(phases["discover"]["next_action"],
+                             {"action": "gate", "bank_id": "discover", "question_id": None})
+
+            rc, parsed = self.gate(folder, status["revision_token"], "gate-1", "approved")
+            self.assertEqual((rc, parsed["ok"]), (0, True))
+            after = self.status(folder)
+            phases = {phase["bank_id"]: phase for phase in after["phases"]}
+            self.assertEqual(phases["discover"]["state"], "approved")
+            self.assertIsNone(phases["discover"]["next_action"])
+            self.assertEqual(phases["define"]["state"], "in_progress")
+
+            proof = Path(folder, "onboarding-approval.txt")
+            proof.write_bytes(b"changed after approval\n")
+            stale = self.status(folder)
+            phases = {phase["bank_id"]: phase for phase in stale["phases"]}
+            self.assertEqual(phases["discover"]["state"], "stale")
+            self.assertEqual(phases["discover"]["next_action"],
+                             {"action": "gate", "bank_id": "discover", "question_id": None})
+            self.assertEqual(phases["define"]["blocking_reason"],
+                             "the approval for discover no longer holds; prove it again first")
+
+    def test_status_phases_after_a_rejected_gate_leaves_discover_awaiting_approval(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            status = self.answer_bank(folder, "a")
+            rc, parsed = self.gate(folder, status["revision_token"], "gate-1", "rejected")
+            self.assertEqual(parsed["outcome"]["status"], "rejected")
+            after = self.status(folder)
+            discover = next(phase for phase in after["phases"] if phase["bank_id"] == "discover")
+            self.assertEqual(discover["state"], "awaiting_approval")
+            self.assertEqual(discover["next_action"],
+                             {"action": "gate", "bank_id": "discover", "question_id": None})
+
+    def test_status_phases_use_the_pinned_signoff_roles_not_the_shipped_ones(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            contract = json.loads(CONTRACT_PATH.read_bytes())
+            shipped_roles = contract["signoffs"]["1"]
+            contract["signoffs"]["1"] = ["A pinned-only approver"]
+            self.pin(folder, json.dumps(contract).encode("utf-8"))
+            status = self.status(folder)
+            discover = status["phases"][0]
+            self.assertEqual(discover["bank_id"], "discover")
+            self.assertEqual(discover["required_approver"]["signoff_roles"], ["A pinned-only approver"])
+            self.assertNotEqual(discover["required_approver"]["signoff_roles"], shipped_roles)
+
+    def test_status_reports_a_phases_error_without_hiding_the_rest_of_status(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            with patch("pmos.cli.phase_report",
+                      side_effect=ValidationError("x.md is a symlink and was refused")):
+                status = self.status(folder)
+            self.assertEqual(status["phases"], [])
+            self.assertEqual(status["phases_error"], "x.md is a symlink and was refused")
+            self.assertEqual(status["interview"], "question")
+            self.assertIsNotNone(status["next"])
+            self.assertEqual(status["question"]["id"], "DISCOVER-1")
+            self.assertIn("pinned", status["question_banks"])
 
     def test_an_answer_citing_a_missing_local_file_is_refused(self):
         with TemporaryDirectory() as folder:
