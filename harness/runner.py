@@ -717,6 +717,9 @@ class Reply:
         self.certification = ""           # why the answer was not certified
         self.certification_verified = True
         self.routing_source = "tier alias"
+        self.cost_usd = None              # provider-reported cost, None = unknown
+        self.prompt_tokens = None         # provider-reported prompt token count
+        self.completion_tokens = None     # provider-reported completion token count
 
     @property
     def ok(self):
@@ -786,6 +789,7 @@ class Folded:
         self.terminal = False
         self.finish_reason = ""
         self.error = ""
+        self.usage = None                 # last valid usage frame seen, or None
 
 
 def _error_descriptor(obj):
@@ -932,6 +936,9 @@ def _fold_sse(stream, max_bytes=SSE_MAX_BYTES, max_content_bytes=None):
         named = str(chunk.get("model") or "").strip()
         if named and named.lower() != "keepalive":
             out.model = named
+        usage = chunk.get("usage")
+        if isinstance(usage, dict):
+            out.usage = _usage_record(usage)
         for choice in chunk.get("choices") or []:
             if not isinstance(choice, dict):
                 continue
@@ -971,6 +978,9 @@ def _fold_sse(stream, max_bytes=SSE_MAX_BYTES, max_content_bytes=None):
     if doc.get("error"):
         out.error = _error_descriptor(doc.get("error"))
         return out
+    usage = doc.get("usage")
+    if isinstance(usage, dict):
+        out.usage = _usage_record(usage)
     out.model = out.model or str(doc.get("model") or "")
     parts = []
     for choice in doc.get("choices") or []:
@@ -1041,6 +1051,7 @@ def call_http(cfg, tier, messages, max_tokens=None, temperature=None,
         "model": target,
         "messages": messages,
         "stream": True,
+        "stream_options": {"include_usage": True},
         "temperature": (settings["temperature"] if temperature is None
                         else temperature),
         "max_tokens": settings["max_tokens"] if max_tokens is None
@@ -1073,6 +1084,10 @@ def call_http(cfg, tier, messages, max_tokens=None, temperature=None,
             reply.model = from_header or folded.model
             reply.terminal = folded.terminal
             reply.finish_reason = folded.finish_reason
+            if folded.usage is not None:
+                reply.cost_usd = folded.usage.get("cost")
+                reply.prompt_tokens = folded.usage.get("prompt_tokens")
+                reply.completion_tokens = folded.usage.get("completion_tokens")
             if folded.error:
                 reply.error = redact(folded.error)
     except urllib.error.HTTPError as exc:
@@ -1445,6 +1460,123 @@ def judgment_admission(cfg, results, candidates=None, probed=True):
         reason += (" The probe was skipped, so the response header check is "
                    "the only verification in force.")
     return True, reason, admitted
+
+
+# ----------------------------------------------------------- billing facts
+
+def _usage_record(usage):
+    """Keep only the valid billing keys out of a usage frame, or None.
+
+    None means the provider reported nothing, never zero: a usage frame with
+    only invalid fields leaves no record, and the caller treats that as
+    unknown. Only prompt_tokens, completion_tokens and cost are kept, and
+    only when each is an int or float that is not a bool, finite and
+    nonnegative, the value domain pmos/spend.py and tools/ext_ai_probe.py
+    already use. A usage frame never changes text, model, terminal,
+    finish_reason or error.
+    """
+    if not isinstance(usage, dict):
+        return None
+    record = {}
+    for key, source in (("prompt_tokens", "prompt_tokens"),
+                        ("completion_tokens", "completion_tokens"),
+                        ("cost", "cost")):
+        value = usage.get(source)
+        if isinstance(value, bool):
+            continue
+        if not isinstance(value, (int, float)):
+            continue
+        if value != value or value == float('inf') or value == float('-inf'):
+            continue
+        if value < 0:
+            continue
+        record[key] = value
+    return record or None
+
+
+def price_ceiling(cfg, tier):
+    """The tier's price ceiling per million tokens, as (prompt, completion).
+
+    Reads cfg["tiers"][tier]["priceCeilingUsdPerMTok"]. None when the key is
+    absent or null. RunnerError when it is present but is not an object whose
+    two values are ints or floats that are not bools, finite and nonnegative.
+    """
+    spec = (cfg.get("tiers") or {}).get(tier) or {}
+    raw = spec.get("priceCeilingUsdPerMTok")
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        raise RunnerError(
+            "tiers.%s.priceCeilingUsdPerMTok is not an object" % tier)
+    prompt = raw.get("prompt")
+    completion = raw.get("completion")
+    for label, value in (("prompt", prompt), ("completion", completion)):
+        if isinstance(value, bool):
+            raise RunnerError(
+                "tiers.%s.priceCeilingUsdPerMTok.%s is not a number" %
+                (tier, label))
+        if not isinstance(value, (int, float)):
+            raise RunnerError(
+                "tiers.%s.priceCeilingUsdPerMTok.%s is not a number" %
+                (tier, label))
+        if value != value or value == float('inf') or value == float('-inf'):
+            raise RunnerError(
+                "tiers.%s.priceCeilingUsdPerMTok.%s is not finite" %
+                (tier, label))
+        if value < 0:
+            raise RunnerError(
+                "tiers.%s.priceCeilingUsdPerMTok.%s is negative" %
+                (tier, label))
+    return float(prompt), float(completion)
+
+
+def call_reservation(cfg, tier, messages, max_tokens):
+    """The most one call may bill, or None when the tier has no price ceiling.
+
+    (the total characters of every message's content divided by 2, plus 500)
+    tokens at the prompt ceiling, plus max_tokens tokens at the completion
+    ceiling, each price per one million tokens. max_tokens None means the
+    tier's own max_tokens from tier_settings.
+    """
+    ceiling = price_ceiling(cfg, tier)
+    if ceiling is None:
+        return None
+    prompt_per_m, completion_per_m = ceiling
+    chars = 0
+    for message in messages:
+        content = (message or {}).get("content")
+        if isinstance(content, str):
+            chars += len(content)
+    prompt_tokens_est = (chars / 2) + 500
+    if max_tokens is None:
+        max_tokens = tier_settings(cfg, tier)["max_tokens"]
+    return (prompt_tokens_est * prompt_per_m / 1_000_000 +
+            max_tokens * completion_per_m / 1_000_000)
+
+
+def billed_cost(cfg, reply):
+    """What one finished call cost, or None when that is unknown.
+
+    The reported cost_usd when set. Otherwise, when both token counts are set
+    and the reply's tier has a price ceiling, prompt_tokens and
+    completion_tokens at that ceiling, which is never below the real bill
+    under the ceiling. Otherwise, when reply.status is from 400 to 499 except
+    408 and reply.text is empty, 0.0, because the gateway refused before
+    generating. Otherwise None. Never turns an unknown cost into zero.
+    """
+    if reply.cost_usd is not None:
+        return reply.cost_usd
+    if (reply.prompt_tokens is not None and
+            reply.completion_tokens is not None):
+        ceiling = price_ceiling(cfg, reply.tier)
+        if ceiling is not None:
+            prompt_per_m, completion_per_m = ceiling
+            return (reply.prompt_tokens * prompt_per_m / 1_000_000 +
+                    reply.completion_tokens * completion_per_m / 1_000_000)
+    if (400 <= reply.status <= 499 and reply.status != 408 and
+            not reply.text):
+        return 0.0
+    return None
 
 
 # ------------------------------------------------------------- the spend cap

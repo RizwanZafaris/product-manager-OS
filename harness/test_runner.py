@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import copy
 import importlib.util
 import io
 import json
@@ -78,6 +79,59 @@ class FoldTests(unittest.TestCase):
         self.assertFalse(reply.ok, "finish_reason=length was accepted")
         self.assertTrue(reply.truncated)
         self.assertIn("length", reply.why_unusable())
+
+    def test_usage_frame_before_done_is_recorded_without_changing_text(self):
+        folded = _fold(
+            delta("hello", finish="stop"),
+            frame(usage={"prompt_tokens": 10, "completion_tokens": 4,
+                         "cost": 0.002}),
+            frame(usage={"prompt_tokens": 20, "completion_tokens": 8}))
+        self.assertEqual(folded.text, "hello")
+        self.assertTrue(folded.terminal)
+        self.assertEqual(folded.finish_reason, "stop")
+        # The last usage object wins whole: a key it lacks is not carried over
+        # from an earlier frame.
+        self.assertEqual(folded.usage, {"prompt_tokens": 20, "completion_tokens": 8})
+
+    def test_usage_frame_with_empty_choices_is_recorded(self):
+        folded = _fold(
+            delta("hello", finish="stop"),
+            frame(model="test-model-1", choices=[], usage={
+                "prompt_tokens": 5, "completion_tokens": 2}))
+        self.assertEqual(folded.text, "hello")
+        self.assertTrue(folded.terminal)
+        self.assertEqual(folded.finish_reason, "stop")
+        self.assertEqual(folded.usage["prompt_tokens"], 5)
+        self.assertEqual(folded.usage["completion_tokens"], 2)
+
+    def test_plain_json_body_fallback_reads_usage(self):
+        body = json.dumps({
+            "model": "test-model-1",
+            "choices": [{"message": {"content": "hi"}, "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": 3, "completion_tokens": 1, "cost": 0.001},
+        })
+        folded = runner._fold_sse(io.BytesIO(body.encode("utf-8")))
+        self.assertEqual(folded.text, "hi")
+        self.assertTrue(folded.terminal)
+        self.assertEqual(folded.usage["prompt_tokens"], 3)
+        self.assertEqual(folded.usage["completion_tokens"], 1)
+        self.assertEqual(folded.usage["cost"], 0.001)
+
+    def test_invalid_usage_fields_are_dropped(self):
+        folded = _fold(
+            delta("hello", finish="stop"),
+            frame(usage={"prompt_tokens": float('nan'),
+                         "completion_tokens": -5,
+                         "cost": True}))
+        self.assertIsNone(folded.usage)
+
+    def test_partial_usage_keeps_valid_keys_only(self):
+        folded = _fold(
+            delta("hello", finish="stop"),
+            frame(usage={"prompt_tokens": 7, "completion_tokens": "bad",
+                         "cost": "x"}))
+        self.assertEqual(folded.usage, {"prompt_tokens": 7})
+        self.assertEqual(folded.finish_reason, "stop")
 
     def test_malformed_frame_is_an_error(self):
         folded = _fold(delta("first half"), "data: {not json at all\n\n",
@@ -1193,6 +1247,92 @@ class ConfiguredRoutingTests(unittest.TestCase):
             with self.assertRaises(runner.RunnerError, msg=repr(bad)):
                 runner.spend_gate(self.shipped)
 
+    # ---- billing facts
+
+    def test_call_reservation_with_a_ceiling_matches_the_arithmetic(self):
+        cfg = copy.deepcopy(self.shipped)
+        cfg["tiers"]["drafting"]["priceCeilingUsdPerMTok"] = {
+            "prompt": 2.0, "completion": 6.0}
+        messages = [{"content": "abcd"}, {"content": "ef"}]
+        # chars = 6, prompt_est = 6/2 + 500 = 503
+        # 503 * 2 / 1e6 + 100 * 6 / 1e6
+        expected = 503 * 2.0 / 1_000_000 + 100 * 6.0 / 1_000_000
+        self.assertAlmostEqual(
+            runner.call_reservation(cfg, "drafting", messages, 100), expected)
+
+    def test_call_reservation_is_none_without_a_ceiling(self):
+        cfg = copy.deepcopy(self.shipped)
+        cfg["tiers"]["drafting"].pop("priceCeilingUsdPerMTok", None)
+        self.assertIsNone(
+            runner.call_reservation(cfg, "drafting", [], 100))
+
+    def test_call_reservation_uses_tier_max_tokens_when_none(self):
+        cfg = copy.deepcopy(self.shipped)
+        cfg["tiers"]["drafting"]["priceCeilingUsdPerMTok"] = {
+            "prompt": 1.0, "completion": 1.0}
+        cfg["tiers"]["drafting"]["maxOutputTokens"] = 2048
+        messages = [{"content": "x" * 1000}]
+        prompt_est = 1000 / 2 + 500
+        expected = prompt_est * 1.0 / 1_000_000 + 2048 * 1.0 / 1_000_000
+        self.assertAlmostEqual(
+            runner.call_reservation(cfg, "drafting", messages, None), expected)
+
+    def test_price_ceiling_raises_on_a_malformed_ceiling(self):
+        cfg = copy.deepcopy(self.shipped)
+        cfg["tiers"]["drafting"]["priceCeilingUsdPerMTok"] = "not an object"
+        with self.assertRaises(runner.RunnerError):
+            runner.price_ceiling(cfg, "drafting")
+
+    def test_price_ceiling_raises_on_a_non_numeric_value(self):
+        cfg = copy.deepcopy(self.shipped)
+        cfg["tiers"]["drafting"]["priceCeilingUsdPerMTok"] = {
+            "prompt": "free", "completion": 3.0}
+        with self.assertRaises(runner.RunnerError):
+            runner.price_ceiling(cfg, "drafting")
+
+    def test_price_ceiling_is_none_when_absent(self):
+        cfg = copy.deepcopy(self.shipped)
+        cfg["tiers"]["drafting"].pop("priceCeilingUsdPerMTok", None)
+        self.assertIsNone(runner.price_ceiling(cfg, "drafting"))
+
+    def test_billed_cost_returns_the_reported_cost(self):
+        reply = runner.Reply("drafting", "auto/coding")
+        reply.cost_usd = 0.0125
+        self.assertEqual(runner.billed_cost(self.shipped, reply), 0.0125)
+
+    def test_billed_cost_returns_token_cost_at_the_ceiling(self):
+        cfg = copy.deepcopy(self.shipped)
+        cfg["tiers"]["drafting"]["priceCeilingUsdPerMTok"] = {
+            "prompt": 2.0, "completion": 6.0}
+        reply = runner.Reply("drafting", "auto/coding")
+        reply.prompt_tokens = 1000
+        reply.completion_tokens = 500
+        expected = 1000 * 2.0 / 1_000_000 + 500 * 6.0 / 1_000_000
+        self.assertAlmostEqual(runner.billed_cost(cfg, reply), expected)
+
+    def test_billed_cost_is_zero_for_a_refusal_with_no_text(self):
+        reply = runner.Reply("drafting", "auto/coding")
+        reply.status = 429
+        reply.text = ""
+        self.assertEqual(runner.billed_cost(self.shipped, reply), 0.0)
+
+    def test_billed_cost_is_none_when_nothing_was_reported(self):
+        reply = runner.Reply("drafting", "auto/coding")
+        reply.status = 200
+        self.assertIsNone(runner.billed_cost(self.shipped, reply))
+
+    def test_billed_cost_is_none_for_a_408_timeout(self):
+        reply = runner.Reply("drafting", "auto/coding")
+        reply.status = 408
+        reply.text = ""
+        self.assertIsNone(runner.billed_cost(self.shipped, reply))
+
+    def test_billed_cost_is_none_when_refusal_has_text(self):
+        reply = runner.Reply("drafting", "auto/coding")
+        reply.status = 429
+        reply.text = "rate limited"
+        self.assertIsNone(runner.billed_cost(self.shipped, reply))
+
     # ---- no-probe
 
     def test_no_probe_without_pins_refuses_to_run(self):
@@ -2295,6 +2435,31 @@ class StreamBoundTests(unittest.TestCase):
         self.assertLessEqual(len(reply.text), runner.content_cap(4096),
                              "a body larger than the call's own budget was "
                              "kept, and would have been written")
+
+    def test_call_http_asks_for_usage_and_copies_it_onto_the_reply(self):
+        body = (delta("an answer", finish="stop")
+                + frame(model="test-model-1", choices=[],
+                        usage={"prompt_tokens": 12, "completion_tokens": 3,
+                               "cost": 0.0004})
+                + "data: [DONE]\n\n")
+        sent = {}
+
+        def answer(request, timeout=None):
+            sent["body"] = json.loads(request.data.decode("utf-8"))
+            return _FakeResponse(body, {"X-OmniRoute-Model": "test-model-1"})
+
+        real_opener = runner._OPENER
+        runner._OPENER = answer
+        try:
+            reply = runner.call_http(_GATEWAY_CFG, "drafting",
+                                     [{"role": "user", "content": "hi"}])
+        finally:
+            runner._OPENER = real_opener
+        self.assertEqual(sent["body"]["stream_options"], {"include_usage": True})
+        self.assertTrue(reply.ok, reply.why_unusable())
+        self.assertEqual((reply.prompt_tokens, reply.completion_tokens,
+                          reply.cost_usd), (12, 3, 0.0004))
+        self.assertEqual(runner.billed_cost(_GATEWAY_CFG, reply), 0.0004)
 
     # runner-unbounded-sse-buffer-newline-bypass: the bound has to hold on the
     # read, not only on the count after it. Iterating a response calls
