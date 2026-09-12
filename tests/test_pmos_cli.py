@@ -298,7 +298,8 @@ class CliTests(unittest.TestCase):
         path.write_text(block, encoding="utf-8")
         return path
 
-    def gate(self, folder: str, token: str, turn_id: str, decision: str) -> tuple[int, dict]:
+    def gate(self, folder: str, token: str, turn_id: str, decision: str,
+             bank_id: str = "discover") -> tuple[int, dict]:
         proof = Path(folder, "onboarding-approval.txt")
         proof.write_bytes(b"reviewed onboarding evidence\n")
         evidence = {"source": "onboarding-approval.txt",
@@ -307,7 +308,7 @@ class CliTests(unittest.TestCase):
                     "approved_at": "2026-09-04T00:00:00Z"}
         output = StringIO()
         with redirect_stdout(output):
-            rc = main(["gate", "--path", folder, "--product-id", "checkout", "--bank-id", "discover",
+            rc = main(["gate", "--path", folder, "--product-id", "checkout", "--bank-id", bank_id,
                        "--evidence", json.dumps(evidence), "--expected-revision", token,
                        "--turn-id", turn_id, "--json"])
         return rc, json.loads(output.getvalue())
@@ -426,6 +427,114 @@ class CliTests(unittest.TestCase):
                              ("discover", "local-reviewer", ["checkout/discovery/problem-framing"]))
             self.assertRegex(rejection["rejected_at"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
             self.assertEqual([approval["bank_id"] for approval in after["approvals"]], ["discover"])
+
+    def test_revision_bound_approvals_hold_through_the_cli(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            # (1) discover advances.
+            status = self.answer_bank(folder, "a")
+            problem_path = self.write_artifact(folder, "discovery/problem-framing.md",
+                                               "checkout/discovery/problem-framing", "DISCOVER", 1, [],
+                                               "templates/discovery/problem-framing.md", "A real outcome")
+            problem_before = artifact_revision(problem_path.read_text(encoding="utf-8"))
+            rc, parsed = self.gate(folder, status["revision_token"], "gate-1", "approved")
+            self.assertEqual(rc, 0)
+            self.assertEqual(parsed["outcome"]["status"], "advanced")
+            # (2) define artifacts in place.
+            self.write_artifact(folder, "planning/vision.md", "checkout/planning/vision", "PLANNING", 2,
+                                ["checkout/discovery/problem-framing"], "templates/planning/vision.md",
+                                "A vision")
+            self.write_artifact(folder, "definition/prd.md", "checkout/definition/prd", "DEFINE", 2,
+                                ["checkout/planning/vision"], "templates/definition/prd.md",
+                                "A product brief")
+            status = self.answer_bank(folder, "b")
+            # (3) rejection blocks advancement.
+            rc, parsed = self.gate(folder, status["revision_token"], "gate-2", "rejected",
+                                   bank_id="define")
+            self.assertEqual(rc, 1)
+            self.assertEqual(parsed["ok"], False)
+            self.assertEqual(parsed["rejection_recorded"], True)
+            status = self.status(folder)
+            self.assertEqual(status["interview"], "blocked")
+            self.assertEqual(status["current_bank_id"], "define")
+            self.assertEqual(len(status["rejections"]), 1)
+            self.assertEqual(status["rejections"][0]["bank_id"], "define")
+            self.assertEqual([a["bank_id"] for a in status["approvals"]], ["discover"])
+            # (4) approval advances to design question.
+            rc, parsed = self.gate(folder, status["revision_token"], "gate-3", "approved",
+                                   bank_id="define")
+            self.assertEqual(rc, 0)
+            self.assertEqual(parsed["outcome"]["status"], "advanced")
+            status = self.status(folder)
+            self.assertEqual([a["bank_id"] for a in status["approvals"]], ["discover", "define"])
+            define_approval = [a for a in status["approvals"] if a["bank_id"] == "define"][0]
+            self.assertEqual(define_approval["artifacts"],
+                             ["checkout/definition/prd", "checkout/planning/vision"])
+            self.assertEqual(define_approval["dependencies"], ["checkout/discovery/problem-framing"])
+            self.assertEqual(status["interview"], "question")
+            self.assertEqual(status["current_bank_id"], "design")
+            question_id = status["question"]["id"]
+            # (5) upstream change stales dependents and requires reconciliation.
+            problem_path = self.write_artifact(folder, "discovery/problem-framing.md",
+                                               "checkout/discovery/problem-framing", "DISCOVER", 1, [],
+                                               "templates/discovery/problem-framing.md", "A changed outcome")
+            problem_after = artifact_revision(problem_path.read_text(encoding="utf-8"))
+            self.assertNotEqual(problem_before, problem_after)
+            status = self.status(folder)
+            self.assertEqual(status["interview"], "stale")
+            self.assertEqual([s["bank_id"] for s in status["stale_banks"]], ["discover", "define"])
+            for stale in status["stale_banks"]:
+                self.assertEqual([c["id"] for c in stale["changed"]],
+                                 ["checkout/discovery/problem-framing"])
+            discover_stale = [s for s in status["stale_banks"] if s["bank_id"] == "discover"][0]
+            define_stale = [s for s in status["stale_banks"] if s["bank_id"] == "define"][0]
+            self.assertEqual(discover_stale["reconcile"], [])
+            self.assertEqual(define_stale["reconcile"],
+                             ["checkout/definition/prd", "checkout/planning/vision"])
+            self.assertEqual(status["next"], status["stale_banks"][0]["gate"])
+            # (6) re-approving one bank clears only that bank.
+            rc, parsed = self.gate(folder, status["revision_token"], "gate-4", "approved",
+                                   bank_id="discover")
+            self.assertEqual(rc, 1)
+            self.assertEqual(parsed["ok"], False)
+            self.assertEqual(parsed["outcome"]["status"], "stale")
+            self.assertEqual(parsed["outcome"]["bank_id"], "define")
+            status = self.status(folder)
+            self.assertEqual([s["bank_id"] for s in status["stale_banks"]], ["define"])
+            discover_approval = [a for a in status["approvals"] if a["bank_id"] == "discover"][0]
+            self.assertEqual(discover_approval["superseded"], 1)
+            # (7) re-approving define clears it without moving the interview on.
+            rc, parsed = self.gate(folder, status["revision_token"], "gate-5", "approved",
+                                   bank_id="define")
+            self.assertEqual(rc, 0)
+            self.assertEqual(parsed["ok"], True)
+            status = self.status(folder)
+            self.assertEqual(status["interview"], "question")
+            self.assertEqual(status["question"]["id"], question_id)
+            self.assertEqual(status["stale_banks"], [])
+            for bank in ("discover", "define"):
+                approval = [a for a in status["approvals"] if a["bank_id"] == bank][0]
+                self.assertEqual(approval["superseded"], 1)
+            self.assertEqual(len(status["rejections"]), 1)
+            self.assertEqual(status["rejections"][0]["bank_id"], "define")
+            # (8) the history survives a reopen.
+            with Store(Path(folder) / ".pmos/runtime.sqlite") as store:
+                state = _product_conductor(store, Path(folder).resolve(), "checkout").state()
+            superseded_discover = state["superseded_gates"]["discover"]
+            self.assertEqual(len(superseded_discover), 1)
+            superseded_record = superseded_discover[0]
+            superseded_bindings = {
+                binding["id"]: binding for binding in superseded_record["manifest"]["artifacts"]
+            }
+            self.assertEqual(superseded_bindings["checkout/discovery/problem-framing"]["revision"],
+                             problem_before)
+            current_discover_bindings = {
+                binding["id"]: binding for binding in state["gates"]["discover"]["manifest"]["artifacts"]
+            }
+            self.assertEqual(
+                current_discover_bindings["checkout/discovery/problem-framing"]["revision"],
+                problem_after)
+            self.assertEqual(len(state["gate_rejections"]["define"]), 1)
 
     def test_a_rejected_gate_result_carries_the_message(self):
         outcome = TurnOutcome("rejected", "5:abc", bank_id="discover",
