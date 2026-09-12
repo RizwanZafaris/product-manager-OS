@@ -14,12 +14,14 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from pmos.cli import _cli_source_resolver, _gate_result, _local_gate_verifier, _paths, main, PIN_PATH
+from pmos.cli import (_cli_source_resolver, _gate_result, _local_gate_verifier, _paths,
+                      _product_conductor, main, PIN_PATH)
 from pmos.banks import CONTRACT_PATH
 from pmos.conductor import TurnOutcome
 from pmos.migrations import (create_legacy_fixture, migrate_workspace, recover_workspace,
                               rollback_workspace, MigrationError)
 from pmos.store import Store
+from pmos.artifacts import artifact_revision
 import pmos.migrations as migrations
 
 
@@ -273,8 +275,104 @@ class CliTests(unittest.TestCase):
         self.assertEqual((blocked_result["ok"], blocked_result["outcome"]["completed"]), (False, False))
         self.assertEqual(
             blocked_result["error"],
-            "gate proof was not accepted; provide a real source and current revision",
+            "gate proof was not accepted: gate source could not be verified",
         )
+
+    def write_artifact(self, folder: str, rel_path: str, artifact_id: str, phase: str,
+                       gate: int, depends_on: list, template: str, body: str) -> Path:
+        path = Path(folder, rel_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        block = (
+            "---\n"
+            "artifact_id: %s\n"
+            "phase: %s\n"
+            "gate: %d\n"
+            "status: draft\n"
+            "depends_on: %s\n"
+            "template: %s\n"
+            "---\n"
+            "%s\n"
+        ) % (artifact_id, phase, gate, json.dumps(depends_on), template, body)
+        path.write_text(block, encoding="utf-8")
+        return path
+
+    def gate(self, folder: str, token: str, turn_id: str, decision: str) -> tuple[int, dict]:
+        proof = Path(folder, "onboarding-approval.txt")
+        proof.write_bytes(b"reviewed onboarding evidence\n")
+        evidence = {"source": "onboarding-approval.txt",
+                    "source_sha256": hashlib.sha256(proof.read_bytes()).hexdigest(),
+                    "actor_id": "local-reviewer", "requester_id": "local-operator", "decision": decision,
+                    "approved_at": "2026-09-04T00:00:00Z"}
+        output = StringIO()
+        with redirect_stdout(output):
+            rc = main(["gate", "--path", folder, "--product-id", "checkout", "--bank-id", "discover",
+                       "--evidence", json.dumps(evidence), "--expected-revision", token,
+                       "--turn-id", turn_id, "--json"])
+        return rc, json.loads(output.getvalue())
+
+    def conductor_state(self, folder: str):
+        with Store(Path(folder) / ".pmos/runtime.sqlite") as store:
+            return _product_conductor(store, Path(folder).resolve(), "checkout").state()
+
+    def test_an_approved_gate_binds_the_manifest_to_the_workspace(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            status = self.answer_bank(folder, "a")
+            path = self.write_artifact(folder, "discovery/problem-framing.md",
+                                       "checkout/discovery/problem-framing", "DISCOVER", 1, [],
+                                       "templates/discovery/problem-framing.md", "A real outcome")
+            rc, parsed = self.gate(folder, status["revision_token"], "gate-1", "approved")
+            self.assertEqual((rc, parsed["ok"]), (0, True))
+            gate = self.conductor_state(folder)["gates"]["discover"]
+            self.assertEqual(gate["manifest"], {
+                "artifacts": [{"id": "checkout/discovery/problem-framing",
+                               "path": "discovery/problem-framing.md",
+                               "revision": artifact_revision(path.read_text(encoding="utf-8")),
+                               "depends_on": []}],
+                "dependencies": []})
+            self.assertEqual(gate["attestation"], "local")
+
+    def test_a_gate_whose_manifest_names_a_missing_dependency_is_not_accepted(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            status = self.answer_bank(folder, "a")
+            self.write_artifact(folder, "discovery/problem-framing.md",
+                                "checkout/discovery/problem-framing", "DISCOVER", 1,
+                                ["checkout/discovery/missing"], "templates/discovery/problem-framing.md",
+                                "A real outcome")
+            rc, parsed = self.gate(folder, status["revision_token"], "gate-1", "approved")
+            self.assertEqual(rc, 1)
+            self.assertFalse(parsed["ok"])
+            self.assertIn("depends on checkout/discovery/missing and the workspace does not have it yet",
+                          parsed["error"])
+
+    def test_a_rejected_gate_is_recorded_and_keeps_the_bank_blocked(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            status = self.answer_bank(folder, "a")
+            self.write_artifact(folder, "discovery/problem-framing.md",
+                                "checkout/discovery/problem-framing", "DISCOVER", 1, [],
+                                "templates/discovery/problem-framing.md", "A real outcome")
+            rc, parsed = self.gate(folder, status["revision_token"], "gate-1", "rejected")
+            self.assertEqual(rc, 1)
+            self.assertFalse(parsed["ok"])
+            self.assertTrue(parsed["rejection_recorded"])
+            self.assertEqual(parsed["outcome"]["status"], "rejected")
+            state = self.conductor_state(folder)
+            (rejection,) = state["gate_rejections"]["discover"]
+            self.assertEqual(rejection["manifest"]["artifacts"][0]["id"], "checkout/discovery/problem-framing")
+            self.assertNotIn("discover", state["gates"])
+            after = self.status(folder)
+            self.assertEqual(after["interview"], "blocked")
+            self.assertEqual(after["current_bank_id"], "discover")
+
+    def test_a_rejected_gate_result_carries_the_message(self):
+        outcome = TurnOutcome("rejected", "5:abc", bank_id="discover",
+                              message="gate rejected by local-reviewer; the bank stays open until its current revisions are approved")
+        result = _gate_result(outcome, "checkout")
+        self.assertFalse(result["ok"])
+        self.assertTrue(result["rejection_recorded"])
+        self.assertEqual(result["error"], outcome.message)
 
     def test_a_blank_workspace_reaches_completed_through_the_cli_alone(self):
         with TemporaryDirectory() as folder:

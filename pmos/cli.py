@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 from typing import Any, Sequence
 
+from .artifacts import build_manifest, check_manifest
 from .banks import CONTRACT_PATH, LEGACY_ONBOARDING, banks_from_contract, parse_contract, shipped_banks
 from .conductor import Conductor, QuestionBank, TurnOutcome
 from .migrations import migrate_workspace, recover_workspace, rollback_workspace
@@ -45,6 +46,43 @@ def _product_banks(store: Store, product_id: str) -> tuple[QuestionBank, ...]:
     if contract is None:
         return LEGACY_ONBOARDING
     return banks_from_contract(contract)
+
+
+def _product_conductor(store: Store, root: Path, product_id: str) -> Conductor:
+    """The Conductor every CLI command builds for a product, bound to its workspace.
+
+    A product with a pinned contract gets the gate manifest builder and verifier:
+    each approval records the revisions of the workspace artifacts whose block
+    names that bank's gate, with their dependencies, and every later turn checks
+    them again. A product that started before the pin runs the legacy onboarding
+    bank, which has no gate number, so it runs without them.
+    """
+    contract = _pinned_contract(store, product_id)
+    if contract is None:
+        return Conductor(store, product_id, LEGACY_ONBOARDING,
+                         gate_source_verifier=_local_gate_verifier(root),
+                         source_resolver=_cli_source_resolver(root))
+    # banks_from_contract validates every entry first, so a malformed contract
+    # raises ValidationError here rather than a KeyError below.
+    banks = banks_from_contract(contract)
+    gates: dict[str, int] = {}
+    for entry in contract["banks"]:
+        gate = entry.get("gate")
+        if not isinstance(gate, int) or isinstance(gate, bool):
+            raise ValidationError("question bank contract is malformed: bank %s has no gate number" % entry["id"])
+        gates[entry["id"]] = gate
+
+    def gate_manifest(bank_id: str) -> dict[str, Any]:
+        if bank_id not in gates:
+            raise ValidationError("bank %s has no gate in the pinned contract" % bank_id)
+        return build_manifest(root, gates[bank_id])
+
+    def manifest_verifier(manifest: Any) -> dict[str, Any]:
+        return check_manifest(root, manifest)
+
+    return Conductor(store, product_id, banks, gate_source_verifier=_local_gate_verifier(root),
+                     source_resolver=_cli_source_resolver(root),
+                     gate_manifest=gate_manifest, manifest_verifier=manifest_verifier)
 
 
 def _local_gate_verifier(root: Path):
@@ -221,7 +259,7 @@ def _run_new_user(root: Path, product_id: str) -> dict[str, Any]:
                                  metadata={"reason": "pin the question bank contract"})
         if not published.committed:
             raise StoreError("could not pin the question bank contract")
-        conductor = Conductor(store, product_id, _product_banks(store, product_id))
+        conductor = _product_conductor(store, root, product_id)
         pending = conductor.next_turn(expected_revision=published.head)
         if pending.status != "question" or pending.question is None:
             raise StoreError("onboarding did not produce a deterministic first question")
@@ -298,8 +336,7 @@ def _interview_status(store: Store, root: Path, product_id: str, token: str) -> 
     revision token; only the answer, reason, evidence and turn id are left as placeholders.
     """
     banks = _product_banks(store, product_id)
-    conductor = Conductor(store, product_id, banks, gate_source_verifier=_local_gate_verifier(root),
-                          source_resolver=_cli_source_resolver(root))
+    conductor = _product_conductor(store, root, product_id)
     position = conductor.next_turn()
     state = conductor.state()
 
@@ -396,9 +433,7 @@ def _answer(args: argparse.Namespace) -> dict[str, Any]:
     if not database.exists():
         raise ValidationError("runtime is missing; run `pmos init --path %s`" % root)
     with Store(database) as store:
-        conductor = Conductor(store, args.product_id, _product_banks(store, args.product_id),
-                              gate_source_verifier=_local_gate_verifier(root),
-                              source_resolver=_cli_source_resolver(root))
+        conductor = _product_conductor(store, root, args.product_id)
         outcome = conductor.submit_answer(args.question_id, args.answer, _evidence(args.evidence),
                                           expected_revision=args.expected_revision, turn_id=args.turn_id)
         result = {"ok": outcome.accepted, "product_id": args.product_id,
@@ -413,9 +448,7 @@ def _reopen(args: argparse.Namespace) -> dict[str, Any]:
     if not database.exists():
         raise ValidationError("runtime is missing; run `pmos init --path %s`" % root)
     with Store(database) as store:
-        conductor = Conductor(store, args.product_id, _product_banks(store, args.product_id),
-                              gate_source_verifier=_local_gate_verifier(root),
-                              source_resolver=_cli_source_resolver(root))
+        conductor = _product_conductor(store, root, args.product_id)
         outcome = conductor.reopen(args.question_id, expected_revision=args.expected_revision,
                                     turn_id=args.turn_id, reason=args.reason)
         result = {"ok": outcome.status == "reopened", "product_id": args.product_id,
@@ -430,9 +463,7 @@ def _gate(args: argparse.Namespace) -> dict[str, Any]:
     if not database.exists():
         raise ValidationError("runtime is missing; run `pmos init --path %s`" % root)
     with Store(database) as store:
-        conductor = Conductor(store, args.product_id, _product_banks(store, args.product_id),
-                              gate_source_verifier=_local_gate_verifier(root),
-                              source_resolver=_cli_source_resolver(root))
+        conductor = _product_conductor(store, root, args.product_id)
         outcome = conductor.prove_gate(args.bank_id, _evidence(args.evidence),
                                        expected_revision=args.expected_revision, turn_id=args.turn_id)
         return _gate_result(outcome, args.product_id)
@@ -446,8 +477,14 @@ def _gate_result(outcome: TurnOutcome, product_id: str) -> dict[str, Any]:
         # A re-proof can be recorded while another approval is still stale:
         # name it, and never report completion.
         result["error"] = outcome.message
+    elif outcome.status == "rejected":
+        result["rejection_recorded"] = True
+        result["error"] = outcome.message
     elif not ok:
-        result["error"] = "gate proof was not accepted; provide a real source and current revision"
+        if outcome.message:
+            result["error"] = "gate proof was not accepted: " + outcome.message
+        else:
+            result["error"] = "gate proof was not accepted; provide a real source and current revision"
     return result
 
 
