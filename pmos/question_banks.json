@@ -1129,5 +1129,37 @@
   }
  ],
  "generated_by": "tools/question_banks.py",
- "schema": 1
+ "schema": 1,
+ "signoffs": {
+  "1": [
+   "Product owner",
+   "Sponsor or lead who can stop this"
+  ],
+  "2": [
+   "Product owner",
+   "Engineering lead",
+   "Business sponsor",
+   "Regulatory owner (regulated products only)"
+  ],
+  "3": [
+   "Architect or senior engineer",
+   "Product owner",
+   "Security reviewer"
+  ],
+  "4": [
+   "Engineering lead",
+   "QA owner",
+   "Product owner"
+  ],
+  "5": [
+   "Release owner",
+   "Product owner",
+   "Operations or support lead",
+   "Regulatory owner (regulated products only)"
+  ],
+  "6": [
+   "Product owner",
+   "Sponsor"
+  ]
+ }
 }

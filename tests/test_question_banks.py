@@ -50,6 +50,77 @@ SYNTHETIC = (
     "| Signed by a human | The signed gate attestation |\n"
 )
 
+SYNTHETIC_SIGNOFFS = (
+    "preamble\n\n"
+    "## Gate 1: discovery\n\n"
+    "| Checklist | Status |\n"
+    "|---|---|\n"
+    "| smoke test | pass |\n"
+    "\n"
+    "| Sign-off | Name | Date |\n"
+    "| Product owner | Priya | 2026 |\n"
+    "| Sponsor or lead who can stop this | Sam | 2026 |\n\n"
+    "## Gate 2: define\n\n"
+    "| Sign-off | Name | Date |\n"
+    "|---|---|---|\n"
+    "| Product owner | Dee | 2026 |\n"
+    "| Partner | Ian | 2026 |\n\n"
+    "## Gate 3: design\n\n"
+    "| Sign-off | Name | Date |\n"
+    "|---|---|---|\n"
+    "| Reviewer | Raj | 2026 |\n"
+    "| Support | Nia | 2026 |\n\n"
+    "## Gate 4: build\n\n"
+    "| Checklist | Status |\n"
+    "|---|---|\n"
+    "| build item | done |\n"
+    "\n"
+    "| Sign-off | Name | Date |\n"
+    "|---|---|---|\n"
+    "| Reviewer | Tom | 2026 |\n\n"
+    "## Gate 5: deliver\n\n"
+    "| Sign-off | Name | Date |\n"
+    "|---|---|---|\n"
+    "| Ops | Uma | 2026 |\n"
+    "| QA | Will | 2026 |\n\n"
+    "## Gate 6: operate\n\n"
+    "| Sign-off | Name | Date |\n"
+    "|---|---|---|\n"
+    "| Ops | Uma | 2026 |\n"
+    "\n"
+    "## Appendix\n"
+    "| Sign-off | Name | Date |\n"
+    "|---|---|---|\n"
+    "| Ignore this | Person | 2026 |\n"
+)
+
+SYNTHETIC_SIGNOFFS_MISSING = (
+    "## Gate 1: one\n\n"
+    "| Sign-off | Name | Date |\n"
+    "|---|---|---|\n"
+    "| Owner | A | 2026 |\n\n"
+    "## Gate 2: two\n\n"
+    "| Sign-off | Name | Date |\n"
+    "|---|---|---|\n"
+    "| Owner | B | 2026 |\n\n"
+    "## Gate 3: three\n\n"
+    "| Sign-off | Name | Date |\n"
+    "|---|---|---|\n"
+    "| Owner | C | 2026 |\n\n"
+    "## Gate 4: four\n\n"
+    "| Checklist | Status |\n"
+    "|---|---|\n"
+    "| step | pass |\n\n"
+    "## Gate 5: five\n\n"
+    "| Sign-off | Name | Date |\n"
+    "|---|---|---|\n"
+    "| Owner | E | 2026 |\n\n"
+    "## Gate 6: six\n\n"
+    "| Sign-off | Name | Date |\n"
+    "|---|---|---|\n"
+    "| Owner | F | 2026 |\n"
+)
+
 
 class QuestionBankCompileTests(unittest.TestCase):
 
@@ -162,6 +233,67 @@ class QuestionBankCompileTests(unittest.TestCase):
         self.assertEqual(version, question_banks.bank_version(self._parse(
             SYNTHETIC.replace("Header prose goes here.",
                               "Different prose."))))
+
+    def test_parse_signoffs_extracts_roles_and_ignores_other_tables(self):
+        self.assertEqual(question_banks.parse_signoffs(SYNTHETIC_SIGNOFFS), {
+            "1": ["Product owner", "Sponsor or lead who can stop this"],
+            "2": ["Product owner", "Partner"],
+            "3": ["Reviewer", "Support"],
+            "4": ["Reviewer"],
+            "5": ["Ops", "QA"],
+            "6": ["Ops"],
+        })
+
+    def test_parse_signoffs_fails_when_a_gate_is_missing_a_signoff_table(self):
+        with self.assertRaisesRegex(
+            question_banks.BankError,
+            "os/STAGE-GATES.md: Gate 4 has no sign-off table"):
+            question_banks.parse_signoffs(SYNTHETIC_SIGNOFFS_MISSING)
+
+    def test_parse_signoffs_treats_adjacent_gate_headings_as_a_section_end(self):
+        text = (
+            "## Gate 1: one\n"
+            "## Gate 2: two\n"
+            "| Sign-off | Name | Date |\n"
+            "|---|---|---|\n"
+            "| Name 2 | Sam | 2026 |\n"
+            "\n"
+            "## Gate 3: three\n"
+            "| Sign-off | Name | Date |\n"
+            "|---|---|---|\n"
+            "| Name 3 | Tom | 2026 |\n"
+            "\n"
+            "## Gate 4: four\n"
+            "| Sign-off | Name | Date |\n"
+            "|---|---|---|\n"
+            "| Name 4 | Uma | 2026 |\n"
+            "\n"
+            "## Gate 5: five\n"
+            "| Sign-off | Name | Date |\n"
+            "|---|---|---|\n"
+            "| Name 5 | Viv | 2026 |\n"
+            "\n"
+            "## Gate 6: six\n"
+            "| Sign-off | Name | Date |\n"
+            "|---|---|---|\n"
+            "| Name 6 | Wen | 2026 |\n"
+        )
+        with self.assertRaisesRegex(
+            question_banks.BankError,
+            "os/STAGE-GATES.md: Gate 1 has no sign-off table"):
+            question_banks.parse_signoffs(text)
+
+    def test_the_committed_contract_has_complete_signoffs(self):
+        self.assertEqual(
+            set(self.contract["signoffs"].keys()),
+            {"1", "2", "3", "4", "5", "6"})
+        self.assertEqual(self.contract["signoffs"]["1"],
+                         ["Product owner",
+                          "Sponsor or lead who can stop this"])
+        for roles in self.contract["signoffs"].values():
+            self.assertIsInstance(roles, list)
+            self.assertTrue(roles)
+            self.assertTrue(all(isinstance(role, str) for role in roles))
 
     def test_check_fails_when_missing_or_stale_and_passes_once_written(self):
         original = question_banks.OUTPUT

@@ -23,6 +23,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE_DIR = ROOT / "skills" / "conductor" / "questions"
+STAGE_GATES = ROOT / "os" / "STAGE-GATES.md"
 ORDER = ("discover", "define", "design", "build", "deliver", "operate")
 OUTPUT = ROOT / "pmos" / "question_banks.json"
 RUNG_CLASSES = {
@@ -161,6 +162,68 @@ def _gate_rendering(stage: str, gate: int, lines: list) -> list:
     return rows
 
 
+def parse_signoffs(text: str) -> dict:
+    """Map gate number to the role names in its sign-off table."""
+
+    lines = text.split("\n")
+
+    def _split_cells(row: str) -> list:
+        return [cell.strip() for cell in row.strip().strip("|").split("|")]
+
+    def _is_separator(cell: str) -> bool:
+        return set(cell) <= set("-: ")
+
+    signoffs = {}
+    for gate in range(1, 7):
+        heading = "## Gate %d:" % gate
+        start = None
+        for index, line in enumerate(lines):
+            if line.startswith(heading):
+                start = index + 1
+                break
+        if start is None:
+            raise BankError("os/STAGE-GATES.md: Gate %d has no sign-off table"
+                            % gate)
+        end = len(lines)
+        for index in range(start, len(lines)):
+            if index >= start and lines[index].startswith("## "):
+                end = index
+                break
+        section = lines[start:end]
+
+        found = False
+        line = 0
+        roles = []
+        while line < len(section):
+            if not section[line].startswith("|"):
+                line += 1
+                continue
+
+            table = []
+            while line < len(section) and section[line].startswith("|"):
+                table.append(section[line])
+                line += 1
+
+            header = _split_cells(table[0])
+            if header and header[0] == "Sign-off":
+                found = True
+                for body in table[1:]:
+                    cells = _split_cells(body)
+                    if not cells:
+                        continue
+                    first = cells[0]
+                    if not first or _is_separator(first):
+                        continue
+                    roles.append(first)
+                break
+
+        if not found or not roles:
+            raise BankError("os/STAGE-GATES.md: Gate %d has no sign-off table"
+                            % gate)
+        signoffs[str(gate)] = roles
+    return signoffs
+
+
 def parse_bank(stage: str, text: str) -> dict:
     """One bank's contract, raising BankError on any broken format rule."""
     upper = stage.upper()
@@ -199,6 +262,12 @@ def parse_bank(stage: str, text: str) -> dict:
 
 def compile_contract() -> dict:
     """The six banks in loop order, each with its source hash and version."""
+    try:
+        stage_gates_text = STAGE_GATES.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as error:
+        raise BankError("cannot read %s: %s" % (STAGE_GATES, error))
+    signoffs = parse_signoffs(stage_gates_text)
+
     banks = []
     for stage in ORDER:
         path = SOURCE_DIR / ("%s.md" % stage)
@@ -214,7 +283,7 @@ def compile_contract() -> dict:
                     source_sha256=_sha256_hex(raw), version=version)
         banks.append(bank)
     return {"schema": 1, "generated_by": "tools/question_banks.py",
-            "banks": banks}
+            "banks": banks, "signoffs": signoffs}
 
 
 def render(contract: dict) -> str:
