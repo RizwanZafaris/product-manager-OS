@@ -101,7 +101,7 @@ Modular type scales built from a fixed ratio, the golden ratio 1.618 being the m
 
 | Rule | Authority | Level | Evidence class | Source |
 |---|---|---|---|---|
-| Content reflows without two-dimensional scrolling at 320 CSS px wide (equivalent to 1280px at 400 percent zoom), or 256 CSS px tall for vertical-scrolling content; maps, data tables, games and toolbars are excepted | WCAG 2.2, 1.4.10 Reflow | AA | Standard | W3C, Understanding SC 1.4.10 |
+| Content reflows without two-dimensional scrolling: vertically scrolling content at 320 CSS px wide (equivalent to 1280px at 400 percent zoom), horizontally scrolling content at 256 CSS px tall; content that needs a two-dimensional layout for usage or meaning is excepted (for example maps, data tables, games, and toolbars kept in view) | WCAG 2.2, 1.4.10 Reflow | AA | Standard | W3C, Understanding SC 1.4.10 |
 | All spacing, padding and margin values are multiples of 8, often paired with a 4pt baseline grid for text | The 8-point grid | | Practitioner heuristic | Widely documented practitioner convention |
 | Window size classes: compact under 600dp, medium 600 to 839dp, expanded 840 to 1199dp, large 1200 to 1599dp, extra-large 1600dp and up | Material 3 | | Platform convention | Google Material Design |
 | Tablet breakpoint at 640px | GOV.UK Design System | | Platform convention | Government Digital Service |

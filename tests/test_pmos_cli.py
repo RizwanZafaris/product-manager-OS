@@ -466,7 +466,7 @@ class CliTests(unittest.TestCase):
                                                      (legacy, root / "fresh", "fresh")):
                 completed = subprocess.run(
                     [sys.executable, "-c", script, str(source), str(destination), product_id],
-                    cwd=str(Path(__file__).parent), shell=False,
+                    cwd=str(Path(__file__).resolve().parent.parent), shell=False,
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=30)
                 self.assertEqual(completed.returncode, -signal.SIGKILL,
                                  completed.stdout + completed.stderr)
@@ -501,7 +501,7 @@ class CliTests(unittest.TestCase):
             migrated_hash = hashlib.sha256(runtime.read_bytes()).hexdigest()
             completed = subprocess.run(
                 [sys.executable, "-c", script, str(destination)],
-                cwd=str(Path(__file__).parent), shell=False,
+                cwd=str(Path(__file__).resolve().parent.parent), shell=False,
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=30)
             self.assertEqual(completed.returncode, -signal.SIGKILL,
                              completed.stdout + completed.stderr)
@@ -603,7 +603,7 @@ class CliTests(unittest.TestCase):
             wheelhouse = folder_path / "wheelhouse"
             wheelhouse.mkdir()
             shutil.copytree(
-                Path(__file__).parent, package_copy,
+                Path(__file__).resolve().parent.parent, package_copy,
                 ignore=shutil.ignore_patterns(
                     ".git", "build", "*.egg-info", "__pycache__", ".pytest_cache", ".venv"))
             # Exercise the real isolated PEP 517 path with no package index.

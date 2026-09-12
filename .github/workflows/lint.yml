@@ -115,7 +115,7 @@ jobs:
           python3 tools/frontmatter_init.py --dry-run | grep -q "created: 0, extended: 0"
 
       - name: Unit tests (root)
-        run: python3 -m unittest test_lint.py -v
+        run: python3 -m unittest tests/test_lint.py -v
 
       - name: Unit tests (regulated module, in place)
         run: python3 -m unittest test_lint.py -v
@@ -137,4 +137,4 @@ jobs:
           rm -rf harness
           python3 lint.py --os
           python3 tools/check_manifest.py --quiet
-          python3 -m unittest test_lint.py
+          python3 -m unittest tests/test_lint.py

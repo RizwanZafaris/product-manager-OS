@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for the PRD review gate. Run: python3 -m unittest test_lint.py -v"""
+"""Tests for the PRD review gate. Run: python3 -m unittest tests/test_lint.py -v"""
 import datetime as dt
 import tempfile
 import unittest
@@ -9,7 +9,7 @@ from pathlib import Path
 import lint
 from pmos.sidecars import SidecarInspectionError
 
-REPO = Path(__file__).resolve().parent
+REPO = Path(__file__).resolve().parent.parent
 
 # The banned metric strings and the em dash are assembled from fragments rather
 # than written out: this repository must not contain them as literals anywhere,

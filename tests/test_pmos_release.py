@@ -22,7 +22,7 @@ def _lowest_free_descriptor() -> int:
 
 class ReleaseProvenanceTests(unittest.TestCase):
     def test_package_metadata_versions_are_identical(self):
-        root = Path(__file__).parent
+        root = Path(__file__).resolve().parent.parent
         pyproject = re.search(r'^version\s*=\s*"([^"]+)"',
                               (root / "pyproject.toml").read_text(encoding="utf-8"), re.M)
         self.assertIsNotNone(pyproject)

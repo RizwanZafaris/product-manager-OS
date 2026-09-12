@@ -97,6 +97,8 @@ def clean_env():
     env = {key: os.environ[key] for key in allowed if key in os.environ}
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     env["PYTHONHASHSEED"] = "0"
+    # Registry test ids name root suite modules, which live in tests/.
+    env["PYTHONPATH"] = str(REPO / "tests")
     return env
 
 

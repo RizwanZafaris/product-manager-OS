@@ -138,7 +138,7 @@ class StoreTest(unittest.TestCase):
         self.assertTrue(self.store.verify().ok)
 
     def test_process_kill_commit_boundaries_are_atomic(self) -> None:
-        probe = Path(__file__).resolve().parent / "tools" / "runtime_crash_probe.py"
+        probe = Path(__file__).resolve().parent.parent / "tools" / "runtime_crash_probe.py"
         expectations = {
             "prepare.before_commit": (0, 0),
             "prepare.after_commit": (0, 1),
@@ -154,7 +154,7 @@ class StoreTest(unittest.TestCase):
                 database = Path(folder) / "crash.sqlite"
                 completed = subprocess.run(
                     [sys.executable, str(probe), str(database), point],
-                    cwd=str(Path(__file__).resolve().parent), shell=False,
+                    cwd=str(Path(__file__).resolve().parent.parent), shell=False,
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
                     timeout=20)
                 self.assertEqual(completed.returncode, -signal.SIGKILL,
