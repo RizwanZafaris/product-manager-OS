@@ -50,7 +50,7 @@ No component specs, no token values, no palettes of any kind including hex value
 
 - This repository is MIT licensed.
 - Text under a source the register at [docs/REFERENCES-DESIGN.md](../../docs/REFERENCES-DESIGN.md) classes "Adapt with notice" may be adapted into a card (today: OGL v3, CC0, public domain, CC BY 4.0, MIT, Apache 2.0, the W3C Software and Document License, and EU reuse under Commission Decision 2011/833/EU), and every such occurrence carries the notice its licence requires, as set out in that source's register row: for MIT and Apache 2.0, the copyright and licence notice; for Apache 2.0 and CC BY 4.0, a statement that the text was changed; for OGL v3, its attribution statement and a link to the licence; for the W3C Software and Document License and EU reuse, the attribution string the register specifies.
-- Everything else is paraphrased in this repository's own words, or cited with at most one quote under fifteen words with the source named.
+- Everything else is paraphrased in this repository's own words, or cited with at most one quote under fifteen words with the source named. One exception: a worksheet that administers a published questionnaire quotes the items verbatim with the source named, because a paraphrased item is a different instrument (the UX scorecard's single-ease and UMUX-LITE items).
 - The complete source-and-licence register, including the seventeen repositories studied while building this layer, lives in [docs/REFERENCES-DESIGN.md](../../docs/REFERENCES-DESIGN.md).
 - A card's own Reading section names each source's reuse class; check the register before adapting anything from a card into your own material.
 
