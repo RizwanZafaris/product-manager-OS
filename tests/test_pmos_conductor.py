@@ -546,6 +546,119 @@ class ConductorTest(unittest.TestCase):
         self.assertIn("spec (reviewed rev-aaaa, now missing)", stale.message)
         store.close()
 
+    def _content_aware_conductor(self, current: dict[str, str]):
+        # Like pmos/artifacts.py: the builder binds each artifact's revision when the gate is proved, and the
+        # verifier reports the entries whose recorded revision no longer matches, plus the approved artifacts
+        # that depend on one of them.
+        def entry(aid, depends_on):
+            return {"id": aid, "path": aid + ".md", "revision": current[aid], "depends_on": depends_on}
+
+        def build(bank_id):
+            if bank_id == "discover":
+                return {"artifacts": [entry("spec", [])], "dependencies": []}
+            return {"artifacts": [entry("prd", ["spec"])], "dependencies": [entry("spec", [])]}
+
+        def check(manifest):
+            entries = list(manifest["artifacts"]) + list(manifest["dependencies"])
+            changed = [{"id": e["id"], "path": e["path"], "reviewed": e["revision"],
+                        "current": current.get(e["id"])}
+                       for e in entries if current.get(e["id"]) != e["revision"]]
+            changed_ids = {c["id"] for c in changed}
+            reconcile = sorted(e["id"] for e in manifest["artifacts"]
+                               if e["id"] not in changed_ids
+                               and any(dep in changed_ids for dep in e["depends_on"]))
+            return {"changed": changed, "reconcile": reconcile}
+
+        store = Store(self.path)
+        verifier = lambda source, digest: source == "gate-1.md" and digest == GATE_HASH
+        return store, Conductor(store, "payments", BANKS, gate_source_verifier=verifier,
+                                gate_manifest=build, manifest_verifier=check)
+
+    def _gate_both_banks(self, conductor: Conductor) -> TurnOutcome:
+        turn = self._gate_two_answers(conductor)
+        conductor.prove_gate("discover", gate_proof(), expected_revision=turn.revision, turn_id="gb-g1")
+        turn = conductor.next_turn()
+        self.assertEqual(turn.question.id, "define.sponsor")
+        conductor.submit_answer("define.sponsor", "Mina committed.", commitment(),
+                                expected_revision=turn.revision, turn_id="gb-d1")
+        turn = conductor.next_turn()
+        conductor.prove_gate("define", gate_proof(), expected_revision=turn.revision, turn_id="gb-g2")
+        return conductor.next_turn()
+
+    def test_stale_gates_lists_every_affected_approval(self) -> None:
+        current = {"spec": "a" * 64, "prd": "c" * 64}
+        store, conductor = self._content_aware_conductor(current)
+        self._gate_both_banks(conductor)
+        self.assertEqual(conductor.stale_gates(), [])
+        current["spec"] = "b" * 64
+        gates = conductor.stale_gates()
+        self.assertEqual([g["bank_id"] for g in gates], ["discover", "define"])
+        for gate in gates:
+            self.assertEqual(gate["changed"], [{"id": "spec", "path": "spec.md",
+                                                "reviewed": "a" * 64, "current": "b" * 64}])
+            self.assertEqual(gate["reconcile"], ["prd"] if gate["bank_id"] == "define" else [])
+        stale = conductor.next_turn()
+        self.assertEqual((stale.status, stale.bank_id), ("stale", "discover"))
+        self.assertEqual(stale.message, conductor.stale_gates()[0]["message"])
+        # Re-proving discover binds the changed spec, but define's approval still binds the old one, so the
+        # re-proof is recorded and the interview stays stale on define.
+        reproved = conductor.prove_gate("discover", gate_proof(), expected_revision=stale.revision,
+                                        turn_id="sg-reprove")
+        self.assertEqual((reproved.status, reproved.bank_id), ("stale", "define"))
+        self.assertTrue(reproved.message.startswith("gate proof for discover recorded again; "
+                                                    "approved artifacts for define changed: spec"), reproved.message)
+        self.assertEqual(conductor.state()["gates"]["discover"]["manifest"]["artifacts"][0]["revision"], "b" * 64)
+        remaining = conductor.stale_gates()
+        self.assertEqual([g["bank_id"] for g in remaining], ["define"])
+        self.assertEqual(remaining[0]["reconcile"], ["prd"])
+        store.close()
+
+    def test_stale_gates_empty_when_unchanged_and_without_verifier(self) -> None:
+        current = {"spec": "a" * 64, "prd": "c" * 64}
+        store, conductor = self._content_aware_conductor(current)
+        self._gate_both_banks(conductor)
+        self.assertEqual(conductor.stale_gates(), [])
+        current["spec"] = "b" * 64
+        store.close()
+        bare = Store(self.path)
+        bare_conductor = Conductor(bare, "payments", BANKS)
+        self.assertEqual(bare_conductor.stale_gates(), [])
+        bare.close()
+
+    def test_manifest_verifier_validation_error_message(self) -> None:
+        store = Store(self.path)
+        verifier = lambda source, digest: source == "gate-1.md" and digest == GATE_HASH
+
+        def checker(manifest):
+            raise ValidationError("x.md is a symlink")
+
+        conductor = Conductor(store, "payments", BANKS, gate_source_verifier=verifier,
+                              gate_manifest=lambda bank_id: {"artifacts": [], "dependencies": []},
+                              manifest_verifier=checker)
+        turn = self._gate_two_answers(conductor)
+        conductor.prove_gate("discover", gate_proof(), expected_revision=turn.revision, turn_id="ve-g1")
+        stale = conductor.next_turn()
+        self.assertEqual((stale.status, stale.bank_id), ("stale", "discover"))
+        self.assertEqual(stale.message, "approved artifacts for discover could not be checked: x.md is a symlink")
+        store.close()
+
+    def test_manifest_verifier_runtime_error_message(self) -> None:
+        store = Store(self.path)
+        verifier = lambda source, digest: source == "gate-1.md" and digest == GATE_HASH
+
+        def checker(manifest):
+            raise RuntimeError("boom")
+
+        conductor = Conductor(store, "payments", BANKS, gate_source_verifier=verifier,
+                              gate_manifest=lambda bank_id: {"artifacts": [], "dependencies": []},
+                              manifest_verifier=checker)
+        turn = self._gate_two_answers(conductor)
+        conductor.prove_gate("discover", gate_proof(), expected_revision=turn.revision, turn_id="re-g1")
+        stale = conductor.next_turn()
+        self.assertEqual((stale.status, stale.bank_id), ("stale", "discover"))
+        self.assertEqual(stale.message, "approved artifacts for discover could not be checked; prove the gate again")
+        store.close()
+
     def test_reproving_keeps_superseded_manifest_and_question_position(self) -> None:
         # A stub workspace that behaves like pmos/artifacts.py: the builder binds each artifact's current
         # revision, and the verifier reports the entries whose recorded revision no longer matches.

@@ -505,6 +505,15 @@ class Conductor:
         _snapshot, state = self._load()
         return json.loads(canonical_json(state).decode("utf-8"))
 
+    def stale_gates(self) -> list[dict[str, Any]]:
+        """List every gated bank whose approval no longer holds, earliest first.
+
+        Each entry has the shape {"bank_id", "message", "changed", "reconcile"}.
+        next_turn reports the first of them.
+        """
+        _snapshot, state = self._load()
+        return self._gate_problems(state, first_only=False)
+
     # ------------------------------ persistence ------------------------------
     def _load(self) -> tuple[Any, dict[str, Any]]:
         snapshot = self.store.read_snapshot(self.product_id)
@@ -723,55 +732,98 @@ class Conductor:
             return TurnOutcome("conflict", head.token, message="expected revision is stale", conflict_revision=head.token)
         return None
 
-    def _position(self, revision: str, state: Mapping[str, Any]) -> TurnOutcome:
-        # An approval is only as good as the proof it points at. With a
-        # verifier configured, each gated bank's recorded proof is checked
-        # again, earliest bank first; one that no longer verifies (changed or
-        # missing) makes the interview stale until that bank is proved again.
+    def _gate_problems(self, state: Mapping[str, Any], *, first_only: bool) -> list[dict[str, Any]]:
+        # An approval is only as good as the proof and the artifacts it points
+        # at. With a verifier configured, each gated bank's recorded proof, then
+        # its manifest, is checked again, earliest bank first; a bank whose
+        # approval no longer holds keeps the interview stale until it is proved
+        # again. Each such bank is one {bank_id, message, changed, reconcile}
+        # entry; first_only stops at the first, which is all _position needs.
         # pmos/domain.py has its own, separate evidence-invalidation path.
-        if self._gate_source_verifier is not None:
-            for bank in self.banks:
-                gate = state["gates"].get(bank.id)
-                if not gate:
-                    continue
-                source = gate["proof"].get("source")
+        problems: list[dict[str, Any]] = []
+        if self._gate_source_verifier is None:
+            return problems
+        for bank in self.banks:
+            gate = state["gates"].get(bank.id)
+            if not gate:
+                continue
+            source = gate["proof"].get("source")
+            try:
+                verified = self._gate_source_verifier(source, gate["proof"].get("source_sha256"))
+            except Exception:
+                verified = False
+            if verified is not True:
+                problems.append({"bank_id": bank.id,
+                                "message": "gate proof %s for %s no longer verifies (changed or missing); "
+                                           "prove the gate again" % (source, bank.id),
+                                "changed": [], "reconcile": []})
+                if first_only:
+                    return problems
+                continue
+            if self._manifest_verifier is not None and "manifest" in gate:
                 try:
-                    verified = self._gate_source_verifier(source, gate["proof"].get("source_sha256"))
+                    check = self._manifest_verifier(gate["manifest"])
+                except ValidationError as exc:
+                    problems.append({"bank_id": bank.id,
+                                    "message": "approved artifacts for %s could not be checked: %s" % (bank.id, exc),
+                                    "changed": [], "reconcile": []})
+                    if first_only:
+                        return problems
+                    continue
                 except Exception:
-                    verified = False
-                if verified is not True:
-                    return TurnOutcome("stale", revision, bank_id=bank.id,
-                                       message="gate proof %s for %s no longer verifies (changed or missing); "
-                                               "prove the gate again" % (source, bank.id))
-                if self._manifest_verifier is not None and "manifest" in gate:
-                    try:
-                        check = self._manifest_verifier(gate["manifest"])
-                    except Exception:
-                        return TurnOutcome("stale", revision, bank_id=bank.id,
-                                           message="approved artifacts for %s could not be checked; "
-                                                   "prove the gate again" % bank.id)
-                    if not isinstance(check, dict) or not isinstance(check.get("changed"), list) or \
-                            not isinstance(check.get("reconcile"), list):
-                        return TurnOutcome("stale", revision, bank_id=bank.id,
-                                           message="approved artifacts for %s could not be checked; "
-                                                   "prove the gate again" % bank.id)
-                    if check["changed"]:
-                        parts = []
-                        for item in check["changed"]:
-                            if not isinstance(item, dict) or "id" not in item or "reviewed" not in item \
-                                    or "current" not in item:
-                                return TurnOutcome("stale", revision, bank_id=bank.id,
-                                                   message="approved artifacts for %s could not be checked; "
-                                                           "prove the gate again" % bank.id)
-                            current = item["current"]
-                            current_prefix = "missing" if current is None else str(current)[:8]
-                            parts.append("%s (reviewed %s, now %s)" % (
-                                item["id"], str(item["reviewed"])[:8], current_prefix))
-                        message = "approved artifacts for %s changed: %s" % (bank.id, "; ".join(parts))
-                        if check["reconcile"]:
-                            message += "; needs reconciliation: " + ", ".join(str(x) for x in check["reconcile"])
-                        message += "; prove the gate again"
-                        return TurnOutcome("stale", revision, bank_id=bank.id, message=message)
+                    problems.append({"bank_id": bank.id,
+                                    "message": "approved artifacts for %s could not be checked; "
+                                               "prove the gate again" % bank.id,
+                                    "changed": [], "reconcile": []})
+                    if first_only:
+                        return problems
+                    continue
+                if not isinstance(check, dict) or not isinstance(check.get("changed"), list) or \
+                        not isinstance(check.get("reconcile"), list):
+                    problems.append({"bank_id": bank.id,
+                                    "message": "approved artifacts for %s could not be checked; "
+                                               "prove the gate again" % bank.id,
+                                    "changed": [], "reconcile": []})
+                    if first_only:
+                        return problems
+                    continue
+                if check["changed"]:
+                    parts = []
+                    malformed = False
+                    for item in check["changed"]:
+                        if not isinstance(item, dict) or "id" not in item or "reviewed" not in item \
+                                or "current" not in item:
+                            malformed = True
+                            break
+                        current = item["current"]
+                        current_prefix = "missing" if current is None else str(current)[:8]
+                        parts.append("%s (reviewed %s, now %s)" % (
+                            item["id"], str(item["reviewed"])[:8], current_prefix))
+                    if malformed:
+                        problems.append({"bank_id": bank.id,
+                                        "message": "approved artifacts for %s could not be checked; "
+                                                   "prove the gate again" % bank.id,
+                                        "changed": [], "reconcile": []})
+                        if first_only:
+                            return problems
+                        continue
+                    message = "approved artifacts for %s changed: %s" % (bank.id, "; ".join(parts))
+                    if check["reconcile"]:
+                        message += "; needs reconciliation: " + ", ".join(str(x) for x in check["reconcile"])
+                    message += "; prove the gate again"
+                    problems.append({"bank_id": bank.id, "message": message,
+                                    "changed": list(check["changed"]),
+                                    "reconcile": list(check["reconcile"])})
+                    if first_only:
+                        return problems
+        return problems
+
+    def _position(self, revision: str, state: Mapping[str, Any]) -> TurnOutcome:
+        # The earliest approval that no longer holds wins; stale_gates() lists them all.
+        problems = self._gate_problems(state, first_only=True)
+        if problems:
+            return TurnOutcome("stale", revision, bank_id=problems[0]["bank_id"],
+                               message=problems[0]["message"])
 
         index = int(state["current_bank"])
         if index >= len(self.banks):
