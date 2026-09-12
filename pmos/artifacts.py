@@ -109,11 +109,12 @@ def scan(root):
     verifier refuses one, and os.walk does not enter a symlinked directory.
     Files are read as UTF-8; one that does not decode is a ValidationError
     naming its relative path. The value for each artifact_id is {"path",
-    "revision", "gate", "depends_on"}: path is the posix form relative to root,
-    revision is artifact_revision(text), gate is the parsed gate, and
-    depends_on is the parsed list when it is a list of strings, else []. Two
-    files carrying the same artifact_id are a ValidationError naming the id and
-    both paths.
+    "revision", "gate", "phase", "status", "depends_on"}: path is the posix
+    form relative to root, revision is artifact_revision(text), gate is the
+    parsed gate, phase and status are the parsed block's values when they are
+    strings, else None, and depends_on is the parsed list when it is a list of
+    strings, else []. Two files carrying the same artifact_id are a
+    ValidationError naming the id and both paths.
     """
     found = {}
     for dirpath, dirnames, filenames in os.walk(root):
@@ -147,10 +148,14 @@ def scan(root):
             if artifact_id in found:
                 raise ValidationError("artifact_id %s is carried by more than one file: %s and %s"
                                       % (artifact_id, found[artifact_id]["path"], rel))
+            phase = parsed.get("phase")
+            status = parsed.get("status")
             found[artifact_id] = {
                 "path": rel,
                 "revision": artifact_revision(text),
                 "gate": parsed.get("gate"),
+                "phase": phase if isinstance(phase, str) else None,
+                "status": status if isinstance(status, str) else None,
                 "depends_on": list(depends_on),
             }
     return found

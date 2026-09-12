@@ -6,11 +6,28 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
+from pmos.artifacts import artifact_revision, build_manifest, check_manifest
 from pmos.conductor import Conductor
 from pmos.phases import phase_report
 from pmos.store import Store
 
 from test_pmos_conductor import BANKS, GATE_HASH, artifact, commitment, gate_proof, observed
+
+
+_PROBLEM_FRAMING_BLOCK = """---
+artifact_id: discovery/problem-framing
+phase: DISCOVER
+gate: 1
+status: draft
+depends_on: []
+template: templates/discovery/problem-framing.md
+---
+{body}
+"""
+
+
+def problem_framing_text(body: str) -> str:
+    return _PROBLEM_FRAMING_BLOCK.format(body=body)
 
 
 class PhaseReportTests(unittest.TestCase):
@@ -47,6 +64,64 @@ class PhaseReportTests(unittest.TestCase):
             source_resolver=resolver,
         )
         return store, conductor
+
+    def opening_with_workspace(self, root: Path) -> tuple[Store, Conductor]:
+        verifier = lambda source, digest: source == "gate-1.md" and digest == GATE_HASH
+        resolver = lambda source: source in ("session replay", "support export", "approval email")
+        gate_of = {"discover": 1, "define": 2}
+        store = Store(self.path)
+        conductor = Conductor(
+            store,
+            "payments",
+            BANKS,
+            gate_source_verifier=verifier,
+            source_resolver=resolver,
+            gate_manifest=lambda bank_id: build_manifest(root, gate_of[bank_id]),
+            manifest_verifier=lambda manifest: check_manifest(root, manifest),
+        )
+        return store, conductor
+
+    WORKSPACE_CONTRACT = {
+        "banks": [
+            {
+                "id": "discover",
+                "stage": "DISCOVER",
+                "gate": 1,
+                "gate_rendering": [
+                    {
+                        "line": "The person is named",
+                        "evidenced_by": "discover.person",
+                        "questions": ["discover.person"],
+                    },
+                    {
+                        "line": "The cost is exported",
+                        "evidenced_by": "discover.cost",
+                        "questions": ["discover.cost"],
+                    },
+                ],
+                "questions": [
+                    {
+                        "id": "discover.person",
+                        "lands_in": "`discovery/problem-framing.md` section 6 and "
+                                    "`discovery/personas.md` evidence block.",
+                    },
+                ],
+            },
+            {
+                "id": "define",
+                "stage": "DEFINE",
+                "gate": 2,
+                "gate_rendering": [
+                    {
+                        "line": "The sponsor is named",
+                        "evidenced_by": "define.sponsor",
+                        "questions": ["define.sponsor"],
+                    }
+                ],
+            },
+        ],
+        "signoffs": {"1": ["Product owner"], "2": ["Sponsor"]},
+    }
 
     CONTRACT = {
         "banks": [
@@ -275,6 +350,123 @@ class PhaseReportTests(unittest.TestCase):
                 "met": False,
             }
         ])
+        store.close()
+
+    def test_documents_and_named_documents_before_the_gate(self) -> None:
+        workspace = Path(self.temp.name) / "workspace"
+        (workspace / "discovery").mkdir(parents=True)
+        text = problem_framing_text("Problem body.\n")
+        (workspace / "discovery" / "problem-framing.md").write_text(text, encoding="utf-8")
+
+        store, conductor = self.opening_with_workspace(workspace)
+        report = phase_report(conductor, self.WORKSPACE_CONTRACT, workspace)
+        discover = report[0]
+
+        self.assertEqual(discover["documents"], [{
+            "id": "discovery/problem-framing",
+            "path": "discovery/problem-framing.md",
+            "phase": "DISCOVER",
+            "status": "draft",
+            "revision": artifact_revision(text),
+            "approved_revision": None,
+        }])
+        self.assertEqual(discover["named_documents"], [
+            {"path": "discovery/problem-framing.md", "present": True},
+            {"path": "discovery/personas.md", "present": False},
+        ])
+        self.assertIsNone(discover["approval"])
+        self.assertEqual(discover["rejections"], [])
+        store.close()
+
+    def test_approval_names_the_artifact_after_the_gate(self) -> None:
+        workspace = Path(self.temp.name) / "workspace"
+        (workspace / "discovery").mkdir(parents=True)
+        text = problem_framing_text("Problem body.\n")
+        (workspace / "discovery" / "problem-framing.md").write_text(text, encoding="utf-8")
+
+        store, conductor = self.opening_with_workspace(workspace)
+        first = conductor.next_turn()
+        second = conductor.submit_answer("discover.person", "Mina exported the failures.", observed(),
+                                         expected_revision=first.revision, turn_id="person")
+        third = conductor.submit_answer("discover.cost", "The export runs every Friday.", artifact(),
+                                        expected_revision=second.revision, turn_id="cost")
+        blocked = conductor.next_turn()
+        gated = conductor.prove_gate("discover", gate_proof(),
+                                     expected_revision=blocked.revision, turn_id="gate-1")
+        self.assertIn(gated.status, ("advanced", "completed"))
+
+        report = phase_report(conductor, self.WORKSPACE_CONTRACT, workspace)
+        discover = report[0]
+
+        self.assertEqual(discover["documents"][0]["approved_revision"], artifact_revision(text))
+        self.assertIsNotNone(discover["approval"])
+        self.assertIn("discovery/problem-framing", discover["approval"]["artifacts"])
+        store.close()
+
+    def test_stale_discover_names_the_changed_artifact_after_an_edit(self) -> None:
+        workspace = Path(self.temp.name) / "workspace"
+        (workspace / "discovery").mkdir(parents=True)
+        text = problem_framing_text("Problem body.\n")
+        (workspace / "discovery" / "problem-framing.md").write_text(text, encoding="utf-8")
+
+        store, conductor = self.opening_with_workspace(workspace)
+        first = conductor.next_turn()
+        second = conductor.submit_answer("discover.person", "Mina exported the failures.", observed(),
+                                         expected_revision=first.revision, turn_id="person")
+        third = conductor.submit_answer("discover.cost", "The export runs every Friday.", artifact(),
+                                        expected_revision=second.revision, turn_id="cost")
+        blocked = conductor.next_turn()
+        conductor.prove_gate("discover", gate_proof(),
+                             expected_revision=blocked.revision, turn_id="gate-1")
+
+        edited = problem_framing_text("Problem body, edited.\n")
+        (workspace / "discovery" / "problem-framing.md").write_text(edited, encoding="utf-8")
+
+        report = phase_report(conductor, self.WORKSPACE_CONTRACT, workspace)
+        discover = report[0]
+
+        self.assertEqual(discover["state"], "stale")
+        self.assertEqual(discover["missing"]["changed"], [{
+            "id": "discovery/problem-framing",
+            "path": "discovery/problem-framing.md",
+            "reviewed": artifact_revision(text),
+            "current": artifact_revision(edited),
+        }])
+        self.assertEqual(discover["missing"]["reconcile"], [])
+        store.close()
+
+    def test_rejections_name_the_artifact_after_a_rejected_gate_submission(self) -> None:
+        workspace = Path(self.temp.name) / "workspace"
+        (workspace / "discovery").mkdir(parents=True)
+        text = problem_framing_text("Problem body.\n")
+        (workspace / "discovery" / "problem-framing.md").write_text(text, encoding="utf-8")
+
+        store, conductor = self.opening_with_workspace(workspace)
+        first = conductor.next_turn()
+        second = conductor.submit_answer("discover.person", "Mina exported the failures.", observed(),
+                                         expected_revision=first.revision, turn_id="person")
+        third = conductor.submit_answer("discover.cost", "The export runs every Friday.", artifact(),
+                                        expected_revision=second.revision, turn_id="cost")
+        blocked = conductor.next_turn()
+        conductor.prove_gate("discover", gate_proof(),
+                             expected_revision=blocked.revision, turn_id="gate-1")
+
+        edited = problem_framing_text("Problem body, edited.\n")
+        (workspace / "discovery" / "problem-framing.md").write_text(edited, encoding="utf-8")
+
+        stale_turn = conductor.next_turn()
+        self.assertEqual(stale_turn.status, "stale")
+        rejected_proof = gate_proof()
+        rejected_proof["decision"] = "rejected"
+        rejected = conductor.prove_gate("discover", rejected_proof,
+                                        expected_revision=stale_turn.revision, turn_id="gate-1-rejected")
+        self.assertEqual(rejected.status, "rejected")
+
+        report = phase_report(conductor, self.WORKSPACE_CONTRACT, workspace)
+        discover = report[0]
+
+        self.assertEqual(len(discover["rejections"]), 1)
+        self.assertIn("discovery/problem-framing", discover["rejections"][0]["artifacts"])
         store.close()
 
 

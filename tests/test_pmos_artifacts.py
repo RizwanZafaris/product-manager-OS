@@ -164,6 +164,26 @@ class ArtifactManifestTests(unittest.TestCase):
         self.assertEqual(found["demo/planning/product-strategy"]["revision"],
                          artifacts.artifact_revision(self.strategy))
 
+    def test_scan_reports_phase_and_status_from_the_block(self):
+        found = artifacts.scan(self.root)
+        self.assertEqual(found["demo/discovery/problem-framing"]["phase"], "DISCOVER")
+        self.assertEqual(found["demo/discovery/problem-framing"]["status"], "approved")
+        self.assertEqual(found["demo/planning/vision"]["phase"], "DEFINE")
+        self.assertEqual(found["demo/planning/vision"]["status"], "draft")
+
+    def test_scan_reports_none_when_the_block_lacks_phase_or_status(self):
+        self._write("demo/discovery/bare.md", """---
+artifact_id: demo/discovery/bare
+gate: 1
+depends_on: []
+template: templates/discovery/bare.md
+---
+Bare body.
+""")
+        found = artifacts.scan(self.root)
+        self.assertIsNone(found["demo/discovery/bare"]["phase"])
+        self.assertIsNone(found["demo/discovery/bare"]["status"])
+
     def test_build_manifest_gate_two(self):
         manifest = artifacts.build_manifest(self.root, 2)
         ids = [entry["id"] for entry in manifest["artifacts"]]
