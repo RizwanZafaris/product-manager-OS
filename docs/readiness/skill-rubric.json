@@ -272,9 +272,9 @@
       "aliased": {},
       "workflow_steps": 6,
       "exit_gate_boxes": 0,
-      "exit_gate_words": 39,
+      "exit_gate_words": 68,
       "failure_modes": 5,
-      "links": 9,
+      "links": 10,
       "lines": 93
     },
     {
@@ -320,9 +320,9 @@
       "aliased": {},
       "workflow_steps": 5,
       "exit_gate_boxes": 0,
-      "exit_gate_words": 50,
+      "exit_gate_words": 56,
       "failure_modes": 7,
-      "links": 10,
+      "links": 11,
       "lines": 78
     },
     {
@@ -356,9 +356,9 @@
       "aliased": {},
       "workflow_steps": 8,
       "exit_gate_boxes": 0,
-      "exit_gate_words": 69,
+      "exit_gate_words": 96,
       "failure_modes": 7,
-      "links": 21,
+      "links": 22,
       "lines": 89
     }
   ],

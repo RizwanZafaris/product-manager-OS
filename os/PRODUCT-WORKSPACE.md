@@ -29,7 +29,7 @@ products/
     ├── execution/             decision log, risk register, stakeholder map, dependency register
     ├── delivery/              filled copies of templates/delivery/
     ├── operate/               filled copies of templates/operate/
-    ├── planning/              this product's roadmap and OKR copies
+    ├── planning/              this product's vision, strategy, roadmap and OKR copies
     └── gates/                 one file per gate attempt, copied from os/STAGE-GATES.md
 ```
 

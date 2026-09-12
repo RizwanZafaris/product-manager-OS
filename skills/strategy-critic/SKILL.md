@@ -75,4 +75,4 @@ Three outcomes. Strategy: all three kernel parts pass, the conditions are mostly
 
 ## Exit gate
 
-The strategy feeds the PLANNING track of [../../os/OPERATING-LOOP.md](../../os/OPERATING-LOOP.md) and explains the bets in [../../templates/planning/roadmap.md](../../templates/planning/roadmap.md). Do not report it reviewed until the verdict is written, every unevidenced condition sits in the risk register with a signal and an owner, and the product strategy template's exit gate is honestly checkable.
+The strategy is a Gate 2 input in DEFINE in [../../os/OPERATING-LOOP.md](../../os/OPERATING-LOOP.md) and [../../os/STAGE-GATES.md](../../os/STAGE-GATES.md), and it explains the bets in [../../templates/planning/roadmap.md](../../templates/planning/roadmap.md). Do not report it reviewed until the verdict is written, every unevidenced condition sits in the risk register with a signal and an owner, and the product strategy template's exit gate is honestly checkable.
