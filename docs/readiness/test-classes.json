@@ -132,6 +132,9 @@
     "test_pmos_usecases": [
       "UseCaseMatrixTests"
     ],
+    "test_question_banks": [
+      "QuestionBankCompileTests"
+    ],
     "test_readiness": [
       "BuildArtifactIgnoreTests",
       "DistributionMetadataTests",
