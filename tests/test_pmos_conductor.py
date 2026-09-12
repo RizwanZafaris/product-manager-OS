@@ -309,6 +309,151 @@ class ConductorTest(unittest.TestCase):
             self.assertIn("different request", replay.message)
         store.close()
 
+    def test_invalid_date_is_refused(self) -> None:
+        store, conductor = self.opening()
+        turn = conductor.next_turn()
+        bad = {"class": "observed_behavior", "source": "session replay",
+               "date": "banana", "location": "replay/17"}
+        result = conductor.submit_answer("discover.person", "Mina exported the failures.", bad,
+                                         expected_revision=turn.revision, turn_id="bad-date")
+        self.assertEqual(result.status, "challenge")
+        store.close()
+
+    def test_missing_local_source_refused_when_resolver_set(self) -> None:
+        store = Store(self.path)
+        conductor = Conductor(store, "payments", BANKS, source_resolver=lambda source: False)
+        turn = conductor.next_turn()
+        evidence = {"class": "observed_behavior", "source": "does-not-exist.txt",
+                    "date": "2026-09-03", "location": "replay/17"}
+        result = conductor.submit_answer("discover.person", "Mina exported the failures.", evidence,
+                                         expected_revision=turn.revision, turn_id="missing-src")
+        self.assertEqual(result.status, "challenge")
+        store.close()
+
+    def test_https_source_accepted_as_supplied_unverified(self) -> None:
+        store = Store(self.path)
+        consulted: list[str] = []
+        conductor = Conductor(store, "payments", BANKS,
+                              source_resolver=lambda source: consulted.append(source) or False)
+        turn = conductor.next_turn()
+        evidence = {"class": "observed_behavior", "source": "https://example.com/replay.log",
+                    "date": "2026-09-03", "location": "replay/17"}
+        result = conductor.submit_answer("discover.person", "Mina exported the failures.", evidence,
+                                         expected_revision=turn.revision, turn_id="https-src")
+        self.assertEqual(result.status, "accepted")
+        saved = conductor.state()["banks"]["discover"]["answers"]["discover.person"]
+        self.assertEqual(saved["verification"], "supplied_unverified")
+        self.assertEqual(consulted, [])
+        store.close()
+
+    def test_resolvable_local_source_recorded_as_source_verified(self) -> None:
+        store = Store(self.path)
+        conductor = Conductor(store, "payments", BANKS,
+                              source_resolver=lambda source: source == "does-not-exist.txt")
+        turn = conductor.next_turn()
+        evidence = {"class": "observed_behavior", "source": "does-not-exist.txt",
+                    "date": "2026-09-03", "location": "replay/17"}
+        result = conductor.submit_answer("discover.person", "Mina exported the failures.", evidence,
+                                         expected_revision=turn.revision, turn_id="local-src")
+        self.assertEqual(result.status, "accepted")
+        saved = conductor.state()["banks"]["discover"]["answers"]["discover.person"]
+        self.assertEqual(saved["verification"], "source_verified")
+        store.close()
+
+    def test_no_resolver_still_behaves_as_before_apart_from_date_check(self) -> None:
+        store = Store(self.path)
+        conductor = Conductor(store, "payments", BANKS)
+        turn = conductor.next_turn()
+        evidence = {"class": "observed_behavior", "source": "does-not-exist.txt",
+                    "date": "2026-09-03", "location": "replay/17"}
+        result = conductor.submit_answer("discover.person", "Mina exported the failures.", evidence,
+                                         expected_revision=turn.revision, turn_id="no-resolver")
+        self.assertEqual(result.status, "accepted")
+        saved = conductor.state()["banks"]["discover"]["answers"]["discover.person"]
+        self.assertEqual(saved["verification"], "supplied_unverified")
+        store.close()
+
+    def test_iso_dates_and_datetimes_parse_and_malformed_dates_refuse(self) -> None:
+        cases = {"2026-09-03": "accepted", "2026-09-03T10:00:00Z": "accepted",
+                 "2026-09-03T10:00:00+05:00": "accepted", "2026-02-30": "challenge",
+                 "03/09/2026": "challenge", "2026-13-01": "challenge"}
+        for index, (date, expected) in enumerate(cases.items()):
+            with self.subTest(date=date):
+                store = Store(Path(self.temp.name) / ("dates-%d.sqlite" % index))
+                conductor = Conductor(store, "payments", BANKS)
+                turn = conductor.next_turn()
+                result = conductor.submit_answer("discover.person", "Mina exported the failures.",
+                                                 dict(observed(), date=date),
+                                                 expected_revision=turn.revision, turn_id="date-%d" % index)
+                self.assertEqual(result.status, expected)
+                store.close()
+
+    def test_malformed_optional_date_refuses_any_evidence_class(self) -> None:
+        store, conductor = self.opening()
+        first = conductor.next_turn()
+        conductor.submit_answer("discover.person", "Mina exported the failures.", observed(),
+                                expected_revision=first.revision, turn_id="person")
+        second = conductor.next_turn()
+        result = conductor.submit_answer("discover.cost", "Support exported 41 failed payouts.",
+                                         dict(artifact(), date="banana"),
+                                         expected_revision=second.revision, turn_id="cost-bad-date")
+        self.assertEqual(result.status, "challenge")
+        self.assertIn("date", result.message)
+        store.close()
+
+    def test_every_non_web_source_goes_to_the_resolver(self) -> None:
+        for index, source in enumerate(("C:\\notes\\replay.txt", "notes:replay", "file:///tmp/replay.txt")):
+            with self.subTest(source=source):
+                consulted: list[str] = []
+                store = Store(Path(self.temp.name) / ("sources-%d.sqlite" % index))
+                conductor = Conductor(store, "payments", BANKS,
+                                      source_resolver=lambda value: consulted.append(value) or False)
+                turn = conductor.next_turn()
+                result = conductor.submit_answer("discover.person", "Mina exported the failures.",
+                                                 dict(observed(), source=source),
+                                                 expected_revision=turn.revision, turn_id="source-%d" % index)
+                self.assertEqual(result.status, "challenge")
+                self.assertEqual(consulted, [source])
+                store.close()
+
+    def test_resolver_that_cannot_check_a_source_leaves_it_unverified(self) -> None:
+        store = Store(self.path)
+        conductor = Conductor(store, "payments", BANKS, source_resolver=lambda source: None)
+        turn = conductor.next_turn()
+        result = conductor.submit_answer("discover.person", "Mina exported the failures.", observed(),
+                                         expected_revision=turn.revision, turn_id="unchecked")
+        self.assertEqual(result.status, "accepted")
+        saved = conductor.state()["banks"]["discover"]["answers"]["discover.person"]
+        self.assertEqual(saved["verification"], "supplied_unverified")
+        store.close()
+
+    def test_resolver_error_or_non_boolean_answer_refuses(self) -> None:
+        def broken(source: str) -> bool:
+            raise OSError("disk unavailable")
+        for index, resolver in enumerate((broken, lambda source: "yes", lambda source: 1)):
+            with self.subTest(index=index):
+                store = Store(Path(self.temp.name) / ("resolver-%d.sqlite" % index))
+                conductor = Conductor(store, "payments", BANKS, source_resolver=resolver)
+                turn = conductor.next_turn()
+                result = conductor.submit_answer("discover.person", "Mina exported the failures.", observed(),
+                                                 expected_revision=turn.revision, turn_id="broken-%d" % index)
+                self.assertEqual(result.status, "challenge")
+                store.close()
+
+    def test_parked_answer_is_labelled_failed_validation(self) -> None:
+        store, conductor = self.opening()
+        bad = dict(observed(), date="banana")
+        statuses = []
+        for attempt in range(3):
+            turn = conductor.next_turn()
+            statuses.append(conductor.submit_answer("discover.person", "Mina exported the failures.", bad,
+                                                    expected_revision=turn.revision,
+                                                    turn_id="park-%d" % attempt).status)
+        self.assertEqual(statuses, ["challenge", "challenge", "parked"])
+        saved = conductor.state()["banks"]["discover"]["answers"]["discover.person"]
+        self.assertEqual(saved["verification"], "failed_validation")
+        store.close()
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

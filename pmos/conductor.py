@@ -15,6 +15,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Callable, Mapping, Optional, Sequence
+from urllib.parse import urlparse
 
 from .store import NotFoundError, ProductHead, Store, ValidationError, canonical_json
 
@@ -138,7 +139,8 @@ class Conductor:
     """
 
     def __init__(self, store: Store, product_id: str, banks: Sequence[QuestionBank], *,
-                 gate_source_verifier: Optional[Callable[[str, str], bool]] = None) -> None:
+                 gate_source_verifier: Optional[Callable[[str, str], bool]] = None,
+                 source_resolver: Optional[Callable[[str], Optional[bool]]] = None) -> None:
         if not isinstance(store, Store):
             raise ValidationError("store must be a Store")
         _identifier(product_id, "product id")
@@ -155,6 +157,9 @@ class Conductor:
         if gate_source_verifier is not None and not callable(gate_source_verifier):
             raise ValidationError("gate_source_verifier must be callable")
         self._gate_source_verifier = gate_source_verifier
+        if source_resolver is not None and not callable(source_resolver):
+            raise ValidationError("source_resolver must be callable")
+        self._source_resolver = source_resolver
         try:
             self.store.head(product_id)
         except NotFoundError:
@@ -203,7 +208,7 @@ class Conductor:
                 "conflict", snapshot.head.token, bank_id=position.bank_id,
                 message="answer does not match the current question", conflict_revision=snapshot.head.token))
         question = position.question
-        valid, reason, normalized_evidence = self._validate_answer(question, answer, evidence)
+        valid, reason, normalized_evidence, verification = self._validate_answer(question, answer, evidence)
         bank_state = state["banks"][position.bank_id]
         if not valid:
             previous = int(bank_state["challenges"].get(question.id, 0))
@@ -221,6 +226,7 @@ class Conductor:
                     "evidence": normalized_evidence,
                     "evidence_class": question.required_evidence.value,
                     "parked": True,
+                    "verification": "failed_validation",
                 }
                 bank_state["cursor"] += 1
                 outcome = TurnOutcome("parked", snapshot.head.token, bank_id=position.bank_id,
@@ -236,6 +242,7 @@ class Conductor:
             "answer": answer,
             "evidence": normalized_evidence,
             "evidence_class": question.required_evidence.value,
+            "verification": verification,
         }
         bank_state["cursor"] += 1
         outcome = TurnOutcome("accepted", snapshot.head.token, bank_id=position.bank_id, question=question,
@@ -523,18 +530,18 @@ class Conductor:
                                message="answers are complete; gate prerequisites still require proof")
         return TurnOutcome("question", revision, bank_id=bank.id, question=bank.questions[cursor])
 
-    def _validate_answer(self, question: Question, answer: str, evidence: Mapping[str, Any]) -> tuple[bool, str, dict[str, str]]:
+    def _validate_answer(self, question: Question, answer: str, evidence: Mapping[str, Any]) -> tuple[bool, str, dict[str, str], str]:
         try:
             _bounded_text(answer, "answer", MAX_ANSWER_CHARS)
             normal = _evidence_mapping(evidence)
         except ValidationError as exc:
-            return False, str(exc), {}
+            return False, str(exc), {}, ""
         lowered = answer.strip().lower()
         if question.required_evidence is not EvidenceClass.TEAM_BELIEF and any(lowered.startswith(item) for item in _BANNED_OPENERS):
-            return False, "answer starts with a banned unsupported generalization", normal
+            return False, "answer starts with a banned unsupported generalization", normal, ""
         evidence_class = normal.get("class")
         if evidence_class != question.required_evidence.value:
-            return False, "evidence class must be " + question.required_evidence.value, normal
+            return False, "evidence class must be " + question.required_evidence.value, normal, ""
         required: dict[EvidenceClass, tuple[str, ...]] = {
             EvidenceClass.OBSERVED_BEHAVIOR: ("source", "date", "location"),
             EvidenceClass.ARTIFACT: ("source", "location"),
@@ -544,8 +551,30 @@ class Conductor:
         }
         missing = [field for field in required[question.required_evidence] if not _truthy_text(normal.get(field))]
         if missing:
-            return False, "missing evidence fields: " + ", ".join(missing), normal
-        return True, "", normal
+            return False, "missing evidence fields: " + ", ".join(missing), normal, ""
+        # A supplied date must parse whatever the evidence class: a malformed
+        # date kept beside accepted evidence would read as a real one.
+        if _truthy_text(normal.get("date")) and not _valid_evidence_date(normal["date"]):
+            return False, "evidence date is not a valid ISO 8601 date or datetime", normal, ""
+        # Acceptance is structural. Evidence is source_verified only when a
+        # configured resolver finds its source. The resolver answers True
+        # (found), False (a reference it can check that is missing, which
+        # refuses the answer) or None (not a reference it can check); any
+        # other answer or an error refuses. A web address is never checked
+        # here. Without a resolver, and for whatever it cannot check, the
+        # evidence stays explicitly supplied_unverified.
+        verification = "supplied_unverified"
+        source = normal.get("source", "")
+        if self._source_resolver is not None and source and not _is_web_address(source):
+            try:
+                found = self._source_resolver(source)
+            except Exception:
+                found = False
+            if found is not None and found is not True:
+                return False, "evidence source could not be resolved", normal, ""
+            if found is True:
+                verification = "source_verified"
+        return True, "", normal, verification
 
 
 def _coerce_bank(value: QuestionBank) -> QuestionBank:
@@ -575,6 +604,27 @@ def _parked_answer_text(value: Any) -> str:
 
 def _truthy_text(value: Any) -> bool:
     return isinstance(value, str) and bool(value.strip())
+
+
+def _valid_evidence_date(value: str) -> bool:
+    """Parse an ISO 8601 date or datetime string."""
+    if not isinstance(value, str) or not value.strip():
+        return False
+    try:
+        datetime.fromisoformat(value.strip())
+        return True
+    except ValueError:
+        return False
+
+
+def _is_web_address(value: str) -> bool:
+    """An http(s) address with a host. A drive letter, file: or any other
+    scheme is left to the source resolver."""
+    try:
+        parsed = urlparse(value)
+    except ValueError:
+        return False
+    return parsed.scheme in ("http", "https") and bool(parsed.netloc)
 
 
 def _valid_approved_at(value: Any) -> bool:
