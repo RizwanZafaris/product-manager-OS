@@ -8,9 +8,9 @@ service, or a model.
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install --no-index .
-pmos init --path ./my-product --product-id checkout
-pmos status --path ./my-product
-pmos verify --path ./my-product
+pmos init --path ./products/my-product --product-id checkout
+pmos status --path ./products/my-product
+pmos verify --path ./products/my-product
 ```
 
 For a release-style packaging check, use a normal isolated PEP 517 build:
@@ -24,19 +24,19 @@ public Conductor API.  It never invents a customer answer or gate proof. Add
 `--json` before or after the command for automation:
 
 ```bash
-pmos --json status --path ./my-product
+pmos --json status --path ./products/my-product
 ```
 
 Continue only with evidence you actually collected. The revision and question
 ID come from `init`/`status`; the evidence fields are checked by the conductor:
 
 ```bash
-pmos answer --path ./my-product --product-id checkout \
+pmos answer --path ./products/my-product --product-id checkout \
   --question-id first-outcome --answer "<your observed outcome>" \
   --evidence '{"class":"observed_behavior","source":"<interview or artifact>","date":"<YYYY-MM-DD>","location":"<where observed>"}' \
   --expected-revision 0:- --turn-id answer-001 --json
 
-pmos gate --path ./my-product --product-id checkout --bank-id onboarding \
+pmos gate --path ./products/my-product --product-id checkout --bank-id onboarding \
   --evidence '{"source":"approval/onboarding.txt","source_sha256":"<sha256-of-that-file>","actor_id":"local-reviewer","requester_id":"local-operator","decision":"approved","approved_at":"<UTC-YYYY-MM-DDTHH:MM:SSZ>"}' \
   --expected-revision '<revision returned by answer>' --turn-id gate-001 --json
 ```
@@ -80,10 +80,10 @@ digest before creating or completing a gate.
 For an older file workspace, inspect before changing anything:
 
 ```bash
-pmos migrate ./legacy-workspace --destination ./my-product --dry-run
-pmos migrate ./legacy-workspace --destination ./my-product --product-id checkout
-pmos recover ./my-product
-pmos rollback ./my-product
+pmos migrate ./legacy-workspace --destination ./products/my-product --dry-run
+pmos migrate ./legacy-workspace --destination ./products/my-product --product-id checkout
+pmos recover ./products/my-product
+pmos rollback ./products/my-product
 ```
 
 Migration builds and verifies a new database beside the active runtime, makes

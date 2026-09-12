@@ -130,12 +130,12 @@ The document workspace above is the portable record. Use the optional local runt
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install --no-build-isolation .
-pmos init --path ./my-product --product-id my-product
-pmos status --path ./my-product
-pmos verify --path ./my-product
+pmos init --path ./products/my-product --product-id my-product
+pmos status --path ./products/my-product
+pmos verify --path ./products/my-product
 ```
 
-`pmos` creates only local state under `./my-product/.pmos/`; it does not contact a provider by default. Read [docs/RUNTIME-QUICKSTART.md](docs/RUNTIME-QUICKSTART.md) before migrating an existing workspace or producing a provenance manifest.
+`pmos` creates only local state under `./products/my-product/.pmos/`; private runtime state stays out of git, and it does not contact a provider by default. Read [docs/RUNTIME-QUICKSTART.md](docs/RUNTIME-QUICKSTART.md) before migrating an existing workspace or producing a provenance manifest.
 
 **Local evidence is not external evidence.** A local green run proves only the executable local contract. Hosted CI, live provider behavior, vendor sandboxes, non-maintainer use, independent human review, organization-specific regulatory approval, and release publication remain separate required attestations in [docs/readiness/external-gates.json](docs/readiness/external-gates.json).
 

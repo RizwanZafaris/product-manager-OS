@@ -29,6 +29,41 @@ class CliTests(unittest.TestCase):
             with Store(Path(folder) / ".pmos/runtime.sqlite") as store:
                 self.assertEqual(store.head("checkout").revision, 0)
 
+    def test_gitignore_covers_pmos_runtime_and_sqlite_sidecars(self):
+        """F07: .gitignore must ignore .pmos/ at any depth and SQLite sidecar
+        files anywhere, so a routine git add never stages private answers or
+        database state."""
+        if shutil.which("git") is None:
+            self.skipTest("git is not installed")
+        repo_root = Path(__file__).resolve().parent.parent
+        try:
+            subprocess.run(
+                ["git", "rev-parse", "--is-inside-work-tree"],
+                cwd=str(repo_root), capture_output=True, check=True,
+            )
+        except (subprocess.CalledProcessError, OSError):
+            self.skipTest("not a git work tree")
+        ignored = [
+            "my-product/.pmos/runtime.sqlite",
+            ".pmos/runtime.sqlite",
+            "a/b/.pmos/runtime.sqlite-wal",
+            "products/demo/.pmos/runtime.sqlite",
+            "x/runtime.sqlite-shm",
+        ]
+        for path in ignored:
+            result = subprocess.run(
+                ["git", "check-ignore", path],
+                cwd=str(repo_root), capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0,
+                             "expected %s to be ignored" % path)
+        result = subprocess.run(
+            ["git", "check-ignore", "pmos/cli.py"],
+            cwd=str(repo_root), capture_output=True,
+        )
+        self.assertNotEqual(result.returncode, 0,
+                            "expected pmos/cli.py to not be ignored")
+
     def test_force_never_lets_init_overwrite_an_existing_product(self):
         """--force's help once promised the opposite of what it did: an
         existing product was always refused without --force, and --force's

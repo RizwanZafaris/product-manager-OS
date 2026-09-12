@@ -20,3 +20,9 @@ wheelhouse/
 learn/products/*/
 /products/
 .readiness/
+
+# Runtime state: .pmos directories and SQLite sidecar files at any depth
+.pmos/
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite-journal
