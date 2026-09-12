@@ -1104,6 +1104,207 @@ class WorkspaceModeTests(unittest.TestCase):
         finally:
             sys.path.pop(0)
 
+    def _artifact_block(self, fields):
+        workspace = self._workspace()
+        return workspace.render_artifact_block(fields)
+
+    def test_an_artifact_pair_passes(self):
+        block = self._artifact_block({
+            "artifact_id": "demo/discovery/problem-framing",
+            "phase": "DISCOVER",
+            "gate": 1,
+            "status": "draft",
+            "depends_on": [],
+            "template": "templates/discovery/problem-framing.md",
+        })
+        vision_block = self._artifact_block({
+            "artifact_id": "demo/planning/vision",
+            "phase": "DEFINE",
+            "gate": 2,
+            "status": "draft",
+            "depends_on": ["demo/discovery/problem-framing"],
+            "template": "templates/planning/vision.md",
+        })
+        codes, messages = ws_run({
+            "products/demo/discovery/problem-framing.md": block + "Body.\n",
+            "products/demo/planning/vision.md": vision_block + "Body.\n",
+        })
+        self.assertNotIn("ARTIFACT", codes, messages)
+
+    def test_a_stage_file_with_no_block_is_reported_with_the_stamp_hint(self):
+        codes, messages = ws_run({
+            "products/demo/planning/vision.md": "# Vision\n\nNo block.\n",
+        })
+        self.assertIn("ARTIFACT", codes)
+        self.assertIn("python3 tools/init_product.py demo --stamp", messages)
+
+    def test_a_bad_status_is_reported(self):
+        block = self._artifact_block({
+            "artifact_id": "demo/planning/vision",
+            "phase": "DEFINE",
+            "gate": 2,
+            "status": "bogus",
+            "depends_on": [],
+            "template": "templates/planning/vision.md",
+        })
+        codes, messages = ws_run({
+            "products/demo/planning/vision.md": block + "Body.\n",
+        })
+        self.assertIn("ARTIFACT", codes)
+        self.assertIn("status 'bogus'", messages)
+
+    def test_a_bad_phase_is_reported(self):
+        block = self._artifact_block({
+            "artifact_id": "demo/planning/vision",
+            "phase": "BOGUS",
+            "gate": 2,
+            "status": "draft",
+            "depends_on": [],
+            "template": "templates/planning/vision.md",
+        })
+        codes, messages = ws_run({
+            "products/demo/planning/vision.md": block + "Body.\n",
+        })
+        self.assertIn("ARTIFACT", codes)
+        self.assertIn("phase 'BOGUS'", messages)
+
+    def test_a_gate_of_seven_is_reported(self):
+        block = self._artifact_block({
+            "artifact_id": "demo/planning/vision",
+            "phase": "DEFINE",
+            "gate": 7,
+            "status": "draft",
+            "depends_on": [],
+            "template": "templates/planning/vision.md",
+        })
+        codes, messages = ws_run({
+            "products/demo/planning/vision.md": block + "Body.\n",
+        })
+        self.assertIn("ARTIFACT", codes)
+        self.assertIn("gate 7", messages)
+
+    def test_depends_on_as_a_plain_string_is_reported(self):
+        block = self._artifact_block({
+            "artifact_id": "demo/planning/vision",
+            "phase": "DEFINE",
+            "gate": 2,
+            "status": "draft",
+            "depends_on": ["demo/discovery/problem-framing"],
+            "template": "templates/planning/vision.md",
+        })
+        # Typed by hand the way a user might: no brackets and no quotes.
+        line = 'depends_on: ["demo/discovery/problem-framing"]\n'
+        self.assertIn(line, block)
+        block = block.replace(line, "depends_on: demo/discovery/problem-framing\n")
+        codes, messages = ws_run({
+            "products/demo/planning/vision.md": block + "Body.\n",
+        })
+        self.assertIn("ARTIFACT", codes)
+        self.assertIn("depends_on 'demo/discovery/problem-framing' is not a list",
+                      messages)
+
+    def test_a_missing_key_is_reported(self):
+        block = self._artifact_block({
+            "artifact_id": "demo/planning/vision",
+            "phase": "DEFINE",
+            "gate": 2,
+            "status": "draft",
+            "depends_on": [],
+            "template": "templates/planning/vision.md",
+        })
+        # render_artifact_block needs every key, so the line goes by hand.
+        self.assertIn("status: draft\n", block)
+        block = block.replace("status: draft\n", "")
+        codes, messages = ws_run({
+            "products/demo/planning/vision.md": block + "Body.\n",
+        })
+        self.assertIn("ARTIFACT", codes)
+        self.assertIn("missing the status key", messages)
+
+    def test_a_duplicate_artifact_id_is_reported_on_each_file(self):
+        block = self._artifact_block({
+            "artifact_id": "demo/planning/vision",
+            "phase": "DEFINE",
+            "gate": 2,
+            "status": "draft",
+            "depends_on": [],
+            "template": "templates/planning/vision.md",
+        })
+        codes, messages = ws_run({
+            "products/demo/planning/vision.md": block + "Body.\n",
+            "products/demo/discovery/problem-framing.md": block + "Body.\n",
+        })
+        self.assertIn("ARTIFACT", codes)
+        self.assertEqual(messages.count("carried by more than one file"), 2,
+                         messages)
+        self.assertIn("products/demo/discovery/problem-framing.md", messages)
+        self.assertIn("products/demo/planning/vision.md", messages)
+
+    def test_the_vision_alone_is_a_gap(self):
+        block = self._artifact_block({
+            "artifact_id": "demo/planning/vision",
+            "phase": "DEFINE",
+            "gate": 2,
+            "status": "draft",
+            "depends_on": ["demo/discovery/problem-framing"],
+            "template": "templates/planning/vision.md",
+        })
+        codes, messages = ws_run({
+            "products/demo/planning/vision.md": block + "Body.\n",
+        })
+        self.assertIn("ARTIFACT", codes)
+        self.assertIn(
+            "depends on demo/discovery/problem-framing and the workspace "
+            "does not have it yet", messages)
+
+    def test_a_root_file_with_no_block_is_not_reported(self):
+        codes, messages = ws_run({
+            "products/demo/DESIGN.md": "# Design\n\nNo block.\n",
+        })
+        self.assertNotIn("ARTIFACT", codes, messages)
+
+    def test_a_root_file_with_a_block_is_checked_and_its_id_counts(self):
+        design = self._artifact_block({
+            "artifact_id": "demo/DESIGN",
+            "phase": "DESIGN",
+            "gate": 3,
+            "status": "bogus",
+            "depends_on": [],
+            "template": "templates/architecture/design-md.md",
+        })
+        vision = self._artifact_block({
+            "artifact_id": "demo/planning/vision",
+            "phase": "DEFINE",
+            "gate": 2,
+            "status": "draft",
+            "depends_on": ["demo/DESIGN"],
+            "template": "templates/planning/vision.md",
+        })
+        codes, messages = ws_run({
+            "products/demo/DESIGN.md": design + "Body.\n",
+            "products/demo/planning/vision.md": vision + "Body.\n",
+        })
+        self.assertIn("status 'bogus'", messages)
+        self.assertNotIn("does not have it yet", messages)
+
+    def test_a_file_under_gates_with_no_block_is_not_reported(self):
+        codes, messages = ws_run({
+            "products/demo/gates/gate-1.md": "# Gate 1\n\nNo block.\n",
+        })
+        self.assertNotIn("ARTIFACT", codes, messages)
+
+    def test_a_run_log_with_no_block_is_not_reported(self):
+        codes, messages = ws_run({
+            "products/demo/planning/vision.run-log.md": "# Run log\n\nNo block.\n",
+        })
+        self.assertNotIn("ARTIFACT", codes, messages)
+
+    def test_a_route_report_with_no_block_is_not_reported(self):
+        codes, messages = ws_run({
+            "products/demo/planning/vision-report.md": "# Report\n\nNo block.\n",
+        })
+        self.assertNotIn("ARTIFACT", codes, messages)
+
     def test_a_clean_workspace_passes(self):
         codes, messages = ws_run({"products/demo/discovery.md": self.DRAFT})
         self.assertEqual(set(), codes, messages)
