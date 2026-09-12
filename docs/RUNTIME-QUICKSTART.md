@@ -19,7 +19,8 @@ The project uses a repository-local, standard-library PEP 517 backend, so no
 runtime dependencies are downloaded or required.
 
 `init` creates `.pmos/runtime.sqlite`, creates the product through the public
-Store API, and renders a deterministic first onboarding question through the
+Store API, pins the shipped question bank contract into the product, and
+renders `DISCOVER-1`, the first question of the `DISCOVER` bank, through the
 public Conductor API.  It never invents a customer answer or gate proof. Add
 `--json` before or after the command for automation:
 
@@ -31,21 +32,23 @@ Continue only with evidence you actually collected. The revision token and
 question ID come from `init`/`status`, and `status` also prints a `next` line
 with the one command to run next: the answer, the reopen command for a parked
 question, or the gate command for a bank ready for approval or whose approval
-went stale. The evidence fields are checked by the conductor:
+went stale. A bank is ready for its gate once every question in it is
+answered, and `pmos status` names the next question each time. The evidence
+fields are checked by the conductor:
 
 ```bash
 pmos answer --path ./products/my-product --product-id checkout \
-  --question-id first-outcome --answer "<your observed outcome>" \
+  --question-id DISCOVER-1 --answer "<your observed outcome>" \
   --evidence '{"class":"observed_behavior","source":"<interview or artifact>","date":"<YYYY-MM-DD>","location":"<where observed>"}' \
-  --expected-revision 0:- --turn-id answer-001 --json
+  --expected-revision '<revision_token from pmos status>' --turn-id answer-001 --json
 
 pmos reopen --path ./products/my-product --product-id checkout \
-  --question-id first-outcome --reason "<why you are reopening this parked question>" \
-  --expected-revision '<current revision from pmos status>' --turn-id reopen-001 --json
+  --question-id DISCOVER-1 --reason "<why you are reopening this parked question>" \
+  --expected-revision '<revision_token from pmos status>' --turn-id reopen-001 --json
 
-pmos gate --path ./products/my-product --product-id checkout --bank-id onboarding \
-  --evidence '{"source":"approval/onboarding.txt","source_sha256":"<sha256-of-that-file>","actor_id":"local-reviewer","requester_id":"local-operator","decision":"approved","approved_at":"<UTC-YYYY-MM-DDTHH:MM:SSZ>"}' \
-  --expected-revision '<revision returned by answer>' --turn-id gate-001 --json
+pmos gate --path ./products/my-product --product-id checkout --bank-id discover \
+  --evidence '{"source":"approval/discover.txt","source_sha256":"<sha256-of-that-file>","actor_id":"local-reviewer","requester_id":"local-operator","decision":"approved","approved_at":"<UTC-YYYY-MM-DDTHH:MM:SSZ>"}' \
+  --expected-revision '<revision_token from pmos status>' --turn-id gate-001 --json
 ```
 
 A rejection never records a gate approval, and the answer it refused is not
@@ -58,10 +61,12 @@ request refused before the conductor reads it: a question ID that is not well
 formed, evidence that is not a JSON object, or a bank ID that does not exist.
 Replaying a turn ID with the identical request returns its original result.
 Read the next revision from `pmos status`, which prints `revision_token`
-(the exact token to pass as `--expected-revision`; it is `0:-` before
-anything is committed), or, for a rejection that wrote a record, from that
-rejection's own `revision` field. After a rejection that wrote a record, the
-revision `answer` returned is stale and retrying with it is refused as a
+(the exact token to pass as `--expected-revision`; a product made by `init`
+is already at revision 1 because `init` commits the pinned contract, and
+`pmos status` always prints the exact token), or, for a rejection that
+wrote a record, from that rejection's own `revision` field. After a
+rejection that wrote a record, the revision `answer` returned is stale and
+retrying with it is refused as a
 conflict; `pmos status` is current either way.
 A third rejected submission, after two challenges, parks it: the answer is
 filed as offered and marked parked, the cursor moves on, and the bank's
@@ -72,10 +77,17 @@ answer it with fresh evidence, because evidence identical to a rejected
 submission is refused afterwards.
 Replace every angle-bracket value with a real, traceable source; the source
 must be a regular, non-symlink file inside the workspace (but outside
-`.pmos/`) and its digest must match. The pinned onboarding policy requires
-`local-reviewer` and rejects self-approval where requester and reviewer are
-the same. Placeholders are intentionally not accepted as evidence by the
+`.pmos/`) and its digest must match. The pinned banks name `local-reviewer`
+as the gate approver and reject self-approval where requester and reviewer
+are the same. Placeholders are intentionally not accepted as evidence by the
 runtime.
+
+An answer may carry the evidence class its question asks for or a stronger
+one, observed behavior being the strongest. A product keeps the contract it
+started with, and `pmos status` shows its pinned and shipped bank versions
+under `question_banks`. Moving a product to a newer contract is not
+supported yet. A product created before the contract, or by `pmos migrate`,
+keeps the one-question onboarding bank.
 
 The runtime retains the most recent 1,024 Conductor turn records as an
 idempotency window. Replaying a retained turn ID returns its original result
