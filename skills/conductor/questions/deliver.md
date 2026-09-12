@@ -91,7 +91,7 @@ Lands in: the workspace gtm plan, launch sequence section, and STATE.md accepted
 
 Ask: What is the one metric that says the launch worked, and by when?
 Wrong costs: Without one metric named in advance, the retrospective grades on a curve of whatever moved.
-Evidence class: a measurable signal plus the source system that will measure it, consistent with the Gate 1 signal from DISCOVER-7.
+Evidence class: 2, a measurable signal plus the source system that will measure it, consistent with the Gate 1 signal from DISCOVER-7.
 Cross-examine when: multiple metrics arrive, or the metric contradicts DISCOVER-7 without explanation. Move: naked numbers.
 Accept when: one metric, one threshold or direction, one date, one source system.
 Lands in: the workspace gtm plan, success measure section, and STATE.md accepted answers.
@@ -100,7 +100,7 @@ Lands in: the workspace gtm plan, success measure section, and STATE.md accepted
 
 Ask: What condition pauses the rollout?
 Wrong costs: A rollout with no stop condition stops only when the damage does.
-Evidence class: an observable condition with a threshold and a named authority to call the stop.
+Evidence class: 3, the named authority's commitment to call the stop: an observable condition with a threshold and that authority named.
 Cross-examine when: the condition is "if things look bad". Move: naked numbers.
 Accept when: condition, threshold, and the person with authority to pull it, named.
 Lands in: the workspace gtm plan, stop condition section, and `execution/risk-register.md`, and STATE.md accepted answers.

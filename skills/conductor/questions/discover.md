@@ -65,7 +65,7 @@ Lands in: `discovery/discovery-document.md` section 2 citations and `discovery/p
 
 Ask: What would make the honest answer no-go?
 Wrong costs: A gate that cannot fail is a ceremony, and Gate 1 requires the no-go case seriously argued.
-Evidence class: a stated disconfirming condition someone could observe; class 5 filed openly is acceptable here, because the condition, not its truth, is the deliverable.
+Evidence class: 5, filed openly: a stated disconfirming condition someone could observe, because the condition, not its truth, is the deliverable.
 Cross-examine when: the answer is "nothing realistic" or restates the pitch. Move: banned openers, then ask what observation this month would kill it.
 Accept when: one observable condition that, if seen, ends the initiative.
 Lands in: `discovery/discovery-document.md` section 7, and STATE.md accepted answers.
@@ -74,7 +74,7 @@ Lands in: `discovery/discovery-document.md` section 7, and STATE.md accepted ans
 
 Ask: What observable signal, measurable at Gate 6, says this worked?
 Wrong costs: Named after launch, the signal becomes whatever the launch produced.
-Evidence class: a measurable signal plus the source system that will measure it.
+Evidence class: 2, a measurable signal plus the source system that will measure it.
 Cross-examine when: the signal is an adjective or has no source system. Move: naked numbers.
 Accept when: signal, threshold or direction, source system, all named before any solution exists.
 Lands in: `discovery/discovery-document.md` section 5, and STATE.md accepted answers.
@@ -92,7 +92,7 @@ Lands in: STATE.md position block, `Domain:` line.
 
 Ask: In one sentence, with no solution words, what is the problem?
 Wrong costs: With no accepted sentence in this exact form, every later reader states the problem differently, and DEFINE-4 traces objectives to a sentence nobody agreed on.
-Evidence class: every clause traces to an accepted DISCOVER-1, DISCOVER-2, or DISCOVER-3 answer; this entry composes them, it does not gather new evidence.
+Evidence class: 2, the accepted answers it cites: every clause traces to an accepted DISCOVER-1, DISCOVER-2, or DISCOVER-3 answer; this entry composes them, it does not gather new evidence.
 Cross-examine when: the sentence names a feature, a solution, or needs two sentences to say. Move: banned openers, then: state it as a person, a circumstance, and a consequence, nothing else.
 Accept when: one sentence in the section 3 form, each clause citing the accepted answer ID it comes from.
 Lands in: `discovery/problem-framing.md` section 3, and STATE.md accepted answers.
