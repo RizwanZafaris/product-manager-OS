@@ -241,6 +241,22 @@ def _answer(args: argparse.Namespace) -> dict[str, Any]:
         return result
 
 
+def _reopen(args: argparse.Namespace) -> dict[str, Any]:
+    root, database = _paths(args.path)
+    if not database.exists():
+        raise ValidationError("runtime is missing; run `pmos init --path %s`" % root)
+    with Store(database) as store:
+        conductor = Conductor(store, args.product_id, _banks(),
+                              gate_source_verifier=_local_gate_verifier(root))
+        outcome = conductor.reopen(args.question_id, expected_revision=args.expected_revision,
+                                    turn_id=args.turn_id, reason=args.reason)
+        result = {"ok": outcome.status == "reopened", "product_id": args.product_id,
+                  "outcome": _outcome_dict(outcome)}
+        if not result["ok"]:
+            result["error"] = "reopen was not accepted; provide the current revision and a new turn id"
+        return result
+
+
 def _gate(args: argparse.Namespace) -> dict[str, Any]:
     root, database = _paths(args.path)
     if not database.exists():
@@ -280,6 +296,7 @@ def _parser() -> argparse.ArgumentParser:
         if name == "verify":
             sub.add_argument("--provenance", help="provenance manifest to verify")
     for name, help_text in (("answer", "submit a caller-supplied answer and evidence"),
+                            ("reopen", "reopen a parked question so it can be answered with fresh evidence"),
                             ("gate", "submit caller-supplied gate proof")):
         sub = commands.add_parser(name, help=help_text)
         sub.add_argument("--path", default=".")
@@ -287,11 +304,15 @@ def _parser() -> argparse.ArgumentParser:
         sub.add_argument("--expected-revision", required=True,
                          help="head token returned by init/status/previous outcome")
         sub.add_argument("--turn-id", required=True, help="unique idempotency key for this submission")
-        sub.add_argument("--evidence", required=True, help="JSON object containing caller-supplied evidence")
+        if name != "reopen":
+            sub.add_argument("--evidence", required=True, help="JSON object containing caller-supplied evidence")
         sub.add_argument("--json", action="store_true", dest="json_command")
         if name == "answer":
             sub.add_argument("--question-id", required=True)
             sub.add_argument("--answer", required=True)
+        elif name == "reopen":
+            sub.add_argument("--question-id", required=True)
+            sub.add_argument("--reason", required=True)
         else:
             sub.add_argument("--bank-id", required=True)
     migrate = commands.add_parser("migrate", help="migrate a legacy workspace with a dry-run option")
@@ -325,6 +346,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             result = _verify(args)
         elif args.command == "answer":
             result = _answer(args)
+        elif args.command == "reopen":
+            result = _reopen(args)
         elif args.command == "gate":
             result = _gate(args)
         elif args.command == "migrate":

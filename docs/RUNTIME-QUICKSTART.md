@@ -36,6 +36,10 @@ pmos answer --path ./products/my-product --product-id checkout \
   --evidence '{"class":"observed_behavior","source":"<interview or artifact>","date":"<YYYY-MM-DD>","location":"<where observed>"}' \
   --expected-revision 0:- --turn-id answer-001 --json
 
+pmos reopen --path ./products/my-product --product-id checkout \
+  --question-id first-outcome --reason "<why you are reopening this parked question>" \
+  --expected-revision '<current revision from pmos status>' --turn-id reopen-001 --json
+
 pmos gate --path ./products/my-product --product-id checkout --bank-id onboarding \
   --evidence '{"source":"approval/onboarding.txt","source_sha256":"<sha256-of-that-file>","actor_id":"local-reviewer","requester_id":"local-operator","decision":"approved","approved_at":"<UTC-YYYY-MM-DDTHH:MM:SSZ>"}' \
   --expected-revision '<revision returned by answer>' --turn-id gate-001 --json
@@ -59,8 +63,10 @@ conflict; `pmos status` is current either way.
 A third rejected submission, after two challenges, parks it: the answer is
 filed as offered and marked parked, the cursor moves on, and the bank's
 remaining questions can still be answered. The bank's gate proof is refused
-while any of its answers is parked, and no command clears a park yet, so a
-bank holding a parked question cannot reach its gate.
+while any of its answers is parked. To recover, reopen the parked question
+with its question ID, a reason, the current revision, and a new turn ID, then
+answer it with fresh evidence, because evidence identical to a rejected
+submission is refused afterwards.
 Replace every angle-bracket value with a real, traceable source; the source
 must be a regular, non-symlink file inside the workspace (but outside
 `.pmos/`) and its digest must match. The pinned onboarding policy requires

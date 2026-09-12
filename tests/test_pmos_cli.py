@@ -148,6 +148,57 @@ class CliTests(unittest.TestCase):
             gated = json.loads(gate_output.getvalue())
             self.assertTrue(gated["outcome"]["completed"])
 
+    def test_reopen_parked_question_then_answer_with_fresh_evidence(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+
+            def token() -> str:
+                # The current revision token, read the way the flow test above
+                # reads it. `pmos status` prints revision and commit_hash but no
+                # ready-made token yet (its commit_hash is null at revision 0,
+                # where the token is 0:-); F11 adds one.
+                with Store(Path(folder) / ".pmos/runtime.sqlite") as store:
+                    return store.head("checkout").token
+
+            invalid = {"class": "observed_behavior", "source": "real interview"}
+            for label in ("bad1", "bad2", "bad3"):
+                self.assertEqual(main(["answer", "--path", folder, "--product-id", "checkout",
+                                       "--question-id", "first-outcome", "--answer", "A real outcome",
+                                       "--evidence", json.dumps(invalid),
+                                       "--expected-revision", token(), "--turn-id", label, "--json"]), 1)
+            reopen_args = ["reopen", "--path", folder, "--product-id", "checkout",
+                           "--question-id", "first-outcome", "--reason", "found the call recording",
+                           "--expected-revision", token(), "--turn-id", "reopen-1", "--json"]
+            reopen_output = StringIO()
+            with redirect_stdout(reopen_output):
+                self.assertEqual(main(reopen_args), 0)
+            reopened = json.loads(reopen_output.getvalue())
+            self.assertEqual((reopened["ok"], reopened["outcome"]["status"]), (True, "reopened"))
+            self.assertEqual(reopened["outcome"]["question"]["id"], "first-outcome")
+            valid = {"class": "observed_behavior", "source": "interview-001",
+                     "date": "2026-09-04", "location": "customer-call"}
+            answer_output = StringIO()
+            with redirect_stdout(answer_output):
+                self.assertEqual(main(["answer", "--path", folder, "--product-id", "checkout",
+                                       "--question-id", "first-outcome", "--answer", "A real outcome",
+                                       "--evidence", json.dumps(valid),
+                                       "--expected-revision", reopened["outcome"]["revision"],
+                                       "--turn-id", "good-after-reopen", "--json"]), 0)
+            self.assertEqual(json.loads(answer_output.getvalue())["outcome"]["status"], "accepted")
+            # Replaying the reopen turn returns its recorded outcome; only the
+            # revision differs, because a replay reports the current head.
+            replay_output = StringIO()
+            with redirect_stdout(replay_output):
+                self.assertEqual(main(reopen_args), 0)
+            replayed = json.loads(replay_output.getvalue())["outcome"]
+            self.assertEqual({key: value for key, value in replayed.items() if key != "revision"},
+                             {key: value for key, value in reopened["outcome"].items() if key != "revision"})
+            # A new reopen still carrying the parked-time revision is stale now.
+            stale_output = StringIO()
+            with redirect_stdout(stale_output):
+                self.assertEqual(main(reopen_args[:-3] + ["--turn-id", "reopen-stale", "--json"]), 1)
+            self.assertEqual(json.loads(stale_output.getvalue())["outcome"]["status"], "conflict")
+
     def test_actionable_missing_runtime_error_is_json(self):
         with TemporaryDirectory() as folder:
             self.assertEqual(main(["status", "--path", folder, "--json"]), 2)
