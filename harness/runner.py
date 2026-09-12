@@ -3062,6 +3062,21 @@ def _run_task(args, cfg, tasks, manifest_note, product, started_at):
         for raw, why in skipped:
             log.append("link left alone: %s (%s)" % (raw, why))
 
+    # A copy the runner places carries the same artifact block as one the
+    # initializer places, from the same function. Only an artifact route is
+    # stamped: a report lands at report_path, not at its template's
+    # destination. refuse_clobber has already stopped a rerun without
+    # --update, so a file that exists here is an --update rerun: its
+    # artifact_id and depends_on carry over and its status goes back to draft.
+    if template is not None and artifact is not None and kind == "artifact":
+        previous = (artifact.read_text(encoding="utf-8")
+                    if artifact.exists() else None)
+        template_rel = template.relative_to(REPO).as_posix()
+        artifact_text = workspace.stamp_artifact(
+            artifact_text, template_rel, product, previous=previous)
+        parsed = workspace.parse_artifact(artifact_text)
+        log.append("stamped artifact_id: %s" % parsed["artifact_id"])
+
     # An interactive or reference route answers a person and stops. Writing
     # its answer into the workspace would leave a file that looks like a
     # reviewed artifact and is not one, and a run log has nowhere to sit with

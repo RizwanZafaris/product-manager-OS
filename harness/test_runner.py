@@ -644,6 +644,58 @@ class RunTaskTests(unittest.TestCase):
         self.assertIn("Second run",
                       self.artifact.read_text(encoding="utf-8"))
 
+    def test_a_complete_run_stamps_an_artifact_block(self):
+        filled = self.template_text.replace("[source short name]",
+                                            "Ledgerline support export")
+        self._stub_body(filled)
+        self.assertEqual(
+            _quiet_run(self._args(), self.cfg, self.tasks), 0)
+        self.assertTrue(self.artifact.exists())
+        text = self.artifact.read_text(encoding="utf-8")
+        parsed = runner.workspace.parse_artifact(text)
+        self.assertIsNotNone(parsed, "no artifact frontmatter was stamped")
+        self.assertEqual(parsed["artifact_id"],
+                         "%s/discovery/evidence-note" % self.slug)
+        self.assertEqual(parsed["phase"], "DISCOVER")
+        self.assertEqual(parsed["gate"], 1)
+        self.assertEqual(parsed["status"], "draft")
+        self.assertEqual(parsed["template"], "templates/discovery/evidence-note.md")
+        self.assertEqual(parsed["depends_on"], [])
+        self.assertIn("## Run provenance", text)
+
+    def test_an_update_rerun_keeps_the_prior_artifact_id_and_resets_status(self):
+        filled = self.template_text.replace("[source short name]", "First run")
+        self._stub_body(filled)
+        self.assertEqual(_quiet_run(self._args(), self.cfg, self.tasks), 0)
+        self.assertTrue(self.artifact.exists())
+
+        text = self.artifact.read_text(encoding="utf-8")
+        text = text.replace(
+            "artifact_id: %s/discovery/evidence-note" % self.slug,
+            "artifact_id: %s/discovery/renamed" % self.slug)
+        text = text.replace("status: draft", "status: approved")
+        # Both edits must land, or the assertions below prove nothing.
+        self.assertIn("artifact_id: %s/discovery/renamed" % self.slug, text)
+        self.assertIn("status: approved", text)
+        self.artifact.write_text(text, encoding="utf-8")
+
+        self._stub_body(self.template_text.replace("[source short name]",
+                                                   "Second run body"))
+        runner._MEMO.clear()
+        self.assertEqual(
+            _quiet_run(self._args(update=True), self.cfg, self.tasks), 0)
+
+        rewritten = self.artifact.read_text(encoding="utf-8")
+        parsed = runner.workspace.parse_artifact(rewritten)
+        self.assertIsNotNone(parsed, "the rerun dropped the artifact block")
+        self.assertEqual(parsed["artifact_id"],
+                         "%s/discovery/renamed" % self.slug,
+                         "the rerun reset the artifact_id instead of keeping it")
+        self.assertEqual(parsed["status"], "draft",
+                         "the rerun left the prior approved status in place")
+        self.assertIn("Second run body", rewritten,
+                      "the rerun did not write the new body")
+
     def test_a_traversal_product_never_reaches_a_model_call(self):
         called = {"n": 0}
 
