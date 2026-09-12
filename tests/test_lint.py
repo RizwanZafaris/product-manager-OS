@@ -1092,6 +1092,15 @@ class WorkspaceModeTests(unittest.TestCase):
     DRAFT = ("# Discovery: demo\n\nStage: DISCOVER\n\n"
              "A filled draft that violates nothing.\n")
 
+    def _workspace(self):
+        import importlib
+        import sys
+        sys.path.insert(0, str(REPO / "tools"))
+        try:
+            return importlib.import_module("workspace")
+        finally:
+            sys.path.pop(0)
+
     def test_a_clean_workspace_passes(self):
         codes, messages = ws_run({"products/demo/discovery.md": self.DRAFT})
         self.assertEqual(set(), codes, messages)
@@ -1107,6 +1116,120 @@ class WorkspaceModeTests(unittest.TestCase):
             "products/demo/sub/discovery.md": "[gate](../../../os/GATES.md)\n",
             "os/GATES.md": "# Gates\n"})
         self.assertEqual(set(), codes, messages)
+
+    def test_artifact_id_for_covers_planning_definition_ai_and_root_design(self):
+        ws = self._workspace()
+        self.assertEqual(
+            ws.artifact_id_for("demo", "products/demo/planning/product-strategy.md"),
+            "demo/planning/product-strategy")
+        self.assertEqual(
+            ws.artifact_id_for("demo", "products/demo/definition/ai/eval-spec.md"),
+            "demo/definition/ai/eval-spec")
+        self.assertEqual(
+            ws.artifact_id_for("demo", "products/demo/DESIGN.md"),
+            "demo/DESIGN")
+
+    def test_artifact_id_for_refuses_paths_outside_products_slug(self):
+        ws = self._workspace()
+        with self.assertRaises(ws.WorkspaceError):
+            ws.artifact_id_for("demo", "templates/planning/vision.md")
+        with self.assertRaises(ws.WorkspaceError):
+            ws.artifact_id_for("demo", "products/other/planning/vision.md")
+        with self.assertRaises(ws.WorkspaceError):
+            ws.artifact_id_for("demo", "products/demo/planning/vision.txt")
+
+    def test_stamp_artifact_on_product_strategy_for_demo(self):
+        ws = self._workspace()
+        template_rel = "templates/planning/product-strategy.md"
+        text = ws.read_text(REPO / template_rel)
+        body = "\n\n# Strategy\n\nBody line.\n"
+        stamped = ws.stamp_artifact(text + body, template_rel, "demo")
+        fields = ws.parse_artifact(stamped)
+        self.assertEqual(fields["artifact_id"], "demo/planning/product-strategy")
+        self.assertEqual(fields["phase"], "DEFINE")
+        self.assertEqual(fields["gate"], 2)
+        self.assertEqual(fields["status"], "draft")
+        self.assertEqual(fields["depends_on"], ["demo/planning/vision"])
+        self.assertEqual(fields["template"], template_rel)
+        self.assertTrue(stamped.endswith(body))
+        # Everything after the frontmatter, the template's own body included,
+        # comes back byte for byte.
+        original = text + body
+        match = ws.FRONTMATTER_RE.match(stamped)
+        self.assertEqual(stamped[match.end():],
+                         original[ws.FRONTMATTER_RE.match(original).end():])
+
+    def test_stamp_artifact_with_previous_keeps_old_id_and_depends_on(self):
+        ws = self._workspace()
+        template_rel = "templates/planning/product-strategy.md"
+        text = ws.read_text(REPO / template_rel)
+        previous = ("---\n"
+                    "artifact_id: demo/planning/old-name\n"
+                    "phase: DEFINE\n"
+                    "gate: 2\n"
+                    "status: approved\n"
+                    "depends_on: [\"demo/planning/vision\"]\n"
+                    "template: templates/planning/product-strategy.md\n"
+                    "---\n\nOld body.\n")
+        stamped = ws.stamp_artifact(text + "\n\nBody.\n", template_rel, "demo",
+                                   previous=previous)
+        fields = ws.parse_artifact(stamped)
+        self.assertEqual(fields["artifact_id"], "demo/planning/old-name")
+        self.assertEqual(fields["depends_on"], ["demo/planning/vision"])
+        self.assertEqual(fields["status"], "draft")
+
+    def test_stamp_artifact_leaves_state_md_unchanged(self):
+        ws = self._workspace()
+        template_rel = "templates/execution/state.md"
+        text = ws.read_text(REPO / template_rel)
+        stamped = ws.stamp_artifact(text, template_rel, "demo")
+        self.assertEqual(stamped, text)
+
+    def test_parse_artifact_round_trips_render_artifact_block(self):
+        ws = self._workspace()
+        fields = {
+            "artifact_id": "demo/definition/prd",
+            "phase": "DEFINE",
+            "gate": 3,
+            "status": "approved",
+            "depends_on": ["demo/planning/roadmap", "demo/discovery/problem-framing"],
+            "template": "templates/definition/prd.md",
+        }
+        block = ws.render_artifact_block(fields)
+        body = "\n\n# PRD\n\nText.\n"
+        parsed = ws.parse_artifact(block + body)
+        self.assertEqual(parsed, fields)
+
+    def test_artifact_revision_ignores_status_change_but_not_body_change(self):
+        ws = self._workspace()
+        fields = {
+            "artifact_id": "demo/definition/prd",
+            "phase": "DEFINE",
+            "gate": 3,
+            "status": "draft",
+            "depends_on": ["demo/planning/roadmap"],
+            "template": "templates/definition/prd.md",
+        }
+        a = ws.render_artifact_block(fields) + "\n\nBody.\n"
+        fields["status"] = "approved"
+        b = ws.render_artifact_block(fields) + "\n\nBody.\n"
+        self.assertEqual(ws.artifact_revision(a), ws.artifact_revision(b))
+        fields["status"] = "draft"
+        c = ws.render_artifact_block(fields) + "\n\nBody changed.\n"
+        self.assertNotEqual(ws.artifact_revision(a), ws.artifact_revision(c))
+
+    def test_parse_artifact_returns_malformed_depends_on_as_raw_string(self):
+        ws = self._workspace()
+        text = ("---\n"
+                "artifact_id: demo/definition/prd\n"
+                "phase: DEFINE\n"
+                "gate: 3\n"
+                "status: draft\n"
+                "depends_on: not-a-json-array\n"
+                "template: templates/definition/prd.md\n"
+                "---\n\nBody.\n")
+        fields = ws.parse_artifact(text)
+        self.assertEqual(fields["depends_on"], "not-a-json-array")
 
     def test_a_link_climbing_out_of_the_repository_is_still_caught(self):
         codes, messages = ws_run(
