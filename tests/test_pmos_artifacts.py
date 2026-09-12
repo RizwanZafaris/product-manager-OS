@@ -3,10 +3,10 @@
 
     python3 -m unittest test_pmos_artifacts
 
-The runtime ships pmos/ but not tools/, so it needs its own copy of the artifact
-frontmatter contract. These tests build a small temporary workspace and compare
-the reader against tools/workspace.py, then exercise scan, build_manifest and
-check_manifest.
+The runtime ships pmos/ but not tools/, so the reader of the artifact
+frontmatter contract lives in pmos/artifacts.py and tools/workspace.py imports
+it rather than keeping a copy. These tests check that it does, then build a
+small temporary workspace and exercise scan, build_manifest and check_manifest.
 """
 from __future__ import annotations
 
@@ -131,15 +131,12 @@ class ArtifactManifestTests(unittest.TestCase):
             "demo/planning/product-strategy",
         }
 
-    def test_parse_artifact_matches_tools(self):
-        for text in (self.problem, self.vision, self.strategy):
-            self.assertEqual(artifacts.parse_artifact(text),
-                             workspace.parse_artifact(text))
-
-    def test_artifact_revision_matches_tools(self):
-        for text in (self.problem, self.vision, self.strategy):
-            self.assertEqual(artifacts.artifact_revision(text),
-                             workspace.artifact_revision(text))
+    def test_tools_workspace_uses_the_runtime_reader(self):
+        # One reader: a local copy in tools/workspace.py could drift from the runtime's.
+        for name in ("FRONTMATTER_RE", "ARTIFACT_PHASES", "ARTIFACT_STATUSES",
+                     "ARTIFACT_KEYS", "ARTIFACT_FIELD_RE", "parse_artifact",
+                     "_parse_artifact_value", "not_an_artifact", "artifact_revision"):
+            self.assertIs(getattr(workspace, name), getattr(artifacts, name), name)
 
     def test_scan_returns_three_artifacts(self):
         found = artifacts.scan(self.root)

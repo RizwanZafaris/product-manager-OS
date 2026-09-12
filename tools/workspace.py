@@ -30,7 +30,6 @@ caller keeps.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import posixpath
 import re
@@ -65,6 +64,18 @@ PRODUCT_SLUG_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 # import harness/, which is deletable; lint.py sits at the root and is not.
 sys.path.insert(0, str(REPO))
 import lint as _lint                                       # noqa: E402
+# The artifact contract's reader lives in the runtime package, which the wheel ships.
+from pmos.artifacts import (                               # noqa: E402
+    ARTIFACT_FIELD_RE,
+    ARTIFACT_KEYS,
+    ARTIFACT_PHASES,
+    ARTIFACT_STATUSES,
+    FRONTMATTER_RE,
+    _parse_artifact_value,
+    artifact_revision,
+    not_an_artifact,
+    parse_artifact,
+)
 
 LINK_RE = _lint.LINK_RE
 REF_DEF_RE = _lint.REF_DEF_RE
@@ -91,17 +102,7 @@ def wrap_target(target, was_angled):
             if was_angled or " " in target or "(" in target or ")" in target
             else target)
 
-FRONTMATTER_RE = re.compile(r"\A---\r?\n(.*?)\r?\n---[ \t]*\r?\n", re.S)
 STAGE_FIELD_RE = re.compile(r"^stage:\s*(.+?)\s*$", re.M)
-
-# The artifact contract. A filled template's copy carries a small frontmatter
-# block with these six keys, and this module is the one place that reads,
-# renders and stamps it. Both callers share it.
-ARTIFACT_PHASES = ("DISCOVER", "DEFINE", "DESIGN", "BUILD", "DELIVER",
-                   "OPERATE", "PLANNING", "AI OVERLAY", "ALL STAGES")
-ARTIFACT_STATUSES = ("draft", "in-review", "approved", "superseded")
-ARTIFACT_KEYS = ("artifact_id", "phase", "gate", "status", "depends_on",
-                 "template")
 
 # One template's dependencies, as repo-relative template paths. The chain is
 # the dependency chain, not the stage chain: vision needs problem-framing,
@@ -123,8 +124,6 @@ DEPENDS_ON = {
     "templates/definition/frd.md":
         ("templates/definition/prd.md",),
 }
-
-ARTIFACT_FIELD_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_-]*):\s*(.*?)\s*$")
 
 # Ten templates write the Stage/Knowledge/Skill header as a bare path rather
 # than a markdown link. The repository gate does not read those, because it
@@ -455,54 +454,6 @@ def _artifact_dep_ids(slug, template_rel):
     return ids
 
 
-def parse_artifact(text):
-    """The artifact frontmatter as a dict, or None when there is no artifact.
-
-    Reads only the six ARTIFACT_KEYS, from lines of the form key: value.
-    depends_on is a JSON array of strings, gate is an integer or null, and the
-    others are plain strings. A value that does not parse is kept as its raw
-    string, so a checker can report it rather than crash.
-    """
-    match = FRONTMATTER_RE.match(text or "")
-    if not match:
-        return None
-    body = match.group(1)
-    fields = {}
-    for line in body.split("\n"):
-        line = line.rstrip("\r")
-        field = ARTIFACT_FIELD_RE.match(line)
-        if not field:
-            continue
-        key, raw = field.group(1), field.group(2)
-        if key not in ARTIFACT_KEYS:
-            continue
-        if key not in fields:
-            fields[key] = _parse_artifact_value(key, raw)
-    if "artifact_id" not in fields:
-        return None
-    return fields
-
-
-def _parse_artifact_value(key, raw):
-    if key == "depends_on":
-        try:
-            value = json.loads(raw)
-        except (ValueError, TypeError):
-            return raw
-        if isinstance(value, list) and all(isinstance(item, str)
-                                          for item in value):
-            return value
-        return raw
-    if key == "gate":
-        if raw == "null":
-            return None
-        try:
-            return int(raw)
-        except ValueError:
-            return raw
-    return raw
-
-
 def render_artifact_block(fields):
     """The frontmatter block for a dict holding all six keys."""
     lines = ["---"]
@@ -523,19 +474,6 @@ def render_artifact_block(fields):
         lines.append("%s: %s" % (key, rendered))
     lines.append("---")
     return "\n".join(lines) + "\n"
-
-
-def not_an_artifact(inside):
-    """True for a workspace file that never carries the artifact block.
-
-    inside is the file's path relative to the workspace, in posix form. The
-    root README.md and STATE.md, anything under gates/, the run log the runner
-    writes beside a copy, and a report route's findings are records of the
-    work rather than artifacts of it, so --stamp leaves them alone and the
-    workspace gate does not ask them for the block.
-    """
-    return (inside in ("README.md", "STATE.md") or inside.startswith("gates/")
-            or inside.endswith(".run-log.md") or inside.endswith("-report.md"))
 
 
 def stamp_artifact(text, template_rel, slug, previous=None):
@@ -584,14 +522,6 @@ def stamp_artifact(text, template_rel, slug, previous=None):
     match = FRONTMATTER_RE.match(text or "")
     body = text[match.end():] if match else (text or "")
     return render_artifact_block(fields) + body
-
-
-def artifact_revision(text):
-    """The sha256 hex digest of the body after the frontmatter block."""
-    match = FRONTMATTER_RE.match(text or "")
-    body = text[match.end():] if match else (text or "")
-    normalized = body.replace("\r\n", "\n").replace("\r", "\n")
-    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
 
 def read_text(path):
