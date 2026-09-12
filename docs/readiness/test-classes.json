@@ -42,6 +42,9 @@
     "test_pmos_domain": [
       "DomainTest"
     ],
+    "test_pmos_handoff": [
+      "HandoffTests"
+    ],
     "test_pmos_hooks": [
       "ClaudeHookTests",
       "RuntimeHookTests"

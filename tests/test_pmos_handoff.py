@@ -1,0 +1,247 @@
+"""Tests for the handoff package builder."""
+
+from __future__ import annotations
+
+import hashlib
+import tempfile
+import unittest
+from pathlib import Path
+
+from pmos.conductor import Conductor, EvidenceClass, Question, QuestionBank
+from pmos.handoff import SECTIONS, build_handoff
+from pmos.store import Store
+
+from test_pmos_artifacts import BLOCK_TEMPLATE, block
+from test_pmos_conductor import gate_proof
+
+
+BANKS = (
+    QuestionBank("discover", "v1", (
+        Question("discover.problem", "What is the problem statement?", EvidenceClass.OBSERVED_BEHAVIOR),
+    ), gate_prerequisites=("signed_by",), gate_approvers=("asha",)),
+    QuestionBank("define", "v1", (
+        Question("define.scope", "What scope was approved?", EvidenceClass.OBSERVED_BEHAVIOR),
+    ), gate_prerequisites=("signed_by",), gate_approvers=("asha",)),
+    QuestionBank("design", "v1", (
+        Question("design.interface", "What interface was decided?", EvidenceClass.OBSERVED_BEHAVIOR),
+    ), gate_prerequisites=("signed_by",), gate_approvers=("asha",)),
+)
+
+
+def observed() -> dict[str, str]:
+    return {"class": "observed_behavior", "source": "session replay", "date": "2026-09-03", "location": "replay/17"}
+
+
+def sample_contract() -> dict[str, object]:
+    return {
+        "schema": 1,
+        "banks": [
+            {"id": "discover", "version": "v1", "questions": [], "gate": 1},
+            {"id": "define", "version": "v1", "questions": [], "gate": 2},
+            {"id": "design", "version": "v1", "questions": [], "gate": 3},
+        ],
+    }
+
+
+class HandoffTests(unittest.TestCase):
+    PRODUCT_ID = "payments"
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+        self.store = Store(self.root / "runtime.sqlite")
+        self.contract = sample_contract()
+        self._write_baseline_workspace()
+        self.conductor = Conductor(self.store, self.PRODUCT_ID, BANKS,
+                                  gate_source_verifier=self._gate_source_verifier)
+
+    def tearDown(self) -> None:
+        self.store.close()
+        self._tmp.cleanup()
+
+    def _write(self, rel: str, text: str) -> None:
+        path = self.root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+
+    def _section_body(self, modified: tuple[str, str] | None = None) -> str:
+        body = []
+        for index, title in enumerate(SECTIONS, 1):
+            body.append(f"## {title}")
+            if modified and modified[0] == title:
+                body.append(modified[1])
+            else:
+                body.append(f"[{title}](sections/{index}.md)")
+            body.append("")
+        return "\n".join(body) + "\n"
+
+    def _write_baseline_workspace(self) -> None:
+        for index, title in enumerate(SECTIONS, 1):
+            self._write(
+                f"sections/{index}.md",
+                block(
+                    f"demo/sections/{index}",
+                    "ALL STAGES",
+                    None,
+                    "approved",
+                    [],
+                    "templates/sections.md",
+                    "Body.\n",
+                ),
+            )
+        self._write("gate-1.md", "approved proof source\n")
+        self._write(
+            "development-handoff.md",
+            BLOCK_TEMPLATE.format(
+                artifact_id="demo/development-handoff",
+                phase="ALL STAGES",
+                gate="null",
+                status="approved",
+                depends_on="[]",
+                template="templates/architecture/development-handoff.md",
+                body=self._section_body(),
+            ),
+        )
+
+    def _gate_hash(self) -> str:
+        return hashlib.sha256((self.root / "gate-1.md").read_bytes()).hexdigest()
+
+    def _gate_source_verifier(self, source: str, digest: str) -> bool:
+        if source != "gate-1.md":
+            return False
+        return self._gate_hash() == digest
+
+    def _approve(self, banks=("discover", "define", "design")) -> None:
+        for bank_id in BANKS:
+            if bank_id.id not in banks:
+                break
+            turn = self.conductor.next_turn()
+            self.assertEqual((turn.status, turn.bank_id), ("question", bank_id.id))
+            answered = self.conductor.submit_answer(
+                turn.question.id, "It is documented.", observed(),
+                expected_revision=turn.revision, turn_id=f"{bank_id.id}-answer")
+            self.assertEqual(answered.status, "accepted")
+            if bank_id.id in banks:
+                proof = self.conductor.prove_gate(
+                    bank_id.id, gate_proof(source="gate-1.md", source_hash=self._gate_hash()),
+                    expected_revision=answered.revision, turn_id=f"{bank_id.id}-gate")
+                self.assertIn(proof.status, {"advanced", "completed"})
+
+    def _result(self) -> dict[str, object]:
+        return build_handoff(self.conductor, self.contract, self.root)
+
+    def test_development_ready_positive_case(self) -> None:
+        self._approve()
+        result = self._result()
+        self.assertEqual(result["product_id"], self.PRODUCT_ID)
+        self.assertTrue(result["development_ready"])
+        self.assertIsNotNone(result["handoff"])
+        self.assertEqual(result["source_revision"], self.store.head(self.PRODUCT_ID).token)
+        for entry in result["approvals"]:
+            self.assertEqual(entry["attestation"], "local")
+            self.assertTrue(entry["approved"])
+
+    def test_gap_line_marks_section_as_gap_and_not_ready(self) -> None:
+        self._write(
+            "development-handoff.md",
+            BLOCK_TEMPLATE.format(
+                artifact_id="demo/development-handoff",
+                phase="ALL STAGES",
+                gate="null",
+                status="approved",
+                depends_on="[]",
+                template="templates/architecture/development-handoff.md",
+                body=self._section_body(("2. Vision and strategy", "- Gap: unresolved direction")),
+            ),
+        )
+        self._approve()
+        result = self._result()
+        section = next(item for item in result["sections"] if item["title"] == "2. Vision and strategy")
+        self.assertEqual(section["status"], "gap")
+        self.assertFalse(result["development_ready"])
+        self.assertIn("Section 2. Vision and strategy has a gap", result["missing"])
+
+    def test_broken_link_marks_section_as_broken(self) -> None:
+        self._write(
+            "development-handoff.md",
+            BLOCK_TEMPLATE.format(
+                artifact_id="demo/development-handoff",
+                phase="ALL STAGES",
+                gate="null",
+                status="approved",
+                depends_on="[]",
+                template="templates/architecture/development-handoff.md",
+                body=self._section_body(("3. Outcomes and success measures", "[bad](missing.md)")),
+            ),
+        )
+        self._approve()
+        result = self._result()
+        section = next(item for item in result["sections"] if item["title"] == "3. Outcomes and success measures")
+        self.assertEqual(section["status"], "broken")
+        self.assertFalse(result["development_ready"])
+        self.assertIn("Section 3. Outcomes and success measures has broken link missing.md", result["missing"])
+
+    def test_absolute_link_counts_as_broken(self) -> None:
+        # An absolute link resolves outside the workspace, so it can never satisfy a section.
+        self._write(
+            "development-handoff.md",
+            BLOCK_TEMPLATE.format(
+                artifact_id="demo/development-handoff",
+                phase="ALL STAGES",
+                gate="null",
+                status="approved",
+                depends_on="[]",
+                template="templates/architecture/development-handoff.md",
+                body=self._section_body(("4. Scope and exclusions", "[outside](/etc/hosts)")),
+            ),
+        )
+        self._approve()
+        result = self._result()
+        section = next(item for item in result["sections"] if item["title"] == "4. Scope and exclusions")
+        self.assertEqual(section["status"], "broken")
+        self.assertFalse(section["links"][0]["exists"])
+        self.assertFalse(result["development_ready"])
+
+    def test_not_applicable_sections_remain_ready(self) -> None:
+        self._write(
+            "development-handoff.md",
+            BLOCK_TEMPLATE.format(
+                artifact_id="demo/development-handoff",
+                phase="ALL STAGES",
+                gate="null",
+                status="approved",
+                depends_on="[]",
+                template="templates/architecture/development-handoff.md",
+                body=self._section_body(("4. Scope and exclusions", "- N/A because this section is not applicable")),
+            ),
+        )
+        self._approve()
+        result = self._result()
+        section = next(item for item in result["sections"] if item["title"] == "4. Scope and exclusions")
+        self.assertEqual(section["status"], "not_applicable")
+        self.assertTrue(result["development_ready"])
+
+    def test_design_gate_not_approved(self) -> None:
+        self._approve(("discover", "define"))
+        result = self._result()
+        design = next(item for item in result["approvals"] if item["bank_id"] == "design")
+        self.assertFalse(design["approved"])
+        self.assertFalse(result["development_ready"])
+        self.assertIn("Gate 3 is not approved", result["missing"])
+
+    def test_discover_gate_becomes_stale(self) -> None:
+        self._approve()
+        (self.root / "gate-1.md").write_text("changed proof source\n", encoding="utf-8")
+        result = self._result()
+        discover = next(item for item in result["approvals"] if item["bank_id"] == "discover")
+        self.assertTrue(discover["stale"])
+        self.assertFalse(result["development_ready"])
+        self.assertIn("Gate 1 approval is stale", result["missing"])
+
+    def test_no_development_handoff_is_not_ready(self) -> None:
+        (self.root / "development-handoff.md").unlink()
+        self._approve()
+        result = self._result()
+        self.assertIsNone(result["handoff"])
+        self.assertFalse(result["development_ready"])
+        self.assertIn("development-handoff.md artifact is missing", result["missing"])
