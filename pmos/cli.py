@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shlex
 import sqlite3
 import stat
@@ -13,6 +14,7 @@ from typing import Any, Sequence
 
 from .banks import CONTRACT_PATH, LEGACY_ONBOARDING, parse_contract, shipped_banks
 from .conductor import TurnOutcome
+from .handoff import build_handoff
 from .migrations import migrate_workspace, recover_workspace, rollback_workspace
 from .phases import phase_report
 from .product import PIN_PATH, local_gate_verifier, pinned_contract, product_banks, product_conductor, source_resolver
@@ -392,6 +394,80 @@ def _gate_result(outcome: TurnOutcome, product_id: str) -> dict[str, Any]:
     return result
 
 
+def _relative_to_handoff_folder(root: Path, root_relative: str) -> str:
+    """Re-express a path already relative to root as it is reached from root/handoff."""
+    return os.path.relpath(str(root / root_relative), str(root / "handoff")).replace(os.sep, "/")
+
+
+def _context_markdown(package: dict[str, Any], root: Path) -> str:
+    """A short Markdown index of the handoff package, using relative links only."""
+    lines = ["# Development handoff context", "",
+             "Product: %s" % package["product_id"],
+             "Source revision: %s" % package["source_revision"],
+             "Development-ready: %s" % ("yes" if package["development_ready"] else "no"),
+             "", "## Missing", ""]
+    if package["missing"]:
+        lines.extend("- %s" % reason for reason in package["missing"])
+    else:
+        lines.append("- (none)")
+    lines.extend(["", "## Sections", ""])
+    for section in package["sections"]:
+        targets = [_relative_to_handoff_folder(root, link["path"]) for link in section["links"]]
+        suffix = " (%s)" % ", ".join(targets) if targets else ""
+        lines.append("- %s: %s%s" % (section["title"], section["status"], suffix))
+    lines.extend(["", "## Approvals", ""])
+    if package["approvals"]:
+        for item in package["approvals"]:
+            if item["approved"]:
+                detail = "approved by %s at %s; local attestation" % (item["actor_id"], item["approved_at"])
+                if item["stale"]:
+                    detail += "; stale"
+            else:
+                detail = "not approved"
+            lines.append("- Gate %d (%s): %s" % (item["gate"], item["bank_id"], detail))
+    else:
+        lines.append("- (none)")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _reject_symlink(path: Path, description: str) -> None:
+    """Refuse a pre-existing symlink at path, mirroring _paths()'s guard for .pmos."""
+    try:
+        metadata = path.lstat()
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        raise ValidationError("cannot inspect %s" % description) from exc
+    if stat.S_ISLNK(metadata.st_mode):
+        raise ValidationError("%s must not be a symlink" % description)
+
+
+def _handoff(args: argparse.Namespace) -> dict[str, Any]:
+    root, database = _paths(args.path)
+    if not database.exists():
+        raise ValidationError("PM OS is not initialized at %s; run `pmos init --path %s`" % (root, root))
+    with Store(database) as store:
+        conductor = _product_conductor(store, root, args.product_id)
+        package = build_handoff(conductor, pinned_contract(store, args.product_id), root)
+    handoff_dir = root / "handoff"
+    # A planted symlink here (or on either file below) must be refused rather
+    # than silently followed outside root/handoff/, the same posture _paths()
+    # takes for .pmos.
+    _reject_symlink(handoff_dir, "handoff directory")
+    handoff_dir.mkdir(parents=True, exist_ok=True)
+    index_path = handoff_dir / "context-index.json"
+    context_path = handoff_dir / "CONTEXT.md"
+    _reject_symlink(index_path, "handoff/context-index.json")
+    _reject_symlink(context_path, "handoff/CONTEXT.md")
+    index_text = json.dumps(package, sort_keys=True, indent=1, ensure_ascii=False) + "\n"
+    index_path.write_text(index_text, encoding="utf-8")
+    context_path.write_text(_context_markdown(package, root), encoding="utf-8")
+    return {"ok": package["development_ready"], "product_id": args.product_id,
+            "development_ready": package["development_ready"], "missing": list(package["missing"]),
+            "index": "handoff/context-index.json", "context": "handoff/CONTEXT.md"}
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="pmos", description="Product Manager OS local runtime")
     parser.add_argument("--json", action="store_true", dest="json_output", help="emit machine-readable JSON")
@@ -434,6 +510,10 @@ def _parser() -> argparse.ArgumentParser:
             sub.add_argument("--reason", required=True)
         else:
             sub.add_argument("--bank-id", required=True)
+    handoff = commands.add_parser("handoff", help="write the development handoff context index")
+    handoff.add_argument("--path", default=".")
+    handoff.add_argument("--product-id", required=True)
+    handoff.add_argument("--json", action="store_true", dest="json_command")
     migrate = commands.add_parser("migrate", help="migrate a legacy workspace with a dry-run option")
     migrate.add_argument("source")
     migrate.add_argument("--destination")
@@ -469,6 +549,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             result = _reopen(args)
         elif args.command == "gate":
             result = _gate(args)
+        elif args.command == "handoff":
+            result = _handoff(args)
         elif args.command == "migrate":
             result = migrate_workspace(args.source, args.destination, product_id=args.product_id,
                                        dry_run=args.dry_run).as_dict()

@@ -301,6 +301,7 @@ class CliTests(unittest.TestCase):
     def test_status_reports_a_phases_error_without_hiding_the_rest_of_status(self):
         with TemporaryDirectory() as folder:
             self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            baseline = self.status(folder)
             with patch("pmos.cli.phase_report",
                       side_effect=ValidationError("x.md is a symlink and was refused")):
                 status = self.status(folder)
@@ -309,6 +310,30 @@ class CliTests(unittest.TestCase):
             self.assertEqual(status["interview"], "question")
             self.assertIsNotNone(status["next"])
             self.assertEqual(status["question"]["id"], "DISCOVER-1")
+            self.assertIn("pinned", status["question_banks"])
+            # phases_error is the only key the error adds: every other status key a
+            # normal call returns is still present when phase_report raises.
+            self.assertEqual(set(status) - {"phases_error"}, set(baseline))
+
+    def test_status_reports_a_phases_error_for_a_real_symlinked_artifact(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            baseline = self.status(folder)
+            target = self.write_artifact(folder, "discovery/problem-framing.md",
+                                         "checkout/discovery/problem-framing", "DISCOVER", 1, [],
+                                         "templates/discovery/problem-framing.md", "A real outcome")
+            link = Path(folder, "discovery/problem-framing-link.md")
+            os.symlink(target, link)
+            status = self.status(folder)
+            self.assertEqual(status["phases"], [])
+            self.assertIn("discovery/problem-framing-link.md", status["phases_error"])
+            self.assertIn("symlink", status["phases_error"])
+            # The rest of status, the interview included, is untouched by the
+            # scan failure: the real symlink does not make an earlier status
+            # step fail, so every key but phases_error matches the baseline.
+            self.assertEqual(set(status) - {"phases_error"}, set(baseline))
+            self.assertEqual(status["interview"], baseline["interview"])
+            self.assertEqual(status["question"], baseline["question"])
             self.assertIn("pinned", status["question_banks"])
 
     def test_an_answer_citing_a_missing_local_file_is_refused(self):
@@ -397,6 +422,12 @@ class CliTests(unittest.TestCase):
     def conductor_state(self, folder: str):
         with Store(Path(folder) / ".pmos/runtime.sqlite") as store:
             return _product_conductor(store, Path(folder).resolve(), "checkout").state()
+
+    def handoff(self, folder: str) -> tuple[int, dict]:
+        output = StringIO()
+        with redirect_stdout(output):
+            rc = main(["--json", "handoff", "--path", folder, "--product-id", "checkout"])
+        return rc, json.loads(output.getvalue())
 
     def test_an_approved_gate_binds_the_manifest_to_the_workspace(self):
         with TemporaryDirectory() as folder:
@@ -1397,6 +1428,90 @@ class CliTests(unittest.TestCase):
             self.assertEqual(banks.returncode, 0, banks.stderr)
             self.assertEqual(banks.stdout.strip(),
                              "discover,define,design,build,deliver,operate")
+
+    def test_handoff_right_after_init_is_not_ready_but_still_writes_both_files(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            token = self.status(folder)["revision_token"]
+            rc, result = self.handoff(folder)
+            self.assertEqual(rc, 1)
+            self.assertFalse(result["ok"])
+            self.assertFalse(result["development_ready"])
+            self.assertTrue(any("development-handoff.md" in reason for reason in result["missing"]))
+            index_path = Path(folder, "handoff/context-index.json")
+            context_path = Path(folder, "handoff/CONTEXT.md")
+            self.assertTrue(index_path.is_file())
+            self.assertTrue(context_path.is_file())
+            index = json.loads(index_path.read_text(encoding="utf-8"))
+            self.assertEqual(index["source_revision"], token)
+
+    def test_handoff_context_md_names_local_attestation_only_after_an_approval(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            self.handoff(folder)
+            before = Path(folder, "handoff/CONTEXT.md").read_text(encoding="utf-8")
+            self.assertIn("Development-ready: no", before)
+            self.assertNotIn("local attestation", before)
+
+            status = self.answer_bank(folder, "a")
+            self.write_artifact(folder, "discovery/problem-framing.md",
+                                "checkout/discovery/problem-framing", "DISCOVER", 1, [],
+                                "templates/discovery/problem-framing.md", "A real outcome")
+            rc, parsed = self.gate(folder, status["revision_token"], "gate-1", "approved")
+            self.assertEqual((rc, parsed["ok"]), (0, True))
+
+            self.handoff(folder)
+            after = Path(folder, "handoff/CONTEXT.md").read_text(encoding="utf-8")
+            self.assertIn("Development-ready: no", after)
+            self.assertIn("Gate 1", after)
+            self.assertIn("local attestation", after)
+
+    def test_handoff_changes_no_store_revision(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            before = self.status(folder)["revision_token"]
+            rc, result = self.handoff(folder)
+            self.assertEqual(rc, 1)
+            after = self.status(folder)["revision_token"]
+            self.assertEqual(before, after)
+
+    def test_handoff_context_md_rewrites_a_section_link_relative_to_the_handoff_folder(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            design_path = Path(folder, "design/api-contract.md")
+            design_path.parent.mkdir(parents=True, exist_ok=True)
+            design_path.write_text("# API contract\n", encoding="utf-8")
+            self.write_artifact(folder, "development-handoff.md", "checkout/development-handoff",
+                                "ALL STAGES", 1, [], "templates/architecture/development-handoff.md",
+                                "## 1. Problem\n[API contract](design/api-contract.md)\n")
+            self.handoff(folder)
+            context = Path(folder, "handoff/CONTEXT.md").read_text(encoding="utf-8")
+            # The link target sits at root/design/api-contract.md, one level
+            # below root; from root/handoff/ that is reached by stepping up
+            # first, so the rendered link must carry the brief's '../' prefix
+            # rather than the root-relative 'design/api-contract.md'.
+            self.assertIn("../design/api-contract.md", context)
+            self.assertNotIn("(design/api-contract.md)", context)
+
+    def test_handoff_symlinked_handoff_directory_never_escapes_workspace(self):
+        with TemporaryDirectory() as folder, TemporaryDirectory() as outside:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            target = Path(outside)
+            Path(folder, "handoff").symlink_to(target, target_is_directory=True)
+            self.assertEqual(main(["handoff", "--path", folder, "--product-id", "checkout", "--json"]), 2)
+            self.assertFalse((target / "context-index.json").exists())
+            self.assertFalse((target / "CONTEXT.md").exists())
+
+    def test_handoff_symlinked_context_index_never_escapes_workspace(self):
+        with TemporaryDirectory() as folder, TemporaryDirectory() as outside:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            handoff_dir = Path(folder, "handoff")
+            handoff_dir.mkdir()
+            external = Path(outside, "context-index.json")
+            external.write_text("untouched\n", encoding="utf-8")
+            (handoff_dir / "context-index.json").symlink_to(external)
+            self.assertEqual(main(["handoff", "--path", folder, "--product-id", "checkout", "--json"]), 2)
+            self.assertEqual(external.read_text(encoding="utf-8"), "untouched\n")
 
 
 if __name__ == "__main__":
