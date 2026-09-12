@@ -1127,6 +1127,20 @@ class ConfiguredRoutingTests(unittest.TestCase):
         with self.assertRaises(runner.RunnerError):
             runner.spend_gate(self.shipped)
 
+    def test_a_non_finite_cap_refuses_to_run(self):
+        os.environ[runner.SPEND_ENV] = "4"
+        for bad in ("nan", "NaN", "inf", "-inf", "Infinity"):
+            os.environ["OMNIROUTE_DAILY_CAP_USD"] = bad
+            with self.assertRaises(runner.RunnerError, msg=repr(bad)):
+                runner.spend_gate(self.shipped)
+
+    def test_a_non_finite_spend_refuses_to_run(self):
+        os.environ["OMNIROUTE_DAILY_CAP_USD"] = "10"
+        for bad in ("nan", "NaN", "inf", "-inf", "Infinity"):
+            os.environ[runner.SPEND_ENV] = bad
+            with self.assertRaises(runner.RunnerError, msg=repr(bad)):
+                runner.spend_gate(self.shipped)
+
     # ---- no-probe
 
     def test_no_probe_without_pins_refuses_to_run(self):
