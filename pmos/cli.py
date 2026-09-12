@@ -15,18 +15,36 @@ import sys
 from pathlib import Path
 from typing import Any, Sequence
 
-from .conductor import Conductor, EvidenceClass, Question, QuestionBank, TurnOutcome
+from .banks import LEGACY_ONBOARDING, banks_from_contract, parse_contract, shipped_banks
+from .conductor import Conductor, QuestionBank, TurnOutcome
 from .migrations import migrate_workspace, recover_workspace, rollback_workspace
 from .release import build_provenance, verify_provenance
 from .store import NotFoundError, Store, StoreError, ValidationError
 
+# The path in a product's Store snapshot where its question bank contract is
+# pinned, beside the Conductor's own state.
+PIN_PATH = ".pmos/conductor/banks.json"
 
-def _banks() -> tuple[QuestionBank, ...]:
-    return (QuestionBank(
-        "onboarding", "v1", (Question(
-            "first-outcome", "What outcome should the first product user achieve?",
-            EvidenceClass.OBSERVED_BEHAVIOR),),
-        gate_approvers=("local-reviewer",)),)
+
+def _pinned_contract(store: Store, product_id: str) -> dict[str, Any] | None:
+    """The product's pinned question bank contract, or None when it has no pin."""
+    files = store.read_snapshot(product_id).files
+    if PIN_PATH in files:
+        return parse_contract(files[PIN_PATH])
+    return None
+
+
+def _product_banks(store: Store, product_id: str) -> tuple[QuestionBank, ...]:
+    """The banks a product runs: its pinned contract, or LEGACY_ONBOARDING itself.
+
+    A product keeps the banks it started with, so a repository update never
+    strands it mid-interview. A product created before the pin keeps the
+    legacy onboarding bank.
+    """
+    contract = _pinned_contract(store, product_id)
+    if contract is None:
+        return LEGACY_ONBOARDING
+    return banks_from_contract(contract)
 
 
 def _local_gate_verifier(root: Path):
@@ -195,7 +213,7 @@ def _run_new_user(root: Path, product_id: str) -> dict[str, Any]:
     _root, database = _paths(root)
     with Store(database) as store:
         store.create_product(product_id)
-        conductor = Conductor(store, product_id, _banks())
+        conductor = Conductor(store, product_id, _product_banks(store, product_id))
         pending = conductor.next_turn(expected_revision=0)
         if pending.status != "question" or pending.question is None:
             raise StoreError("onboarding did not produce a deterministic first question")
@@ -271,7 +289,8 @@ def _interview_status(store: Store, root: Path, product_id: str, token: str) -> 
     never disagree with what answer, reopen and gate would do. Commands are shell-quoted and carry the current
     revision token; only the answer, reason, evidence and turn id are left as placeholders.
     """
-    conductor = Conductor(store, product_id, _banks(), gate_source_verifier=_local_gate_verifier(root),
+    banks = _product_banks(store, product_id)
+    conductor = Conductor(store, product_id, banks, gate_source_verifier=_local_gate_verifier(root),
                           source_resolver=_cli_source_resolver(root))
     position = conductor.next_turn()
     state = conductor.state()
@@ -281,7 +300,7 @@ def _interview_status(store: Store, root: Path, product_id: str, token: str) -> 
                          *parts, "--expected-revision", shlex.quote(token), "--turn-id", "'<new turn id>'"])
 
     parked, verified, unverified = [], 0, 0
-    for bank in _banks():
+    for bank in banks:
         bank_state = state["banks"].get(bank.id, {})
         for question_id in bank_state.get("parked", []):
             parked.append({"bank_id": bank.id, "question_id": question_id,
@@ -316,11 +335,27 @@ def _interview_status(store: Store, root: Path, product_id: str, token: str) -> 
                                "--evidence", "'<gate evidence json>'")
     else:
         next_command = None
+    pinned = {bank.id: bank.version for bank in banks}
+    try:
+        shipped: dict[str, str] | None = {bank.id: bank.version for bank in shipped_banks()}
+    except ValidationError:
+        shipped = None
+    current = pinned == shipped
+    # _product_banks returns LEGACY_ONBOARDING itself only when the product has no pin.
+    if banks is LEGACY_ONBOARDING:
+        message = "This product started before the question bank contract and keeps the one-question onboarding bank."
+    elif not current:
+        message = ("This product keeps the question banks it started with; the shipped contract differs, "
+                   "and moving a product to it is not supported yet.")
+    else:
+        message = "This product runs the shipped question banks."
     return {"interview": position.status, "interview_message": position.message,
             "current_bank_id": position.bank_id, "question": question,
             "parked": parked, "stale_banks": stale,
             "source_verified": verified, "supplied_unverified": unverified,
-            "next": next_command}
+            "next": next_command,
+            "question_banks": {"pinned": pinned, "shipped": shipped,
+                               "current": current, "message": message}}
 
 
 def _verify(args: argparse.Namespace) -> dict[str, Any]:
@@ -353,7 +388,7 @@ def _answer(args: argparse.Namespace) -> dict[str, Any]:
     if not database.exists():
         raise ValidationError("runtime is missing; run `pmos init --path %s`" % root)
     with Store(database) as store:
-        conductor = Conductor(store, args.product_id, _banks(),
+        conductor = Conductor(store, args.product_id, _product_banks(store, args.product_id),
                               gate_source_verifier=_local_gate_verifier(root),
                               source_resolver=_cli_source_resolver(root))
         outcome = conductor.submit_answer(args.question_id, args.answer, _evidence(args.evidence),
@@ -370,7 +405,7 @@ def _reopen(args: argparse.Namespace) -> dict[str, Any]:
     if not database.exists():
         raise ValidationError("runtime is missing; run `pmos init --path %s`" % root)
     with Store(database) as store:
-        conductor = Conductor(store, args.product_id, _banks(),
+        conductor = Conductor(store, args.product_id, _product_banks(store, args.product_id),
                               gate_source_verifier=_local_gate_verifier(root),
                               source_resolver=_cli_source_resolver(root))
         outcome = conductor.reopen(args.question_id, expected_revision=args.expected_revision,
@@ -387,7 +422,7 @@ def _gate(args: argparse.Namespace) -> dict[str, Any]:
     if not database.exists():
         raise ValidationError("runtime is missing; run `pmos init --path %s`" % root)
     with Store(database) as store:
-        conductor = Conductor(store, args.product_id, _banks(),
+        conductor = Conductor(store, args.product_id, _product_banks(store, args.product_id),
                               gate_source_verifier=_local_gate_verifier(root),
                               source_resolver=_cli_source_resolver(root))
         outcome = conductor.prove_gate(args.bank_id, _evidence(args.evidence),

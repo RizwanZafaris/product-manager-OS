@@ -14,7 +14,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from pmos.cli import _cli_source_resolver, _gate_result, _local_gate_verifier, _paths, main
+from pmos.cli import _cli_source_resolver, _gate_result, _local_gate_verifier, _paths, main, PIN_PATH
+from pmos.banks import CONTRACT_PATH
 from pmos.conductor import TurnOutcome
 from pmos.migrations import (create_legacy_fixture, migrate_workspace, recover_workspace,
                               rollback_workspace, MigrationError)
@@ -67,6 +68,84 @@ class CliTests(unittest.TestCase):
                                           "date": "2026-09-04", "location": "customer-call"},
                                  status["revision_token"], "answer-001")
             self.assertEqual(result["outcome"]["status"], "accepted")
+
+    def pin(self, folder: str, raw: bytes) -> None:
+        with Store(Path(folder) / ".pmos/runtime.sqlite") as store:
+            snapshot = store.read_snapshot("checkout")
+            files = dict(snapshot.files)
+            files[PIN_PATH] = raw
+            result = store.commit("checkout", files, expected_revision=snapshot.head,
+                                  metadata={"reason": "test pin"})
+            self.assertTrue(result.committed)
+
+    def test_a_product_without_a_pin_keeps_the_legacy_bank(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            status = self.status(folder)
+            self.assertEqual(status["question"]["id"], "first-outcome")
+            self.assertEqual(status["question_banks"]["pinned"], {"onboarding": "v1"})
+            self.assertEqual(set(status["question_banks"]["shipped"]),
+                             {"discover", "define", "design", "build", "deliver", "operate"})
+            self.assertFalse(status["question_banks"]["current"])
+            self.assertIn("before the question bank contract", status["question_banks"]["message"])
+
+    def test_a_pinned_product_runs_the_pinned_banks(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            self.pin(folder, CONTRACT_PATH.read_bytes())
+            status = self.status(folder)
+            self.assertEqual(status["current_bank_id"], "discover")
+            self.assertEqual(status["question"]["id"], "DISCOVER-1")
+            self.assertEqual(status["question_banks"]["pinned"], status["question_banks"]["shipped"])
+            self.assertEqual(len(status["question_banks"]["pinned"]), 6)
+            self.assertTrue(status["question_banks"]["current"])
+            evidence = {"class": "observed_behavior", "source": "session replay",
+                        "date": "2026-09-03", "location": "replay/17"}
+            output = StringIO()
+            with redirect_stdout(output):
+                rc = main(["answer", "--path", folder, "--product-id", "checkout",
+                           "--question-id", "DISCOVER-1", "--answer", "A real outcome",
+                           "--evidence", json.dumps(evidence),
+                           "--expected-revision", status["revision_token"],
+                           "--turn-id", "answer-001", "--json"])
+            self.assertEqual(rc, 0)
+            result = json.loads(output.getvalue())
+            self.assertTrue(result["ok"])
+            status = self.status(folder)
+            self.assertEqual(status["question"]["id"], "DISCOVER-2")
+
+    def test_a_pin_that_differs_from_the_shipped_contract_is_kept(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            contract = json.loads(CONTRACT_PATH.read_bytes())
+            contract["banks"][0]["version"] = "c0000000000000000"
+            contract["banks"][0]["questions"][0]["ask"] = "Who has this problem, by name?"
+            self.pin(folder, json.dumps(contract).encode("utf-8"))
+            status = self.status(folder)
+            self.assertEqual(status["question_banks"]["pinned"]["discover"], "c0000000000000000")
+            self.assertFalse(status["question_banks"]["current"])
+            self.assertIn("not supported yet", status["question_banks"]["message"])
+            self.assertEqual(status["question"]["prompt"], "Who has this problem, by name?")
+
+    def test_a_corrupt_pin_is_reported_rather_than_raised(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            self.pin(folder, b"{")
+            status = self.status(folder)
+            self.assertIn("not valid JSON", status["interview_error"])
+            evidence = {"class": "observed_behavior", "source": "session replay",
+                        "date": "2026-09-03", "location": "replay/17"}
+            output = StringIO()
+            with redirect_stdout(output):
+                rc = main(["answer", "--path", folder, "--product-id", "checkout",
+                           "--question-id", "DISCOVER-1", "--answer", "A real outcome",
+                           "--evidence", json.dumps(evidence),
+                           "--expected-revision", status["revision_token"],
+                           "--turn-id", "answer-001", "--json"])
+            self.assertEqual(rc, 2)
+            result = json.loads(output.getvalue())
+            self.assertFalse(result["ok"])
+            self.assertIn("not valid JSON", result["error"])
 
     def test_status_shows_a_parked_question_with_its_reopen_command(self):
         with TemporaryDirectory() as folder:

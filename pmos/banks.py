@@ -28,12 +28,13 @@ LEGACY_ONBOARDING = (
 )
 
 
-def load_contract(path: str | Path = CONTRACT_PATH) -> dict[str, Any]:
+def parse_contract(raw: str | bytes) -> dict[str, Any]:
     """The compiled contract as a dict, or a ValidationError when it cannot be used."""
-    try:
-        raw = Path(path).read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError) as exc:
-        raise ValidationError("question bank contract is missing or unreadable: %s" % exc) from exc
+    if isinstance(raw, bytes):
+        try:
+            raw = raw.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ValidationError("question bank contract is not valid JSON: %s" % exc) from exc
     try:
         contract = json.loads(raw)
     except json.JSONDecodeError as exc:
@@ -44,6 +45,15 @@ def load_contract(path: str | Path = CONTRACT_PATH) -> dict[str, Any]:
     if not isinstance(banks, list) or not banks:
         raise ValidationError("question bank contract has no banks")
     return contract
+
+
+def load_contract(path: str | Path = CONTRACT_PATH) -> dict[str, Any]:
+    """The compiled contract as a dict, or a ValidationError when it cannot be used."""
+    try:
+        raw = Path(path).read_bytes()
+    except OSError as exc:
+        raise ValidationError("question bank contract is missing or unreadable: %s" % exc) from exc
+    return parse_contract(raw)
 
 
 def banks_from_contract(contract: Mapping[str, Any]) -> tuple[QuestionBank, ...]:
