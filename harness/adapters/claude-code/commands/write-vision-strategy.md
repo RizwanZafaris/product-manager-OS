@@ -1,6 +1,6 @@
 ---
 name: write-vision-strategy
-description: "Router row: A vision, a product strategy, or \"where are we going and what are we not doing\". No stage and no gate, judgment tier. Say: a vision; a product strategy; where are we going and what are we not doing."
+description: "Router row: A vision, a product strategy, or \"where are we going and what are we not doing\". DEFINE stage, Gate 2, judgment tier. Say: a vision; a product strategy; where are we going and what are we not doing."
 disable-model-invocation: true
 ---
 
@@ -12,8 +12,8 @@ GENERATED FILE. Do not hand-edit. Written by `harness/adapters/claude-code/gener
 |---|---|
 | Route id | `write-vision-strategy` |
 | Router row | A vision, a product strategy, or "where are we going and what are we not doing" |
-| Stage | None. See the note below. |
-| Gate | None. See the note below. |
+| Stage | DEFINE |
+| Gate | 2 |
 | Tier | judgment. A tier name, never a model. |
 | Kind | artifact. Fills one template and files it in the product workspace. |
 | Skill | `skills/write-vision-strategy/SKILL.md` |
@@ -22,14 +22,14 @@ The tier to model mapping lives in `routing/omniroute.config.json` and nowhere e
 
 ## Note from the manifest
 
-PLANNING overlay.
+It opens DEFINE after Gate 1; the vision comes first and is approved by the business sponsor, then the strategy, approved by the product owner and the business sponsor, both at Gate 2 per os/STAGE-GATES.md; the filled copies stay in the workspace's planning/ folder.
 
 ## What to do
 
 1. Read every file under Read first, in the order listed, before you produce anything.
 2. Follow `skills/write-vision-strategy/SKILL.md` end to end. It owns the workflow; this file only routes to it.
 3. Land the output in the template below that fits the request. One template, not all of them.
-4. There is no gate on this output. Do not invent one, and do not report a gate as passed.
+4. Take the output to Gate 2 in `os/STAGE-GATES.md`. Report which boxes pass and which do not, then stop. A named human signs.
 5. Leave any unanswered field as `[OPEN: what is missing, who owns the answer]`. That is a valid value here.
 
 ## Read first
