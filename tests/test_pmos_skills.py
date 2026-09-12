@@ -232,7 +232,7 @@ class OpenRouterTests(unittest.TestCase):
 
 class SkillRegistryTests(unittest.TestCase):
     def test_shipped_runtime_contracts_are_complete_and_deterministic(self):
-        registry = SkillRegistry(Path(__file__).parent / "skills" / "runtime")
+        registry = SkillRegistry(Path(__file__).resolve().parent.parent / "skills" / "runtime")
         self.assertEqual(registry.names, ())
         loaded = registry.load()
         self.assertEqual(set(loaded), {

@@ -601,7 +601,7 @@ BASE64_RUN_RE = re.compile(r"[A-Za-z0-9+/]{24,}={0,2}")
 # banned strings as detector patterns and have to write [[target]] in prose.
 # The secret gate exempts nothing, because a real key in a document about the
 # secret gate is still a real key.
-RULE_BEARING = {"docs/ARCHITECTURE.md", "lint.py", "test_lint.py"}
+RULE_BEARING = {"docs/ARCHITECTURE.md", "lint.py", "tests/test_lint.py"}
 
 PLACEHOLDER_RE = re.compile(r"\b(TBD|TODO|FIXME|XXX)\b", re.I)
 

@@ -10,7 +10,7 @@ from pathlib import Path
 
 from pmos.hooks import HookBus, HookDecision, claude_output, contains_secret, decide
 
-REPO = Path(__file__).resolve().parent
+REPO = Path(__file__).resolve().parent.parent
 
 
 class ClaudeHookTests(unittest.TestCase):

@@ -18,7 +18,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-TOOLS = Path(__file__).resolve().parent / "tools"
+TOOLS = Path(__file__).resolve().parent.parent / "tools"
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
@@ -271,7 +271,7 @@ class SkillRubricTests(unittest.TestCase):
 
     def test_a_real_shipped_skill_still_passes(self):
         """The rubric must reject emptiness, not content it merely dislikes."""
-        source = Path(__file__).resolve().parent / "skills"
+        source = Path(__file__).resolve().parent.parent / "skills"
         candidates = sorted(source.glob("*/SKILL.md"))
         self.assertTrue(candidates, "repository ships no skills to compare against")
         with TemporaryDirectory() as directory:

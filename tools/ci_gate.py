@@ -101,6 +101,9 @@ def environment():
     env = {key: os.environ[key] for key in allowed if key in os.environ}
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     env["PYTHONHASHSEED"] = "0"
+    # The root unit suites live in tests/; on the import path their ids stay
+    # test_lint.OsTreeGateTests.<name>, the form the readiness registry pins.
+    env["PYTHONPATH"] = str(REPO / "tests")
     return env
 
 

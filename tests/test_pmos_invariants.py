@@ -16,7 +16,7 @@ import sys
 import unittest
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parent
+REPO = Path(__file__).resolve().parent.parent
 TOOLS = REPO / "tools"
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
@@ -203,13 +203,13 @@ class TransportsShareOneContract(unittest.TestCase):
     two-sided and does not quietly shrink."""
 
     def test_the_matrix_is_asserted_on_both_transports(self):
-        source = (REPO / "test_pmos_probe.py").read_text(encoding="utf-8")
+        source = (REPO / "tests" / "test_pmos_probe.py").read_text(encoding="utf-8")
         self.assertIn("def _direct(case)", source)
         self.assertIn("def _gateway(case)", source)
         self.assertIn("test_both_transports_agree_on_every_row", source)
 
     def test_the_matrix_covers_the_reviewed_conditions(self):
-        source = (REPO / "test_pmos_probe.py").read_text(encoding="utf-8")
+        source = (REPO / "tests" / "test_pmos_probe.py").read_text(encoding="utf-8")
         rows = set(re.findall(r'\{"id":\s*"([a-z0-9-]+)"', source))
         required = {"cost-missing", "cost-null", "cost-negative", "cost-nan",
                     "cost-infinite", "overcharge-on-zero-budget",
@@ -234,7 +234,7 @@ class TestClassesCannotVanish(unittest.TestCase):
         import json
         inventory = json.loads(self.INVENTORY.read_text(encoding="utf-8"))["modules"]
         on_disk = {}
-        for path in sorted(REPO.glob("test_*.py")):
+        for path in sorted((REPO / "tests").glob("test_*.py")):
             source = path.read_text(encoding="utf-8")
             on_disk[path.stem] = sorted(re.findall(
                 r"^class (\w+)\((?:unittest\.)?TestCase\):", source, re.M))
@@ -261,7 +261,7 @@ class RegressionsReachHostedCI(unittest.TestCase):
     def test_every_root_test_module_is_in_the_canonical_gate(self):
         import ci_gate
         argv = {a for gate in ci_gate.GATES for a in gate.argv}
-        on_disk = {p.stem for p in REPO.glob("test_*.py")}
+        on_disk = {p.stem for p in (REPO / "tests").glob("test_*.py")}
         missing = sorted(on_disk - argv)
         self.assertEqual(missing, [],
                          "test modules CI never runs: %s" % missing)
@@ -273,7 +273,7 @@ class RegressionsReachHostedCI(unittest.TestCase):
         release gate ran 516. Nothing compared the two lists."""
         import ci_gate
         import readiness_probe
-        on_disk = sorted(p.stem for p in REPO.glob("test_*.py"))
+        on_disk = sorted(p.stem for p in (REPO / "tests").glob("test_*.py"))
         self.assertEqual(readiness_probe.root_test_modules(), on_disk)
         gate = next(g for g in ci_gate.GATES if g.gate_id == "root-tests")
         self.assertEqual(sorted(a for a in gate.argv if a.startswith("test_")),

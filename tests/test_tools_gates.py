@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for release-gate tools that no test executed. Run: python3 -m unittest test_tools_gates
+"""Tests for release-gate tools that no test executed. Run: python3 -m unittest tests/test_tools_gates.py
 
 The audit of 2026-09-04 traced every root and harness test and found gate
 modules under tools/ that ran zero lines, so an edit short-circuiting a check in
@@ -35,7 +35,7 @@ import unittest
 import unittest.mock
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parent
+REPO = Path(__file__).resolve().parent.parent
 TOOLS = REPO / "tools"
 for _entry in (str(REPO), str(TOOLS)):
     if _entry not in sys.path:

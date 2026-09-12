@@ -16,12 +16,12 @@
       "scope": ["six-stage loop", "typed domain entities", "independent initiative stages", "traceability", "13-use-case matrix"],
       "non_goals": ["replace customer discovery", "make business decisions without accountable people"],
       "acceptance": "The OS tree, domain runtime, and all thirteen behavioral use cases pass their fixed verifiers.",
-      "owned_files": ["pmos/domain.py", "pmos/usecases.py", "test_pmos_domain.py", "test_pmos_usecases.py"],
+      "owned_files": ["pmos/domain.py", "pmos/usecases.py", "tests/test_pmos_domain.py", "tests/test_pmos_usecases.py"],
       "failure_cases": ["illegal transition", "missing gate", "dangling relation", "shared initiative stage", "missing use case"],
       "executor_capabilities": ["domain-modeling", "state-machines", "integration-testing"],
       "reviewer_capabilities": ["product-operating-model", "adversarial-state-review"],
       "acceptance_verifiers": ["os-tree", "domain-runtime", "usecase-matrix"],
-      "evidence_paths": ["os/OPERATING-LOOP.md", "test_pmos_domain.py", "test_pmos_usecases.py"],
+      "evidence_paths": ["os/OPERATING-LOOP.md", "tests/test_pmos_domain.py", "tests/test_pmos_usecases.py"],
       "attempt_count": 1, "last_failure_class": "none", "next_action": "maintain passing local verifier evidence"
     },
     {
@@ -61,12 +61,12 @@
       "scope": ["versioned question banks", "one-question turns", "evidence validation", "two-challenge cap", "gate blocking", "resume and conflict"],
       "non_goals": ["autonomous gate signature", "hosted chat UI"],
       "acceptance": "Three invocations and a process exit preserve state; incomplete gates and stale revisions block.",
-      "owned_files": ["pmos/conductor.py", "test_pmos_conductor.py"],
+      "owned_files": ["pmos/conductor.py", "tests/test_pmos_conductor.py"],
       "failure_cases": ["cursor reset", "answer without evidence", "unbounded challenge", "gate bypass", "duplicate turn"],
       "executor_capabilities": ["durable-state-machine", "evidence-validation"],
       "reviewer_capabilities": ["state-machine-adversary", "gate-governance"],
       "acceptance_verifiers": ["conductor-runtime"],
-      "evidence_paths": ["test_pmos_conductor.py"],
+      "evidence_paths": ["tests/test_pmos_conductor.py"],
       "attempt_count": 1, "last_failure_class": "none", "next_action": "maintain passing resume and gate tests"
     },
     {
@@ -76,12 +76,12 @@
       "scope": ["dynamic catalogs", "capability and context filters", "privacy and risk", "budget and latency", "certification", "OpenRouter free discovery", "safe failures"],
       "non_goals": ["hard-code today's free models", "silently downgrade high-risk judgment", "store provider credentials"],
       "acceptance": "Deterministic fake-provider tests cover success and every bounded failure without leaking prompts or keys.",
-      "owned_files": ["pmos/routing.py", "pmos/openrouter.py", "test_pmos_routing.py", "test_pmos_skills.py"],
+      "owned_files": ["pmos/routing.py", "pmos/openrouter.py", "tests/test_pmos_routing.py", "tests/test_pmos_skills.py"],
       "failure_cases": ["no eligible model", "uncertified high-risk model", "rate limit", "timeout", "network error", "malformed response", "oversize response"],
       "executor_capabilities": ["provider-integration", "cost-routing", "privacy-policy"],
       "reviewer_capabilities": ["AI-safety", "secret-review", "failure-injection"],
       "acceptance_verifiers": ["model-routing", "openrouter-provider"],
-      "evidence_paths": ["test_pmos_routing.py", "test_pmos_skills.py", "routing/omniroute.config.json"],
+      "evidence_paths": ["tests/test_pmos_routing.py", "tests/test_pmos_skills.py", "routing/omniroute.config.json"],
       "attempt_count": 1, "last_failure_class": "none", "next_action": "obtain separately authorized live-provider evidence"
     },
     {
@@ -91,12 +91,12 @@
       "scope": ["Claude lifecycle hooks", "runtime transition hooks", "provider and external-effect hooks", "completion gate", "typed skill registry", "hash verification"],
       "non_goals": ["let fetched content authorize actions", "embed secrets in skills"],
       "acceptance": "Every hook event and all seven runtime skill contracts pass exact tests, including tamper and malformed-input cases.",
-      "owned_files": ["pmos/hooks.py", "pmos/skills.py", ".claude/settings.json", ".claude/hooks/pmos_hook.py", "skills/runtime", "test_pmos_hooks.py", "test_pmos_skills.py"],
+      "owned_files": ["pmos/hooks.py", "pmos/skills.py", ".claude/settings.json", ".claude/hooks/pmos_hook.py", "skills/runtime", "tests/test_pmos_hooks.py", "tests/test_pmos_skills.py"],
       "failure_cases": ["untrusted instruction", "protected write", "destructive command", "external write without approval", "skill hash drift", "unknown contract field"],
       "executor_capabilities": ["policy-hooks", "typed-contracts", "skill-authoring"],
       "reviewer_capabilities": ["prompt-injection-review", "supply-chain-review"],
       "acceptance_verifiers": ["claude-hooks", "runtime-hooks", "runtime-skills"],
-      "evidence_paths": ["test_pmos_hooks.py", "test_pmos_skills.py", ".claude/settings.json"],
+      "evidence_paths": ["tests/test_pmos_hooks.py", "tests/test_pmos_skills.py", ".claude/settings.json"],
       "attempt_count": 1, "last_failure_class": "none", "next_action": "maintain passing hook and skill tamper tests"
     },
     {
@@ -106,12 +106,12 @@
       "scope": ["SQLite full durability", "content-addressed snapshots", "CAS and commit packs", "leased queue", "OS and task memory", "real process-kill boundaries", "backup and restore"],
       "non_goals": ["claim distributed consensus from SQLite", "claim exactly-once external side effects"],
       "acceptance": "All store tests and eight before-or-after SIGKILL boundaries pass with verified hashes after reopen.",
-      "owned_files": ["pmos/store.py", "tools/runtime_crash_probe.py", "test_pmos_store.py"],
+      "owned_files": ["pmos/store.py", "tools/runtime_crash_probe.py", "tests/test_pmos_store.py"],
       "failure_cases": ["partial snapshot", "stale publish", "lost update", "lease takeover", "cross-task contamination", "tampered chain", "corrupt pack"],
       "executor_capabilities": ["transaction-design", "concurrency", "crash-recovery"],
       "reviewer_capabilities": ["database-correctness", "fault-injection"],
       "acceptance_verifiers": ["store-runtime", "store-crash-recovery"],
-      "evidence_paths": ["test_pmos_store.py", "tools/runtime_crash_probe.py"],
+      "evidence_paths": ["tests/test_pmos_store.py", "tools/runtime_crash_probe.py"],
       "attempt_count": 2, "last_failure_class": "none", "next_action": "maintain passing process-kill evidence"
     },
     {
@@ -121,12 +121,12 @@
       "scope": ["RBAC", "hash-chain audit", "approval evidence drift", "consent and retention", "secret and traversal scanning", "threat model", "dependency policy"],
       "non_goals": ["legal advice", "self-certify a real regulated deployment", "penetration-test external providers"],
       "acceptance": "Domain, operations, and adversarial security suites pass; the static security gate reports zero findings.",
-      "owned_files": ["pmos/domain.py", "pmos/hooks.py", "pmos/operations.py", "tools/security_gate.py", "docs/THREAT-MODEL.md", "test_pmos_security.py"],
+      "owned_files": ["pmos/domain.py", "pmos/hooks.py", "pmos/operations.py", "tools/security_gate.py", "docs/THREAT-MODEL.md", "tests/test_pmos_security.py"],
       "failure_cases": ["unauthorized approval", "evidence drift", "audit forgery", "secret leakage", "prompt injection", "path traversal", "undeclared dependency"],
       "executor_capabilities": ["security-controls", "regulated-product", "privacy-engineering"],
       "reviewer_capabilities": ["independent-security-review", "regulatory-controls"],
       "acceptance_verifiers": ["domain-runtime", "operations-runtime", "security-policy"],
-      "evidence_paths": ["test_pmos_domain.py", "test_pmos_security.py", "docs/THREAT-MODEL.md"],
+      "evidence_paths": ["tests/test_pmos_domain.py", "tests/test_pmos_security.py", "docs/THREAT-MODEL.md"],
       "attempt_count": 1, "last_failure_class": "none", "next_action": "maintain passing security and governance mutations"
     },
     {
@@ -136,12 +136,12 @@
       "scope": ["assignments", "comments", "mentions", "revision conflicts", "priorities", "capacity", "sequencing", "dependencies", "rollups"],
       "non_goals": ["real-time hosted collaboration transport"],
       "acceptance": "Domain and multi-user use-case tests prove collaboration, conflicts, and portfolio history.",
-      "owned_files": ["pmos/domain.py", "pmos/usecases.py", "test_pmos_domain.py", "test_pmos_usecases.py"],
+      "owned_files": ["pmos/domain.py", "pmos/usecases.py", "tests/test_pmos_domain.py", "tests/test_pmos_usecases.py"],
       "failure_cases": ["lost update", "actorless comment", "over-allocation", "dependency cycle", "history loss"],
       "executor_capabilities": ["collaboration-domain", "portfolio-modeling"],
       "reviewer_capabilities": ["multi-user-scenarios", "portfolio-governance"],
       "acceptance_verifiers": ["domain-runtime", "usecase-matrix"],
-      "evidence_paths": ["test_pmos_domain.py", "test_pmos_usecases.py"],
+      "evidence_paths": ["tests/test_pmos_domain.py", "tests/test_pmos_usecases.py"],
       "attempt_count": 1, "last_failure_class": "none", "next_action": "obtain consented non-maintainer usage evidence"
     },
     {
@@ -151,12 +151,12 @@
       "scope": ["five adapter classes", "metric lineage", "experiment decisions", "research lifecycle", "transactional outbox", "adoption observations"],
       "non_goals": ["claim vendor sandbox verification from in-memory adapters", "unattended external writes"],
       "acceptance": "All adapter, analytics, research, adoption, and outbox contract tests pass with no network.",
-      "owned_files": ["pmos/operations.py", "test_pmos_operations.py"],
+      "owned_files": ["pmos/operations.py", "tests/test_pmos_operations.py"],
       "failure_cases": ["contract drift", "stale metric", "unconsented quote", "idempotency collision", "provider unavailable", "dead letter"],
       "executor_capabilities": ["integration-contracts", "analytics", "research-operations"],
       "reviewer_capabilities": ["data-lineage", "consent-review", "reliability"],
       "acceptance_verifiers": ["operations-runtime"],
-      "evidence_paths": ["test_pmos_operations.py", "docs/readiness/external-gates.json"],
+      "evidence_paths": ["tests/test_pmos_operations.py", "docs/readiness/external-gates.json"],
       "attempt_count": 1, "last_failure_class": "none", "next_action": "obtain separately authorized vendor-sandbox evidence"
     },
     {
@@ -166,12 +166,12 @@
       "scope": ["closed verifier registry", "exact test counts", "zero skips", "CI parity", "fresh-tree mutations", "offline package", "forward migration and rollback", "release hashes"],
       "non_goals": ["self-attest hosted CI", "publish a tag without maintainer authorization"],
       "acceptance": "Full, CI, mutation, package, migration, release, and evaluator gates pass on a clean stable commit.",
-      "owned_files": ["tools/readiness.py", "tools/readiness_registry.py", "tools/readiness_probe.py", "tools/ci_gate.py", "pmos/migrations.py", "pmos/release.py", "pmos_build_backend.py", "pyproject.toml", "test_readiness.py", "test_pmos_cli.py", "test_pmos_release.py"],
+      "owned_files": ["tools/readiness.py", "tools/readiness_registry.py", "tools/readiness_probe.py", "tools/ci_gate.py", "pmos/migrations.py", "pmos/release.py", "pmos_build_backend.py", "pyproject.toml", "tests/test_readiness.py", "tests/test_pmos_cli.py", "tests/test_pmos_release.py"],
       "failure_cases": ["rubric injection", "zero-test green", "skipped test", "commented CI", "stale scorecard", "migration partial activation", "provenance tamper"],
       "executor_capabilities": ["release-engineering", "migration-design", "evaluator-integrity"],
       "reviewer_capabilities": ["mutation-testing", "supply-chain-review", "independent-release-review"],
       "acceptance_verifiers": ["full-suite", "ci-runtime", "mutation-gates", "packaging-release", "evaluator-integrity"],
-      "evidence_paths": ["test_readiness.py", "test_pmos_cli.py", "test_pmos_release.py", ".github/workflows/lint.yml"],
+      "evidence_paths": ["tests/test_readiness.py", "tests/test_pmos_cli.py", "tests/test_pmos_release.py", ".github/workflows/lint.yml"],
       "attempt_count": 2, "last_failure_class": "none", "next_action": "confirm hosted CI on the exact commit"
     },
     {
@@ -181,12 +181,12 @@
       "scope": ["human and JSON CLI", "runtime quickstart", "operator-document accessibility", "claim parity", "consent-aware observation mechanism"],
       "non_goals": ["claim observed non-maintainer adoption before it occurs", "claim a graphical UI"],
       "acceptance": "CLI, accessibility, docs-contract, and adoption mechanism tests pass without warnings.",
-      "owned_files": ["pmos/cli.py", "docs/RUNTIME-QUICKSTART.md", "docs/ACCESSIBILITY.md", "tools/docs_contract.py", "README.md", "test_pmos_cli.py", "test_pmos_security.py", "test_pmos_operations.py"],
+      "owned_files": ["pmos/cli.py", "docs/RUNTIME-QUICKSTART.md", "docs/ACCESSIBILITY.md", "tools/docs_contract.py", "README.md", "tests/test_pmos_cli.py", "tests/test_pmos_security.py", "tests/test_pmos_operations.py"],
       "failure_cases": ["unclear error", "invalid JSON", "heading jump", "empty alt text", "broken local link", "external overclaim"],
       "executor_capabilities": ["CLI-design", "technical-writing", "accessibility"],
       "reviewer_capabilities": ["new-user-testing", "accessibility-review", "claim-audit"],
       "acceptance_verifiers": ["cli-contract", "accessibility", "docs-contract", "operations-runtime"],
-      "evidence_paths": ["test_pmos_cli.py", "test_pmos_security.py", "docs/ACCESSIBILITY.md", "docs/RUNTIME-QUICKSTART.md"],
+      "evidence_paths": ["tests/test_pmos_cli.py", "tests/test_pmos_security.py", "docs/ACCESSIBILITY.md", "docs/RUNTIME-QUICKSTART.md"],
       "attempt_count": 1, "last_failure_class": "none", "next_action": "obtain consented non-maintainer journey evidence"
     },
     {
@@ -196,12 +196,12 @@
       "scope": ["exact-tree digest", "architecture and security review", "P0 to P3 findings", "evidence commands", "staleness detection", "explicit unauthenticated-identity boundary"],
       "non_goals": ["replace external human team approval", "cryptographically authenticate a reviewer from inside the reviewed repository", "let the implementer silently accept their own release"],
       "acceptance": "The local review record matches the tree digest, labels identity unauthenticated, and records an accepted verdict with no unresolved P0/P1; trusted team review remains external.",
-      "owned_files": ["tools/review_gate.py", "docs/readiness/independent-review.json", "test_pmos_review.py"],
+      "owned_files": ["tools/review_gate.py", "docs/readiness/independent-review.json", "tests/test_pmos_review.py"],
       "failure_cases": ["false authenticated-identity claim", "stale tree digest", "unknown schema", "unresolved P0", "unresolved P1"],
       "executor_capabilities": ["independent-red-team", "architecture-review", "security-review"],
       "reviewer_capabilities": ["release-acceptance", "evidence-audit"],
       "acceptance_verifiers": ["independent-review"],
-      "evidence_paths": ["test_pmos_review.py", "docs/readiness/independent-review.json"],
+      "evidence_paths": ["tests/test_pmos_review.py", "docs/readiness/independent-review.json"],
       "attempt_count": 1, "last_failure_class": "none", "next_action": "keep the accepted review digest current until commit"
     }
   ]

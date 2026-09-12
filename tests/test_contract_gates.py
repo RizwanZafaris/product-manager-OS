@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for the tree's contract gates. Run: python3 -m unittest test_contract_gates
+"""Tests for the tree's contract gates. Run: python3 -m unittest tests/test_contract_gates.py
 
 tools/check_manifest.py and tools/check_workspace_contract.py had no tests of
 their own, and in each one the check that had quietly stopped working was the
@@ -21,7 +21,7 @@ from pathlib import Path
 
 from tools.check_manifest import MODEL_PATTERNS, check_manifest
 
-REPO = Path(__file__).resolve().parent
+REPO = Path(__file__).resolve().parent.parent
 
 # harness/ is deletable by design, and both gates report ok on a tree without
 # it: check_manifest has no manifest to read and check_workspace_contract has

@@ -14,7 +14,7 @@ from tools.docs_contract import check
 from tools.security_gate import scan
 
 
-REPO = Path(__file__).resolve().parent
+REPO = Path(__file__).resolve().parent.parent
 
 
 def write(path: Path, text: str) -> None:

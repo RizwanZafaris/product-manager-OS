@@ -84,7 +84,7 @@ class ConductorTest(unittest.TestCase):
         # A separate process opens the DB and exits immediately after observing
         # the durable cursor: no in-memory object participates in recovery.
         script = "from pmos.store import Store; from pmos.conductor import Conductor; from test_pmos_conductor import BANKS; import sys; s=Store(sys.argv[1]); c=Conductor(s,'payments',BANKS); assert c.next_turn().status == 'blocked'"
-        env = dict(os.environ, PYTHONPATH=str(Path(__file__).parent))
+        env = dict(os.environ, PYTHONPATH=os.pathsep.join((str(Path(__file__).resolve().parent), str(Path(__file__).resolve().parent.parent))))
         subprocess.run([sys.executable, "-c", script, str(self.path)], check=True, env=env)
 
         store, conductor = self.opening()  # separate opening three

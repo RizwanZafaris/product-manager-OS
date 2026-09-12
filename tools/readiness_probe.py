@@ -65,9 +65,12 @@ def run(command, cwd=None):
     argv = list(command)
     if argv and argv[0] == "python3":
         argv[0] = sys.executable
+    # A root suite module lives in <tree>/tests; the probe runs clones too,
+    # so the import path follows the tree being run, never the live checkout.
+    env = dict(os.environ, PYTHONPATH=str(Path(cwd or REPO) / "tests"))
     done = subprocess.run(argv, cwd=str(cwd or REPO), shell=False,
                           capture_output=True, text=True,
-                          timeout=1800)
+                          timeout=1800, env=env)
     return done.returncode, (done.stdout or "") + (done.stderr or "")
 
 
@@ -314,7 +317,7 @@ REQUIRED_ROOT_TESTS = (
 
 def root_test_modules(root=REPO):
     """Every root test module by module name: the floor plus what is on disk."""
-    found = {path.stem for path in Path(root).glob("test_*.py")
+    found = {path.stem for path in (Path(root) / "tests").glob("test_*.py")
              if path.is_file()}
     return sorted(found | {Path(name).stem for name in REQUIRED_ROOT_TESTS})
 
@@ -338,7 +341,7 @@ def root_tests_argv():
 def probe_full_suite():
     """Root, harness and regulated suites, with the counts printed."""
     missing = [name for name in REQUIRED_ROOT_TESTS
-               if not (REPO / name).is_file()]
+               if not (REPO / "tests" / name).is_file()]
     if missing:
         say("required root test modules missing: %s" % ", ".join(missing))
         return 1
@@ -349,7 +352,7 @@ def probe_full_suite():
         say("the root-tests gate names no root test module")
         return 1
     missing = [name + ".py" for name in root_modules
-               if not (REPO / (name + ".py")).is_file()]
+               if not (REPO / "tests" / (name + ".py")).is_file()]
     if missing:
         say("required root test modules missing: %s" % ", ".join(missing))
         return 1
@@ -592,7 +595,7 @@ def probe_mutation_checks():
             "new": ("            self._recover_expired_locked(stamp)\n"
                     "            # A cancel request against a live lease "
                     "belongs to its holder, so\n"),
-            "argv": ["python3", "-m", "unittest", "discover", "-s", ".",
+            "argv": ["python3", "-m", "unittest", "discover", "-s", "tests", "-t", "tests",
                      "-p", "test_pmos_store.py", "-v"],
             "diagnostic": "IntegrityError",
         },
@@ -601,7 +604,7 @@ def probe_mutation_checks():
             "rel": "pmos/store.py",
             "old": "        scope, task_key, _ = self._memory_scope(scope, task_id)\n        self._assert_memory_verified()\n        conditions = [\"p.scope=?\", \"p.task_key=?\"]",
             "new": "        scope, task_key, _ = self._memory_scope(scope, task_id)\n        conditions = [\"p.scope=?\", \"p.task_key=?\"]",
-            "argv": ["python3", "-m", "unittest", "discover", "-s", ".",
+            "argv": ["python3", "-m", "unittest", "discover", "-s", "tests", "-t", "tests",
                      "-p", "test_pmos_store.py", "-v"],
             "diagnostic": "IntegrityError",
         },
@@ -610,7 +613,7 @@ def probe_mutation_checks():
             "rel": "pmos/domain.py",
             "old": ('        if entity_type == "evidence" and getattr(old, "content_hash", None) != getattr(obj, "content_hash", None):'),
             "new": ('        if False and entity_type == "evidence" and getattr(old, "content_hash", None) != getattr(obj, "content_hash", None):'),
-            "argv": ["python3", "-m", "unittest", "discover", "-s", ".",
+            "argv": ["python3", "-m", "unittest", "discover", "-s", "tests", "-t", "tests",
                      "-p", "test_pmos_domain.py", "-v"],
             "diagnostic": "active approval refers to changed or missing evidence",
         },
@@ -619,7 +622,7 @@ def probe_mutation_checks():
             "rel": "pmos/release.py",
             "old": "    if value.get(\"tree_sha256\") != _tree_hash(expected):\n        errors.append(\"tree hash mismatch\")",
             "new": "    if False and value.get(\"tree_sha256\") != _tree_hash(expected):\n        errors.append(\"tree hash mismatch\")",
-            "argv": ["python3", "-m", "unittest", "discover", "-s", ".",
+            "argv": ["python3", "-m", "unittest", "discover", "-s", "tests", "-t", "tests",
                      "-p", "test_pmos_release.py", "-v"],
             "diagnostic": "AssertionError",
         },
@@ -628,7 +631,7 @@ def probe_mutation_checks():
             "rel": "pmos/openrouter.py",
             "old": "                if final_url is not None and _origin(final_url) != _origin(self.config.base_url):\n                    raise OpenRouterRedirectError()",
             "new": "                if False and final_url is not None and _origin(final_url) != _origin(self.config.base_url):\n                    raise OpenRouterRedirectError()",
-            "argv": ["python3", "-m", "unittest", "discover", "-s", ".",
+            "argv": ["python3", "-m", "unittest", "discover", "-s", "tests", "-t", "tests",
                      "-p", "test_pmos_skills.py", "-v"],
             "diagnostic": "AssertionError",
         },
@@ -639,7 +642,7 @@ def probe_mutation_checks():
                     '            return result("deny", "transition needs a nonempty actor identifier")'),
             "new": ('        if False and not _nonempty_text(payload.get("actor_id")):\n'
                     '            return result("deny", "transition needs a nonempty actor identifier")'),
-            "argv": ["python3", "-m", "unittest", "discover", "-s", ".",
+            "argv": ["python3", "-m", "unittest", "discover", "-s", "tests", "-t", "tests",
                      "-p", "test_pmos_hooks.py", "-v"],
             "diagnostic": "AssertionError",
         },
@@ -650,7 +653,7 @@ def probe_mutation_checks():
                     '                    raise SkillContractError("trusted asset hash drift for %s/%s" % (skill_id, asset_name))'),
             "new": ('                if False and hashlib.sha256(snapshot).hexdigest() != _manifest_hash(assets[asset_name]):\n'
                     '                    raise SkillContractError("trusted asset hash drift for %s/%s" % (skill_id, asset_name))'),
-            "argv": ["python3", "-m", "unittest", "discover", "-s", ".",
+            "argv": ["python3", "-m", "unittest", "discover", "-s", "tests", "-t", "tests",
                      "-p", "test_pmos_skills.py", "-v"],
             "diagnostic": "AssertionError",
         },

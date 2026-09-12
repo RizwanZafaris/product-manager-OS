@@ -27,7 +27,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 
-REPO = Path(__file__).resolve().parent
+REPO = Path(__file__).resolve().parent.parent
 TOOLS = REPO / "tools"
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
@@ -502,7 +502,7 @@ class ReleaseGateContractTests(unittest.TestCase):
                 redirect_stdout(StringIO()):
             self.assertEqual(readiness_probe.probe_full_suite(), 0)
         self.assertEqual(seen[0], tuple(self.gate("root-tests").argv))
-        for path in sorted(REPO.glob("test_*.py")):
+        for path in sorted((REPO / "tests").glob("test_*.py")):
             self.assertIn(path.stem, seen[0],
                           "the full-suite probe never runs %s" % path.name)
 

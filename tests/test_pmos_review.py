@@ -11,7 +11,7 @@ from unittest.mock import patch
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-TOOLS = Path(__file__).resolve().parent / "tools"
+TOOLS = Path(__file__).resolve().parent.parent / "tools"
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
@@ -812,7 +812,7 @@ class ReadinessRecordCommitFieldTests(unittest.TestCase):
         re.MULTILINE)
 
     def test_no_readiness_doc_pre_fills_a_literal_commit_sha(self):
-        readiness_dir = Path(__file__).resolve().parent / "docs" / "readiness"
+        readiness_dir = Path(__file__).resolve().parent.parent / "docs" / "readiness"
         offenders = []
         for path in sorted(readiness_dir.glob("*.md")):
             text = path.read_text(encoding="utf-8")

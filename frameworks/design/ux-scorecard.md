@@ -73,7 +73,7 @@ interval = [p' - margin, p' + margin], clipped to [0, 1]
      the later MeasuringU naming and benchmark work for this style of item
      was not among the sources read for this sheet or its method card. -->
 
-**Item, asked after every task:** "Overall, this task was:" on a 7-point scale, labeled 1 (Very difficult) to 7 (Very easy).
+**Item, asked after every task:** "Overall, this task was:" on a 7-point scale, labeled 1 (Very difficult) to 7 (Very easy). Source: the post-task ease item compared in Jeff Sauro and Joseph S. Dumas, "Comparison of Three One-Question, Post-Task Usability Questionnaires" (CHI 2009), listed in [ux-measurement.md](../../knowledge/design/ux-measurement.md).
 
 **Score:** the median rating per task, with n stated. No pass mark is attached to this number; read it against this product's own earlier rounds, never against a number recalled from somewhere else.
 
@@ -86,9 +86,10 @@ interval = [p' - margin, p' + margin], clipped to [0, 1]
 <!-- Ten items, alternating positive and negative tone, five-point agreement
      scale, asked once per participant after the whole session (not per
      task). The items themselves are linked to the primary source rather
-     than reproduced here, per Brooke's own free-use-with-acknowledgement
-     condition and this repository's one-quote-per-file limit, already
-     spent below on UMUX-LITE. -->
+     than reproduced here: Brooke's free-use condition asks for
+     acknowledgement, and a link keeps this sheet short, even though the
+     questionnaire exception in knowledge/design/README.md would allow
+     quoting them. -->
 
 **Instrument:** [Brooke's ten SUS items](https://digital.ahrq.gov/sites/default/files/docs/survey/systemusabilityscale%2528sus%2529_comp%255B1%255D.pdf), asked once per participant, immediately after the session and before debriefing. Every item gets a response; a participant who cannot answer one marks the scale's centre point rather than skipping it.
 

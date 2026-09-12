@@ -28,6 +28,14 @@ This is an unreleased working-tree change set, not a tag, published package, hos
 - `tools/ext_ai_probe.py`, an opt-in probe that drives the OpenRouter adapter for the EXT-AI evidence gate, plus the two things external evidence needs from a person: `docs/readiness/EXT-TEAM-review-brief.md` and `docs/readiness/EXT-USER-session-script.md`.
 - A Claude Code hook layer, `.claude/settings.json` and `.claude/hooks/pmos_hook.py`, registered on seven session and tool events. It applies the `pmos/hooks.py` write and approval policy and runs the compile and document-tree gates when a session stops. It is the only part of this tree that runs without being invoked, which is why `SECURITY.md` now carries a section for it, and deleting `.claude/` removes it.
 
+### Changed, repository layout
+
+- The nineteen root unit-test modules moved from the repository root into `tests/`. `tools/ci_gate.py`, the readiness verifiers and `tools/readiness_probe.py` put `tests/` on the import path, so every test id the readiness registry pins is unchanged (`test_lint.OsTreeGateTests.<name>`); the task ledger's evidence paths, `lint.py`'s rule-bearing set, the CI workflow's two direct test steps and the documents that name a test file follow the move. No document a user fills moved. Run one suite from the root with `python3 -m unittest tests/test_lint.py -v`.
+
+### Fixed, design layer
+
+- `knowledge/design/visual-foundations.md`'s reflow row now states WCAG 1.4.10 as written: vertically scrolling content at 320 CSS px wide, horizontally scrolling content at 256 CSS px tall, and an exception only for content that needs a two-dimensional layout. `frameworks/design/ux-scorecard.md` names the source of its post-task ease item and no longer says its quotation allowance is spent. Both came from Codex's CI-6 review of 2026-09-12.
+
 ### Changed, role ladder
 
 - The eight rungs in `knowledge/roles/ladder.md` and the seven specializations in

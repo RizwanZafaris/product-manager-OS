@@ -72,7 +72,7 @@ reports ok instead of failing. A harness/ that exists without MANIFEST.json
 or INVARIANTS.md is a broken contract and still fails.
 exit 0
 
-$ python3 test_lint.py
+$ python3 -m unittest tests/test_lint.py
 Ran 78 tests in 1.793s
 FAILED (failures=1)
   test_the_real_tree_passes_the_shipping_gate: the two links above
@@ -106,7 +106,7 @@ reports ok instead of failing. A harness/ that exists without MANIFEST.json
 or INVARIANTS.md is a broken contract and still fails.
 exit 0
 
-$ python3 test_lint.py
+$ python3 -m unittest tests/test_lint.py
 Ran 108 tests in 1.944s
 OK
 
