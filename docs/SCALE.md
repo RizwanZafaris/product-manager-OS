@@ -60,10 +60,13 @@ criterion for F34 ("hitting the limit is actionable and preserves prior
 state") already held before this slice; this slice adds the benchmark, this
 page, and an early warning before that point.
 
-There is no archive or export command yet. That ships in slice R15. Until
-then, the only ways to bring a durable aggregate back under the limit are to
-back up the store first (see [Backup and recovery](#backup-and-recovery)
-below) and then reduce what future mutations add (see
+There is no archive or export command for `PMOSDomain` itself. R15 shipped
+`pmos export` for the Conductor state a `pmos` command line actually drives
+(see `docs/RUNTIME-QUICKSTART.md`'s Export section); it is a separate
+aggregate from `PMOSDomain`, as noted in [Scope](#scope) above, so exporting
+a `PMOSDomain` still means backing up the store first (see
+[Backup and recovery](#backup-and-recovery) below) and then reducing what
+future mutations add (see
 [Guidance as a product grows](#guidance-as-a-product-grows)).
 
 ## The early warning
@@ -95,11 +98,16 @@ action is to read this page and plan ahead. Nothing enforces the warning by
 itself and nothing before the hard limit blocks a mutation.
 
 The warning lives in [pmos/domain.py](../pmos/domain.py) because that is the
-module that carries `MAX_SNAPSHOT_BYTES`. Surfacing it in the `pmos` command
-line's own `status` output is out of scope for this slice (`pmos/cli.py`
-belongs to another slice, and as noted above it does not build a
-`PMOSDomain` at all today); a host embedding `PMOSDomain` directly can check
-`scale_warning` after any mutation right now.
+module that carries `MAX_SNAPSHOT_BYTES`. `pmos/cli.py` still does not build
+a `PMOSDomain` (see [Scope](#scope) above), so this `scale_warning` is not
+what `pmos status` surfaces; a host embedding `PMOSDomain` directly can check
+it after any mutation right now. R15 added the CLI-facing counterpart for
+the aggregate `pmos/cli.py` does drive: `Conductor.scale_warning` in
+[pmos/conductor.py](../pmos/conductor.py), bounded by the Conductor's own,
+much smaller, `MAX_STATE_BYTES` (1 MiB, not this page's 16 MiB
+`MAX_SNAPSHOT_BYTES`). `pmos status` reports it as `capacity_warning`; see
+`docs/RUNTIME-QUICKSTART.md`'s Export section for both the warning and the
+`pmos export` command it names as the next action.
 
 ## Measured figures
 

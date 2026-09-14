@@ -18,7 +18,7 @@ from pmos.cli import (_cli_source_resolver, _gate_result, _local_gate_verifier, 
                       _product_conductor, _unsupported_platform_reason, main, PIN_PATH,
                       UNSUPPORTED_PLATFORM_EXIT_CODE)
 from pmos.banks import CONTRACT_PATH
-from pmos.conductor import TurnOutcome
+from pmos.conductor import STATE_PATH, TurnOutcome
 from pmos.migrations import (create_legacy_fixture, migrate_workspace, recover_workspace,
                               rollback_workspace, MigrationError)
 from pmos.store import Store, ValidationError
@@ -429,6 +429,25 @@ class CliTests(unittest.TestCase):
         with redirect_stdout(output):
             rc = main(["--json", "handoff", "--path", folder, "--product-id", "checkout"])
         return rc, json.loads(output.getvalue())
+
+    def reconcile(self, folder: str) -> dict:
+        output = StringIO()
+        with redirect_stdout(output):
+            main(["--json", "reconcile", "--path", folder, "--product-id", "checkout"])
+        return json.loads(output.getvalue())
+
+    def export(self, folder: str, out_dir: str, force: bool = False) -> tuple[int, dict]:
+        args = ["--json", "export", "--path", folder, "--product-id", "checkout", "--out", out_dir]
+        if force:
+            args.append("--force")
+        output = StringIO()
+        with redirect_stdout(output):
+            rc = main(args)
+        return rc, json.loads(output.getvalue())
+
+    def head(self, folder: str):
+        with Store(Path(folder) / ".pmos/runtime.sqlite") as store:
+            return store.head("checkout")
 
     def test_an_approved_gate_binds_the_manifest_to_the_workspace(self):
         with TemporaryDirectory() as folder:
@@ -1564,6 +1583,255 @@ class CliTests(unittest.TestCase):
                 self.assertEqual(main(["--json", "status", "--path", folder]), 0)
             with Store(Path(folder) / ".pmos/runtime.sqlite") as store:
                 self.assertEqual(store.head("checkout").revision, 1)
+
+
+    # ------------------------------ reconcile (F01) ------------------------------
+
+    def test_reconcile_on_a_freshly_initialized_product_has_nothing_pending(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            head_before = self.head(folder)
+            report = self.reconcile(folder)
+            head_after = self.head(folder)
+            self.assertEqual(head_before, head_after)
+            self.assertEqual(report["schema"], "pmos.reconcile.v1")
+            self.assertTrue(report["read_only"])
+            self.assertEqual((report["pending"], report["conflicts"], report["ok"]), ([], [], True))
+
+    def test_reconcile_shows_a_pending_proposal_and_re_proving_clears_it(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            status = self.answer_bank(folder, "a")
+            path = self.write_artifact(folder, "discovery/problem-framing.md",
+                                       "checkout/discovery/problem-framing", "DISCOVER", 1, [],
+                                       "templates/discovery/problem-framing.md", "A real outcome")
+            reviewed = artifact_revision(path.read_text(encoding="utf-8"))
+            rc, parsed = self.gate(folder, status["revision_token"], "gate-1", "approved")
+            self.assertEqual((rc, parsed["ok"]), (0, True))
+            clean = self.reconcile(folder)
+            self.assertEqual((clean["pending"], clean["conflicts"], clean["ok"]), ([], [], True))
+            # A direct edit outside `pmos answer`/`pmos gate` is a pending
+            # proposal, not an accepted change; reconcile writes nothing.
+            head_before = self.head(folder)
+            path = self.write_artifact(folder, "discovery/problem-framing.md",
+                                       "checkout/discovery/problem-framing", "DISCOVER", 1, [],
+                                       "templates/discovery/problem-framing.md", "A changed outcome")
+            current = artifact_revision(path.read_text(encoding="utf-8"))
+            report = self.reconcile(folder)
+            head_after = self.head(folder)
+            self.assertEqual(head_before, head_after)
+            self.assertTrue(report["read_only"])
+            self.assertFalse(report["ok"])
+            self.assertEqual(report["conflicts"], [])
+            (pending,) = report["pending"]
+            self.assertEqual(pending["id"], "checkout/discovery/problem-framing")
+            self.assertEqual(pending["path"], "discovery/problem-framing.md")
+            self.assertEqual(pending["accepted_revision"], reviewed)
+            self.assertEqual(pending["current_revision"], current)
+            self.assertEqual(pending["stales_gates"], ["discover"])
+            self.assertEqual(pending["reconcile_dependents"], [])
+            (action,) = pending["next_action"]
+            self.assertEqual(action["bank_id"], "discover")
+            self.assertIn("pmos gate", action["command"])
+            self.assertIn("--bank-id discover", action["command"])
+            # Accepting the proposal happens only by re-proving the gate
+            # through the existing shared command, never through reconcile.
+            status = self.status(folder)
+            rc, parsed = self.gate(folder, status["revision_token"], "gate-2", "approved")
+            self.assertEqual((rc, parsed["ok"]), (0, True))
+            cleared = self.reconcile(folder)
+            self.assertEqual((cleared["pending"], cleared["conflicts"], cleared["ok"]), ([], [], True))
+
+    def test_reconcile_names_dependents_that_need_reconciliation(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            status = self.answer_bank(folder, "a")
+            self.write_artifact(folder, "discovery/problem-framing.md",
+                                "checkout/discovery/problem-framing", "DISCOVER", 1, [],
+                                "templates/discovery/problem-framing.md", "A real outcome")
+            rc, parsed = self.gate(folder, status["revision_token"], "gate-1", "approved")
+            self.assertEqual(rc, 0)
+            self.write_artifact(folder, "planning/vision.md", "checkout/planning/vision", "PLANNING", 2,
+                                ["checkout/discovery/problem-framing"], "templates/planning/vision.md",
+                                "A vision")
+            self.write_artifact(folder, "definition/prd.md", "checkout/definition/prd", "DEFINE", 2,
+                                ["checkout/planning/vision"], "templates/definition/prd.md",
+                                "A product brief")
+            status = self.answer_bank(folder, "b")
+            rc, parsed = self.gate(folder, status["revision_token"], "gate-2", "approved", bank_id="define")
+            self.assertEqual(rc, 0)
+            self.write_artifact(folder, "discovery/problem-framing.md",
+                                "checkout/discovery/problem-framing", "DISCOVER", 1, [],
+                                "templates/discovery/problem-framing.md", "A changed outcome")
+            report = self.reconcile(folder)
+            (pending,) = report["pending"]
+            self.assertEqual(pending["id"], "checkout/discovery/problem-framing")
+            self.assertEqual(pending["stales_gates"], ["discover", "define"])
+            self.assertEqual(pending["reconcile_dependents"],
+                             ["checkout/definition/prd", "checkout/planning/vision"])
+            self.assertEqual({action["bank_id"] for action in pending["next_action"]},
+                             {"discover", "define"})
+
+    def test_reconcile_reports_a_missing_bound_artifact_as_a_conflict(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            status = self.answer_bank(folder, "a")
+            path = self.write_artifact(folder, "discovery/problem-framing.md",
+                                       "checkout/discovery/problem-framing", "DISCOVER", 1, [],
+                                       "templates/discovery/problem-framing.md", "A real outcome")
+            rc, parsed = self.gate(folder, status["revision_token"], "gate-1", "approved")
+            self.assertEqual((rc, parsed["ok"]), (0, True))
+            path.unlink()
+            report = self.reconcile(folder)
+            self.assertEqual(report["pending"], [])
+            self.assertFalse(report["ok"])
+            (conflict,) = report["conflicts"]
+            self.assertEqual(conflict["kind"], "missing_artifact")
+            self.assertEqual(conflict["id"], "checkout/discovery/problem-framing")
+            self.assertEqual(conflict["path"], "discovery/problem-framing.md")
+
+    def test_reconcile_reports_an_artifact_whose_id_changed_as_a_conflict(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            status = self.answer_bank(folder, "a")
+            self.write_artifact(folder, "discovery/problem-framing.md",
+                                "checkout/discovery/problem-framing", "DISCOVER", 1, [],
+                                "templates/discovery/problem-framing.md", "A real outcome")
+            rc, parsed = self.gate(folder, status["revision_token"], "gate-1", "approved")
+            self.assertEqual((rc, parsed["ok"]), (0, True))
+            # The same file, but its own artifact_id field was edited: the id
+            # the approval bound no longer resolves to any file at all.
+            self.write_artifact(folder, "discovery/problem-framing.md",
+                                "checkout/discovery/problem-framing-renamed", "DISCOVER", 1, [],
+                                "templates/discovery/problem-framing.md", "A real outcome")
+            report = self.reconcile(folder)
+            self.assertEqual(report["pending"], [])
+            self.assertFalse(report["ok"])
+            (conflict,) = report["conflicts"]
+            self.assertEqual(conflict["kind"], "artifact_id_changed")
+            self.assertEqual(conflict["bound_id"], "checkout/discovery/problem-framing")
+            self.assertEqual(conflict["current_id"], "checkout/discovery/problem-framing-renamed")
+            self.assertEqual(conflict["path"], "discovery/problem-framing.md")
+
+    def test_reconcile_reports_two_artifacts_sharing_one_id_as_a_conflict(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            self.write_artifact(folder, "discovery/one.md", "checkout/discovery/dup", "DISCOVER", 1, [],
+                                "templates/discovery/problem-framing.md", "First")
+            self.write_artifact(folder, "discovery/two.md", "checkout/discovery/dup", "DISCOVER", 1, [],
+                                "templates/discovery/problem-framing.md", "Second")
+            report = self.reconcile(folder)
+            self.assertEqual(report["pending"], [])
+            self.assertFalse(report["ok"])
+            (conflict,) = report["conflicts"]
+            self.assertEqual(conflict["kind"], "duplicate_id")
+            self.assertIn("checkout/discovery/dup", conflict["message"])
+
+    def test_reconcile_reports_a_symlinked_artifact_as_a_conflict(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            target = self.write_artifact(folder, "discovery/problem-framing.md",
+                                         "checkout/discovery/problem-framing", "DISCOVER", 1, [],
+                                         "templates/discovery/problem-framing.md", "A real outcome")
+            link = Path(folder, "discovery/problem-framing-link.md")
+            os.symlink(target, link)
+            report = self.reconcile(folder)
+            self.assertEqual(report["pending"], [])
+            self.assertFalse(report["ok"])
+            (conflict,) = report["conflicts"]
+            self.assertEqual(conflict["kind"], "symlinked_artifact")
+            self.assertIn("symlink", conflict["message"])
+
+    def test_reconcile_reports_an_unreadable_artifact_as_a_conflict(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            bad_dir = Path(folder, "discovery")
+            bad_dir.mkdir(parents=True, exist_ok=True)
+            (bad_dir / "bad.md").write_bytes(b"\xff\xfe not valid utf-8 \x00")
+            report = self.reconcile(folder)
+            self.assertEqual(report["pending"], [])
+            self.assertFalse(report["ok"])
+            (conflict,) = report["conflicts"]
+            self.assertEqual(conflict["kind"], "unreadable_artifact")
+
+    # ------------------------------ export (F34) ------------------------------
+
+    def test_export_writes_a_portable_package_and_a_readable_index(self):
+        with TemporaryDirectory() as folder, TemporaryDirectory() as out_parent:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            status = self.answer_bank(folder, "a")
+            self.write_artifact(folder, "discovery/problem-framing.md",
+                                "checkout/discovery/problem-framing", "DISCOVER", 1, [],
+                                "templates/discovery/problem-framing.md", "A real outcome")
+            rc, parsed = self.gate(folder, status["revision_token"], "gate-1", "approved")
+            self.assertEqual(rc, 0)
+            out_dir = str(Path(out_parent) / "archive")
+            head_before = self.head(folder)
+            rc, result = self.export(folder, out_dir)
+            head_after = self.head(folder)
+            self.assertEqual(rc, 0)
+            # export is read-only on the store: only local files are written.
+            self.assertEqual(head_before, head_after)
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["source_revision"], head_after.token)
+            package = json.loads(Path(out_dir, "export.json").read_text(encoding="utf-8"))
+            self.assertEqual(package["schema"], "pmos.export.v1")
+            self.assertEqual(package["product_id"], "checkout")
+            self.assertEqual(package["source_revision"], head_after.token)
+            (approval,) = package["approvals"]
+            self.assertEqual(approval["bank_id"], "discover")
+            self.assertEqual(approval["attestation"], "local")
+            self.assertEqual(approval["manifest"]["artifacts"][0]["id"],
+                             "checkout/discovery/problem-framing")
+            self.assertIn("not an import", package["note"])
+            self.assertTrue(package["interview"]["banks"]["discover"]["answers"])
+            index = Path(out_dir, "EXPORT.md").read_text(encoding="utf-8")
+            self.assertIn("Product: checkout", index)
+            self.assertIn("not an import path", index)
+            self.assertIn("discover", index)
+
+    def test_export_refuses_to_overwrite_without_force_then_succeeds_with_it(self):
+        with TemporaryDirectory() as folder, TemporaryDirectory() as out_parent:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            out_dir = str(Path(out_parent) / "archive")
+            rc, result = self.export(folder, out_dir)
+            self.assertEqual(rc, 0)
+            first = Path(out_dir, "export.json").read_text(encoding="utf-8")
+            rc, result = self.export(folder, out_dir)
+            self.assertNotEqual(rc, 0)
+            self.assertIn("--force", result["error"])
+            self.assertEqual(Path(out_dir, "export.json").read_text(encoding="utf-8"), first)
+            rc, result = self.export(folder, out_dir, force=True)
+            self.assertEqual(rc, 0)
+            self.assertTrue(result["ok"])
+
+    # ------------------------------ capacity warning (F34) ------------------------------
+
+    def test_status_capacity_warning_is_none_under_the_threshold(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            status = self.status(folder)
+            self.assertIsNone(status["capacity_warning"])
+
+    def test_status_reports_a_capacity_warning_past_80_percent_of_max_state_bytes(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            self.answer_bank(folder, "a")
+            with Store(Path(folder) / ".pmos/runtime.sqlite") as store:
+                raw = store.read_snapshot("checkout").files[STATE_PATH]
+            size = len(raw)
+            # 85% of a patched-small MAX_STATE_BYTES: over the 80% warning
+            # threshold, under the hard bound _load() enforces.
+            patched_max = int(size / 0.85)
+            with patch("pmos.conductor.MAX_STATE_BYTES", patched_max):
+                status = self.status(folder)
+            warning = status["capacity_warning"]
+            self.assertIsNotNone(warning)
+            self.assertEqual(warning["size_bytes"], size)
+            self.assertEqual(warning["limit_bytes"], patched_max)
+            self.assertGreaterEqual(warning["percent_of_limit"], 80.0)
+            self.assertIn("MAX_STATE_BYTES", warning["message"])
+            self.assertIn("pmos export", warning["message"])
 
 
 if __name__ == "__main__":

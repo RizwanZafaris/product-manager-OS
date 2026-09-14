@@ -14,10 +14,12 @@ from typing import Any, Sequence
 
 from .banks import CONTRACT_PATH, LEGACY_ONBOARDING, parse_contract, shipped_banks
 from .conductor import TurnOutcome
+from .export import build_export, render_export_markdown
 from .handoff import build_handoff
 from .migrations import migrate_workspace, recover_workspace, rollback_workspace
 from .phases import phase_report
 from .product import PIN_PATH, local_gate_verifier, pinned_contract, product_banks, product_conductor, source_resolver
+from .reconcile import reconcile_report
 from .release import build_provenance, verify_provenance
 from .store import NotFoundError, Store, StoreError, ValidationError
 
@@ -355,7 +357,11 @@ def _interview_status(store: Store, root: Path, product_id: str, token: str) -> 
               "rejections": rejections,
               "question_banks": {"pinned": pinned, "shipped": shipped,
                                  "current": current, "message": message},
-              "phases": phases}
+              "phases": phases,
+              # F34: names size/limit/next action once the Conductor's durable
+              # state reaches 80% of MAX_STATE_BYTES; None below that. See
+              # pmos/conductor.py's scale_warning and docs/SCALE.md.
+              "capacity_warning": conductor.scale_warning}
     if phases_error is not None:
         result["phases_error"] = phases_error
     return result
@@ -520,6 +526,45 @@ def _handoff(args: argparse.Namespace) -> dict[str, Any]:
             "index": "handoff/context-index.json", "context": "handoff/CONTEXT.md"}
 
 
+def _reconcile(args: argparse.Namespace) -> dict[str, Any]:
+    root, database = _paths(args.path)
+    if not database.exists():
+        raise ValidationError("PM OS is not initialized at %s; run `pmos init --path %s`" % (root, root))
+    with Store(database) as store:
+        report = reconcile_report(store, root, args.product_id)
+    # ok signals a workspace with nothing pending and no conflict, useful for
+    # scripting; reconcile itself never fails just because there is something
+    # to reconcile.
+    ok = not report["pending"] and not report["conflicts"]
+    return {**report, "ok": ok}
+
+
+def _export(args: argparse.Namespace) -> dict[str, Any]:
+    root, database = _paths(args.path)
+    if not database.exists():
+        raise ValidationError("PM OS is not initialized at %s; run `pmos init --path %s`" % (root, root))
+    out_dir = Path(args.out).expanduser().resolve()
+    # The same symlink posture _handoff takes for root/handoff: a planted
+    # symlink at the export directory or either file it writes is refused
+    # rather than silently followed.
+    _reject_symlink(out_dir, "export directory")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    export_path = out_dir / "export.json"
+    index_path = out_dir / "EXPORT.md"
+    _reject_symlink(export_path, "export.json")
+    _reject_symlink(index_path, "EXPORT.md")
+    if export_path.exists() and not args.force:
+        raise ValidationError("%s already exists; pass --force to overwrite it" % export_path)
+    with Store(database) as store:
+        conductor = _product_conductor(store, root, args.product_id)
+        package = build_export(conductor, root)
+    export_text = json.dumps(package, sort_keys=True, indent=1, ensure_ascii=False) + "\n"
+    export_path.write_text(export_text, encoding="utf-8")
+    index_path.write_text(render_export_markdown(package), encoding="utf-8")
+    return {"ok": True, "product_id": args.product_id, "source_revision": package["source_revision"],
+            "export": str(export_path), "index": str(index_path)}
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="pmos", description="Product Manager OS local runtime")
     parser.add_argument("--json", action="store_true", dest="json_output", help="emit machine-readable JSON")
@@ -566,6 +611,18 @@ def _parser() -> argparse.ArgumentParser:
     handoff.add_argument("--path", default=".")
     handoff.add_argument("--product-id", required=True)
     handoff.add_argument("--json", action="store_true", dest="json_command")
+    reconcile = commands.add_parser(
+        "reconcile", help="show pending proposals and conflicts between the workspace and the runtime; read-only")
+    reconcile.add_argument("--path", default=".")
+    reconcile.add_argument("--product-id", required=True)
+    reconcile.add_argument("--json", action="store_true", dest="json_command")
+    export_cmd = commands.add_parser(
+        "export", help="write a portable, versioned export of a product's interview and approvals")
+    export_cmd.add_argument("--path", default=".")
+    export_cmd.add_argument("--product-id", required=True)
+    export_cmd.add_argument("--out", required=True, help="directory to write export.json and EXPORT.md into")
+    export_cmd.add_argument("--force", action="store_true", help="overwrite an existing export.json")
+    export_cmd.add_argument("--json", action="store_true", dest="json_command")
     migrate = commands.add_parser("migrate", help="migrate a legacy workspace with a dry-run option")
     migrate.add_argument("source")
     migrate.add_argument("--destination")
@@ -617,6 +674,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             result = _gate(args)
         elif args.command == "handoff":
             result = _handoff(args)
+        elif args.command == "reconcile":
+            result = _reconcile(args)
+        elif args.command == "export":
+            result = _export(args)
         elif args.command == "migrate":
             result = migrate_workspace(args.source, args.destination, product_id=args.product_id,
                                        dry_run=args.dry_run).as_dict()

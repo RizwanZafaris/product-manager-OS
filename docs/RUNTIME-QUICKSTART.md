@@ -159,6 +159,113 @@ never hides the rest of `status`: `phases` comes back as an empty list and
 the top-level result carries `phases_error` naming what went wrong, instead
 of `status` failing outright.
 
+## The file-to-runtime boundary
+
+F01: Markdown and the runtime are one system with one authority for each
+field, not two copies that can quietly disagree.
+
+- **File-owned:** a workspace artifact's body and its authored frontmatter
+  fields (`artifact_id`, `phase`, `status`, `depends_on`, `template`). You
+  edit these directly, in any editor, with no runtime call.
+- **Runtime-owned:** gate approvals, the artifact revisions they bind, and
+  interview answers. These change only through `pmos answer`, `pmos reopen`,
+  and `pmos gate`; no direct file edit changes them.
+- **Stable IDs and the revision rule.** `artifact_id` is the identity that
+  survives a rename; `pmos/artifacts.py`'s `artifact_revision()` is the
+  SHA-256 of an artifact's body after its frontmatter block, computed fresh
+  every time, never typed by hand. A gate approval binds the revisions of
+  every artifact whose block names that gate, plus everything they depend on,
+  in one manifest (see `pmos gate` above).
+- **A direct edit becomes a pending proposal, not an accepted change.**
+  Editing an approved artifact's body changes its revision. That alone does
+  not revise the approval: the runtime still holds the revision it bound, so
+  `pmos status` marks the bank `stale` and `pmos reconcile` lists the edit as
+  pending. The edit is accepted only by re-proving the affected gate with
+  `pmos gate`, which records the new revisions and keeps the superseded
+  approval as history (see `## Reconcile` below).
+- **What export does and does not do.** `pmos export` writes the runtime's
+  side of a product, portably: interview answers, every gate approval with
+  the manifest it bound, and the stale gates, versioned and human-indexed.
+  It is an archive/read path, not an import path: nothing in this slice
+  reads an export back into a runtime.
+- **The Obsidian UI round trip is deferred.** A control-station UI that lets
+  someone accept a proposal or prove a gate from inside Obsidian is owner-
+  deferred and out of scope here. `pmos reconcile` and `pmos export` are the
+  CLI/agent half of the boundary; the file half (artifact frontmatter and
+  body) already round-trips through any editor, Obsidian included, today.
+
+## Reconcile: pending proposals and conflicts
+
+`pmos reconcile` is read-only: it never commits to the store and never edits
+a workspace file. It compares the workspace to the runtime's bound approvals
+and reports two things.
+
+```bash
+pmos reconcile --path ./products/my-product --product-id checkout --json
+```
+
+**Pending proposals.** Each workspace artifact whose current body differs
+from the revision the runtime's latest approval bound for it, sorted by id:
+its `id`, `path`, `accepted_revision`, `current_revision`, `stales_gates`
+(every bank whose approval no longer verifies because of it),
+`reconcile_dependents` (other approved artifacts that depend on it and so
+also need reconciliation), and `next_action`, one `{"bank_id", "command"}`
+entry per staled bank naming the `pmos gate` re-proof that accepts the
+edit. `pmos gate` is the only accepted way to clear a pending proposal;
+reconcile itself changes nothing.
+
+**Conflicts**, named explicitly rather than surfaced as a stack trace: a
+bound artifact that is missing (`missing_artifact`), a bound id that now
+belongs to a different file because the file's own `artifact_id` field
+changed (`artifact_id_changed`), two files sharing one id
+(`duplicate_id`), and a symlinked or unreadable artifact
+(`symlinked_artifact` / `unreadable_artifact`). `scan()` stops at the first
+workspace-wide problem it finds, so a duplicate id or a symlinked/unreadable
+file reports as one conflict per call; fix it and reconcile again to see the
+next.
+
+`reconcile` reuses `pmos/artifacts.py`'s `check_manifest()` through
+`Conductor.stale_gates()`, the exact comparison `pmos status` and `pmos gate`
+already run; it does not invent a second approval path. A clean workspace
+returns empty `pending` and `conflicts` lists and exits 0.
+
+## Export: portable archive
+
+```bash
+pmos export --path ./products/my-product --product-id checkout --out ./archive/checkout-2026-09-15 --json
+```
+
+`pmos export` is read-only on the store: it only reads the current snapshot
+and writes two local files under `--out` (created if missing):
+
+- `export.json`: a versioned (`pmos.export.v1`) package with the schema
+  version, product id, source revision, interview answers, every gate
+  approval with the manifest it bound and its attestation (always `local`
+  today), and the stale gates.
+- `EXPORT.md`: a short human index of the same package, in the style of
+  `handoff/CONTEXT.md`.
+
+This is F34's archive/export path: the lever `docs/SCALE.md` names for
+staying ahead of a growing snapshot. **It is not an import path.** Reading an
+export back into a runtime is out of scope for this slice; nothing consumes
+`export.json` as input.
+
+`pmos export` refuses to overwrite an existing `export.json` unless `--force`
+is given, so a scripted backup cadence never silently clobbers an earlier
+archive:
+
+```bash
+pmos export --path ./products/my-product --product-id checkout --out ./archive/checkout-2026-09-15 --force
+```
+
+**The capacity warning.** Once the Conductor's own durable state (bounded by
+`MAX_STATE_BYTES`, 1 MiB, in `pmos/conductor.py`) reaches 80% of that limit,
+`pmos status` adds a `capacity_warning` field naming the current size, the
+limit, and the next action: `pmos export`. Below the threshold the field is
+`null`. This is the CLI-facing counterpart to `PMOSDomain.scale_warning`
+documented in `docs/SCALE.md`, for the much smaller limit a `pmos` command
+line user actually meets.
+
 ## Development handoff
 
 At Gate 3, DESIGN hands a development-ready package to engineering. Fill

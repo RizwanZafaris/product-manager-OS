@@ -514,6 +514,34 @@ class Conductor:
         _snapshot, state = self._load()
         return self._gate_problems(state, first_only=False)
 
+    @property
+    def scale_warning(self) -> Optional[dict[str, Any]]:
+        """A small mapping naming size, limit and next action once the durable
+        Conductor state reaches 80% of MAX_STATE_BYTES, or None under that
+        threshold.
+
+        Shaped like PMOSDomain.scale_warning (see docs/SCALE.md) for the
+        Conductor's own, much smaller, state limit: MAX_STATE_BYTES here is
+        1 MiB, not PMOSDomain's 16 MiB MAX_SNAPSHOT_BYTES, and this is the
+        limit a `pmos` command-line user actually meets. The threshold is
+        read from the module-level MAX_STATE_BYTES at call time (not cached),
+        so a caller that reconfigures it sees a consistent answer. The next
+        action this names is `pmos export`, the read-only archive path
+        pmos/export.py provides (F34).
+        """
+        snapshot, _state = self._load()
+        raw = snapshot.files.get(STATE_PATH)
+        size = len(raw) if raw is not None else len(canonical_json(self._new_state()))
+        threshold = int(MAX_STATE_BYTES * 0.8)
+        if size < threshold:
+            return None
+        percent = round(size * 100.0 / MAX_STATE_BYTES, 1)
+        message = ("conductor state is %d bytes, %s%% of the %d byte MAX_STATE_BYTES limit; "
+                   "export the product soon with `pmos export`; see docs/SCALE.md"
+                   % (size, percent, MAX_STATE_BYTES))
+        return {"size_bytes": size, "limit_bytes": MAX_STATE_BYTES,
+                "percent_of_limit": percent, "message": message}
+
     # ------------------------------ persistence ------------------------------
     def _load(self) -> tuple[Any, dict[str, Any]]:
         snapshot = self.store.read_snapshot(self.product_id)
