@@ -29,6 +29,15 @@ aliases: ["Feedback Program", "feedback-program"]
 
 ## 1. Charter
 
+<!-- Name the recurring decision before the program starts; a program with no
+     decision to inform is the failure mode this file exists to block. A good
+     entry names the decision, the forum that owns it, and the cadence it runs
+     on, so a reviewer can tell what this board is for. This fails when the
+     charter names a topic area instead of a decision: "roadmap feedback" is not
+     a decision, but "the quarterly roadmap sequence at the Gate 5 review" is.
+     Do not leave the decision field as a generic theme; if no recurring
+     decision is live, stop and close this file. -->
+
 **Program type:** [customer advisory board / beta or early access / standing panel]
 **The decision this program informs:** [name the recurring decision, its forum, and its cadence: e.g. the quarterly roadmap sequence, the Gate 5 go call for each release]
 **What the program supplies that nothing else does:** [one sentence; if an existing channel already supplies it, stop here]
@@ -43,7 +52,27 @@ aliases: ["Feedback Program", "feedback-program"]
 - **Size and seats:** [target count, and why that number]
 - **Curation rules:** [rotation schedule, term length, how a seat is retired, competitor and conflict handling]
 
+<!-- A trap: recruiting the friendliest accounts rather than the ones who match
+     the segment you are betting on, which gives you praise instead of signal.
+     Do not let membership drift past the target count; a board that grows to
+     accommodate every interested customer becomes unmanageable and loses its
+     curation. This fails when the curation rules leave the retirement path
+     vague, so stale seats persist and attendance decays without anyone willing
+     to retire them. -->
+
+| Seat | Recruiting criteria | Size and seats basis | Curation rule | Term handling |
+|---|---|---|---|---|
+| [member or cohort] | [segment, role, usage profile; disqualifiers] | [target count, and why] | [rotation, term length, retirement, conflict handling] | [start date, renewal date, or retirement trigger] |
+
 ## 3. Cadence and ownership
+
+<!-- Tie the cadence to the section 1 decision, not to a fixed calendar slot;
+     a board that meets on a clock instead of a live question drifts into a
+     dinner club. A good entry names who owns the agenda, when pre-reads go
+     out, and who closes the loop with members on what changed. Do not let the
+     agenda become a product showcase; the agenda serves the decision, not the
+     roadmap. This fails when prep and follow-up go silent: members who never
+     hear what their input changed stop telling you the hard thing. -->
 
 - **Meeting or cycle cadence:** [e.g. advisory sessions quarterly; beta waves per release]
 - **Agenda owner:** [name; the agenda serves the section 1 decision, not a product showcase]
@@ -51,9 +80,24 @@ aliases: ["Feedback Program", "feedback-program"]
 
 ## 4. Terms
 
+<!-- Set the legal and incentive terms before the first session, not after.
+     A trap: offering cash or gifts for participation, which produces
+     testimony from people who want the incentive rather than feedback from
+     people who want the decision improved. This fails when data handling is
+     left vague; member names and account data are personal data, so the
+     retention and access rules must be stated before any session is recorded.
+     Do not skip the NDA for a friendly board; a standing program accumulates
+     sensitive context that one-off studies never see. -->
+
 - **NDA:** [required or not, which template, who countersigns]
 - **Incentive, non-cash:** [access, influence, recognition, early features; cash and gifts create testimony, not feedback]
 - **Data handling:** [what is recorded, where it is stored, retention, who may access; regulated products route through the [compliance impact assessment](compliance-impact-assessment.md)]
+
+| Term | Status | Template or rule | Countersign or owner |
+|---|---|---|---|
+| NDA | [required or not] | [template name] | [who countersigns] |
+| Incentive (non-cash) | [access, influence, recognition, early features] | [no cash or gifts] | [program owner] |
+| Data handling | [recorded, stored, retained, accessed] | [compliance-impact-assessment.md] | [data owner] |
 
 ## 5. Intake routing
 
@@ -71,7 +115,12 @@ aliases: ["Feedback Program", "feedback-program"]
 ## 6. Exit criteria for the program itself
 
 <!-- Programs are bets, and bets have kill conditions. Write them at launch,
-     while nobody is attached. -->
+     while nobody is attached. This fails when the kill conditions are vague
+     enough that a tired owner can justify keeping the program alive past its
+     evidence: "we are not getting value" is not a condition, but "two
+     consecutive reviews cite no input from the program" is. Never leave a
+     program running without a dated next review; an undated review deadline
+     lets a decaying board persist for quarters before anyone notices. -->
 
 The program is reviewed at each program review date and retired when any of these holds:
 
