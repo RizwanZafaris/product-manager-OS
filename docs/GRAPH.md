@@ -26,7 +26,7 @@ One subgraph per stage of the loop in [os/OPERATING-LOOP.md](../os/OPERATING-LOO
 | Files declaring a `feeds` key | 146 |
 | Nodes in the diagram | 258 |
 | Artifact nodes | 252 |
-| Edges in the diagram | 553 |
+| Edges in the diagram | 554 |
 | Feeds values that resolved to nothing | 0 |
 
 A file with no frontmatter is not an error, and a file with frontmatter has not necessarily declared a feed: every SKILL.md and agent file carries a name and a description already. The `feeds` pass lands file by file, and until it reaches a file, that file still contributes whatever its Stage header declares.
@@ -540,6 +540,7 @@ flowchart LR
   n_frameworks_execution_fmea_md_32a78207 -.-> n_templates_definition_nfr_md_146602a4
   n_frameworks_execution_fmea_md_32a78207 -.-> n_templates_execution_risk_register_md_4a73bbfc
   n_frameworks_execution_fmea_md_32a78207 -.-> n_templates_operate_operational_readiness_review_md_8614622d
+  n_frameworks_execution_premortem_worksheet_md_8f901e68 -.-> n_templates_architecture_development_handoff_md_64b0eebc
   n_frameworks_execution_premortem_worksheet_md_8f901e68 -.-> n_templates_execution_dependency_register_md_5edd4dc1
   n_frameworks_execution_premortem_worksheet_md_8f901e68 -.-> n_templates_execution_risk_register_md_4a73bbfc
   n_frameworks_execution_premortem_worksheet_md_8f901e68 -.-> n_templates_operate_post_launch_review_md_8d9e56ee

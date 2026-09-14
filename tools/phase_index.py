@@ -31,6 +31,7 @@ JOURNEY = (
     "templates/planning/product-strategy.md",
     "templates/planning/roadmap.md",
     "templates/definition/prd.md",
+    "templates/architecture/development-handoff.md",
 )
 WEIGHTS = {"templates/definition/prd.md":
            ("templates/definition/one-pager.md",
