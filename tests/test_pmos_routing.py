@@ -27,9 +27,17 @@ from pmos.spend import (
     BudgetExceeded,
     SpendLedger,
     UnresolvedCharge,
+    cost_certainty,
     day_scope,
     default_path,
 )
+
+REPO = Path(__file__).resolve().parents[1]
+TOOLS = REPO / "tools"
+if str(TOOLS) not in sys.path:
+    sys.path.insert(0, str(TOOLS))
+
+import usage_report  # noqa: E402  (path set above)
 
 
 class FakeProvider:
@@ -365,6 +373,17 @@ class RoutingTests(unittest.TestCase):
         env["PYTHONPATH"] = str(root) + (os.pathsep + existing if existing else "")
         return env
 
+    def _run_usage_report(self, args, env):
+        proc = subprocess.run(
+            [sys.executable, str(TOOLS / "usage_report.py")] + list(args),
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=60,
+        )
+        return proc.returncode, (proc.stdout or b"").decode("utf-8", "replace"), \
+            (proc.stderr or b"").decode("utf-8", "replace")
+
     def test_spend_cli_status_missing_ledger_reports_without_creating_it(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "spend.sqlite"
@@ -479,6 +498,355 @@ class RoutingTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 ledger.reservations(state="bogus")
             ledger.close()
+
+    # ------------------------------------------------------- S08: usage report
+
+    def test_spend_reserve_and_settle_accept_optional_usage_fields(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "spend.sqlite"
+            ledger = SpendLedger(path)
+            ledger.reserve("billed", 0.10, {"task:S08": 1.0},
+                           operation="task_dispatch", task_id="S08",
+                           context_version="v1")
+            ledger.settle("billed", 0.05, resolved_model="glm-5.2",
+                          provider="openrouter", cache_disposition="miss",
+                          success=True)
+            ledger.reserve("open-call", 0.20, {"task:S08": 1.0},
+                           operation="probe", task_id="S08",
+                           context_version="v1")
+            entries = {entry["key"]: entry for entry in ledger.reservations()}
+            billed = entries["billed"]
+            self.assertEqual(billed["operation"], "task_dispatch")
+            self.assertEqual(billed["task_id"], "S08")
+            self.assertEqual(billed["context_version"], "v1")
+            self.assertEqual(billed["resolved_model"], "glm-5.2")
+            self.assertEqual(billed["provider"], "openrouter")
+            self.assertEqual(billed["cache_disposition"], "miss")
+            self.assertIs(billed["success"], True)
+            self.assertEqual(billed["cost_certainty"], "billed")
+            open_entry = entries["open-call"]
+            self.assertIsNone(open_entry["resolved_model"])
+            self.assertIsNone(open_entry["success"])
+            self.assertEqual(open_entry["cost_certainty"],
+                             "reserved worst case, not yet settled")
+            ledger.settle("open-call", None, resolved_model="minimax-m3",
+                          provider="openrouter", cache_disposition="hit",
+                          success=False)
+            unknown_entry = ledger.reservations("unknown")[0]
+            self.assertEqual(unknown_entry["resolved_model"], "minimax-m3")
+            self.assertIs(unknown_entry["success"], False)
+            self.assertEqual(unknown_entry["cost_certainty"], "unknown")
+            ledger.close()
+
+    def test_spend_optional_usage_fields_default_to_none_and_reject_bad_types(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "spend.sqlite"
+            ledger = SpendLedger(path)
+            ledger.reserve("bare", 0.1, {"day:2026-09-12": 1.0})
+            ledger.settle("bare", 0.05)
+            entry = ledger.reservations()[0]
+            for field in ("operation", "task_id", "context_version",
+                         "resolved_model", "provider", "cache_disposition",
+                         "success"):
+                self.assertIsNone(entry[field])
+            with self.assertRaises(ValueError):
+                ledger.reserve("bad-op", 0.1, {"day:2026-09-12": 1.0},
+                               operation="")
+            with self.assertRaises(ValueError):
+                ledger.reserve("bad-task", 0.1, {"day:2026-09-12": 1.0},
+                               task_id=123)
+            ledger.reserve("ok", 0.1, {"day:2026-09-12": 1.0})
+            with self.assertRaises(ValueError):
+                ledger.settle("ok", 0.05, success="yes")
+            ledger.close()
+
+    def test_spend_ledger_migration_adds_usage_columns_to_an_old_schema_file(self):
+        import sqlite3 as _sqlite3
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "spend.sqlite"
+            raw = _sqlite3.connect(str(path))
+            raw.execute(
+                "CREATE TABLE reservations ("
+                "key TEXT PRIMARY KEY,"
+                "reserved_usd REAL NOT NULL,"
+                "charged_usd REAL,"
+                "state TEXT NOT NULL CHECK (state IN ('open','settled','unknown')),"
+                "created_at REAL NOT NULL,"
+                "note TEXT NOT NULL DEFAULT ''"
+                ")"
+            )
+            raw.execute(
+                "CREATE TABLE reservation_scopes ("
+                "key TEXT NOT NULL, scope TEXT NOT NULL, "
+                "PRIMARY KEY (key, scope))"
+            )
+            raw.execute(
+                "INSERT INTO reservations (key, reserved_usd, charged_usd, "
+                "state, created_at, note) VALUES "
+                "('legacy', 0.2, 0.2, 'settled', 1700000000.0, '')"
+            )
+            raw.execute(
+                "INSERT INTO reservation_scopes (key, scope) VALUES "
+                "('legacy', 'day:2026-09-12')"
+            )
+            raw.commit()
+            raw.close()
+
+            ledger = SpendLedger(path)
+            entries = {entry["key"]: entry for entry in ledger.reservations()}
+            legacy = entries["legacy"]
+            self.assertEqual(legacy["state"], "settled")
+            self.assertEqual(legacy["cost_certainty"], "billed")
+            for field in ("operation", "task_id", "context_version",
+                         "resolved_model", "provider", "cache_disposition",
+                         "success"):
+                self.assertIsNone(legacy[field])
+            ledger.reserve("new", 0.1, {"day:2026-09-12": 1.0},
+                           operation="task_dispatch", task_id="S08")
+            ledger.settle("new", 0.05, resolved_model="glm-5.2", success=True)
+            entries_after = {entry["key"]: entry
+                             for entry in ledger.reservations()}
+            new_entry = entries_after["new"]
+            self.assertEqual(new_entry["operation"], "task_dispatch")
+            self.assertEqual(new_entry["resolved_model"], "glm-5.2")
+            ledger.close()
+
+    def test_spend_ledger_migration_tolerates_a_column_another_process_added(self):
+        # Two processes opening one old ledger can both read the schema before
+        # either adds a column; the slower ALTER must not fail the open, and
+        # any other ALTER failure must still surface.
+        import sqlite3 as _sqlite3
+        from pmos import spend as _spend
+
+        class StaleSchema:
+            def __init__(self, conn):
+                self.conn = conn
+
+            def execute(self, sql, *args):
+                if sql.startswith("PRAGMA table_info"):
+                    return iter([(0, "key"), (1, "reserved_usd")])
+                return self.conn.execute(sql, *args)
+
+        class LockedAlter(StaleSchema):
+            def execute(self, sql, *args):
+                if sql.startswith("ALTER"):
+                    raise _sqlite3.OperationalError("database is locked")
+                return super().execute(sql, *args)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "spend.sqlite"
+            SpendLedger(path).close()
+            raw = _sqlite3.connect(str(path))
+            try:
+                _spend._ensure_optional_columns(StaleSchema(raw))
+                with self.assertRaises(_sqlite3.OperationalError):
+                    _spend._ensure_optional_columns(LockedAlter(raw))
+            finally:
+                raw.close()
+
+    def test_pmos_spend_cost_certainty_labels(self):
+        self.assertEqual(cost_certainty("open"),
+                         "reserved worst case, not yet settled")
+        self.assertEqual(cost_certainty("settled"), "billed")
+        self.assertEqual(cost_certainty("unknown"), "unknown")
+        with self.assertRaises(ValueError):
+            cost_certainty("bogus")
+
+    def test_usage_report_summarizes_denominators_cost_certainty_and_groupings(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "spend.sqlite"
+            ledger = SpendLedger(path)
+            ledger.reserve("k1", 0.10, {"task:S08": 5.0},
+                           operation="task_dispatch", task_id="S08",
+                           context_version="v1")
+            ledger.settle("k1", 0.05, resolved_model="glm-5.2",
+                          provider="openrouter", cache_disposition="miss",
+                          success=True)
+            ledger.reserve("k2", 0.20, {"task:S08": 5.0}, operation="probe",
+                           task_id="S08", context_version="v1")
+            ledger.settle("k2", None, resolved_model="minimax-m3",
+                          provider="openrouter", cache_disposition="hit",
+                          success=False)
+            ledger.reserve("k3", 0.15, {"task:S04": 5.0},
+                           operation="task_dispatch", task_id="S04",
+                           context_version="v1")
+            ledger.close()
+
+            report = usage_report.build_report(path)
+            overall = report["sections"]["overall"]
+            self.assertEqual(overall["attempted"], 3)
+            self.assertEqual(overall["completed"], 2)
+            self.assertEqual(overall["denominator"], "2/3")
+            self.assertEqual(overall["quality_failures"], 1)
+            self.assertAlmostEqual(overall["billed_usd"], 0.05)
+            self.assertAlmostEqual(overall["reserved_worst_case_usd"], 0.15)
+            self.assertAlmostEqual(overall["unresolved_worst_case_usd"], 0.20)
+
+            by_task = report["sections"]["by_task"]
+            self.assertEqual(by_task["S08"]["denominator"], "2/2")
+            self.assertEqual(by_task["S04"]["denominator"], "0/1")
+
+            by_cost_certainty = report["sections"]["by_cost_certainty"]
+            self.assertIn("billed", by_cost_certainty)
+            self.assertIn("unknown", by_cost_certainty)
+            self.assertIn("reserved worst case, not yet settled",
+                          by_cost_certainty)
+            self.assertIsNone(report["suite_coverage"])
+
+    def test_usage_report_marks_unmetered_usage_unavailable_never_zero(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "spend.sqlite"
+            ledger = SpendLedger(path)
+            ledger.reserve("k1", 0.10, {"task:S08": 5.0},
+                           operation="task_dispatch", task_id="S08")
+            ledger.settle("k1", 0.05, success=True)
+            ledger.close()
+            suite = [
+                {"task_id": "S08", "operation": "task_dispatch",
+                 "metered": True},
+                {"task_id": "SUB1", "operation": "task_dispatch",
+                 "metered": False, "completed": True, "success": True,
+                 "label": "subscription tier"},
+                {"task_id": "SUB2", "operation": "task_dispatch",
+                 "metered": False},
+            ]
+            report = usage_report.build_report(path, suite)
+            coverage = report["suite_coverage"]
+            self.assertEqual(coverage["tasks"]["SUB1"]["billed_usd"],
+                             "unavailable")
+            self.assertEqual(coverage["tasks"]["SUB1"]["completed"], True)
+            self.assertEqual(coverage["tasks"]["SUB1"]["success"], True)
+            self.assertEqual(coverage["tasks"]["SUB2"]["billed_usd"],
+                             "unavailable")
+            self.assertIsNone(coverage["tasks"]["SUB2"]["completed"])
+            self.assertIsNone(coverage["tasks"]["SUB2"]["success"])
+            self.assertEqual(coverage["tasks"]["S08"]["billed_usd"], 0.05)
+            self.assertEqual(coverage["denominator"], "2/3")
+            self.assertEqual(coverage["unavailable_cost_tasks"], 2)
+
+    def test_usage_report_task_suite_file_round_trip_and_validation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            suite_path = Path(tmp) / "suite.json"
+            suite_path.write_text(json.dumps([
+                {"task_id": "S08", "metered": True},
+                {"task_id": "SUB1", "metered": False, "completed": True,
+                 "success": True},
+            ]), encoding="utf-8")
+            suite = usage_report.load_task_suite(suite_path)
+            self.assertEqual(len(suite), 2)
+            self.assertEqual(suite[0]["task_id"], "S08")
+            self.assertTrue(suite[0]["metered"])
+            self.assertFalse(suite[1]["metered"])
+
+            dup_path = Path(tmp) / "dup.json"
+            dup_path.write_text(json.dumps([
+                {"task_id": "S08"}, {"task_id": "S08"},
+            ]), encoding="utf-8")
+            with self.assertRaises(ValueError):
+                usage_report.load_task_suite(dup_path)
+
+            bad_path = Path(tmp) / "bad.json"
+            bad_path.write_text(json.dumps([{"operation": "x"}]),
+                                encoding="utf-8")
+            with self.assertRaises(ValueError):
+                usage_report.load_task_suite(bad_path)
+
+            not_list_path = Path(tmp) / "notlist.json"
+            not_list_path.write_text(json.dumps({"task_id": "S08"}),
+                                     encoding="utf-8")
+            with self.assertRaises(ValueError):
+                usage_report.load_task_suite(not_list_path)
+
+            self.assertEqual(usage_report.load_task_suite(None), [])
+
+    def test_usage_report_compare_flags_fixed_suite_mismatch_and_matches_savings_delta(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            before_path = Path(tmp) / "before.sqlite"
+            before_ledger = SpendLedger(before_path)
+            before_ledger.reserve("b1", 0.10, {"task:S08": 5.0},
+                                  operation="task_dispatch", task_id="S08")
+            before_ledger.settle("b1", 0.08, success=True)
+            before_ledger.close()
+
+            after_path = Path(tmp) / "after.sqlite"
+            after_ledger = SpendLedger(after_path)
+            after_ledger.reserve("a1", 0.10, {"task:S08": 5.0},
+                                 operation="task_dispatch", task_id="S08")
+            after_ledger.settle("a1", 0.02, success=True)
+            after_ledger.close()
+
+            suite = [{"task_id": "S08", "metered": True}]
+            before_report = usage_report.build_report(before_path, suite)
+            after_report = usage_report.build_report(after_path, suite)
+            diff = usage_report.compare_reports(before_report, after_report)
+            self.assertTrue(diff["fixed_suite_match"])
+            self.assertAlmostEqual(diff["overall"]["delta"]["billed_usd"],
+                                   -0.06)
+            self.assertEqual(diff["suite_coverage"]["completed_delta"], 0)
+
+            mismatched_suite = [{"task_id": "OTHER", "metered": True}]
+            mismatched_after = usage_report.build_report(after_path,
+                                                          mismatched_suite)
+            mismatched_diff = usage_report.compare_reports(before_report,
+                                                            mismatched_after)
+            self.assertFalse(mismatched_diff["fixed_suite_match"])
+
+            no_suite_report = usage_report.build_report(after_path)
+            unavailable_diff = usage_report.compare_reports(before_report,
+                                                             no_suite_report)
+            self.assertIsNone(unavailable_diff["fixed_suite_match"])
+            self.assertNotIn("suite_coverage", unavailable_diff)
+
+    def test_usage_report_cli_json_and_text_against_a_scratch_ledger(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "spend.sqlite"
+            ledger = SpendLedger(path)
+            ledger.reserve("k1", 0.10, {"task:S08": 5.0},
+                           operation="task_dispatch", task_id="S08",
+                           context_version="v1")
+            ledger.settle("k1", 0.05, resolved_model="glm-5.2",
+                          provider="openrouter", cache_disposition="miss",
+                          success=True)
+            ledger.close()
+            env = self._spend_env()
+
+            code, out, err = self._run_usage_report(
+                ["--ledger", str(path)], env)
+            self.assertEqual(code, 0, err)
+            self.assertIn("overall totals: 1/1 completed of attempted", out)
+            self.assertIn("by_task:", out)
+
+            code, out, err = self._run_usage_report(
+                ["--ledger", str(path), "--json"], env)
+            self.assertEqual(code, 0, err)
+            payload = json.loads(out)
+            self.assertEqual(payload["sections"]["overall"]["denominator"],
+                             "1/1")
+            self.assertIsNone(payload["suite_coverage"])
+
+    def test_usage_report_cli_missing_ledger_reports_empty_without_creating_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "spend.sqlite"
+            env = self._spend_env()
+            code, out, err = self._run_usage_report(
+                ["--ledger", str(path)], env)
+            self.assertEqual(code, 0, err)
+            self.assertIn("0/0 completed of attempted", out)
+            self.assertFalse(path.exists())
+
+    def test_usage_report_cli_compare_refuses_a_missing_snapshot(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            after_path = Path(tmp) / "after.sqlite"
+            ledger = SpendLedger(after_path)
+            ledger.reserve("k1", 0.10, {"task:S08": 5.0})
+            ledger.settle("k1", 0.05)
+            ledger.close()
+            missing = Path(tmp) / "missing.sqlite"
+            env = self._spend_env()
+            code, out, err = self._run_usage_report(
+                ["--compare", str(missing), str(after_path)], env)
+            self.assertEqual(code, 2, out + err)
+            self.assertIn("no such ledger or report file", err)
 
     def test_bounded_budget_call_under_the_cap_is_not_rejected(self):
         provider = FakeProvider({"output": "answer", "input_tokens": 4,

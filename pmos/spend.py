@@ -4,6 +4,18 @@ The ledger is OS state, not harness state. It records reservations made
 before a billable call and settles them once the real cost is known, so that
 two workers sharing a cap cannot both spend its last allowance and a crash
 after dispatch never refunds an unknown charge.
+
+Each reservation may also carry the descriptive fields a usage report needs:
+``operation`` and ``task_id`` (known before dispatch, so they are given to
+``reserve``), and ``resolved_model``, ``provider``, ``cache_disposition`` and
+``success`` (known only once the call returns, so they are given to
+``settle``). ``context_version`` is given to ``reserve`` too, for callers
+that want to compare a fixed task suite across two context builds. Every one
+of these fields is optional and defaults to ``None``, so callers who do not
+pass them, and ledger files written before these fields existed, both keep
+working. See ``tools/usage_report.py`` for the reader that turns these
+columns into a report, and ``harness/tiers.md`` for the certainty labels it
+prints.
 """
 
 from __future__ import annotations
@@ -104,6 +116,66 @@ def _validate_external(
     return result
 
 
+def _validate_optional_text(value: object, name: str) -> Optional[str]:
+    if value is None:
+        return None
+    return _validate_text(value, name)
+
+
+def _validate_optional_bool(value: object, name: str) -> Optional[bool]:
+    if value is None:
+        return None
+    if not isinstance(value, bool):
+        raise ValueError("%s must be a bool" % name)
+    return value
+
+
+# The usage-reporting columns, all optional and all added to an existing
+# ledger file by ALTER TABLE the first time it is opened by this module, so a
+# ledger written before they existed keeps working and its old rows simply
+# read back with these fields as None.
+_OPTIONAL_COLUMNS = (
+    ("operation", "TEXT"),
+    ("task_id", "TEXT"),
+    ("context_version", "TEXT"),
+    ("resolved_model", "TEXT"),
+    ("provider", "TEXT"),
+    ("cache_disposition", "TEXT"),
+    ("success", "INTEGER"),
+)
+
+# Cost certainty is never stored: it is exactly the reservation state, read
+# through this label so the ledger and the usage report agree on the words
+# by construction rather than by two hand-written copies drifting apart.
+_COST_CERTAINTY = {
+    "open": "reserved worst case, not yet settled",
+    "settled": "billed",
+    "unknown": "unknown",
+}
+
+
+def cost_certainty(state: str) -> str:
+    """The human label for a reservation state's cost certainty."""
+    try:
+        return _COST_CERTAINTY[state]
+    except KeyError:
+        raise ValueError("unknown reservation state: %s" % state) from None
+
+
+def _ensure_optional_columns(conn: sqlite3.Connection) -> None:
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(reservations)")}
+    for name, sql_type in _OPTIONAL_COLUMNS:
+        if name not in existing:
+            # Two processes opening one old ledger can both see the column
+            # missing; the second ALTER then fails, and the column exists.
+            try:
+                conn.execute("ALTER TABLE reservations ADD COLUMN %s %s"
+                            % (name, sql_type))
+            except sqlite3.OperationalError as exc:
+                if "duplicate column name" not in str(exc).lower():
+                    raise
+
+
 class SpendLedger:
     """A sqlite3-backed persistent spend ledger."""
 
@@ -129,9 +201,20 @@ class SpendLedger:
                 "charged_usd REAL,"
                 "state TEXT NOT NULL CHECK (state IN ('open','settled','unknown')),"
                 "created_at REAL NOT NULL,"
-                "note TEXT NOT NULL DEFAULT ''"
+                "note TEXT NOT NULL DEFAULT '',"
+                "operation TEXT,"
+                "task_id TEXT,"
+                "context_version TEXT,"
+                "resolved_model TEXT,"
+                "provider TEXT,"
+                "cache_disposition TEXT,"
+                "success INTEGER"
                 ")"
             )
+            # A ledger file written before these columns existed still opens:
+            # CREATE TABLE IF NOT EXISTS is a no-op on it, so the columns are
+            # added here instead.
+            _ensure_optional_columns(conn)
             conn.execute(
                 "CREATE TABLE IF NOT EXISTS reservation_scopes ("
                 "key TEXT NOT NULL,"
@@ -226,6 +309,9 @@ class SpendLedger:
         max_usd: object,
         limits: Mapping[str, object],
         external: Optional[Mapping[str, object]] = None,
+        operation: Optional[str] = None,
+        task_id: Optional[str] = None,
+        context_version: Optional[str] = None,
     ) -> None:
         """Reserve ``max_usd`` against the named scopes.
 
@@ -233,11 +319,23 @@ class SpendLedger:
         scopes is in the 'unknown' state, or :class:`BudgetExceeded` if the
         committed spend plus ``max_usd`` plus any external spend would breach a
         cap. A refusal records nothing. A reused key raises ``ValueError``.
+
+        ``operation``, ``task_id`` and ``context_version`` are optional
+        descriptive fields recorded for the usage report: what kind of call
+        this is (for example a task dispatch, a probe, a retry, a summary or
+        a review), which finding or task it serves, and which context or
+        handoff bundle version produced the call. None of them are validated
+        against any fixed vocabulary; each is free text up to the same length
+        and character limit as ``key``.
         """
         key_text = _validate_text(key, "key")
         amount = _validate_amount(max_usd, "max_usd")
         scopes = _validate_scopes(limits)
         external_spend = _validate_external(external)
+        operation_text = _validate_optional_text(operation, "operation")
+        task_id_text = _validate_optional_text(task_id, "task_id")
+        context_version_text = _validate_optional_text(context_version,
+                                                        "context_version")
         conn = self._conn
         conn.execute("BEGIN IMMEDIATE")
         try:
@@ -254,9 +352,11 @@ class SpendLedger:
                     )
             created_at = time.time()
             self._execute(
-                "INSERT INTO reservations (key, reserved_usd, state, created_at) "
-                "VALUES (?, ?, 'open', ?)",
-                (key_text, amount, created_at),
+                "INSERT INTO reservations (key, reserved_usd, state, created_at, "
+                "operation, task_id, context_version) "
+                "VALUES (?, ?, 'open', ?, ?, ?, ?)",
+                (key_text, amount, created_at, operation_text, task_id_text,
+                 context_version_text),
             )
             for scope in scopes:
                 self._execute(
@@ -277,18 +377,41 @@ class SpendLedger:
             raise KeyError(key)
         return float(row[0]), str(row[1]), row[2], str(row[3])
 
-    def settle(self, key: str, actual_usd: object) -> None:
+    def settle(
+        self,
+        key: str,
+        actual_usd: object,
+        resolved_model: Optional[str] = None,
+        provider: Optional[str] = None,
+        cache_disposition: Optional[str] = None,
+        success: Optional[bool] = None,
+    ) -> None:
         """Settle a reservation with a real cost.
 
         ``actual_usd`` ``None`` marks the reservation 'unknown' and charges the
         full reservation amount, never refunding it until :meth:`reconcile`.
         A finite nonnegative amount settles it, even above the reservation.
+
+        ``resolved_model``, ``provider``, ``cache_disposition`` and
+        ``success`` are optional descriptive fields recorded for the usage
+        report: the concrete model and provider that actually answered, the
+        transport's cache disposition for the call, and whether the reply
+        was usable. They are recorded here, not at :meth:`reserve`, because
+        none of them are known until the call returns; an unknown cost does
+        not delay recording them, since the call has already completed by
+        the time ``settle`` is called with ``actual_usd=None``.
         """
         key_text = _validate_text(key, "key")
         if actual_usd is None:
             amount: Optional[float] = None
         else:
             amount = _validate_amount(actual_usd, "actual_usd")
+        resolved_model_text = _validate_optional_text(resolved_model,
+                                                       "resolved_model")
+        provider_text = _validate_optional_text(provider, "provider")
+        cache_disposition_text = _validate_optional_text(cache_disposition,
+                                                          "cache_disposition")
+        success_value = _validate_optional_bool(success, "success")
         conn = self._conn
         conn.execute("BEGIN IMMEDIATE")
         try:
@@ -298,8 +421,12 @@ class SpendLedger:
             if amount is None:
                 self._execute(
                     "UPDATE reservations SET state = 'unknown', charged_usd = ?, "
-                    "note = ? WHERE key = ?",
-                    (reserved_usd, "cost unknown; pending reconciliation", key_text),
+                    "note = ?, resolved_model = ?, provider = ?, "
+                    "cache_disposition = ?, success = ? WHERE key = ?",
+                    (reserved_usd, "cost unknown; pending reconciliation",
+                     resolved_model_text, provider_text, cache_disposition_text,
+                     None if success_value is None else int(success_value),
+                     key_text),
                 )
             else:
                 note = ""
@@ -307,8 +434,12 @@ class SpendLedger:
                     note = "charged above reservation"
                 self._execute(
                     "UPDATE reservations SET state = 'settled', charged_usd = ?, "
-                    "note = ? WHERE key = ?",
-                    (amount, note, key_text),
+                    "note = ?, resolved_model = ?, provider = ?, "
+                    "cache_disposition = ?, success = ? WHERE key = ?",
+                    (amount, note, resolved_model_text, provider_text,
+                     cache_disposition_text,
+                     None if success_value is None else int(success_value),
+                     key_text),
                 )
             conn.commit()
         except Exception:
@@ -352,24 +483,35 @@ class SpendLedger:
         """Return reservations, oldest first, optionally filtered by ``state``.
 
         Each entry is a dict with key, reserved_usd, charged_usd, state,
-        created_at, note and a sorted list of scopes.
+        created_at, note, a sorted list of scopes, cost_certainty (the state
+        read through the human label ``billed`` / ``reserved worst case, not
+        yet settled`` / ``unknown``), and the optional usage-reporting fields
+        operation, task_id, context_version, resolved_model, provider,
+        cache_disposition and success, each None on a row that never set it,
+        including every row written before these fields existed.
         """
         if state is not None and state not in ("open", "settled", "unknown"):
             raise ValueError("unknown reservation state: %s" % state)
+        columns = (
+            "key, reserved_usd, charged_usd, state, created_at, note, "
+            "operation, task_id, context_version, resolved_model, provider, "
+            "cache_disposition, success"
+        )
         if state is None:
             rows = self._execute(
-                "SELECT key, reserved_usd, charged_usd, state, created_at, note "
-                "FROM reservations ORDER BY created_at ASC, key ASC"
+                "SELECT %s FROM reservations ORDER BY created_at ASC, key ASC"
+                % columns
             ).fetchall()
         else:
             rows = self._execute(
-                "SELECT key, reserved_usd, charged_usd, state, created_at, note "
-                "FROM reservations WHERE state = ? "
-                "ORDER BY created_at ASC, key ASC",
+                "SELECT %s FROM reservations WHERE state = ? "
+                "ORDER BY created_at ASC, key ASC" % columns,
                 (state,),
             ).fetchall()
         result: list[dict[str, object]] = []
-        for key, reserved_usd, charged_usd, row_state, created_at, note in rows:
+        for (key, reserved_usd, charged_usd, row_state, created_at, note,
+             operation, task_id, context_version, resolved_model, provider,
+             cache_disposition, success) in rows:
             scopes = self._execute(
                 "SELECT scope FROM reservation_scopes WHERE key = ? ORDER BY scope ASC",
                 (key,),
@@ -385,6 +527,14 @@ class SpendLedger:
                     "created_at": float(created_at),
                     "note": str(note),
                     "scopes": [str(row[0]) for row in scopes],
+                    "cost_certainty": cost_certainty(str(row_state)),
+                    "operation": operation,
+                    "task_id": task_id,
+                    "context_version": context_version,
+                    "resolved_model": resolved_model,
+                    "provider": provider,
+                    "cache_disposition": cache_disposition,
+                    "success": None if success is None else bool(success),
                 }
             )
         return result

@@ -66,6 +66,22 @@ The config sets this as `limits.onCapReached: halt-tier-and-queue`. [runner.py](
 
 The spend rows apply to every tier, not only judgment. The gateway's daily figure can include calls the ledger already recorded, so the same spend may be counted twice; that errs toward stopping early, never toward overspending.
 
+## Reading what the ledger actually spent
+
+`python3 -m pmos.spend status` lists open and unresolved reservations, but it does not summarize what happened. For that, `python3 tools/usage_report.py` reads the same ledger and reports usage grouped by operation, resolved model and provider, task id, and cache disposition, with a denominator of completed calls over attempted calls and a separate count of quality failures (a completed call whose reply was not usable) in every group. Pass `--ledger PATH` for a ledger other than the default, `--json` for one JSON object instead of text, and `--task-suite FILE` to overlay a fixed set of tasks the report should cover, including any task that runs on a subscription tier the ledger never sees.
+
+Every row also carries a cost certainty, taken straight from the reservation's own state so the ledger and the report can never disagree about the words:
+
+| State | Cost certainty label | What it means |
+|---|---|---|
+| `settled` | billed | The call finished and a real cost came back |
+| `open` | reserved worst case, not yet settled | The call has not settled yet; this is the most it could cost, not what it did cost |
+| `unknown` | unknown | The call finished with no reported cost; the full reservation stays charged until someone reconciles it |
+
+A tier billed through a subscription rather than a per-call price never opens a spend session at all (`transport_call` in `harness/runner.py` skips the ledger when no cap is in force), so the ledger has no rows for it. The report never turns that absence into a $0.00 figure: a `--task-suite` entry marked `"metered": false` shows its cost as the literal string `unavailable`, and its completed/success facts come only from what the suite file states.
+
+`python3 tools/usage_report.py --compare BEFORE AFTER` diffs two snapshots, each a ledger file or a JSON report this tool already wrote. No token or cost savings claim is valid from this output unless both sides were built against the same `--task-suite`: the compare output says `fixed_suite_match: true` only when both sides name exactly the same fixed set of tasks, `false` when they cover different work, and reports it as unavailable when either side carries no task suite at all. A delta printed under any other condition describes different work, not a saving.
+
 There is one sanctioned way to run judgment work on a cheaper model, and it is loud: set `tiers.judgment.keylessFallback.enabled` to true in the config. It is off by default. Every artifact produced under it carries the line `judgment tier: degraded, reviewed by a person before use` on its face, because an artifact that does not say it was degraded will be read as one that was not.
 
 ## A tier name is not a model
