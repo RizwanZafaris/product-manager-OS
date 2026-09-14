@@ -449,7 +449,10 @@ docs/          PHILOSOPHY.md (why each rule above exists, with the
                layer), RENDERING.md (how to read the tree as a site or a
                knowledge base in GitHub, Obsidian, MkDocs or Quartz), SCALE.md
                (the published scale envelope for PMOSDomain's full-state
-               snapshots: measured limits and what to do as a product grows).
+               snapshots: measured limits and what to do as a product grows),
+               TEMPLATE-DISPOSITIONS.md (F21's per-template disposition table:
+               each flagged template's score before and after, its filled
+               example, and a human disposition).
                Reference only. Ask for one of these when the user challenges a
                rule you are enforcing; never paste one in place of a template,
                because none of them produces an artifact.

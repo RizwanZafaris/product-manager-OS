@@ -138,6 +138,7 @@ product-manager-OS/
 │   ├── ACCESSIBILITY.md  What the operator-documentation contract checks, how to read and operate the system, the evidence limits, and the authoring rules
 │   ├── REFERENCES-DESIGN.md  The single source-and-licence register for the experience-design layer: every studied source, its reuse class, and the licence of record at the pinned commit
 │   ├── RENDERING.md  How to read the tree as a site or a knowledge base in GitHub, Obsidian, MkDocs with Material or Quartz, and what to avoid so links and diagrams keep rendering
+│   ├── TEMPLATE-DISPOSITIONS.md  F21's per-template disposition table: the 40 templates flagged below the rubric's diagnostic bar, each with its score before and after, its filled example, and a human disposition
 │   └── readiness/  The readiness rubric and its recorded evidence: criteria.json, external-gates.json, independent-review.json, task-ledger.json, skill-rubric.json, test-classes.json (the TestCase classes each root test module must define), the main-branch ruleset proposal, and the two external-session documents
 ├── os/
 │   ├── README.md  Rendered directory face: the loop in miniature, what each of the six governing files holds, the stage maps beside them, and a read order for a first-timer
