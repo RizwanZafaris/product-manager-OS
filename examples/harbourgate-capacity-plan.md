@@ -3,17 +3,18 @@
 Fills [templates/planning/capacity-plan.md](../templates/planning/capacity-plan.md). Everything here is invented: Harbourgate is fictional, every person is fictional, and every number, date, rate and identifier is ILLUSTRATIVE, drawn from the [Harbourgate journey](harbourgate-journey.md) and the [Harbourgate coverage sheet](harbourgate-coverage-sheet.md), never to be quoted as a benchmark or copied as a target.
 
 **Owner:** Tomasz Wierzbicki, Engineering Lead · **Period:** Q4 2026 · **Date:** 2026-10-16 · **Status:** Approved
-**Unit:** Engineer-days · **Linked roadmap:** Harbourgate Q4 2026 roadmap
+**Unit:** Engineer-days (this squad's person-days) · **Linked roadmap:** Harbourgate Q4 2026 roadmap
 
 ## 1. The rules
 
-- **The 80 percent rule.** Committed work is planned to no more than 80 percent of net available capacity. The other 20 percent absorbs interrupts, estimate error, and the standing demand nobody scheduled. When committed demand exceeds the line, an initiative moves to Next; the line does not move.
+- **The 80 percent rule.** Committed work is planned to no more than 80 percent of net available capacity. The other 20 percent absorbs interrupts, estimate error, and the standing demand nobody scheduled. When committed demand exceeds the line, an initiative moves to Next; the line does not move. This plan uses the default 80 percent line, not a justified alternative, so section 7 carries no capacity-line exception (HC32).
 - **Ranges, not numbers.** Every initiative carries a low, likely, and high figure from the estimation sheet. The planning figure is the likely value, or the high value when confidence is low.
-- **One unit.** This file uses engineer-days throughout.
+- **One unit.** This file uses engineer-days throughout: person-days for an all-engineer squad, from 5 engineers x 13 weeks x 5 working days per week, team size shown at every step.
+- **Support counted once.** On-call and support work is subtracted from supply in section 2 (40 engineer-days, HC32); section 4's defect-fixing row (25 engineer-days, HC33) is Q3's scheduled bug-fix actual, not the same hours again.
 
 ## 2. Supply per team
 
-The payments squad has 5 engineers across 13 weeks. Gross supply is 5 x 13 weeks x 5 engineer-days per week = 325 engineer-days. The deductions are 30 engineer-days of leave, 40 engineer-days of on-call and support, and 20 engineer-days of recurring load. The on-call and support deduction includes N54's 0.4 FTE legacy share through 2026-12-15. Net supply is 325 - 30 - 40 - 20 = 235 engineer-days. Plannable supply is 80 percent of 235 = 188 engineer-days. Source: HC32 and N54.
+The payments squad has 5 engineers across 13 weeks. Gross supply is 5 x 13 weeks x 5 engineer-days per week = 325 engineer-days. The deductions are 30 engineer-days of leave, 40 engineer-days of on-call and support, and 20 engineer-days of recurring load. The on-call and support deduction includes N54's 0.4 FTE legacy share through 2026-12-15. Net supply is 325 - 30 - 40 - 20 = 235 engineer-days. Plannable supply is 80 percent of 235 = 188 engineer-days. On-call and support is subtracted here only; section 4's defect-fixing row does not repeat it. Source: HC32 and N54.
 
 | Team | People | Weeks | Gross | Leave | On-call and support | Recurring load (hiring, onboarding, meetings) | Net | Plannable (80 percent of net) |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -34,12 +35,12 @@ The low, likely and high figures are from HC33. The planning figure is the likel
 
 ## 4. Standing demand
 
-Standing demand totals 8 + 25 + 10 = 43 engineer-days. The 8 engineer-days of tech debt interest cover TD-1 to TD-4. TD-5 is finance's demand and is not included in the squad plan. Sources: HC33 and the [Harbourgate coverage sheet](harbourgate-coverage-sheet.md).
+Standing demand totals 8 + 25 + 10 = 43 engineer-days. The 8 engineer-days of tech debt interest cover TD-1 to TD-4. The 25 engineer-days of defect fixing (HC33, Q3 actual) is scheduled bug-fix work; it excludes the on-call and support hours HC32 already subtracts from gross supply in section 2, so no hour is counted twice. TD-5 is finance's demand and is not included in the squad plan. Sources: HC33 and the [Harbourgate coverage sheet](harbourgate-coverage-sheet.md).
 
 | Item | Team | Units per period | Source |
 |---|---|---:|---|
 | Tech debt interest, TD-1 to TD-4 | Payments squad | 8 engineer-days | HC33 and the tech debt register rows in the [Harbourgate coverage sheet](harbourgate-coverage-sheet.md) |
-| Support and defect fixing | Payments squad | 25 engineer-days | Q3 actual, HC33 |
+| Defect fixing | Payments squad | 25 engineer-days | Q3 actual, HC33, excluding on-call and support already subtracted in section 2 (HC32) |
 | Platform, security, and compliance mandates, including DEP-7 evidence | Payments squad | 10 engineer-days | DEP-7 and HC33 |
 
 ## 5. The balance
@@ -79,12 +80,14 @@ The assumption that no sixth engineer is needed rests on the interpretation of t
 
 ## Exit gate (feeds the roadmap and Gate 2: requirements signed off)
 
-- [x] One unit is used throughout
-- [x] Every supply row subtracts leave, on-call, and recurring load before the 80 percent line is drawn
+- [x] One unit (person-days or person-weeks) is used throughout, and any team-weeks source figure shows its team-size conversion
+- [x] Every supply row subtracts leave, on-call and support, and recurring load before the 80 percent line is drawn
+- [x] On-call and support is subtracted once, in section 2 only; the standing-demand defect-fixing row does not repeat those hours
 - [x] Every demand row carries low, likely, and high figures, and says whether missing work was checked
-- [x] Standing demand includes debt interest and last period's support actual
+- [x] Standing demand includes debt interest and last period's defect-fixing actual
 - [x] No team is committed above its plannable figure; anything over the line is named and moved to Next
 - [x] Every gap has an option, a decision owner, and a needed-by date
+- [x] Any capacity line other than 80 percent is recorded in section 7 with the figure used, the risk if wrong, an owner, and a review date: not applicable, this plan uses the default 80 percent line
 - [x] The roadmap's Now column matches what sits above the line here
 - [x] The ILLUSTRATIVE rows have been deleted
 - [x] Signed by Tomasz Wierzbicki, 2026-10-16
