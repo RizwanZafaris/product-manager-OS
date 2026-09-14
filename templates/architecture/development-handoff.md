@@ -11,6 +11,7 @@ aliases: ["Development Handoff", "development-handoff"]
 Stage: DESIGN, feeds [Gate 3: architecture and risks reviewed](../../os/STAGE-GATES.md)
 Knowledge: [knowledge index](../../knowledge/INDEX.md)
 Skill: [architect agent](../../agents/architect-agent.md)
+Filled example: [Ledgerline expense copilot](../../examples/expense-copilot-development-handoff.md)
 
 This is the development-ready package handed to engineering at the DESIGN exit. Each section points to the workspace artifact that carries the detailed content so the handoff is link complete instead of text complete.
 A section with no source says so on a line starting `Gap:`, and a section that does not apply says why on a line starting `N/A because`.
