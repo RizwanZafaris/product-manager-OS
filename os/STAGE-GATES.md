@@ -55,13 +55,15 @@ Closes DISCOVER. Feeds DEFINE.
 **Inputs on the table:** completed `../templates/discovery/discovery-document.md`, plus the research artifacts it rolls up (problem framing, research plan and notes, personas, journey map).
 
 - [ ] The problem statement is one sentence, and everyone at the gate states it the same way
-- [ ] Evidence comes from at least five real user conversations or equivalent primary data, cited in the discovery document by source
+- [ ] Evidence comes from at least five real user conversations or equivalent primary data, cited in the discovery document by source. The five-conversation floor is a local heuristic authored here, not a normative requirement or a research result
 - [ ] Personas built on fewer than five cited interviews are explicitly marked as assumptions
 - [ ] The cost of inaction is written down: what it costs, whom, per what period, with the calculation shown
 - [ ] At least one plausible reason to say no-go was seriously argued at this gate
 - [ ] A domain was selected from `../knowledge/domains/README.md` or "none" was recorded, either way in STATE.md, or in this gate attempt file where the product keeps no STATE.md
 - [ ] The success signal for a future Gate 6 is named now, before any solution exists
 - [ ] Go or no-go is recorded below, with the deciding rationale in one paragraph
+
+**On the five-conversation default.** The five-conversation floor is a local heuristic authored here, not a normative requirement and not a research result: no external standard sets it, and no cited study establishes five as the point where a discovery interview sample becomes sufficient. It carries the same status this repository already gives the DORA worksheet's 20 percent noise band (see [dora-four-keys.md](../frameworks/metrics/dora-four-keys.md)). A product may run a different, justified count when the change's stakes call for it, lighter for a small reversible change and heavier for a high-stakes cross-team one: record the alternative count, the risk accepted by departing from the default, the name of the owner who accepted it, and a review-by date, in STATE.md or in this gate attempt file where the product keeps no STATE.md. Absent that record, the default of five stands, and a lower count marks the line Unknown, not Pass.
 
 **Decision:** GO / NO-GO / MORE DISCOVERY, because: <one paragraph>
 
