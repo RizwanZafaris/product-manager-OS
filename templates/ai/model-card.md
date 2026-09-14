@@ -8,9 +8,9 @@ aliases: ["Model Card", "model-card"]
 ---
 # Model Card: [feature or model name]
 
-Stage: AI overlay, active whenever the product contains a model; feeds Gate 5 (release readiness)
-Knowledge: ../../knowledge/INDEX.md
-Skill: ../../skills/ai-prd/SKILL.md
+Stage: [AI overlay](../../os/STAGE-GATES.md), active whenever the product contains a model; feeds [Gate 5 (release readiness)](../../os/STAGE-GATES.md)
+Knowledge: [AI product method](../../knowledge/domains/ai-products.md)
+Skill: [AI PRD skill](../../skills/ai-prd/SKILL.md)
 
 <!-- The eval spec answers "is it good enough to ship?" for the team. This card
      answers "what is this, what is it for, and where does it break?" for everyone
@@ -31,6 +31,12 @@ Skill: ../../skills/ai-prd/SKILL.md
 
 ## 1. Intended use
 
+<!-- Name every capability the model actually performs inside this product, the
+     people it serves, and the uses it must not be trusted with. A good entry
+     pairs each capability with the user type it serves, then draws the out-of-scope
+     line so plainly that a support ticket naming an out-of-scope use is already
+     answered here. -->
+
 - What the model does in this product, one sentence per capability: [list]
 - Who it serves: [user types]
 - Explicitly out of scope: [uses the model will be asked for and must not be trusted with, e.g. legal or medical judgment, decisions about individual people without review]
@@ -46,17 +52,30 @@ Skill: ../../skills/ai-prd/SKILL.md
 
 ## 2. Known limitations and failure modes
 
+<!-- Each row must cite the source document and section that proved the limitation.
+     Do not list a limitation the eval or red-team review has not already shown.
+     A trap: citing only the eval spec and skipping the red-team review hides the
+     failures a prompt injection or adversarial input produced. Never soften a
+     measured failure into "may struggle with"; state the segment and the number. -->
+
 <!-- Nothing new is discovered here; this section cites what the team already proved.
      Each row names its source document by path, so a reader can check the evidence
-     rather than trust the summary. -->
+     rather than trust the summary. A trap: a limitation without a source row is an
+     opinion, not a finding; this fails when the column is filled from memory.
+     Do not add a row the eval spec or red-team review has not already documented. -->
 
 | Limitation or failure mode | How it shows up for the user | Source (path + section) |
 |---|---|---|
-| [e.g. degrades on inputs over n pages] | [truncated or generic answers] | [eval-spec.md section 1, scenario #] |
-| [e.g. can be steered by instructions inside pasted content] | [wrong or unsafe output] | [red-team-review.md finding #] |
+| [e.g. degrades on inputs over n pages] | [truncated or generic answers] | [eval-spec.md](eval-spec.md) section 1, scenario # |
+| [e.g. can be steered by instructions inside pasted content] | [wrong or unsafe output] | [red-team-review.md](red-team-review.md) finding # |
 | [add rows for every known limit] | | |
 
 ## 3. Performance summary
+
+<!-- Copy the headline metric and the segment variance from the filled eval spec.
+     Report how performance varies across segments, not just the average, so a
+     weak group is visible rather than hidden. Every number is labeled ILLUSTRATIVE
+     or cites the eval run that produced it, with a date. -->
 
 <!-- Copy from the filled eval-spec.md; compute nothing fresh here. Report variance
      across segments, not just the headline: an average that hides a weak segment is
@@ -69,11 +88,22 @@ Skill: ../../skills/ai-prd/SKILL.md
 
 ## 4. Data provenance
 
-One or two sentences: what data the model was trained or fine-tuned on to the extent the provider discloses it, what product data reaches the model at inference time, and what is retained where. Link the vendor terms rather than paraphrasing them: [provenance statement, link]
+<!-- State what data the model was trained or fine-tuned on to the extent the
+     provider discloses, what product data reaches it at inference time, and what
+     is retained where. Link the vendor terms rather than paraphrasing them; a
+     trap: omitting inference-time data hides the privacy question a reviewer will
+     ask. Never claim a retention policy the vendor terms do not state. -->
+
+One or two sentences: what data the model was trained or fine-tuned on to the extent the provider discloses it, what product data reaches the model at inference time, and what is retained where. Link the vendor terms rather than paraphrasing them: [provenance statement, link](../../modules/regulated/README.md)
 
 ## 5. Update policy
 
-- What triggers a card update: [model or prompt version change, new eval results, new red-team findings, a new market, language, user segment, or input source, or production sampling showing drift past the threshold in eval-spec.md section 4]
+<!-- List what triggers a card update, who updates it, and where old versions
+     live so past claims stay checkable. A good entry names a person and a cadence
+     rather than leaving the card to drift; this fails when the trigger list omits
+     a new market or user segment and the card silently goes stale. -->
+
+- What triggers a card update: [model or prompt version change, new eval results, new red-team findings, a new market, language, user segment, or input source, or production sampling showing drift past the threshold in [eval-spec.md](eval-spec.md) section 4]
 - Who updates it: [name] · Review cadence even without changes: [cadence]
 - Where old versions live: [location, so past claims stay checkable]
 
