@@ -904,6 +904,8 @@ class Conductor:
         # date kept beside accepted evidence would read as a real one.
         if _truthy_text(normal.get("date")) and not _valid_evidence_date(normal["date"]):
             return False, "evidence date is not a valid ISO 8601 date or datetime", normal, ""
+        if _truthy_text(normal.get("date")) and _evidence_date_in_future(normal["date"]):
+            return False, "evidence date is in the future", normal, ""
         # Acceptance is structural. Evidence is source_verified only when a
         # configured resolver finds its source. The resolver answers True
         # (found), False (a reference it can check that is missing, which
@@ -973,6 +975,29 @@ def _valid_evidence_date(value: str) -> bool:
         return False
 
 
+def _evidence_date_in_future(value: str) -> bool:
+    """Return True when an ISO 8601 date or datetime is in the future.
+
+    A date-only value is in the future when it is later than the current UTC
+    date plus one day (one day of tolerance for time zones). A datetime is in
+    the future when it is later than now UTC plus 300 seconds; a naive datetime
+    is read as UTC.
+    """
+    if not isinstance(value, str) or not value.strip():
+        return False
+    text = value.strip()
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return False
+    if "T" in text or " " in text and _is_datetime_form(text):
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed > datetime.now(timezone.utc) + timedelta(seconds=300)
+    today = datetime.now(timezone.utc).date()
+    return parsed.date() > today + timedelta(days=1)
+
+
 def _is_web_address(value: str) -> bool:
     """An http(s) address with a host. A drive letter, file: or any other
     scheme is left to the source resolver."""
@@ -981,6 +1006,11 @@ def _is_web_address(value: str) -> bool:
     except ValueError:
         return False
     return parsed.scheme in ("http", "https") and bool(parsed.netloc)
+
+
+def _is_datetime_form(text: str) -> bool:
+    """A date-like ISO string that carries a time component."""
+    return "T" in text or (" " in text and len(text.split(" ", 1)[1]) >= 5)
 
 
 def _valid_approved_at(value: Any) -> bool:

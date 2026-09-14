@@ -1091,7 +1091,9 @@ class ConductorTest(unittest.TestCase):
     def test_iso_dates_and_datetimes_parse_and_malformed_dates_refuse(self) -> None:
         cases = {"2026-09-03": "accepted", "2026-09-03T10:00:00Z": "accepted",
                  "2026-09-03T10:00:00+05:00": "accepted", "2026-02-30": "challenge",
-                 "03/09/2026": "challenge", "2026-13-01": "challenge"}
+                 "03/09/2026": "challenge", "2026-13-01": "challenge",
+                 "2099-01-01": "challenge",
+                 "2099-01-01T00:00:00Z": "challenge"}
         for index, (date, expected) in enumerate(cases.items()):
             with self.subTest(date=date):
                 store = Store(Path(self.temp.name) / ("dates-%d.sqlite" % index))
@@ -1102,6 +1104,25 @@ class ConductorTest(unittest.TestCase):
                                                  expected_revision=turn.revision, turn_id="date-%d" % index)
                 self.assertEqual(result.status, expected)
                 store.close()
+        store = Store(Path(self.temp.name) / "dates-future.sqlite")
+        conductor = Conductor(store, "payments", BANKS)
+        turn = conductor.next_turn()
+        future = (datetime.now(timezone.utc) + timedelta(days=4000)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        result = conductor.submit_answer("discover.person", "Mina exported the failures.",
+                                         dict(observed(), date=future),
+                                         expected_revision=turn.revision, turn_id="date-future-dt")
+        self.assertEqual(result.status, "challenge")
+        self.assertEqual(result.message, "evidence date is in the future")
+        store.close()
+        store = Store(Path(self.temp.name) / "dates-future-day.sqlite")
+        conductor = Conductor(store, "payments", BANKS)
+        turn = conductor.next_turn()
+        result = conductor.submit_answer("discover.person", "Mina exported the failures.",
+                                         dict(observed(), date="2099-01-01"),
+                                         expected_revision=turn.revision, turn_id="date-future-day")
+        self.assertEqual(result.status, "challenge")
+        self.assertEqual(result.message, "evidence date is in the future")
+        store.close()
 
     def test_malformed_optional_date_refuses_any_evidence_class(self) -> None:
         store, conductor = self.opening()
