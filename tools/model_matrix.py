@@ -5,6 +5,14 @@
     python3 tools/model_matrix.py --list-models
     python3 tools/model_matrix.py --free-only --out docs/readiness/model-matrix.json
     python3 tools/model_matrix.py --check
+    python3 tools/model_matrix.py --free-only --repeat 3 \
+        --out docs/readiness/model-matrix-2026-09-14.json
+
+A dated --out keeps a fresh run beside an earlier one instead of overwriting
+it; dated_out_path() below computes that name. A live (non-dry-run) call
+refuses to write from an uncommitted working tree unless --allow-dirty is
+given, in which case the record and the rendered table both say so
+prominently.
 
 Standard library only, like every other script in this tree.
 
@@ -100,6 +108,18 @@ ERROR_CLASSES = (
 
 
 PROVIDER_ERROR_NOTE = "the provider returned an error the classes above do not name"
+
+# Availability against quality. A cell's "status" stays "graded" or "error"
+# exactly as before, so an old or hand-built record keeps meaning what it
+# meant. answer_status_of (near error_class_of, below) layers a third, finer
+# reading on top: "answered" (a usable reply, whatever the grader made of
+# it), "no_answer" (the provider declined, ran out of free capacity, timed
+# out, or sent nothing back), or "error" (the transport or the gateway itself
+# failed, which says nothing about the model). Only these four classes are
+# refusals to serve rather than transport failures; "gateway" and the
+# provider-error fallback stay "error" because they mean the evidence itself
+# is inadmissible, not that the model declined.
+NO_ANSWER_CLASSES = frozenset({"not-free", "harness-gated", "capacity", "timeout"})
 
 
 def shown(path):
@@ -383,6 +403,34 @@ def suite_ids():
     return tuple(case["id"] for case in SUITE)
 
 
+def case_hash(case):
+    """sha256 of a case's defining fields: id, tier, measures and prompt.
+
+    The same four fields check() already re-verifies field by field against
+    the current SUITE. The hash adds nothing check() cannot already catch; it
+    exists so a reader holding only the JSON record, with no copy of this
+    tool to diff against, can still tell whether a case definition changed by
+    recomputing the same hash over the case dict and comparing.
+    """
+    return probe.sha256(json.dumps(
+        {"id": case["id"], "tier": case["tier"], "measures": case["measures"],
+         "prompt": case["prompt"]}, sort_keys=True))
+
+
+def grader_version():
+    """sha256 of every grader function's source, in suite order.
+
+    A case's prompt can be byte-identical while the function that grades it
+    changes; case_hash cannot see that, because a grader is code, not a field.
+    Hashing inspect.getsource means this value changes the moment a grader's
+    logic changes, with nothing to remember to bump by hand, so a reader can
+    confirm their local graders are the ones that produced a given record.
+    """
+    import inspect
+    source = "\n".join(inspect.getsource(case["grade"]) for case in SUITE)
+    return probe.sha256(source)
+
+
 # --- selection ---------------------------------------------------------------
 
 def gateway_models(free_only=True):
@@ -426,15 +474,29 @@ def select(ids):
 
 # --- running -----------------------------------------------------------------
 
-def run_case(model, case):
-    """One graded call. Returns a cell dict; never raises for a bad model."""
+def run_case(model, case, attempt=1, repeats=1):
+    """One graded call. Returns a cell dict; never raises for a bad model.
+
+    attempt/repeats record which try this is out of how many --repeat asked
+    for, so a reader can tell a one-off answer from one of several and see
+    the attempt number next to the result it produced.
+    """
     answer = probe.omniroute_chat(model, case["prompt"])
-    cell = {"model": model, "case": case["id"], "tier": case["tier"]}
+    cell = {"model": model, "case": case["id"], "tier": case["tier"],
+            "attempt": attempt, "repeats": repeats,
+            "gateway_identity": answer.get("gateway_identity")
+                                or probe.GATEWAY_IDENTITY_UNKNOWN}
     if answer.get("error"):
         cell.update(status="error", passed=None,
                     reason=answer.get("error_detail") or answer["error"],
                     error=answer["error"])
         cell["error_class"] = classify_error(cell)
+        # Transport and gateway failures say nothing about whether the model
+        # could have answered; a refusal to serve is closer to no answer at
+        # all than to a broken call. See NO_ANSWER_CLASSES above.
+        cell["answer_status"] = ("no_answer"
+                                 if cell["error_class"] in NO_ANSWER_CLASSES
+                                 else "error")
         # A charge is a charge whether or not the answer it bought is
         # admissible, which is the rule omniroute_chat follows when it keeps
         # billing on its error returns. Dropping it here would let a charged
@@ -445,13 +507,33 @@ def run_case(model, case):
                         cost_source=answer.get("cost_source"))
         return cell
     text = answer.get("text") or ""
-    passed, reason = case["grade"](text)
     resolved = answer.get("resolved_model")
     cost, cost_status = probe.usable_cost(answer.get("cost_usd"))
+    if not text.strip():
+        # Nothing to grade is not the same fact as a graded wrong answer: the
+        # first is an availability gap, the second is a quality result. Only
+        # the second belongs in "passed of answered".
+        cell.update(
+            status="graded", passed=False,
+            reason="empty response: no output text to grade",
+            answer_status="no_answer",
+            resolved_model=resolved,
+            model_matches_request=probe.same_gateway_model(model, resolved),
+            latency_ms=answer.get("latency_ms"),
+            prompt_tokens=answer.get("prompt_tokens"),
+            completion_tokens=answer.get("completion_tokens"),
+            total_tokens=answer.get("total_tokens"),
+            cost_usd=cost, cost_status=cost_status,
+            cost_source=answer.get("cost_source"),
+            response_sha256=probe.sha256(""), response_chars=0,
+            response_preview="")
+        return cell
+    passed, reason = case["grade"](text)
     cell.update(
         status="graded",
         passed=bool(passed),
         reason=reason,
+        answer_status="answered",
         resolved_model=resolved,
         model_matches_request=probe.same_gateway_model(model, resolved),
         latency_ms=answer.get("latency_ms"),
@@ -488,28 +570,83 @@ def cost_unprovable(cell):
     return "cost_status" in cell and cell["cost_status"] != "OK"
 
 
-def run(models, cases, workers, budget_usd=0.0):
-    """Run (model, case) pairs until spend stops being provably in budget.
+def is_free_model(model):
+    """Whether a model id carries the gateway's :free suffix.
+
+    The same substring test gateway_models() and select() already use to
+    build and filter the free catalog. A :free id is advertised at a zero
+    price by the provider, which is the only worst case reserve_before_dispatch
+    can trust without this tool fetching and tracking real per-token pricing.
+    """
+    return ":free" in model
+
+
+def reserve_before_dispatch(model, ledger, budget_usd):
+    """Worst-case admission check, called under the ledger lock before a call.
+
+    A :free model is advertised at a zero price, so reserving zero for it
+    never blocks it: the common, default run keeps its full concurrency. Any
+    other model carries no price this tool tracks, so its worst case is
+    unbounded; the only reservation an unbounded worst case can never exceed
+    is exclusive claim on whatever remains, so at most one such call may be
+    outstanding at a time, and only while more than nothing remains. Returns
+    whether the call may dispatch, and marks the ledger reserved when it does.
+    """
+    if is_free_model(model):
+        return True
+    if ledger["reserved_unknown"] or budget_usd - ledger["spent_usd"] <= 0:
+        return False
+    ledger["reserved_unknown"] = True
+    return True
+
+
+def run(models, cases, workers, budget_usd=0.0, repeat=1):
+    """Run (model, case, attempt) triples until spend stops being provably in
+    budget, attempt running from 1 through repeat for each (model, case) pair.
 
     Returns (cells, ledger). Cells come back in pair order whatever the worker
-    count. The ceiling is on the running total, not on one call, and it is
-    checked as each call returns: once the total passes it, or an answered
-    call carries no usable cost, no further pair is dispatched. Calls already
-    in flight when that happens finish and are recorded, so with N workers
-    the overshoot is bounded by N-1 calls, and with one worker by none.
+    count. Before a call is dispatched, reserve_before_dispatch reserves its
+    worst case against the ceiling: a :free model is advertised at zero and
+    always fits, so free calls dispatch with full concurrency exactly as
+    before; a model with no tracked price reserves the whole remaining
+    ceiling, so only one such call may be outstanding at a time under any
+    worker count, which is the only reservation an unknown price can never
+    exceed. Because admission is decided before dispatch, a call whose worst
+    case does not fit is refused rather than dispatched and discovered over
+    budget afterwards, whatever --workers is set to.
+
+    Once a call is dispatched its actual reported cost settles the running
+    total: once that total passes the ceiling, or an answered call carries no
+    usable cost, no further triple is admitted. Calls already admitted finish
+    and are recorded, the record is marked halted, and the run exits
+    non-zero. A charge reported on an error response counts toward the total
+    like any other charge. Reservation cannot guard against a :free call the
+    provider bills anyway; that remains discoverable only once the call
+    returns, the same as before this change, and with N workers of :free
+    calls in flight the resulting overshoot stays bounded by N-1 calls.
     """
-    pairs = [(model, case) for model in models for case in cases]
+    pairs = [(model, case, attempt)
+             for model in models for case in cases
+             for attempt in range(1, max(1, repeat) + 1)]
     results = [None] * len(pairs)
-    ledger = {"spent_usd": 0.0, "halted": None}
+    ledger = {"spent_usd": 0.0, "halted": None, "reserved_unknown": False}
     lock = threading.Lock()
 
     def one(index):
+        model, case, attempt = pairs[index]
         with lock:
             if ledger["halted"]:
                 return
-        model, case = pairs[index]
-        cell = run_case(model, case)
+            if not reserve_before_dispatch(model, ledger, budget_usd):
+                ledger["halted"] = (
+                    "%s / %s carries no advertised price, so its worst case "
+                    "cannot be reserved within the %.6f USD ceiling"
+                    % (model, case["id"], budget_usd))
+                return
+        cell = run_case(model, case, attempt=attempt, repeats=max(1, repeat))
         with lock:
+            if not is_free_model(model):
+                ledger["reserved_unknown"] = False
             results[index] = cell
             ledger["spent_usd"] += charge_of(cell)
             if ledger["halted"]:
@@ -604,6 +741,68 @@ def error_class_of(cell):
     return cell.get("error_class") or classify_error(cell)
 
 
+def answer_status_of(cell):
+    """"answered", "no_answer" or "error" for one cell.
+
+    Reads the field a fresh run_case call always writes; derives the same
+    answer for a cell recorded before this classification existed (a
+    hand-built fixture, or an older record on disk), from status and
+    error_class, so old and new records grade the same way.
+    """
+    explicit = cell.get("answer_status")
+    if explicit:
+        return explicit
+    if cell.get("status") == "graded":
+        return "answered"
+    if cell.get("status") == "error":
+        return "no_answer" if error_class_of(cell) in NO_ANSWER_CLASSES else "error"
+    return "no_answer"
+
+
+def gateway_identity_of(cells):
+    """The gateway identity a run recorded, or "unknown" when none named one."""
+    for cell in cells:
+        identity = cell.get("gateway_identity")
+        if identity and identity != probe.GATEWAY_IDENTITY_UNKNOWN:
+            return identity
+    return probe.GATEWAY_IDENTITY_UNKNOWN
+
+
+def dated_out_path(when=None, directory=None):
+    """Where a fresh run should be written: model-matrix-<date>.json.
+
+    A plain re-run must never silently overwrite an earlier dated experiment;
+    DEFAULT_OUT (docs/readiness/model-matrix.json, the 2026-09-09 run) is left
+    alone unless a caller names it explicitly with --out. `when` defaults to
+    now, in UTC, so two runs on the same day share one dated file.
+    """
+    from datetime import datetime as _datetime, timezone as _timezone
+    stamp = (when or _datetime.now(_timezone.utc)).strftime("%Y-%m-%d")
+    base = directory or DEFAULT_OUT.parent
+    return Path(base) / ("model-matrix-%s.json" % stamp)
+
+
+def cell_mark(pair_cells):
+    """The table entry for one (model, case) pair, across every attempt.
+
+    One attempt renders exactly as before: pass, fail or the error class.
+    More than one (--repeat above 1) collapses to passed/answered for that
+    pair, because a single pass/fail mark cannot speak for attempts that
+    disagreed with each other.
+    """
+    if not pair_cells:
+        return "--"
+    if len(pair_cells) == 1:
+        cell = pair_cells[0]
+        if cell["status"] == "error":
+            return "error (%s)" % error_class_of(cell)
+        return MARK[cell["passed"]]
+    graded = [c for c in pair_cells if c["status"] == "graded"]
+    if not graded:
+        return "error (%s)" % error_class_of(pair_cells[-1])
+    return "%d/%d" % (sum(1 for c in graded if c["passed"]), len(graded))
+
+
 def render(report):
     """The generated block. Every sentence in it is computed from the record.
 
@@ -611,13 +810,20 @@ def render(report):
     lands in one, so separators here are colons and parentheses.
     """
     models = report["models"]["tested"]
-    cells = {(c["model"], c["case"]): c for c in report["cells"]}
+    by_pair = {}
+    for c in report["cells"]:
+        by_pair.setdefault((c["model"], c["case"]), []).append(c)
     ids = [case["id"] for case in report["suite"]]
     lines = [BEGIN, ""]
     lines.append("Generated by `python3 tools/model_matrix.py`. "
                  "Run of %s against commit `%s`%s."
                  % (report["generated"], report["commit"][:12],
                     TREE_NOTE.get(report.get("working_tree"), "")))
+    if report.get("working_tree") == "dirty" and report.get("allow_dirty"):
+        lines.append("")
+        lines.append("RECORDED FROM A DIRTY WORKING TREE. --allow-dirty was "
+                     "given for this run: treat every figure below as "
+                     "provisional until it is reproduced from a clean commit.")
     lines.append("")
     recorded = report["cells"]
     graded = [c for c in recorded if c.get("status") == "graded"]
@@ -630,19 +836,24 @@ def render(report):
                  % (len(models), len(recorded), len(graded), len(errors),
                     "%g" % sum(charge_of(c) for c in priced), len(priced),
                     len(recorded) - len(priced)))
+    # Only a record this tool wrote after this field existed carries
+    # "attempted"; a record from before it (the shipped 2026-09-09 run) has
+    # no opinion on the distinction and must render exactly as it always
+    # did, so this whole sentence is additive rather than unconditional.
+    if "attempted" in report:
+        answered = [c for c in recorded if answer_status_of(c) == "answered"]
+        answered_passed = [c for c in answered if c.get("passed")]
+        lines.append("Completed %d of %d attempted (repeat %d). Passed %d of "
+                     "%d answered. Gateway identity: %s."
+                     % (len(recorded), report["attempted"],
+                        report.get("repeat", 1), len(answered_passed),
+                        len(answered), report.get("gateway_identity")
+                                       or "unknown"))
     lines.append("")
     lines.append("| Model | " + " | ".join(ids) + " | Passed | Median ms |")
     lines.append("|---|" + "---|" * (len(ids) + 2))
     for model in models:
-        row = []
-        for case_id in ids:
-            cell = cells.get((model, case_id))
-            if cell is None:
-                row.append("--")
-            elif cell["status"] == "error":
-                row.append("error (%s)" % error_class_of(cell))
-            else:
-                row.append(MARK[cell["passed"]])
+        row = [cell_mark(by_pair.get((model, case_id), [])) for case_id in ids]
         summary = report["by_model"][model]
         latency = summary["median_latency_ms"]
         row.append("%d/%d" % (summary["passed"], summary["graded"] or 0))
@@ -712,6 +923,9 @@ def check(out_path, doc_path):
                     problems.append("recorded %s of case %s differs from this "
                                     "tool; re-run the matrix"
                                     % (key, current["id"]))
+    if "grader_sha256" in report and report["grader_sha256"] != grader_version():
+        problems.append("recorded grader_sha256 does not match this tool's "
+                        "graders; re-run the matrix")
     if report.get("dry_run"):
         problems.append("model-matrix.json is a dry run and is not evidence")
     if report.get("halted"):
@@ -764,6 +978,10 @@ def parse_args(argv):
                              "already in flight finish)")
     parser.add_argument("--workers", type=int, default=4,
                         help="concurrent calls (default: %(default)s)")
+    parser.add_argument("--repeat", type=int, default=1,
+                        help="attempts per (model, case) pair, numbered from "
+                             "1 (default: %(default)s); each attempt is its "
+                             "own cell, so a reader sees every try")
     parser.add_argument("--list-models", action="store_true",
                         help="print the selection and exit without calling")
     parser.add_argument("--render", action="store_true",
@@ -773,11 +991,18 @@ def parse_args(argv):
                         help="verify the document matches the recorded matrix")
     parser.add_argument("--dry-run", action="store_true",
                         help="exercise selection and rendering, make no calls")
+    parser.add_argument("--allow-dirty", action="store_true",
+                        help="write a live record from an uncommitted working "
+                             "tree anyway; the record and the rendered table "
+                             "both say so prominently. Refused by default: "
+                             "without this flag a dirty tree stops a live run "
+                             "before any call is made")
     return parser.parse_args(argv)
 
 
 def main(argv=None):
     args = parse_args(argv)
+    effective_argv = list(argv) if argv is not None else sys.argv[1:]
 
     if args.check:
         problems = check(args.out, args.doc)
@@ -799,6 +1024,10 @@ def main(argv=None):
     if not math.isfinite(args.budget_usd) or args.budget_usd < 0:
         probe.say("model-matrix: --budget-usd must be a finite number, zero "
                   "or above")
+        return 2
+
+    if args.repeat < 1:
+        probe.say("model-matrix: --repeat must be 1 or more")
         return 2
 
     if args.models:
@@ -823,17 +1052,25 @@ def main(argv=None):
             probe.say("candidate", model)
         for row in excluded:
             probe.say("excluded ", row["model"], "--", row["reason"])
-        probe.say("%d candidates, %d excluded, %d cases, %d calls"
-                  % (len(candidates), len(excluded), len(cases),
-                     len(candidates) * len(cases)))
+        probe.say("%d candidates, %d excluded, %d cases, %d repeat(s), %d calls"
+                  % (len(candidates), len(excluded), len(cases), args.repeat,
+                     len(candidates) * len(cases) * args.repeat))
         return 0
+
+    commit = probe.git("rev-parse", "HEAD") or "unknown"
+    working_tree = "clean" if not probe.git("status", "--porcelain") else "dirty"
+    if not args.dry_run and working_tree == "dirty" and not args.allow_dirty:
+        probe.say("model-matrix: refusing to write a live record from a "
+                  "dirty working tree; pass --allow-dirty to record anyway "
+                  "(the record will say so prominently), or commit first")
+        return 2
 
     started = datetime.now(timezone.utc)
     if args.dry_run:
         cells, ledger = [], {"spent_usd": 0.0, "halted": None}
     else:
         cells, ledger = run(candidates, cases, max(1, args.workers),
-                            args.budget_usd)
+                            args.budget_usd, repeat=args.repeat)
 
     overspend = ([c for c in cells if charge_of(c) > 0]
                  if ledger["spent_usd"] > args.budget_usd else [])
@@ -842,27 +1079,47 @@ def main(argv=None):
         "schema": SCHEMA,
         "dry_run": bool(args.dry_run),
         "generated": started.strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "commit": probe.git("rev-parse", "HEAD") or "unknown",
-        "working_tree": "clean" if not probe.git("status", "--porcelain") else "dirty",
+        "commit": commit,
+        "working_tree": working_tree,
+        "allow_dirty": bool(args.allow_dirty),
         "python": sys.version.split()[0],
         "gateway": "local OmniRoute, OpenAI-compatible /chat/completions",
+        "gateway_identity": gateway_identity_of(cells),
         "free_only": bool(args.free_only),
         "budget_usd": args.budget_usd,
+        "repeat": args.repeat,
         "discovery_error": discovery_error,
         "suite": [{"id": c["id"], "tier": c["tier"], "measures": c["measures"],
-                   "prompt": c["prompt"]} for c in cases],
+                   "prompt": c["prompt"], "case_sha256": case_hash(c)}
+                  for c in cases],
+        "grader_sha256": grader_version(),
         "models": {"tested": candidates, "excluded": excluded},
         "cells": cells,
         "by_model": by_model,
         "by_case": by_case,
+        "attempted": len(candidates) * len(cases) * args.repeat,
+        "completed": len(cells),
         "spent_usd": ledger["spent_usd"],
         "halted": ledger["halted"],
         "overspend": overspend,
+        "command_line": {
+            "argv": effective_argv,
+            "display": "python3 tools/model_matrix.py " + " ".join(effective_argv),
+        },
+        "tool_sha256": probe.sha256(Path(__file__).read_text(encoding="utf-8")),
     }
+    if working_tree == "dirty" and args.allow_dirty:
+        report["dirty_tree_warning"] = (
+            "recorded from a working tree with uncommitted changes because "
+            "--allow-dirty was given; the commit alone does not reproduce "
+            "the tool that ran")
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(report, indent=2, sort_keys=False) + "\n",
                         encoding="utf-8")
     probe.say("model-matrix: wrote", shown(args.out))
+    probe.say("model-matrix: completed %d of %d attempted, gateway identity %s"
+              % (report["completed"], report["attempted"],
+                 report["gateway_identity"]))
     for model in candidates:
         row = by_model[model]
         probe.say("  %-58s %2d/%-2d pass  %d error%s"

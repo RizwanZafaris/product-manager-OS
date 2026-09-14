@@ -71,6 +71,22 @@ GATEWAY_REQUEST_HEADERS = {
 }
 GIT_TIMEOUT_SECONDS = 30
 
+# Header names checked, in order, for the gateway's own identity/version
+# string. None of these is confirmed to exist; each is a plausible place a
+# local HTTP gateway states what it is, so every one is tried and the first
+# non-empty value wins. A body-level field is tried after every header, on
+# whatever payload the caller already fetched (a chat completion body or the
+# /v1/models catalog), so identity costs no extra call. "unknown" is recorded
+# rather than a guess when none of them says anything.
+GATEWAY_IDENTITY_HEADERS = (
+    "x-omniroute-version", "x-omniroute-gateway-version",
+    "x-omniroute-build", "server",
+)
+GATEWAY_IDENTITY_BODY_KEYS = (
+    "omniroute_version", "gateway_version", "version", "build",
+)
+GATEWAY_IDENTITY_UNKNOWN = "unknown"
+
 # Fixed, public, small. Each names the task class pmos.routing will judge it
 # under, so the policy result is about the router's decision and not about
 # whatever a prompt happened to look like.
@@ -344,6 +360,30 @@ def _gateway_billing(usage, headers_lower):
     return {}
 
 
+def gateway_identity(headers_lower, payload=None):
+    """The gateway's own identity/version string, or "unknown" when it names none.
+
+    Checked in order: a handful of response headers the gateway might set
+    (GATEWAY_IDENTITY_HEADERS), then a version-shaped field in a JSON payload
+    already in hand, either a chat completion body or the /v1/models catalog
+    (GATEWAY_IDENTITY_BODY_KEYS), because a value either of those already
+    carries is real evidence and a header this process invented would not be.
+    Never guessed: absence of every one of them is recorded as "unknown"
+    rather than as a fabricated string.
+    """
+    if isinstance(headers_lower, dict):
+        for name in GATEWAY_IDENTITY_HEADERS:
+            value = (headers_lower.get(name) or "").strip()
+            if value:
+                return value
+    if isinstance(payload, dict):
+        for key in GATEWAY_IDENTITY_BODY_KEYS:
+            value = payload.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+    return GATEWAY_IDENTITY_UNKNOWN
+
+
 def omniroute_chat(model, prompt, *, urlopen=None, environ=None):
     """One call through the local OmniRoute gateway. Returns a result dict.
 
@@ -413,6 +453,7 @@ def omniroute_chat(model, prompt, *, urlopen=None, environ=None):
             lowered = {}
         return {"error": "omniroute_http_%d" % error.code,
                 "error_detail": str(detail)[:200],
+                "gateway_identity": gateway_identity(lowered),
                 **_gateway_billing({}, lowered)}
     except (TimeoutError, socket_timeout()) as error:
         # An unbounded gateway call can hang a release gate indefinitely.
@@ -434,18 +475,24 @@ def omniroute_chat(model, prompt, *, urlopen=None, environ=None):
         close = getattr(response, "close", None)
         if callable(close):
             close()
+    # Built before either later parse can fail, so a malformed or oversize
+    # body still leaves identity readable: it lives in headers as often as in
+    # the body, and a broken body must not hide a header that answered fine.
+    h = {str(k).lower(): str(v) for k, v in header_items}
     if len(raw) > GATEWAY_MAX_RESPONSE_BYTES:
         return {"error": "omniroute_response_too_large",
-                "error_detail": "body exceeded %d bytes" % GATEWAY_MAX_RESPONSE_BYTES}
+                "error_detail": "body exceeded %d bytes" % GATEWAY_MAX_RESPONSE_BYTES,
+                "gateway_identity": gateway_identity(h)}
     try:
         decoded = json.loads(raw.decode("utf-8"))
     except (ValueError, UnicodeDecodeError):
         return {"error": "omniroute_malformed_response",
-                "error_detail": "body is not JSON"}
+                "error_detail": "body is not JSON",
+                "gateway_identity": gateway_identity(h)}
     if not isinstance(decoded, dict):
         return {"error": "omniroute_malformed_response",
-                "error_detail": "body is not an object"}
-    h = {str(k).lower(): str(v) for k, v in header_items}
+                "error_detail": "body is not an object",
+                "gateway_identity": gateway_identity(h)}
     usage = decoded.get("usage") if isinstance(decoded.get("usage"), dict) else {}
     # Billing first, judgement second. The third review round returned a
     # body carrying usage.cost 0.75 with a cache hit, then with compression
@@ -454,11 +501,12 @@ def omniroute_chat(model, prompt, *, urlopen=None, environ=None):
     # so the run aggregated $0.00 with cost_unknown false against a reported
     # charge. A charge survives whatever is decided about the answer.
     billing = _gateway_billing(usage, h)
+    identity = gateway_identity(h, decoded)
     if decoded.get("error"):
         err = decoded["error"]
         message = err.get("message") if isinstance(err, dict) else str(err)
         return {"error": "omniroute_error", "error_detail": str(message)[:200],
-                **billing}
+                "gateway_identity": identity, **billing}
     # Provenance the doctrine headers exist to secure. A replayed answer is
     # not evidence that this model answered this prompt now, and a compressed
     # prompt is not the prompt whose hash the evidence records.
@@ -466,19 +514,19 @@ def omniroute_chat(model, prompt, *, urlopen=None, environ=None):
     if cache == "HIT" or (h.get("x-omniroute-cache-hit") or "").strip().lower() == "true":
         return {"error": "cached_response",
                 "error_detail": "the gateway replayed a cached answer",
-                **billing}
+                "gateway_identity": identity, **billing}
     compression = (h.get("x-omniroute-compression") or "").strip().lower()
     if compression and not compression.startswith("off"):
         return {"error": "compressed_prompt",
                 "error_detail": "gateway compression was %r" % compression[:40],
-                **billing}
+                "gateway_identity": identity, **billing}
     body_model = decoded.get("model") if isinstance(decoded.get("model"), str) else None
     header_model = (h.get("x-omniroute-model") or "").strip() or None
     if body_model and header_model and body_model != header_model:
         return {"error": "resolved_model_conflict",
                 "error_detail": "body says %r, header says %r"
                                 % (body_model, header_model),
-                **billing}
+                "gateway_identity": identity, **billing}
     resolved = body_model or header_model
     choices = decoded.get("choices")
     text = ""
@@ -498,12 +546,14 @@ def omniroute_chat(model, prompt, *, urlopen=None, environ=None):
         "completion_tokens": _tokens("completion_tokens"),
         "total_tokens": _tokens("total_tokens"),
         "latency_ms": round(elapsed, 1),
+        "gateway_identity": identity,
         "gateway": {
             "request_id": h.get("x-omniroute-request-id"),
             "provider": h.get("x-omniroute-provider"),
             "cache": h.get("x-omniroute-cache"),
             "compression": h.get("x-omniroute-compression"),
             "model_header": header_model,
+            "identity": identity,
         },
     }
     result.update(billing)
