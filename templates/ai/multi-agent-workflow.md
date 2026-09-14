@@ -11,6 +11,7 @@ aliases: ["Multi-Agent Workflow", "multi-agent-workflow"]
 Stage: AI overlay, active whenever two or more agents cooperate on one task; feeds [Gate 3: architecture and risks reviewed](../../os/STAGE-GATES.md)
 Knowledge: [AI products](../../knowledge/domains/ai-products.md)
 Skill: [AI PRD skill](../../skills/ai-prd/SKILL.md)
+Filled example: [Ledgerline Expense Copilot Receipt Draft](../../examples/ledgerline-multi-agent-workflow.md)
 
 <!-- [agent-architecture.md](agent-architecture.md) says who the agents are and what
      they may touch. This document says how they cooperate: the handoff order, the

@@ -11,6 +11,7 @@ aliases: ["Agent Architecture", "agent-architecture"]
 Stage: AI overlay, active whenever the product contains a model that takes actions; feeds [Gate 3: architecture and risks reviewed](../../os/STAGE-GATES.md)
 Knowledge: [AI product design](../../knowledge/design/ai-interaction-patterns.md)
 Skill: [AI PRD skill](../../skills/ai-prd/SKILL.md)
+Filled example: [Ledgerline customer add-on](../../examples/ledgerline-agent-architecture.md)
 
 <!-- An agent is a model with tools, and tools are permissions. This document exists so
      that "what can this thing actually do?" has a written answer before the incident,

@@ -11,6 +11,7 @@ aliases: ["Feedback Program", "feedback-program"]
 **Stage:** OPERATE (this file feeds [Gate 6: outcomes verified, learn or sunset](../../os/STAGE-GATES.md)); its intake feeds DISCOVER
 **Knowledge:** [Continuous discovery](../../knowledge/torres-continuous-discovery.md)
 **Skill:** [feedback-synthesis](../../skills/feedback-synthesis/SKILL.md)
+Filled example: [Ledgerline Expenses Advisory Board](../../examples/ledgerline-feedback-program.md)
 
 <!-- The charter for a STANDING feedback program: a customer advisory board, a
      beta or early-access program, or a standing user panel. One program per

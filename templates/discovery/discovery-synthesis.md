@@ -11,6 +11,7 @@ aliases: ["Discovery Synthesis", "discovery-synthesis"]
 Stage: DISCOVER, feeds Gate 1 (problem worth solving)
 Knowledge: [Continuous discovery](../../knowledge/torres-continuous-discovery.md)
 Skill: [feedback-synthesis](../../skills/feedback-synthesis/SKILL.md) · [Opportunity scoring](../../frameworks/discovery/opportunity-scoring.md) · [Assumption mapping](../../frameworks/discovery/assumption-mapping.md) · [Empathy map](../../frameworks/discovery/empathy-map.md)
+Filled example: [Ledgerline commercial pass](../../examples/ledgerline-discovery-synthesis.md)
 
 <!-- The bridge between raw research and a fundable problem statement. The
      [user research plan](user-research-plan.md) collects the evidence; this file

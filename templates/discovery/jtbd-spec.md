@@ -11,6 +11,7 @@ aliases: ["JTBD Spec", "jtbd-spec"]
 Stage: DISCOVER, feeds Gate 1 (problem worth solving)
 Knowledge: [Jobs to be done](../../knowledge/jobs-to-be-done.md)
 Skill: [persona-builder](../../skills/persona-builder/SKILL.md)
+Filled example: [Sahulat Bill Pay](../../examples/sahulat-jtbd-spec.md)
 
 <!-- One job, one page. The frame is jobs to be done as developed by Clayton
      Christensen, Tony Ulwick, and Bob Moesta, restated in this repository's own

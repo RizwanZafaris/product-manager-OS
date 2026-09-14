@@ -11,6 +11,7 @@ aliases: ["Prompt Structure", "prompt-structure"]
 Stage: AI overlay, active whenever the product contains a model; feeds Gate 4 (acceptance criteria met)
 Knowledge: [AI interaction patterns](../../knowledge/design/ai-interaction-patterns.md)
 Skill: [AI PRD skill](../../skills/ai-prd/SKILL.md)
+Filled example: [copilot-policy-match](../../examples/ledgerline-prompt-structure.md)
 
 <!-- The system prompt is production code that happens to be prose. It gets a version,
      an owner, a change process, and a test suite (the eval spec), or it gets edited

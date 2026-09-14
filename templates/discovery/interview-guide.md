@@ -11,6 +11,7 @@ aliases: ["Interview Guide", "interview-guide"]
 Stage: DISCOVER, feeds [Gate 1: problem worth solving](../../os/STAGE-GATES.md)
 Knowledge: [Mom Test interview guide worksheet](../../frameworks/discovery/mom-test-interview-guide.md), [JTBD job map worksheet](../../frameworks/discovery/jtbd-job-map.md)
 Skill: [user-interview](../../skills/user-interview/SKILL.md)
+Filled example: [Sahulat Bill Pay](../../examples/sahulat-interview-guide.md)
 
 > **Delete any section you do not need.** For a study of five to eight sessions, one guide serves all of them; a second guide means a second research question, which means a second study. Weight rules are in [WHICH-DOCUMENT.md](../../os/WHICH-DOCUMENT.md).
 

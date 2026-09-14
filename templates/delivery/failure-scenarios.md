@@ -11,6 +11,12 @@ aliases: ["Failure Scenarios", "failure-scenarios"]
 **Stage:** DELIVER (feeds [Gate 5: release readiness green](../../os/STAGE-GATES.md))
 **Knowledge:** [knowledge index](../../knowledge/INDEX.md)
 **Skill:** [program-premortem](../../skills/program-premortem/SKILL.md); [architect agent](../../agents/architect-agent.md) for the technical modes
+Filled example: [Driftcast moderation, age assurance and recommendation surfaces](../../examples/domain-consumer-social-failure-scenarios.md)
+Filled example: [Fernrow Logistics cross-border and last-mile network](../../examples/domain-logistics-failure-scenarios.md)
+Filled example: [Tradewind Transfers, UK-to-Pakistan cash payout](../../examples/domain-remittances-failure-scenarios.md)
+Filled example: [Westgate Treasury bulk payment platform](../../examples/domain-transaction-banking-failure-scenarios.md)
+Filled example: [Larkhollow Air Booking and Disruption Management](../../examples/domain-travel-hospitality-failure-scenarios.md)
+Filled example: [Harbourgate Quay payment service](../../examples/harbourgate-failure-scenarios.md)
 
 <!-- Edge cases are inputs the product must handle. Failure scenarios are the ways the
      system around the product breaks: a dependency goes down, a queue backs up, a

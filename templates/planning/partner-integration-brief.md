@@ -11,6 +11,7 @@ aliases: ["Partner Integration Brief", "partner-integration-brief"]
 **Stage:** PLANNING track (a one-pager weight decision; the go or no-go lands in [decision-log.md](../execution/decision-log.md))
 **Knowledge:** [build, buy or partner](../../frameworks/strategy/build-buy-partner.md)
 **Skill:** [drafting agent](../../agents/drafting-agent.md)
+Filled example: [Kestrel](../../examples/harbourgate-partner-integration-brief.md)
 
 <!-- One lean file for one question: should we build on this partner, yes or no?
      It is not a BD suite, a contract, or an integration spec; when the answer is

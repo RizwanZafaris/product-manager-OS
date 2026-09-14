@@ -11,6 +11,7 @@ aliases: []
 Stage: PLANNING track, any stage; feeds the [gate the decision unblocks](../../os/STAGE-GATES.md) through the [decision log](../execution/decision-log.md)
 Knowledge: [decision doors worksheet](../../frameworks/prioritization/decision-doors.md)
 Skill: [decision-memo](../../skills/decision-memo/SKILL.md)
+Filled example: [Should Ledgerline accept the model vendor's standard subprocessor terms in the customer DPA?](../../examples/ledgerline-decision-memo.md)
 
 > **Delete any section you do not need.** A two-way door settled by two people in ten minutes is a decision log entry, the lightest rung in [os/WHICH-DOCUMENT.md](../../os/WHICH-DOCUMENT.md). This memo is for decisions that are costly to reverse, cross teams, or need a sponsor's name. Never leave a heading standing over white space.
 

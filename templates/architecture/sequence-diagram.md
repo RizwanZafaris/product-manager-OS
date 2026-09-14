@@ -11,6 +11,7 @@ aliases: ["Sequence Diagrams", "sequence-diagram"]
 Stage: DESIGN, feeds [Gate 3: architecture and risks reviewed](../../os/STAGE-GATES.md)
 Knowledge: [causal loop diagram](../../frameworks/systems/causal-loop-diagram.md)
 Skill: manual
+Filled example: [Harbourgate web and app card authorisation](../../examples/harbourgate-sequence-diagram.md)
 
 <!-- One diagram per flow that crosses a system boundary or holds money, data, or a
      user in suspense. The happy path is the cheap half; a sequence diagram earns

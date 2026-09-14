@@ -11,6 +11,7 @@ aliases: ["Observability Requirements", "observability"]
 Stage: DESIGN, feeds [Gate 3: architecture and risks reviewed](../../os/STAGE-GATES.md)
 Knowledge: [knowledge index](../../knowledge/INDEX.md)
 Skill: [architect agent](../../agents/architect-agent.md); [metrics-tree](../../skills/metrics-tree/SKILL.md) for the product metrics it must emit
+Filled example: [Quay payment service](../../examples/harbourgate-observability.md)
 
 <!-- The SLO and error-budget discipline here is based on the ideas in Site
      Reliability Engineering, edited by Betsy Beyer, Chris Jones, Jennifer Petoff,

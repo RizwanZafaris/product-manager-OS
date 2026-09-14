@@ -11,6 +11,7 @@ aliases: ["Model Card", "model-card"]
 Stage: [AI overlay](../../os/STAGE-GATES.md), active whenever the product contains a model; feeds [Gate 5 (release readiness)](../../os/STAGE-GATES.md)
 Knowledge: [AI product method](../../knowledge/domains/ai-products.md)
 Skill: [AI PRD skill](../../skills/ai-prd/SKILL.md)
+Filled example: [Ledgerline Expense Copilot](../../examples/ledgerline-model-card.md)
 
 <!-- The eval spec answers "is it good enough to ship?" for the team. This card
      answers "what is this, what is it for, and where does it break?" for everyone

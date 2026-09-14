@@ -11,6 +11,7 @@ aliases: ["AI Interaction Spec", "ai-interaction-spec"]
 Stage: AI overlay, active whenever the product contains a model; feeds Gate 4 (acceptance criteria met)
 Knowledge: [AI interaction patterns](../../knowledge/design/ai-interaction-patterns.md)
 Skill: [AI PRD skill](../../skills/ai-prd/SKILL.md)
+Filled example: [The Expense Copilot Draft-Report Panel](../../examples/ledgerline-ai-interaction-spec.md)
 
 <!-- Guardrails and hallucination-controls.md specify what the system is allowed to
      do. This document specifies what the user sees while it does it: how generation

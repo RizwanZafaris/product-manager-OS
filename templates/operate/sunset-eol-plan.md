@@ -11,6 +11,7 @@ aliases: ["Sunset / End-of-Life Plan", "sunset-eol-plan"]
 **Stage:** OPERATE (executes the SUNSET decision from [Gate 6: outcomes verified, learn or sunset](../../os/STAGE-GATES.md))
 **Knowledge:** [knowledge index](../../knowledge/INDEX.md)
 **Skill:** [decision-memo](../../skills/decision-memo/SKILL.md) for the call itself; [gtm-launch-planner](../../skills/gtm-launch-planner/SKILL.md) for the customer comms sequence
+Filled example: [Harbourgate legacy payment path (Marlowe, Tidewater, the contractor's wrapper)](../../examples/harbourgate-sunset-eol-plan.md)
 
 <!-- The loop this repository promises runs discovery to sunset, and this is the
      sunset. A shutdown is a launch in reverse and deserves the same discipline:

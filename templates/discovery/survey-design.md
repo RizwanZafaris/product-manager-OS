@@ -11,6 +11,7 @@ aliases: ["Survey Design", "survey-design"]
 Stage: DISCOVER, feeds [Gate 1: problem worth solving](../../os/STAGE-GATES.md); also used in OPERATE for satisfaction and fit measures
 Knowledge: [Kano survey worksheet](../../frameworks/discovery/kano-survey.md), [PMF survey worksheet](../../frameworks/discovery/pmf-survey.md)
 Skill: [research-agent](../../agents/research-agent.md) for fielding, [analyst-agent](../../agents/analyst-agent.md) for the analysis plan
+Filled example: [SV-1, Agent-App Bill-Pay Census](../../examples/sahulat-survey-design.md)
 
 > **Delete any section you do not need.** A survey earns its cost only after interviews have told you which questions to ask and which answers to offer; if fewer than five interviews exist, go back to [user-research-plan.md](user-research-plan.md). Weight rules are in [WHICH-DOCUMENT.md](../../os/WHICH-DOCUMENT.md).
 

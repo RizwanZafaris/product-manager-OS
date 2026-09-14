@@ -11,6 +11,7 @@ aliases: ["Customer Comms", "customer-comms"]
 Stage: DELIVER, feeds [Gate 5: release readiness green](../../os/STAGE-GATES.md); reused in OPERATE for incidents and maintenance
 Knowledge: [Knowledge index, SCR entry](../../knowledge/INDEX.md)
 Skill: [gtm-launch-planner](../../skills/gtm-launch-planner/SKILL.md)
+Filled example: [Harbourgate checkout cutover](../../examples/harbourgate-customer-comms.md)
 
 > **Delete any section you do not need.** A silent release needs no message; say so in [release-readiness.md](release-readiness.md) section 6 and delete this file. Weight rules are in [WHICH-DOCUMENT.md](../../os/WHICH-DOCUMENT.md).
 

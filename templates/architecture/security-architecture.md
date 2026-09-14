@@ -11,6 +11,7 @@ aliases: ["Security Architecture Checklist", "security-architecture"]
 Stage: DESIGN, feeds [Gate 3: architecture and risks reviewed](../../os/STAGE-GATES.md)
 Knowledge: [knowledge index](../../knowledge/INDEX.md)
 Skill: [red-team-agent](../../agents/red-team-agent.md)
+Filled example: [Quay](../../examples/harbourgate-security-architecture.md)
 
 <!-- Threat modeling by STRIDE, the classification introduced at Microsoft by Loren
      Kohnfelder and Praerit Garg: Spoofing, Tampering, Repudiation, Information

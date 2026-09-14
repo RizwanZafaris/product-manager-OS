@@ -11,6 +11,7 @@ aliases: ["System Design Document", "system-design"]
 Stage: DESIGN, feeds [Gate 3: architecture and risks reviewed](../../os/STAGE-GATES.md)
 Knowledge: [Cagan on the four risks](../../knowledge/cagan-product-teams.md)
 Skill: [architect agent](../../agents/architect-agent.md)
+Filled example: [Quay](../../examples/harbourgate-system-design.md)
 
 <!-- One document per system or per major change to a system. Write it before code,
      revise it during review, freeze it at Gate 3. After the gate, changes to the

@@ -11,6 +11,7 @@ aliases: ["Change Request", "change-request"]
 Stage: BUILD and DELIVER, after Gate 2 signed a baseline; feeds [Gate 4: acceptance criteria met](../../os/STAGE-GATES.md), which checks that every scope change since Gate 2 is logged with a decider
 Knowledge: [estimation sheet](../../frameworks/execution/estimation-sheet.md)
 Skill: [decision-memo](../../skills/decision-memo/SKILL.md)
+Filled example: [CR-1, AC-3 re-baseline after provider migration decision](../../examples/harbourgate-change-request.md)
 
 > **Delete any section you do not need.** A change inside one sprint, one team, and one feature flag is a ticket plus a decision log line, per [os/WHICH-DOCUMENT.md](../../os/WHICH-DOCUMENT.md). This form is for changes to what Gate 2 signed: scope, a committed date, budget, or a non-functional target. Never leave a heading standing over white space.
 

@@ -11,6 +11,7 @@ aliases: ["Migration Cutover Plan", "migration-cutover-plan"]
 Stage: DELIVER, feeds [Gate 5: release readiness green](../../os/STAGE-GATES.md)
 Knowledge: [Premortem worksheet](../../frameworks/execution/premortem-worksheet.md)
 Skill: [release-manager-agent](../../agents/release-manager-agent.md)
+Filled example: [Quay Payment Migration, Plan v2](../../examples/harbourgate-migration-cutover-plan.md)
 
 > **Delete any section you do not need.** A flag flip with no data movement needs only the rollback section of [release-readiness.md](release-readiness.md); this plan is for cutovers that move data, traffic, or customers from one system to another. Weight rules are in [WHICH-DOCUMENT.md](../../os/WHICH-DOCUMENT.md).
 

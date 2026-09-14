@@ -11,6 +11,9 @@ aliases: ["Compliance Impact Assessment", "compliance-impact-assessment"]
 **Stage:** [DEFINE and DELIVER](../../os/STAGE-GATES.md) (feeds Gate 2 and Gate 5, regulated overlay)
 **Knowledge:** [reg-gap-check](../../skills/reg-gap-check/SKILL.md)
 **Skill:** [reg-gap-check](../../skills/reg-gap-check/SKILL.md)
+Filled example: [Brightpath Learning K-12 Literacy Platform](../../examples/domain-edtech-compliance-impact-assessment.md)
+Filled example: [Cobaltine Health Companion](../../examples/domain-healthtech-compliance-impact-assessment.md)
+Filled example: [Quay](../../examples/harbourgate-compliance-impact-assessment.md)
 
 <!-- This template asks the questions; it never supplies the answers. It is not legal
      advice, and a completed copy is not a compliance certification. Answers belong to
