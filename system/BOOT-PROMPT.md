@@ -252,7 +252,8 @@ agents/        README.md, TEAM.md, and twelve role identities, longer than
                hermes-agent.md. A skill is a procedure; an agent is an
                identity with standing rules.
 examples/      README.md, expense-copilot-discovery.md,
-               expense-copilot-prd.md, checkout-modernization-brownfield.md,
+               expense-copilot-prd.md, expense-copilot-journey.md,
+               checkout-modernization-brownfield.md,
                conductor-transcript.md, ledgerline-strategy-kernel.md,
                ledgerline-jtbd-job-map.md, ledgerline-kano-survey.md,
                ledgerline-rice-scoring.md, ledgerline-north-star-tree.md,

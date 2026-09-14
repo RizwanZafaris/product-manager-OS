@@ -6,7 +6,7 @@ Produced with [templates/discovery/discovery-document.md](../templates/discovery
 
 ## Trigger
 
-Support tickets tagged "expenses" at Fernwood Software (fictional, about 900 employees) tripled over two quarters after the company switched travel agencies. The finance lead asked engineering for "a better form". Before building a better form, we ran discovery to find out what problem the tickets actually describe.
+Support tickets tagged "expenses" at Ledgerline (fictional, about 900 employees) tripled over two quarters after the company switched travel agencies. The finance lead asked engineering for "a better form". Before building a better form, we ran discovery to find out what problem the tickets actually describe.
 
 ## Target user
 

@@ -7,7 +7,7 @@ Produced with [templates/definition/prd.md](../templates/definition/prd.md). Fic
 
 ## Background
 
-Discovery ran 2026-07-20 to 2026-08-14 and closed with a GO: see [expense-copilot-discovery.md](expense-copilot-discovery.md). Short version: filers at Fernwood Software re-type receipt data and bounce on category rules they have never read; reviewers burn their time on mechanical checks. The signed hypothesis is that a machine-drafted, human-approved report attacks both bounce causes at once. This PRD defines the first shippable slice. Because the product contains a model, the AI overlay applies: the eval, guardrail, and approval-gate documents named under Launch criteria are part of this spec, not attachments to it.
+Discovery ran 2026-07-20 to 2026-08-14 and closed with a GO: see [expense-copilot-discovery.md](expense-copilot-discovery.md). Short version: filers at Ledgerline re-type receipt data and bounce on category rules they have never read; reviewers burn their time on mechanical checks. The signed hypothesis is that a machine-drafted, human-approved report attacks both bounce causes at once. This PRD defines the first shippable slice. Because the product contains a model, the AI overlay applies: the eval, guardrail, and approval-gate documents named under Launch criteria are part of this spec, not attachments to it.
 
 ## Objectives
 
