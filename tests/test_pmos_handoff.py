@@ -245,3 +245,132 @@ class HandoffTests(unittest.TestCase):
         self.assertIsNone(result["handoff"])
         self.assertFalse(result["development_ready"])
         self.assertIn("development-handoff.md artifact is missing", result["missing"])
+
+    def test_directory_and_symlink_links_are_broken(self) -> None:
+        (self.root / "my_directory").mkdir(parents=True, exist_ok=True)
+        target_file = self.root / "sections" / "2.md"
+        self.assertTrue(target_file.exists(), "Test precondition: sections/2.md must exist")
+        (self.root / "live_symlink").symlink_to("sections/2.md")
+        handoff_body = []
+        for index, title in enumerate(SECTIONS, 1):
+            handoff_body.append(f"## {title}")
+            if title == "1. Problem":
+                handoff_body.append("[problem](my_directory)")
+            elif title == "2. Vision and strategy":
+                handoff_body.append("[vision](live_symlink)")
+            else:
+                handoff_body.append(f"[{title}](sections/{index}.md)")
+            handoff_body.append("")
+        handoff_text = "\n".join(handoff_body) + "\n"
+        self._write(
+            "development-handoff.md",
+            BLOCK_TEMPLATE.format(
+                artifact_id="demo/development-handoff",
+                phase="ALL STAGES",
+                gate="null",
+                status="approved",
+                depends_on="[]",
+                template="templates/architecture/development-handoff.md",
+                body=handoff_text,
+            ),
+        )
+        self._approve()
+        result = self._result()
+        problem_section = next(item for item in result["sections"] if item["title"] == "1. Problem")
+        self.assertEqual(problem_section["status"], "broken")
+        vision_section = next(item for item in result["sections"] if item["title"] == "2. Vision and strategy")
+        self.assertEqual(vision_section["status"], "broken")
+        self.assertFalse(result["development_ready"])
+
+    def test_real_file_inside_symlinked_directory_is_broken(self) -> None:
+        self._write("real_dir/target.md", "Body.\n")
+        (self.root / "symdir").symlink_to("real_dir", target_is_directory=True)
+        self._write(
+            "development-handoff.md",
+            BLOCK_TEMPLATE.format(
+                artifact_id="demo/development-handoff",
+                phase="ALL STAGES",
+                gate="null",
+                status="approved",
+                depends_on="[]",
+                template="templates/architecture/development-handoff.md",
+                body=self._section_body(("6. Evidence and decisions", "[via symlinked dir](symdir/target.md)")),
+            ),
+        )
+        self._approve()
+        result = self._result()
+        section = next(item for item in result["sections"] if item["title"] == "6. Evidence and decisions")
+        self.assertEqual(section["status"], "broken")
+        self.assertFalse(section["links"][0]["exists"])
+        self.assertFalse(result["development_ready"])
+
+    def test_dotdot_across_symlinked_directory_is_broken(self) -> None:
+        # A lexical ".." must not be able to cancel out a symlinked directory
+        # component and slip past the symlink ban: "symdir/../file.md" must
+        # not collapse to "file.md" before the walk ever notices "symdir".
+        (self.root / "real_dir").mkdir(parents=True, exist_ok=True)
+        (self.root / "symdir").symlink_to("real_dir", target_is_directory=True)
+        self._write("file.md", "Body.\n")
+        self.assertTrue((self.root / "file.md").exists(), "Test precondition: file.md must exist")
+        self._write(
+            "development-handoff.md",
+            BLOCK_TEMPLATE.format(
+                artifact_id="demo/development-handoff",
+                phase="ALL STAGES",
+                gate="null",
+                status="approved",
+                depends_on="[]",
+                template="templates/architecture/development-handoff.md",
+                body=self._section_body(("7. Dependencies", "[escape attempt](symdir/../file.md)")),
+            ),
+        )
+        self._approve()
+        result = self._result()
+        section = next(item for item in result["sections"] if item["title"] == "7. Dependencies")
+        self.assertEqual(section["status"], "broken")
+        self.assertFalse(section["links"][0]["exists"])
+        self.assertFalse(result["development_ready"])
+
+    def test_relative_and_dotdot_links_inside_root_are_linked(self) -> None:
+        self._write(
+            "development-handoff.md",
+            BLOCK_TEMPLATE.format(
+                artifact_id="demo/development-handoff",
+                phase="ALL STAGES",
+                gate="null",
+                status="approved",
+                depends_on="[]",
+                template="templates/architecture/development-handoff.md",
+                body=self._section_body(("4. Scope and exclusions", "[gate proof](sections/../gate-1.md)")),
+            ),
+        )
+        self._approve()
+        result = self._result()
+        normal_section = next(item for item in result["sections"]
+                              if item["title"] == "5. Requirements and acceptance criteria")
+        self.assertEqual(normal_section["status"], "linked")
+        self.assertTrue(normal_section["links"][0]["exists"])
+        dotdot_section = next(item for item in result["sections"] if item["title"] == "4. Scope and exclusions")
+        self.assertEqual(dotdot_section["status"], "linked")
+        self.assertTrue(dotdot_section["links"][0]["exists"])
+        self.assertTrue(result["development_ready"])
+
+    def test_dotdot_link_escaping_root_is_broken(self) -> None:
+        self._write(
+            "development-handoff.md",
+            BLOCK_TEMPLATE.format(
+                artifact_id="demo/development-handoff",
+                phase="ALL STAGES",
+                gate="null",
+                status="approved",
+                depends_on="[]",
+                template="templates/architecture/development-handoff.md",
+                body=self._section_body(("8. Interface and data contracts", "[outside](../outside.md)")),
+            ),
+        )
+        self._approve()
+        result = self._result()
+        section = next(item for item in result["sections"] if item["title"] == "8. Interface and data contracts")
+        self.assertEqual(section["status"], "broken")
+        self.assertFalse(section["links"][0]["exists"])
+        self.assertFalse(result["development_ready"])

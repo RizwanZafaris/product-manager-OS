@@ -75,13 +75,59 @@ def _relative_path(base: Path, target: str, root: Path) -> tuple[str, bool]:
     candidate = (base / target).resolve()
     root_path = root.resolve()
     relative = os.path.relpath(str(candidate), str(root_path)).replace(os.sep, "/")
-    try:
-        candidate.resolve().relative_to(root_path)
-        inside = True
-    except ValueError:
-        inside = False
-    exists = inside and candidate.is_file() and not candidate.is_symlink()
+    exists = _links_to_real_file_below_root(base, target, root_path, candidate)
     return relative, exists
+
+
+def _links_to_real_file_below_root(base: Path, target: str, root_path: Path, candidate: Path) -> bool:
+    """A link exists only if it names a real, non-symlink file below root_path.
+
+    The walk is lexical: target is normalized against root_path as given,
+    never against a resolved form of it, because the workspace root can
+    itself sit under a symlink (macOS routes tempfile directories through
+    /var -> /private/var). Only components BELOW root_path are subject to
+    the symlink ban; root_path itself is never lstat-checked.
+
+    Each surviving component is pushed onto a stack and is_symlink()-checked
+    the instant it is pushed, before a later ".." can pop it back off.
+    Collapsing ".." first (for example with os.path.normpath) and only then
+    checking the final path would let a symlinked directory slip through
+    unnoticed: "symdir/../file.md" would collapse straight to "file.md" and
+    never reveal that the walk passed through the symlinked "symdir" on the
+    way.
+    """
+    target_path = Path(target)
+    if target_path.is_absolute():
+        # An absolute target replaces base entirely, mirroring (base / target).
+        try:
+            components = target_path.relative_to(root_path).parts
+        except ValueError:
+            return False  # lexically outside the workspace root
+        stack: list[str] = []
+    else:
+        try:
+            stack = list(base.relative_to(root_path).parts)
+        except ValueError:
+            return False  # base itself is outside the workspace root
+        components = target_path.parts
+
+    for part in components:
+        if part == "..":
+            if not stack:
+                return False  # a lexical ".." walked above the workspace root
+            stack.pop()
+            continue
+        stack.append(part)
+        if root_path.joinpath(*stack).is_symlink():
+            return False
+
+    final = root_path.joinpath(*stack)
+    if not final.is_file():
+        return False
+    try:
+        return final.resolve() == candidate
+    except OSError:
+        return False
 
 
 def _links(lines: list[str], handoff_folder: Path, root: Path,
