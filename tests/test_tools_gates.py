@@ -726,6 +726,62 @@ class TemplateRubricGateTests(unittest.TestCase):
                         "a larger share of its words must rank above one "
                         "hiding a smaller share:\n%s" % section)
 
+    # F21: worked_example must also credit a real completed example living
+    # under examples/, not only the inline ILLUSTRATIVE_RE form, because 39
+    # templates in the tree carry the first kind and none of the second and
+    # were scoring as if they had no worked example at all.
+
+    def _template_and_examples(self, tmp):
+        root = Path(tmp)
+        template = root / "templates" / "definition" / "subject.md"
+        template.parent.mkdir(parents=True, exist_ok=True)
+        examples = root / "examples"
+        examples.mkdir(parents=True, exist_ok=True)
+        return root, template, examples
+
+    def test_a_linked_real_example_earns_worked_example_credit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, template, examples = self._template_and_examples(tmp)
+            template.write_text(
+                "# Subject\n\n"
+                "Filled example: [worked](../../examples/worked.md)\n\n"
+                "## One\n<!-- guidance -->\n", encoding="utf-8")
+            (examples / "worked.md").write_text(
+                "# Subject worked\n\n"
+                "Fills [templates/definition/subject.md]"
+                "(../templates/definition/subject.md). Everything here is "
+                "invented.\n", encoding="utf-8")
+            with unittest.mock.patch.object(template_rubric, "REPO", root):
+                report = template_rubric.score_template(template)
+        self.assertEqual(1.0, report["marks"]["worked_example"])
+
+    def test_a_link_to_an_example_for_a_different_template_earns_no_credit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, template, examples = self._template_and_examples(tmp)
+            template.write_text(
+                "# Subject\n\n"
+                "Filled example: [worked](../../examples/worked.md)\n\n"
+                "## One\n<!-- guidance -->\n", encoding="utf-8")
+            (examples / "worked.md").write_text(
+                "# Other worked\n\n"
+                "Fills [templates/definition/other.md]"
+                "(../templates/definition/other.md). Everything here is "
+                "invented.\n", encoding="utf-8")
+            with unittest.mock.patch.object(template_rubric, "REPO", root):
+                report = template_rubric.score_template(template)
+        self.assertEqual(0.0, report["marks"]["worked_example"])
+
+    def test_a_link_to_a_missing_example_earns_no_credit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, template, _examples = self._template_and_examples(tmp)
+            template.write_text(
+                "# Subject\n\n"
+                "Filled example: [worked](../../examples/missing.md)\n\n"
+                "## One\n<!-- guidance -->\n", encoding="utf-8")
+            with unittest.mock.patch.object(template_rubric, "REPO", root):
+                report = template_rubric.score_template(template)
+        self.assertEqual(0.0, report["marks"]["worked_example"])
+
 
 class PmWorkingSetGateTests(unittest.TestCase):
     """tools/pm_working_set.py: the documents written weekly, held to the bar."""

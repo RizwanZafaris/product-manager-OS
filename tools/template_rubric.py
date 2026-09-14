@@ -106,6 +106,57 @@ LINK_RE = re.compile(r"\]\(\s*(?:<[^<>\n]*>|[^\s()]*)")
 ILLUSTRATIVE_RE = re.compile(
     r"illustrative|worked (micro-)?example|the example row|example row shows"
     r"|delete (?:it|the example|this row)|sample row", re.I)
+# A third gap sits beside the two ILLUSTRATIVE_RE already closed above, and F21
+# is what surfaced it: the tree also has a convention where the worked example
+# is not inside the template at all, but a separate filled document under
+# examples/, and the template links to it. ILLUSTRATIVE_RE cannot see that,
+# because there is nothing illustrative-shaped in the template's own text to
+# match; 39 templates carried a real completed example this way and scored as
+# having none, which is the false negative F21 asked this file to fix rather
+# than paper over with padding. EXAMPLE_LINK_RE and worked_example_link() below
+# recognise it: a Markdown link that resolves to a file under examples/, whose
+# own first five lines name this template's repo path back, the same
+# convention every examples/*.md file opens with ("Fills
+# [templates/...](../templates/...)."). A link to some other template's
+# example, or to a file that is not there, earns nothing, on purpose: the
+# credit is for a real, checkable, completed exercise, not for a link that
+# merely looks like one.
+EXAMPLE_LINK_RE = re.compile(r"(?<!!)\[[^\]]*\]\(([^)]+)\)")
+
+
+def worked_example_link(path, text):
+    """True when `text` links to an examples/ file that names this template.
+
+    `path` must already be the resolved, absolute path score_template() reads,
+    so a relative link can be resolved against its directory the way a reader
+    (or lint.py's own link gate) would resolve it.
+    """
+    try:
+        repo_relative = path.relative_to(REPO).as_posix()
+    except ValueError:
+        return False
+    examples_root = (REPO / "examples").resolve()
+    for match in EXAMPLE_LINK_RE.finditer(text):
+        target = match.group(1).strip().strip("<>").split("#", 1)[0].strip()
+        if not target or "://" in target:
+            continue
+        candidate = (path.parent / target).resolve()
+        try:
+            candidate.relative_to(examples_root)
+        except ValueError:
+            continue
+        if not candidate.is_file():
+            continue
+        try:
+            head = candidate.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        first_five = "\n".join(head.splitlines()[:5])
+        if repo_relative in first_five:
+            return True
+    return False
+
+
 EXIT_GATE_RE = re.compile(r"^##\s*Exit gate", re.M | re.I)
 # The vocabulary this tree uses when it tells you how a thing goes wrong.
 FAILURE_RE = re.compile(
@@ -212,8 +263,12 @@ def score_template(path):
     marks = {}
     # 1. Every section explains itself.
     marks["self_explaining"] = (explained / total_sections) if total_sections else 0.0
-    # 2. A worked example, marked so it cannot be mistaken for evidence.
-    marks["worked_example"] = 1.0 if ILLUSTRATIVE_RE.search(text) else 0.0
+    # 2. A worked example: either inline and marked so it cannot be mistaken
+    #    for evidence (ILLUSTRATIVE_RE), or a link to a real, completed one
+    #    living under examples/ (worked_example_link, see the comment above
+    #    EXAMPLE_LINK_RE for why this second form is credited).
+    marks["worked_example"] = 1.0 if (ILLUSTRATIVE_RE.search(text)
+                                      or worked_example_link(path, text)) else 0.0
     # 3. An exit gate that names where the output goes.
     marks["exit_gate"] = 1.0 if EXIT_GATE_RE.search(text) else 0.0
     # 4. Fields to fill. Saturates quickly: ten is plenty to prove the point.
