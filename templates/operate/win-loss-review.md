@@ -8,7 +8,7 @@ aliases: ["Win-Loss Review", "win-loss-review"]
 ---
 # Win-Loss Review: [deal or decision name]
 
-**Stage:** OPERATE (feeds [Gate 6: outcomes verified, learn or sunset](../../os/STAGE-GATES.md))
+**Stage:** [OPERATE](../../os/STAGE-GATES.md) (feeds [Gate 6: outcomes verified, learn or sunset](../../os/STAGE-GATES.md))
 **Knowledge:** [jobs to be done](../../knowledge/jobs-to-be-done.md)
 **Skill:** [competitive-intel](../../skills/competitive-intel/SKILL.md)
 
@@ -29,6 +29,12 @@ aliases: ["Win-Loss Review", "win-loss-review"]
 
 ## 1. Decision facts
 
+<!-- The factual skeleton a reviewer needs before interpreting anything: the
+     outcome, the segment, the dates, and who actually decided versus who the
+     rep assumed. A good entry names the real decider's role, not the person
+     the CRM contact listed. Do not put the buyer's name here if
+     confidentiality was promised. -->
+
 - Outcome: WON / LOST / NO DECISION
 - Buyer segment: [segment] · Deal size or scope: [amount or scale band]
 - Decision date: [YYYY-MM-DD] · Cycle length: [first contact to decision]
@@ -41,6 +47,11 @@ aliases: ["Win-Loss Review", "win-loss-review"]
      a paraphrase from the rep's notes is marked as such and weighs less. -->
 
 - Primary reason for the outcome: [one sentence]
+<!-- A trap: accepting the rep's summary as the primary reason. The rep heard
+     a polite version; the buyer told the truth to the interviewer. This fails
+     when the primary reason is "price" and no quote tests the remove-it rule.
+     Never rank more than three secondary reasons; a long list means the
+     primary was never found. -->
 - Secondary reasons: [up to three, ranked]
 - The job they were hiring for, in their words: [sentence]
 
@@ -54,6 +65,11 @@ aliases: ["Win-Loss Review", "win-loss-review"]
      current mess" is a real answer and the most common one. -->
 
 - Alternative chosen: [named competitor / spreadsheet / internal build / nothing]
+<!-- A trap: naming a competitor here without checking whether "nothing" was the
+     real alternative. "They kept the spreadsheet" is a loss to a competitor the
+     CRM never codes. This fails when the reviewer writes "lost to Cinderwick"
+     because it is cleaner than "lost to doing nothing." Do not infer the
+     alternative from the CRM loss-reason field; ask the buyer directly. -->
 - Why it fit their job better (or worse, for a win): [their reasoning, not ours]
 - What would have changed the outcome, per the buyer: [their answer, marked speculative]
 
@@ -68,6 +84,11 @@ aliases: ["Win-Loss Review", "win-loss-review"]
 | | | | |
 
 - Pattern this window, in one sentence: [or "no pattern yet, n too small"]
+<!-- A trap: reading three losses as three separate sales stories instead of
+     one pattern. This fails when each row names a different competitor but the
+     primary reason column repeats the same phrase. Do not write "no pattern"
+     until at least three reviews sit in the window; two is a coincidence, not
+     a finding. -->
 
 ## 5. Action items
 
@@ -78,6 +99,11 @@ aliases: ["Win-Loss Review", "win-loss-review"]
 | Finding | Action | Lands in (linked doc) | Owner | Date |
 |---|---|---|---|---|
 | | | | | |
+<!-- A trap: filing a finding without a destination, or sending every finding
+     to the roadmap. This fails when "discovery backlog" is used as a parking
+     lot for losses the team does not want to act on. Never leave the
+     "Lands in" column blank or generic; an unowned finding evaporates by the
+     next batch. -->
 
 ## Exit gate
 
