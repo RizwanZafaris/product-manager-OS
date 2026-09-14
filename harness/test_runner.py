@@ -522,6 +522,193 @@ class ExactInputTests(unittest.TestCase):
                          "would spend a chunked pass on a fixable-by-nothing "
                          "failure")
 
+    # ---- S06: evidence condensation adds cost without proving fidelity ----
+
+    def test_required_facts_rule_is_explicit_and_testable(self):
+        """S06 item: check that required facts survive condensation, using
+        an explicit, testable rule. Proves the rule itself: a quoted span,
+        a bare number and a mixed id/code are each recognized, a plain word
+        is not, and condensation_fidelity() reports exactly what is missing.
+        """
+        original = ('The finding cites "the gate completed anyway" for '
+                   'invoice INV-2024-017, amount 12,500, filed 2026-09-12.')
+        self.assertEqual(
+            runner.required_facts(original),
+            {"the gate completed anyway", "INV-2024-017", "12,500",
+             "2024", "017", "09", "12", "2026"})
+        self.assertNotIn("finding", runner.required_facts(original),
+                         "an ordinary word was treated as a required fact")
+
+        condensed_complete = original
+        ok, missing = runner.condensation_fidelity(original,
+                                                    condensed_complete)
+        self.assertTrue(ok, missing)
+        self.assertEqual(missing, [])
+
+        condensed_lossy = "The finding cites the gate result for the invoice."
+        ok, missing = runner.condensation_fidelity(original, condensed_lossy)
+        self.assertFalse(ok)
+        self.assertIn("INV-2024-017", missing)
+        self.assertIn("12,500", missing)
+        self.assertIn("the gate completed anyway", missing)
+
+    def test_condense_appends_deterministic_facts_verbatim(self):
+        """S06 items: deterministic source selection before the semantic
+        summary is trusted, and exact quotations/numeric evidence retained.
+        The stub model paraphrases away every specific; the returned text
+        must still carry them, because this runner's own extraction put
+        them there, not the model's paraphrase.
+        """
+        evidence = ('The contract cites "Section 4.2 applies" for invoice '
+                   'INV-2024-017, amount 12,500.')
+
+        def stub(cfg, tier, messages, transport, **kwargs):
+            reply = runner.Reply(tier, "auto/coding")
+            reply.text = "a paraphrase that drops every specific"
+            reply.terminal, reply.finish_reason = True, "stop"
+            return reply
+
+        real_call = runner.transport_call
+        runner.transport_call = stub
+        try:
+            out = runner.condense(
+                {}, runner.Candidate("drafting", "test-model-1", "probe"),
+                evidence, "http", self.log)
+        finally:
+            runner.transport_call = real_call
+        self.assertIsNotNone(out, self.log)
+        self.assertIn("Section 4.2 applies", out,
+                      "an exact quotation did not survive condensation")
+        self.assertIn("INV-2024-017", out,
+                      "an id did not survive condensation")
+        self.assertIn("12,500", out,
+                      "a number did not survive condensation")
+        self.assertIn("a paraphrase that drops every specific", out,
+                      "the model's own summary was discarded, not just "
+                      "supplemented")
+
+    def test_condense_logs_chunk_id_hash_and_span(self):
+        """S06 item: retain source ids, hashes and spans. One chunk, so its
+        span in the source is exact and checkable."""
+        evidence = "hello condensed world"
+
+        def stub(cfg, tier, messages, transport, **kwargs):
+            reply = runner.Reply(tier, "auto/coding")
+            reply.text, reply.terminal, reply.finish_reason = (
+                "condensed", True, "stop")
+            return reply
+
+        real_call = runner.transport_call
+        runner.transport_call = stub
+        try:
+            runner.condense(
+                {}, runner.Candidate("drafting", "test-model-1", "probe"),
+                evidence, "http", self.log)
+        finally:
+            runner.transport_call = real_call
+        joined = "\n".join(self.log)
+        self.assertIn("id=chunk-1-of-1", joined)
+        expected_hash = runner._section_hash(evidence)[:16]
+        self.assertIn("hash=%s" % expected_hash, joined)
+        self.assertIn("span=(0, %d)" % len(evidence), joined)
+
+    def test_condense_uses_its_own_output_budget(self):
+        """S06 item: a summary-specific output budget, not the tier's own
+        (16384 for drafting), which condense used to inherit."""
+        captured = {}
+
+        def stub(cfg, tier, messages, transport, **kwargs):
+            captured["max_tokens"] = kwargs.get("max_tokens")
+            reply = runner.Reply(tier, "auto/coding")
+            reply.text, reply.terminal, reply.finish_reason = (
+                "condensed", True, "stop")
+            return reply
+
+        real_call = runner.transport_call
+        runner.transport_call = stub
+        try:
+            runner.condense(
+                {}, runner.Candidate("drafting", "test-model-1", "probe"),
+                "some short evidence", "http", self.log)
+        finally:
+            runner.transport_call = real_call
+        self.assertEqual(captured.get("max_tokens"), runner.CONDENSE_MAX_TOKENS)
+        self.assertLess(runner.CONDENSE_MAX_TOKENS,
+                        runner.tier_settings({}, "drafting")["max_tokens"],
+                        "the condense budget is not actually smaller than "
+                        "the tier's own")
+
+    def test_condense_refuses_beyond_the_aggregate_chunk_cap(self):
+        """S06 item: an aggregate call cap, independent of any dollar spend
+        cap. 50 same-sized paragraphs chunk one-per-paragraph, over
+        CONDENSE_MAX_CHUNKS; refusing must cost zero transport calls."""
+        paragraph = "z" * (runner.CHUNK_MAX_BYTES - 10)
+        evidence = "\n\n".join("p%d %s" % (i, paragraph) for i in range(50))
+        self.assertGreater(len(runner.chunk_evidence(evidence)),
+                           runner.CONDENSE_MAX_CHUNKS)
+        calls = {"n": 0}
+
+        def stub(cfg, tier, messages, transport, **kwargs):
+            calls["n"] += 1
+            raise AssertionError("a chunk was dispatched past the "
+                                 "aggregate call cap")
+
+        real_call = runner.transport_call
+        runner.transport_call = stub
+        try:
+            out = runner.condense(
+                {}, runner.Candidate("drafting", "test-model-1", "probe"),
+                evidence, "http", self.log)
+        finally:
+            runner.transport_call = real_call
+        self.assertIsNone(out)
+        self.assertEqual(calls["n"], 0)
+        self.assertTrue(any("aggregate call cap" in line for line in self.log),
+                        self.log)
+
+    def test_condense_queues_when_a_required_fact_does_not_survive(self):
+        """S06 item: if fidelity cannot be established, queue the task
+        rather than silently continuing. Forces the gap by making the
+        deterministic extractor itself report a fact the joined output
+        cannot possibly contain, isolating condense()'s own wiring of the
+        check from required_facts()'s own correctness (proven separately
+        above). Fails on the code before this change: condense() had no
+        fidelity check, so this raised nothing.
+        """
+        # Two chunks, neither equal to the whole evidence: the stub must
+        # only see the "required fact" when asked about the FULL original
+        # text (what condensation_fidelity checks against), never about an
+        # individual chunk (what the per-chunk deterministic append checks),
+        # so the deterministic append cannot accidentally satisfy its own
+        # check and this genuinely exercises the fidelity gate.
+        evidence = ("a" * 4000) + "\n\n" + ("b" * 4000)
+        self.assertGreater(len(runner.chunk_evidence(evidence)), 1)
+
+        def stub_required_facts(text):
+            if text == evidence:
+                return {"NEEDLE-THAT-CANNOT-SURVIVE"}
+            return set()
+
+        def stub_transport(cfg, tier, messages, transport, **kwargs):
+            reply = runner.Reply(tier, "auto/coding")
+            reply.text, reply.terminal, reply.finish_reason = (
+                "condensed fragment", True, "stop")
+            return reply
+
+        real_required_facts = runner.required_facts
+        real_call = runner.transport_call
+        runner.required_facts = stub_required_facts
+        runner.transport_call = stub_transport
+        try:
+            with self.assertRaises(runner.QueuedWork) as caught:
+                runner.condense(
+                    {}, runner.Candidate("drafting", "test-model-1", "probe"),
+                    evidence, "http", self.log)
+        finally:
+            runner.required_facts = real_required_facts
+            runner.transport_call = real_call
+        self.assertIn("NEEDLE-THAT-CANNOT-SURVIVE", str(caught.exception))
+
 
 class CacheBindingTests(unittest.TestCase):
     """Finding S05: the exact-match cache must bind the resolved model.
@@ -1164,6 +1351,112 @@ class PromptAssemblyTests(unittest.TestCase):
                     / "evidence-note.md").read_text(encoding="utf-8")
         self.assertIn("Certification:", artifact)
         self.assertIn("test-model-1", artifact)
+
+    # ---- S04: context is large and not selected by the current question --
+
+    def test_stage_narrows_a_multi_stage_read_to_its_own_section(self):
+        """S04 item: load only the current stage's dependency closure,
+        instead of the whole declared reads list. gather-evidence reads
+        os/OPERATING-LOOP.md (six stage sections, headed by stage name) and
+        templates/execution/state.md (no stage headings at all: nothing for
+        this rule to address). --stage DISCOVER must shrink the former and
+        leave the latter whole. Fails on the code before this change:
+        trusted_blocks() took no stage argument at all.
+        """
+        task = self.tasks["gather-evidence"]
+        invariants = runner.resolved_invariants(task)
+        full_log, narrow_log = [], []
+        full_blocks = runner.trusted_blocks(task, None, invariants, full_log)
+        narrow_blocks = runner.trusted_blocks(task, None, invariants,
+                                              narrow_log, stage="DISCOVER")
+        full_text = "\n\n".join(full_blocks)
+        narrow_text = "\n\n".join(narrow_blocks)
+
+        self.assertLess(len(narrow_text), len(full_text) * 0.6,
+                        "narrowing to one stage did not substantially "
+                        "shrink the assembled reads")
+        self.assertIn("Find a problem worth solving and prove someone has "
+                     "it.", narrow_text,
+                     "the DISCOVER section itself was dropped")
+        self.assertNotIn("Build to the spec, and keep the spec honest",
+                         narrow_text,
+                         "a different stage's section (BUILD) survived "
+                         "narrowing to DISCOVER")
+        self.assertIn("Build to the spec, and keep the spec honest",
+                     full_text,
+                     "the unnarrowed baseline should still carry every "
+                     "stage for this comparison to mean anything")
+
+        state_md = (REPO / "templates" / "execution" / "state.md").read_text(
+            encoding="utf-8")
+        self.assertIn(state_md, narrow_text,
+                      "a read with no stage headings was narrowed away "
+                      "instead of being left whole (fail open)")
+
+    def test_a_duplicate_read_is_sent_once(self):
+        """S04 item: deduplicate repeated sections by hash. A manifest
+        entry that (by error, or by two routes sharing a read) names the
+        same path twice must not double the bytes sent for it. Fails on
+        the code before this change: every named read was sent whole,
+        every time it was named.
+        """
+        task = {"id": "synthetic-duplicate-read", "skill": None,
+               "reads": ["templates/execution/state.md",
+                        "templates/execution/state.md"],
+               "invariants": []}
+        log = []
+        blocks = runner.trusted_blocks(task, None, [], log)
+        text = "\n\n".join(blocks)
+        marker = "## Accepted answers"
+        self.assertEqual(text.count(marker), 1,
+                         "the same file named twice was sent twice")
+        self.assertTrue(
+            any("duplicates content already loaded" in line for line in log),
+            log)
+
+    def test_narrowing_and_dedup_log_where_to_find_the_full_source(self):
+        """S04 item: keep the full original source retrievable. Both the
+        stage-narrowing path and the dedup path only ever drop text this
+        function itself just read from a repository path; the log has to
+        say which path still holds the full text."""
+        task = self.tasks["gather-evidence"]
+        invariants = runner.resolved_invariants(task)
+        log = []
+        runner.trusted_blocks(task, None, invariants, log, stage="DISCOVER")
+        self.assertTrue(
+            any("os/OPERATING-LOOP.md" in line
+                and "full text remains at os/OPERATING-LOOP.md" in line
+                for line in log),
+            log)
+        # And the path really is unmodified on disk: reading it again gets
+        # every stage, narrowing or not.
+        full = (REPO / "os" / "OPERATING-LOOP.md").read_text(encoding="utf-8")
+        self.assertIn("Build to the spec, and keep the spec honest", full)
+
+    def test_context_fits_reserves_the_tiers_output_budget(self):
+        """S04 item: estimate the fully assembled request and reserve
+        output space. The estimate has to grow with the tier's own
+        max_tokens, not just with the input text, or "reserve output
+        space" is not actually happening."""
+        trusted_text = "x" * 2000
+        drafting_fits, drafting_estimate = runner.context_fits(
+            self.cfg, "drafting", trusted_text, "", None, [])
+        extraction_fits, extraction_estimate = runner.context_fits(
+            self.cfg, "extraction", trusted_text, "", None, [])
+        drafting_max = runner.tier_settings(self.cfg, "drafting")["max_tokens"]
+        extraction_max = runner.tier_settings(self.cfg,
+                                              "extraction")["max_tokens"]
+        self.assertGreater(drafting_max, extraction_max,
+                           "fixture assumption: drafting reserves more "
+                           "output than extraction in this config")
+        input_tokens = runner._estimate_tokens(trusted_text, "", None)
+        self.assertEqual(drafting_estimate, int(input_tokens + drafting_max))
+        self.assertEqual(extraction_estimate,
+                         int(input_tokens + extraction_max))
+        self.assertGreater(drafting_estimate, extraction_estimate,
+                           "the larger tier's reserved output was not "
+                           "reflected in the estimate")
+        self.assertTrue(drafting_fits and extraction_fits)
 
 
 class ConfiguredRoutingTests(unittest.TestCase):
@@ -2183,6 +2476,34 @@ class QueueOutcomeTests(unittest.TestCase):
         self.assertEqual(called["n"], 0)
         self.assertFalse(self.artifact.exists())
         self.assertIn("QUEUED", self._state())
+
+    def test_an_oversized_request_queues_before_any_provider_call(self):
+        """S04 item: reject, or narrow scope, before a provider call if the
+        request will not fit. Lowers CONTEXT_TOKEN_BUDGET far below what
+        even a small route estimates to, and proves the model is never
+        reached. Fails on the code before this change: there was no
+        context budget of any kind, so the stubbed call below would have
+        been made and this test would have raised AssertionError itself.
+        """
+        called = {"n": 0}
+
+        def stub(*a, **kw):
+            called["n"] += 1
+            raise AssertionError("a model was called over the context budget")
+
+        runner.call_with_fallback = stub
+        real_budget = runner.CONTEXT_TOKEN_BUDGET
+        runner.CONTEXT_TOKEN_BUDGET = 10
+        try:
+            self.assertEqual(_quiet_run(self._args(), self.cfg, self.tasks),
+                             runner.EXIT_QUEUED)
+        finally:
+            runner.CONTEXT_TOKEN_BUDGET = real_budget
+        self.assertEqual(called["n"], 0)
+        self.assertFalse(self.artifact.exists())
+        state = self._state()
+        self.assertIn("QUEUED", state)
+        self.assertIn("context budget", state)
 
     def test_the_cap_queues_at_first_model_call_with_ledger(self):
         called = {"n": 0}

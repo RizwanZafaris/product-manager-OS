@@ -286,6 +286,39 @@ STATE_TEMPLATE = REPO / "templates" / "execution" / "state.md"
 TIER_ORDER = ("extraction", "drafting", "judgment")
 SPLIT_AT_CHARS = 6000
 CHUNK_MAX_BYTES = 6000
+
+# S04 (audit supplement, context is large and not selected by the current
+# question). A ceiling on the estimated size of one fully assembled request
+# (trusted context, evidence and template together, plus the tier's own
+# reserved output), in estimated tokens. Nothing in
+# routing/omniroute.config.json names a per-model context window; the tiers
+# name only an output budget (maxOutputTokens). So this is one fixed,
+# deliberately generous floor rather than a number read per tier or per
+# model: comfortably above every route this repository declares today (the
+# largest, conduct-product-journey, estimates under 55,000 including its
+# reserved output), so a normal run never trips it and the reject path is
+# exercised in tests by lowering it, not by building a request this size.
+# Raise or wire it to a real per-model figure only with a documented reason.
+CONTEXT_TOKEN_BUDGET = 200_000
+
+# S06 (audit supplement, evidence condensation adds cost without proving
+# fidelity). condense() used to inherit the calling tier's own max_tokens
+# (4096-16384), sized for a whole task response, for every few-thousand-byte
+# fragment. This is the fragment's own output budget instead. It also caps
+# how many condense calls one evidence blob may trigger in a single attempt,
+# independent of whether a dollar spend cap is configured at all: S02's
+# spend ledger bounds cost per call when a cap is in force, this bounds call
+# COUNT regardless.
+CONDENSE_MAX_TOKENS = 2048
+CONDENSE_MAX_CHUNKS = 40
+
+# The six-stage order os/OPERATING-LOOP.md's "The six stages" and
+# os/STAGE-GATES.md's six gates use, one gate per stage in this same order.
+# Read only by _section_is_relevant(), to let a caller who already knows the
+# current stage narrow a gate-numbered file too, since a gate heading
+# ("Gate 1: Problem worth solving") never spells the stage name out.
+STAGE_ORDER = ("DISCOVER", "DEFINE", "DESIGN", "BUILD", "DELIVER", "OPERATE")
+
 PROBE_PROMPT = "Reply with exactly: PONG"
 PROBE_MAX_TOKENS = 300
 BASE_URL_DEFAULT = "http://localhost:20128/v1"
@@ -362,6 +395,16 @@ UNFILLED_RE = re.compile(r"<[^<>\n]{2,80}>|\[[a-z][^\[\]\n]{4,120}\]")
 
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.*?)\s*$")
 TABLE_DELIM_RE = re.compile(r"^\s*\|(?:\s*:?-{2,}:?\s*\|)+\s*$")
+
+# A gate heading in os/STAGE-GATES.md: "Gate 1: Problem worth solving". Used
+# only to map a gate section to the STAGE_ORDER stage it belongs to.
+GATE_NUMBER_RE = re.compile(r"^Gate\s+(\d+)\b", re.IGNORECASE)
+
+# S06's explicit, testable definition of a "required fact": see
+# required_facts() below, which is the rule this regex trio encodes.
+QUOTED_SPAN_RE = re.compile(r'"([^"\n]{1,300})"')
+NUMERIC_TOKEN_RE = re.compile(r"\b\d[\d,]*(?:\.\d+)?\b")
+ALNUM_TOKEN_RE = re.compile(r"\b[A-Za-z0-9][A-Za-z0-9_-]{2,}\b")
 
 
 class RunnerError(Exception):
@@ -1987,6 +2030,62 @@ def chunk_evidence(text, cap=CHUNK_MAX_BYTES):
     return [c for c in chunks if c.strip()]
 
 
+def required_facts(text):
+    """The exact substrings condensation is not allowed to lose.
+
+    S06's explicit, testable rule in place of a judgment call about which
+    facts "matter": a fact is required exactly when it is one of three fixed
+    shapes, nothing more.
+
+      - a double-quoted span of 1 to 300 characters (QUOTED_SPAN_RE);
+      - a bare numeral, with optional thousands commas and a decimal part
+        (NUMERIC_TOKEN_RE);
+      - a token of 3 or more letters/digits/underscore/hyphen that mixes at
+        least one digit with at least one letter (an id or code: an invoice
+        number, a finding id, an ISO date fragment split by hyphens).
+
+    Deliberately mechanical and over-inclusive: a plain section number like
+    "3.2", or the "2024" inside an id like "INV-2024-017", counts as
+    required on its own. A false positive here costs one extra verbatim
+    fragment retained; a false negative would silently drop real evidence,
+    which is the defect this finding names.
+    """
+    facts = set()
+    for match in QUOTED_SPAN_RE.finditer(text):
+        value = match.group(1).strip()
+        if value:
+            facts.add(value)
+    for match in NUMERIC_TOKEN_RE.finditer(text):
+        facts.add(match.group(0))
+    for match in ALNUM_TOKEN_RE.finditer(text):
+        token = match.group(0)
+        if any(c.isdigit() for c in token) and any(c.isalpha() for c in token):
+            facts.add(token)
+    return facts
+
+
+def condensation_fidelity(original_text, condensed_text):
+    """(ok, sorted missing facts). ok is False when required_facts() finds a
+    fact in original_text that is not a substring of condensed_text.
+    """
+    missing = sorted(f for f in required_facts(original_text)
+                     if f not in condensed_text)
+    return (not missing, missing)
+
+
+def _locate_span(haystack, needle, start=0):
+    """(start, end) of needle's first occurrence in haystack at or after
+    start, or None when it cannot be found there. Best-effort provenance,
+    not a guarantee: chunking can rejoin paragraphs with different
+    separator whitespace than the source carried, and a span that cannot be
+    recovered is logged as such rather than reported wrong.
+    """
+    index = haystack.find(needle, start)
+    if index == -1:
+        return None
+    return (index, index + len(needle))
+
+
 def condense(cfg, candidate, text, transport, log):
     """Condense the EVIDENCE, chunk by chunk, on the same certified model.
 
@@ -2001,11 +2100,33 @@ def condense(cfg, candidate, text, transport, log):
     Every chunk call goes to the same concrete model the task call goes to. A
     condense pass that drifted onto another model would be summarizing the
     evidence with a model nobody certified for the run.
+
+    S06 (audit supplement, evidence condensation adds cost without proving
+    fidelity): deterministic source selection runs BEFORE the semantic
+    summary is trusted, not after. required_facts() extracts the fragment's
+    quotes, numbers and ids by a fixed rule, and that extraction, not the
+    model's paraphrase, is what is actually relied on: it is appended
+    verbatim to every piece, so a fact's survival never depends on the model
+    choosing to keep it. Each chunk's id, content hash and (best-effort)
+    span in the source are logged as provenance. Every chunk call carries
+    its own summary-specific output budget (CONDENSE_MAX_TOKENS) rather than
+    inheriting the tier's full one, and the whole pass refuses beyond an
+    aggregate call cap (CONDENSE_MAX_CHUNKS). Once every chunk is in,
+    condensation_fidelity() checks the ORIGINAL evidence's required facts
+    against the joined result; a fact that still failed to survive queues
+    the run rather than continuing on evidence known to be incomplete.
     """
     tier = candidate.tier
     chunks = chunk_evidence(text)
     if not chunks:
         log.append("evidence condensing found nothing to condense")
+        return None
+    if len(chunks) > CONDENSE_MAX_CHUNKS:
+        log.append(
+            "evidence chunks into %d fragment(s), over the %d-fragment "
+            "aggregate call cap for one condense pass. Refusing rather than "
+            "dispatching an unbounded number of calls."
+            % (len(chunks), CONDENSE_MAX_CHUNKS))
         return None
     over = [i for i, c in enumerate(chunks, 1) if _byte_len(c) > CHUNK_MAX_BYTES]
     if over:
@@ -2021,6 +2142,7 @@ def condense(cfg, candidate, text, transport, log):
                % (len(text), _byte_len(text), SPLIT_AT_CHARS, len(chunks),
                   CHUNK_MAX_BYTES, tier))
     parts = []
+    search_from = 0
     for index, chunk in enumerate(chunks, 1):
         messages = [
             {"role": "system", "content":
@@ -2035,10 +2157,17 @@ def condense(cfg, candidate, text, transport, log):
         ]
         reply = transport_call(cfg, tier, messages, transport,
                                model_override=candidate.model,
+                               max_tokens=CONDENSE_MAX_TOKENS,
                                expect_model=(candidate.model
                                              if candidate.verify else None))
-        log.append("condense chunk %d/%d: %s" % (index, len(chunks),
-                                                 reply.line()))
+        chunk_hash = _section_hash(chunk)[:16]
+        span = _locate_span(text, chunk, search_from)
+        if span is not None:
+            search_from = span[1]
+        log.append("condense chunk %d/%d: id=chunk-%d-of-%d hash=%s span=%s: "
+                   "%s" % (index, len(chunks), index, len(chunks), chunk_hash,
+                          span if span is not None else "not recoverable",
+                          reply.line()))
         if reply.certification:
             raise QueuedWork("a condense chunk was answered by a model this "
                              "run did not certify: %s" % reply.certification)
@@ -2052,14 +2181,38 @@ def condense(cfg, candidate, text, transport, log):
                        "be silently dropped from the evidence. Refusing."
                        % index)
             return None
-        log.append("condense chunk %d/%d: %d bytes in, %d bytes out"
-                   % (index, len(chunks), _byte_len(chunk), _byte_len(piece)))
+        # Deterministic source selection, not the model's word for it: the
+        # fragment's own quotes, numbers and ids are extracted by a fixed
+        # rule and appended verbatim, so their survival never depends on the
+        # semantic summary choosing to keep them.
+        chunk_facts = required_facts(chunk)
+        if chunk_facts:
+            piece = piece + (
+                "\n\nFacts preserved verbatim from this fragment (extracted "
+                "deterministically before condensation, not model output): "
+                + "; ".join(sorted(chunk_facts)))
+        log.append("condense chunk %d/%d: %d bytes in, %d bytes out, %d "
+                   "required fact(s) preserved verbatim"
+                   % (index, len(chunks), _byte_len(chunk), _byte_len(piece),
+                      len(chunk_facts)))
         parts.append(piece)
     if len(parts) != len(chunks):
         log.append("condensing produced %d pieces for %d chunks, so evidence "
                    "would be missing. Refusing." % (len(parts), len(chunks)))
         return None
-    return "\n\n".join(parts)
+    joined = "\n\n".join(parts)
+    fidelity_ok, missing = condensation_fidelity(text, joined)
+    if not fidelity_ok:
+        raise QueuedWork(
+            "condensation lost %d required fact(s) that "
+            "condensation_fidelity() found in the source and not in the "
+            "condensed output: %s. Fidelity cannot be established, so this "
+            "queues rather than continuing on evidence known to be "
+            "incomplete." % (len(missing), "; ".join(missing[:10])))
+    log.append("condensation fidelity: every required fact in the source "
+               "(%d found) is present in the condensed output"
+               % len(required_facts(text)))
+    return joined
 
 
 def call_with_fallback(cfg, tier, messages, results, transport, log,
@@ -2913,7 +3066,110 @@ def system_prompt(task, tier, template_name, has_skill, invariants,
            "\n".join(rules), closing))
 
 
-def trusted_blocks(task, template_text, invariants, log):
+def _section_hash(text):
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _split_sections(text):
+    """[(heading_or_None, section_text)], partitioning text with no gap and
+    no overlap: "\\n".join(t for _h, t in _split_sections(text)) reproduces
+    text exactly, whether or not any section is later dropped.
+
+    A section starts at a line matching HEADING_RE, at any of the six
+    levels, and runs to just before the next one; text before the first
+    heading, or the whole text when it carries no heading at all, is one
+    section with heading None. This is deliberately mechanical: a line
+    inside a fenced code block that happens to start with "#" still starts a
+    new section here. That only changes how finely the text is cut, never
+    what it says once the (possibly narrowed) sections are rejoined.
+    """
+    heading, buf, sections = None, [], []
+    for line in text.split("\n"):
+        match = HEADING_RE.match(line)
+        if match and buf:
+            sections.append((heading, "\n".join(buf)))
+            heading, buf = None, []
+        if match:
+            heading = match.group(2).strip()
+        buf.append(line)
+    if buf:
+        sections.append((heading, "\n".join(buf)))
+    return sections
+
+
+def _section_is_relevant(heading, stage):
+    """Whether a headed section belongs to `stage` (a STAGE_ORDER name).
+
+    Two rules, both explicit and testable: the heading names the stage
+    (case-insensitive substring, matching os/OPERATING-LOOP.md's
+    "### 1. DISCOVER" style headings), or the heading is a gate heading
+    ("Gate N: ...", os/STAGE-GATES.md's style) whose number is stage's
+    1-based position in STAGE_ORDER. Neither rule is a guess about content;
+    both read a label the file already carries.
+    """
+    if not heading:
+        return False
+    stage = stage.upper()
+    if stage in heading.upper():
+        return True
+    match = GATE_NUMBER_RE.match(heading)
+    if match and stage in STAGE_ORDER:
+        return int(match.group(1)) == STAGE_ORDER.index(stage) + 1
+    return False
+
+
+def _narrow_to_stage(sections, stage):
+    """(narrowed_sections, dropped_count).
+
+    Every headingless section is always kept (preamble, front matter, or a
+    file with no headings at all: there is no signal there to narrow on).
+    A headed section is kept when _section_is_relevant() says it belongs to
+    `stage`. But only when the file names at least ONE section this way: a
+    file whose headings never mention a stage or a gate is returned whole,
+    never narrowed to nothing, because "not addressed by this rule" and
+    "irrelevant" are different findings and only the first is one this
+    function can make safely.
+    """
+    if not stage:
+        return sections, 0
+    if not any(h and _section_is_relevant(h, stage) for h, _t in sections):
+        return sections, 0
+    kept = [(h, t) for h, t in sections if not h or _section_is_relevant(h, stage)]
+    return kept, len(sections) - len(kept)
+
+
+def _estimate_tokens(*texts):
+    """The same characters-to-tokens estimate call_reservation() uses for
+    spend reservation (roughly two characters per token, plus a fixed
+    per-request overhead), reused here so a route is never judged too large
+    by one yardstick and affordable by another.
+    """
+    chars = sum(len(t or "") for t in texts)
+    return (chars / 2) + 500
+
+
+def context_fits(cfg, tier, trusted_text, evidence_text, template_text, log):
+    """(fits: bool, estimated total tokens) for one fully assembled request.
+
+    Estimates trusted context plus evidence plus template as input tokens,
+    adds the tier's own reserved output budget (tier_settings' max_tokens,
+    the same figure call_reservation() reserves against the spend cap), and
+    compares the total against CONTEXT_TOKEN_BUDGET. Logs the estimate
+    either way, so a run that fits still states its margin.
+    """
+    max_tokens = tier_settings(cfg, tier)["max_tokens"]
+    input_tokens = _estimate_tokens(trusted_text, evidence_text, template_text)
+    total = input_tokens + max_tokens
+    fits = total <= CONTEXT_TOKEN_BUDGET
+    log.append(
+        "context estimate: %d input token(s) plus %d reserved for this "
+        "tier's output = %d of a %d-token budget (%s)"
+        % (int(input_tokens), max_tokens, int(total), CONTEXT_TOKEN_BUDGET,
+           "fits" if fits else "OVER BUDGET"))
+    return fits, int(total)
+
+
+def trusted_blocks(task, template_text, invariants, log, stage=None):
     """The trusted half of the prompt, assembled from the files the manifest
     names: the skill, the reads, the resolved invariant rules, the template.
 
@@ -2921,11 +3177,25 @@ def trusted_blocks(task, template_text, invariants, log):
     sending a generic template-filling prompt was the defect: the manifest
     declared a procedure and the runner sent something else, so what the route
     said and what ran were two different things.
+
+    S04 (audit supplement): every read is deduplicated against content
+    already loaded, by exact section hash, whether or not `stage` is given.
+    When `stage` IS given, a read's sections are additionally narrowed to
+    that stage's dependency closure, per _narrow_to_stage(). The skill
+    itself is never narrowed or deduplicated away: it is the procedure for
+    the route, sent in full on every call, exactly as before this change.
+    Narrowing and deduplication only ever drop text this function already
+    read from a repository file by its own path, which stays on disk
+    untouched and unmoved, so the full original is always retrievable by
+    reading that same path again; every drop is logged with the path.
     """
     blocks, loaded = [], []
+    seen_hashes = set()
     skill = str(task.get("skill") or "").strip()
     if skill:
         body = repo_file(skill, "skill")
+        for _heading, section_text in _split_sections(body):
+            seen_hashes.add(_section_hash(section_text))
         loaded.append("%s (%d bytes, the procedure for this route)"
                       % (skill, _byte_len(body)))
         blocks.append("%s: SKILL TO FOLLOW, %s, verbatim =====\n\n%s"
@@ -2936,8 +3206,34 @@ def trusted_blocks(task, template_text, invariants, log):
         parts = []
         for path in reads:
             body = repo_file(path, "read")
-            loaded.append("%s (%d bytes, read first)" % (path, _byte_len(body)))
-            parts.append("--- %s ---\n\n%s" % (path, body))
+            sections = _split_sections(body)
+
+            kept = []
+            for heading, section_text in sections:
+                digest = _section_hash(section_text)
+                if digest in seen_hashes:
+                    log.append(
+                        "%s: section %r duplicates content already loaded "
+                        "from an earlier file in this route, omitted. The "
+                        "full text remains at %s."
+                        % (path, (heading or "(untitled)")[:60], path))
+                    continue
+                seen_hashes.add(digest)
+                kept.append((heading, section_text))
+
+            kept, narrowed_away = _narrow_to_stage(kept, stage)
+            if narrowed_away:
+                log.append(
+                    "%s: narrowed to %d of %d section(s) for stage %s. The "
+                    "full text remains at %s."
+                    % (path, len(kept), len(sections), stage, path))
+
+            read_body = "\n".join(text for _heading, text in kept)
+            loaded.append(
+                "%s (%d of %d bytes, read first%s)"
+                % (path, _byte_len(read_body), _byte_len(body),
+                   "" if read_body == body else ", narrowed"))
+            parts.append("--- %s ---\n\n%s" % (path, read_body))
         blocks.append("%s: FILES TO READ FIRST, verbatim =====\n\n%s"
                       % (TRUST_OPEN, "\n\n".join(parts)))
 
@@ -3344,11 +3640,40 @@ def _run_task(args, cfg, tasks, manifest_note, product, started_at):
 
     template_text = (template.read_text(encoding="utf-8")
                      if template is not None else None)
+    # S04: the stage's dependency closure, when the operator or the calling
+    # agent already knows which of the six stages this run belongs to (an
+    # explicit choice, never guessed here). None is the default and leaves
+    # every read whole, exactly as before this option existed. Named
+    # run_stage, not stage, because stage() below is the staged-write
+    # function this same scope calls later; shadowing it here broke every
+    # run that reaches that write.
+    run_stage = getattr(args, "stage", None)
     trusted = "\n\n".join(
-        trusted_blocks(task, template_text, invariants, log))
+        trusted_blocks(task, template_text, invariants, log,
+                       stage=run_stage))
     system = system_prompt(task, tier,
                            template.name if template is not None else None,
                            bool(skill), invariants, kind)
+
+    # S04: estimate the fully assembled request, with the tier's own output
+    # reserved, before any provider call. A route that does not fit even
+    # after stage narrowing and section deduplication is rejected here
+    # rather than discovered as an empty or truncated reply.
+    fits, estimate = context_fits(cfg, tier, trusted, payload, template_text,
+                                  log)
+    say("context:   %s"
+       % ("fits, %d of %d estimated token(s)" % (estimate, CONTEXT_TOKEN_BUDGET)
+          if fits else "OVER the %d-token budget at an estimated %d"
+                       % (CONTEXT_TOKEN_BUDGET, estimate)))
+    if not fits:
+        raise QueuedWork(
+            "the assembled request is an estimated %d token(s) against a "
+            "%d-token context budget, even after stage narrowing and "
+            "section deduplication. %s"
+            % (estimate, CONTEXT_TOKEN_BUDGET,
+               "Pass --stage to narrow the reads further, or split the "
+               "input." if not run_stage else
+               "Split the input into separate runs."))
 
     def build_messages(evidence_text):
         """The prompt, assembled from the route contract, with the template
@@ -3753,6 +4078,13 @@ def build_parser():
     parser.add_argument("--input-file", help="the task's input, from a file")
     parser.add_argument("--template",
                         help="override which template the output lands in")
+    parser.add_argument("--stage", choices=STAGE_ORDER, default=None,
+                        help="the stage this run belongs to, when the "
+                             "caller already knows it (S04: narrows a "
+                             "multi-stage read to this stage's dependency "
+                             "closure instead of sending the whole file). "
+                             "Omit it to send every declared read in full, "
+                             "exactly as before this option existed")
     parser.add_argument("--transport", choices=("http", "cli"), default="http",
                         help="http is the contract; cli is a local "
                              "convenience that cannot send the three headers")

@@ -107,6 +107,29 @@ Nothing reaches disk until both checks pass, and then the artifact, its log, and
 - It verifies and reports. It never signs a gate. The gates in [os/STAGE-GATES.md](../os/STAGE-GATES.md) are signed by a named human, and an artifact the runner wrote says so on its face.
 - The invariants that bind each task are listed in [INVARIANTS.md](INVARIANTS.md) and named per task in the manifest.
 
+## Context planning: only the current stage, and only once
+
+`trusted_blocks()` (S04, audit supplement) narrows what it sends in two ways, on top of always sending the skill, the invariant rules and the template verbatim.
+
+- **Deduplication by hash.** Every read is split into sections at each markdown heading, and a section whose exact content already appeared earlier in this same route (an earlier read, or a read named twice) is not sent again. This runs on every route, `--stage` or not, and it only ever removes an EXACT repeat: a paraphrase or a merely similar passage is untouched.
+- **Stage narrowing (`--stage`).** Pass `--stage DISCOVER` (or `DEFINE`, `DESIGN`, `BUILD`, `DELIVER`, `OPERATE`) when the caller already knows which of the six stages this run belongs to. A read whose sections are headed by a stage name (like [os/OPERATING-LOOP.md](../os/OPERATING-LOOP.md)'s `### 1. DISCOVER`) or by a matching gate number (like [os/STAGE-GATES.md](../os/STAGE-GATES.md)'s `## Gate 1: ...`) is narrowed to that stage's sections plus its headingless preamble. A read this rule finds no matching section in is sent whole: narrowing never guesses, and a file it cannot address is not a file it empties. Omit `--stage` and every read is sent in full, exactly as before this option existed.
+
+Both are logged by path, because narrowing or deduplication only ever drop text this runner just read from a repository file that stays on disk untouched: the full original is always one `--stage`-free run away.
+
+Before the call, `context_fits()` estimates the whole assembled request (trusted context, evidence and template) in tokens, the same characters-over-two heuristic the spend ledger uses for its own reservation, adds the tier's own `maxOutputTokens` as reserved output space, and compares the total against `CONTEXT_TOKEN_BUDGET`. Over budget queues the run before any provider call, the same fail-closed shape as a reached spend cap.
+
+## Condense fidelity: deterministic facts first, the model's words second
+
+`condense()` (S06, audit supplement) no longer trusts the model's paraphrase to carry a fragment's specifics. For each chunk, `required_facts()` extracts, by a fixed rule and not a judgment call:
+
+- a double-quoted span,
+- a bare numeral (digits, an optional thousands comma, an optional decimal part),
+- a token of 3 or more characters that mixes a digit with a letter (an id or a code).
+
+That extraction, not the model's summary, is what is relied on: it is appended verbatim to every chunk's condensed piece, labelled as deterministic and not model output, so a fact's survival never depends on the model choosing to keep it. Each chunk's id, content hash and best-effort span in the source are logged beside it. Every chunk call carries its own output budget (`CONDENSE_MAX_TOKENS`), smaller than the tier's own, and the whole pass refuses past an aggregate call cap (`CONDENSE_MAX_CHUNKS`) before dispatching anything past it. Once every chunk is in, `condensation_fidelity()` checks the required facts of the ORIGINAL evidence against the joined result; a fact that still did not survive queues the run rather than continuing on evidence known to be incomplete.
+
+The rule is deliberately mechanical and over-inclusive: a plain section number counts as a required fact on its own. A false positive here costs one extra verbatim fragment; a false negative would silently drop real evidence, which is the defect this exists for.
+
 ## The failure modes, plainly
 
 - **Routing everything to judgment because it is the best.** The cheap tiers exist so the expensive one is available when judgment is actually needed. A pipeline that routes up burns its cap on lookup work and then queues the review that mattered.
