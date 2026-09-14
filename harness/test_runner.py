@@ -1811,6 +1811,54 @@ class ConfiguredRoutingTests(unittest.TestCase):
             runner._SPEND = saved_spend
             session.close()
 
+    def test_transport_call_records_probe_operation_and_task_id(self):
+        cfg = self._ceiling_cfg()
+        path = str(Path(tempfile.mkdtemp(prefix="pmos-spend-test-")) /
+                   "spend.sqlite")
+        session = runner.SpendSession(path, {runner.day_scope(): 1.0}, {},
+                                      "run:S08-test:started",
+                                      task_id='S08-test')
+        saved_spend = runner._SPEND
+        saved_dispatch = runner._dispatch
+        runner._SPEND = session
+        called = {"n": 0}
+
+        def stub(*a, **kw):
+            called["n"] += 1
+            reply = runner.Reply("drafting", "auto/coding")
+            reply.status = 200
+            reply.text = "ok"
+            reply.model = "auto/coding-1"
+            reply.provider = "omniroute"
+            reply.cache = "miss"
+            reply.terminal = True
+            reply.finish_reason = "stop"
+            return reply
+
+        runner._dispatch = stub
+        try:
+            runner.transport_call(cfg, "drafting", [{"content": "x"}],
+                                   "http", max_tokens=600, operation='probe')
+            self.assertEqual(called["n"], 1)
+            ledger = runner.SpendLedger(path)
+            try:
+                rows = [entry for entry in ledger.reservations()
+                        if entry["key"].startswith("run:S08-test:started:")]
+            finally:
+                ledger.close()
+            self.assertEqual(len(rows), 1)
+            row = rows[0]
+            self.assertEqual(row["operation"], 'probe')
+            self.assertEqual(row["task_id"], 'S08-test')
+            self.assertEqual(row["resolved_model"], "auto/coding-1")
+            self.assertEqual(row["provider"], "omniroute")
+            self.assertEqual(row["cache_disposition"], "miss")
+            self.assertTrue(row["success"])
+        finally:
+            runner._dispatch = saved_dispatch
+            runner._SPEND = saved_spend
+            session.close()
+
     def test_dispatch_crash_keeps_full_reservation(self):
         cfg = self._ceiling_cfg()
         session, _ = self._spend_session({runner.day_scope(): 1.0})

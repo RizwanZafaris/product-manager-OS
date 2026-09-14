@@ -1239,9 +1239,11 @@ def _dispatch(cfg, tier, messages, transport, **kwargs):
 
 
 def transport_call(cfg, tier, messages, transport, **kwargs):
+    operation = kwargs.pop('operation', 'task_dispatch')
     if _SPEND is None:
         return _dispatch(cfg, tier, messages, transport, **kwargs)
-    key = _SPEND.reserve(cfg, tier, messages, kwargs.get('max_tokens'))
+    key = _SPEND.reserve(cfg, tier, messages, kwargs.get('max_tokens'),
+                         operation=operation)
     reply = _dispatch(cfg, tier, messages, transport, **kwargs)
     _SPEND.settle(cfg, key, reply)
     return reply
@@ -1442,7 +1444,8 @@ def probe(cfg, transport, tiers=None):
         reply = transport_call(cfg, tier, messages, transport,
                                max_tokens=PROBE_MAX_TOKENS,
                                model_override=model_override,
-                               expect_model=expect_model)
+                               expect_model=expect_model,
+                               operation='probe')
         results[key] = reply
         if reply.ok:
             verdict = "answered"
@@ -1833,7 +1836,7 @@ def spend_gate(cfg):
 class SpendSession:
     """A run's spend ledger session, or None when no cap is in force."""
 
-    def __init__(self, path, limits, external, prefix):
+    def __init__(self, path, limits, external, prefix, task_id=None):
         self.path = path
         # The run log lands beside the artifact, so it names the ledger with
         # the home directory folded to ~ rather than the operator's own path.
@@ -1846,8 +1849,9 @@ class SpendSession:
         self.prefix = prefix
         self.ledger = SpendLedger(path)
         self.counter = 0
+        self.task_id = task_id
 
-    def reserve(self, cfg, tier, messages, max_tokens):
+    def reserve(self, cfg, tier, messages, max_tokens, operation=None):
         amount = call_reservation(cfg, tier, messages, max_tokens)
         if amount is None:
             raise QueuedWork(
@@ -1860,7 +1864,8 @@ class SpendSession:
         key = self.prefix + ':' + str(self.counter) + ':' + tier
         try:
             self.ledger.reserve(key, amount, self.limits,
-                                external=self.external)
+                                external=self.external,
+                                operation=operation, task_id=self.task_id)
         except UnresolvedCharge as exc:
             raise QueuedWork(
                 "an earlier call's cost is unknown, so the spend ledger at %s "
@@ -1877,7 +1882,11 @@ class SpendSession:
         return key
 
     def settle(self, cfg, key, reply):
-        self.ledger.settle(key, billed_cost(cfg, reply))
+        self.ledger.settle(key, billed_cost(cfg, reply),
+                           resolved_model=reply.model or None,
+                           provider=reply.provider or None,
+                           cache_disposition=reply.cache or None,
+                           success=reply.ok)
 
     def close(self):
         self.ledger.close()
@@ -1921,7 +1930,8 @@ def open_spend_session(cfg, task_id, started_at):
     if not limits_to_use:
         return None
     return SpendSession(default_path(), limits_to_use, external,
-                        'run:' + task_id + ':' + started_at)
+                        'run:' + task_id + ':' + started_at,
+                        task_id=task_id)
 
 
 def start_spend_session(cfg, task_id, started_at):
@@ -2159,7 +2169,8 @@ def condense(cfg, candidate, text, transport, log):
                                model_override=candidate.model,
                                max_tokens=CONDENSE_MAX_TOKENS,
                                expect_model=(candidate.model
-                                             if candidate.verify else None))
+                                             if candidate.verify else None),
+                               operation='condense')
         chunk_hash = _section_hash(chunk)[:16]
         span = _locate_span(text, chunk, search_from)
         if span is not None:
@@ -2274,7 +2285,8 @@ def call_with_fallback(cfg, tier, messages, results, transport, log,
         reply = transport_call(cfg, candidate.tier, messages, transport,
                                model_override=concrete,
                                expect_model=(concrete if candidate.verify
-                                             else None))
+                                             else None),
+                               operation='task_dispatch')
         reply.routing_source = candidate.source
         log.append("attempt %d (target %s): %s" % (attempt, concrete,
                                                    reply.line()))
@@ -2320,7 +2332,8 @@ def call_with_fallback(cfg, tier, messages, results, transport, log,
             retry = transport_call(cfg, candidate.tier, retry_messages,
                                    transport, model_override=concrete,
                                    expect_model=(concrete if candidate.verify
-                                                 else None))
+                                                 else None),
+                                   operation='retry')
             retry.routing_source = candidate.source
             if retry.certification:
                 raise QueuedWork(retry.certification)
