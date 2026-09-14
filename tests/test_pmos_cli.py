@@ -8,14 +8,15 @@ import sys
 import threading
 import unittest
 import shutil
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from pmos.cli import (_cli_source_resolver, _gate_result, _local_gate_verifier, _paths,
-                      _product_conductor, main, PIN_PATH)
+                      _product_conductor, _unsupported_platform_reason, main, PIN_PATH,
+                      UNSUPPORTED_PLATFORM_EXIT_CODE)
 from pmos.banks import CONTRACT_PATH
 from pmos.conductor import TurnOutcome
 from pmos.migrations import (create_legacy_fixture, migrate_workspace, recover_workspace,
@@ -1512,6 +1513,57 @@ class CliTests(unittest.TestCase):
             (handoff_dir / "context-index.json").symlink_to(external)
             self.assertEqual(main(["handoff", "--path", folder, "--product-id", "checkout", "--json"]), 2)
             self.assertEqual(external.read_text(encoding="utf-8"), "untouched\n")
+
+    def test_unsupported_platform_fails_fast_with_one_line_message_and_exit_code(self):
+        # F33: an unsupported platform must refuse before any command runs, with
+        # one clear stderr line and a documented exit code -- never a raw
+        # OSError/NotImplementedError from inside a dir_fd-relative call.
+        with TemporaryDirectory() as folder:
+            root = Path(folder) / "workspace"
+            out, err = StringIO(), StringIO()
+            with patch("pmos.cli._unsupported_platform_reason",
+                      return_value="dir_fd-relative filesystem operations (os.supports_dir_fd)"):
+                with redirect_stdout(out), redirect_stderr(err):
+                    code = main(["init", "--path", str(root), "--product-id", "checkout"])
+            self.assertEqual(code, UNSUPPORTED_PLATFORM_EXIT_CODE)
+            self.assertEqual(code, 3)
+            self.assertEqual(
+                err.getvalue(),
+                "pmos: unsupported platform, missing dir_fd-relative filesystem "
+                "operations (os.supports_dir_fd); see docs/COMPATIBILITY.md\n")
+            self.assertEqual(out.getvalue(), "")
+            # The gate ran before `init` touched the filesystem at all: init's
+            # first action is creating --path, and that never happened.
+            self.assertFalse(root.exists())
+
+    def test_unsupported_platform_emits_one_line_json_when_requested(self):
+        with TemporaryDirectory() as folder:
+            out, err = StringIO(), StringIO()
+            with patch("pmos.cli._unsupported_platform_reason",
+                      return_value="a working sqlite3 module"):
+                with redirect_stdout(out), redirect_stderr(err):
+                    code = main(["--json", "status", "--path", folder])
+            self.assertEqual(code, UNSUPPORTED_PLATFORM_EXIT_CODE)
+            self.assertEqual(err.getvalue(), "")
+            payload = out.getvalue()
+            self.assertEqual(payload.count("\n"), 1)
+            self.assertEqual(
+                json.loads(payload),
+                {"ok": False,
+                 "error": "pmos: unsupported platform, missing a working sqlite3 "
+                          "module; see docs/COMPATIBILITY.md"})
+
+    def test_supported_platform_takes_the_normal_path(self):
+        # The real, unpatched probe must pass on the interpreter running this
+        # suite (every CI and local platform this repository claims to run on).
+        self.assertIsNone(_unsupported_platform_reason())
+        # And explicitly patched to "supported", ordinary dispatch is unchanged.
+        with TemporaryDirectory() as folder:
+            with patch("pmos.cli._unsupported_platform_reason", return_value=None):
+                self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+                self.assertEqual(main(["--json", "status", "--path", folder]), 0)
+            with Store(Path(folder) / ".pmos/runtime.sqlite") as store:
+                self.assertEqual(store.head("checkout").revision, 1)
 
 
 if __name__ == "__main__":

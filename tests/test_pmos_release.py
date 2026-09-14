@@ -3,6 +3,7 @@ import os
 import re
 import subprocess
 import unittest
+import zipfile
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
@@ -29,6 +30,20 @@ class ReleaseProvenanceTests(unittest.TestCase):
         self.assertEqual(pyproject.group(1), "0.8.0")
         self.assertEqual(pyproject.group(1), __version__)
         self.assertEqual(pyproject.group(1), pmos_build_backend._project()["version"])
+
+    def test_the_built_wheel_declares_its_classifiers(self):
+        # F33 follow-up: pyproject.toml's classifiers (the POSIX-only platform
+        # scope this audit finding added) existed only in source until
+        # pmos_build_backend._metadata() learned to emit one Classifier line
+        # per entry. This proves the built wheel actually carries what
+        # pyproject.toml declares, not just that pyproject.toml declares it.
+        with TemporaryDirectory() as folder:
+            filename = pmos_build_backend.build_wheel(folder)
+            with zipfile.ZipFile(Path(folder) / filename) as wheel:
+                name = next(entry for entry in wheel.namelist()
+                           if entry.endswith(".dist-info/METADATA"))
+                text = wheel.read(name).decode("utf-8")
+            self.assertIn("Classifier: Operating System :: POSIX :: Linux", text)
 
     def test_hashes_categories_and_detects_tampering(self):
         with TemporaryDirectory() as folder:

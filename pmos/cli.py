@@ -28,6 +28,58 @@ _product_conductor = product_conductor
 _local_gate_verifier = local_gate_verifier
 _cli_source_resolver = source_resolver
 
+# Exit code reserved for "this platform cannot run pmos at all". Distinct from
+# the generic caught-exception exit code (2) `_error` returns below and the
+# not-ok-result exit code (1) a rejected or incomplete outcome returns, so a
+# caller can tell "the platform refused to start" from "the command failed".
+UNSUPPORTED_PLATFORM_EXIT_CODE = 3
+
+
+def _unsupported_platform_reason() -> str | None:
+    """None if this platform can run pmos; otherwise the one clause naming
+    what is missing, for the single line `main` prints before touching
+    anything else.
+
+    Mirrors tools/review_gate.py's ``_dir_fd_operations_supported`` for the
+    dir_fd-relative, ``O_NOFOLLOW``-guarded filesystem calls every pmos write
+    depends on: creating ``.pmos``, opening ``runtime.sqlite``, walking a
+    migration destination, a release manifest or a skill path all resolve
+    each path component from an open directory descriptor with ``O_NOFOLLOW``
+    set, so a symlink planted at any parent is refused instead of followed.
+    See pmos/store.py, pmos/product.py, pmos/skills.py, pmos/release.py and
+    pmos/migrations.py. ``os.replace`` is covered by checking ``os.rename``:
+    both wrap the same ``renameat(2)`` on POSIX, but ``os.supports_dir_fd`` is
+    only ever populated under the name ``rename`` was registered with, so
+    probing ``os.replace`` directly would under-report support that is
+    actually there.
+
+    Also confirms the two OS-level primitives the runtime depends on outside
+    that shared path-walking code: the POSIX-only ``fcntl`` advisory lock
+    pmos/migrations.py's destination lock takes around migrate/rollback/
+    recover (``fcntl`` does not exist at all on Windows), and a sqlite3 that
+    can actually open a database, which pmos/store.py's ``Store`` needs for
+    every command that touches a workspace.
+
+    Checked first and unconditionally, so an unsupported platform gets one
+    clear line and this module's own documented exit code instead of a raw
+    OSError or NotImplementedError surfacing from deep inside whichever of
+    those calls happened to run first.
+    """
+    if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_DIRECTORY"):
+        return "POSIX O_NOFOLLOW/O_DIRECTORY open flags"
+    required = (os.open, os.stat, os.mkdir, os.rename, os.unlink)
+    if not all(function in os.supports_dir_fd for function in required):
+        return "dir_fd-relative filesystem operations (os.supports_dir_fd)"
+    try:
+        import fcntl  # noqa: F401 -- presence is the check; pmos/migrations.py imports it itself
+    except ImportError:
+        return "fcntl advisory file locking"
+    try:
+        sqlite3.connect(":memory:").close()
+    except sqlite3.Error:
+        return "a working sqlite3 module"
+    return None
+
 
 def _emit(value: Any, as_json: bool) -> None:
     if as_json:
@@ -536,6 +588,20 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     as_json = bool(getattr(args, "json_output", False) or getattr(args, "json_command", False))
+    # Checked before any command dispatch, and before the try/except below
+    # even names sqlite3.DatabaseError, so a platform missing sqlite3 never
+    # forces evaluation of that attribute. `--help`/`--version`-style parsing
+    # above already exited on its own without touching the filesystem; every
+    # real command from here on does, so the gate sits in front of all of them.
+    platform_reason = _unsupported_platform_reason()
+    if platform_reason is not None:
+        message = ("pmos: unsupported platform, missing %s; see docs/COMPATIBILITY.md"
+                   % platform_reason)
+        if as_json:
+            print(json.dumps({"ok": False, "error": message}, sort_keys=True, ensure_ascii=False))
+        else:
+            sys.stderr.write(message + "\n")
+        return UNSUPPORTED_PLATFORM_EXIT_CODE
     try:
         if args.command in {"init", "new-user"}:
             result = _init(args)

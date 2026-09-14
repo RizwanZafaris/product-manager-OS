@@ -82,6 +82,17 @@ def _metadata() -> bytes:
         "Requires-Python: %s" % project["requires-python"],
         "Description-Content-Type: text/markdown",
     ]
+    # Core Metadata treats Classifier as a repeated field: one header line per
+    # value, never a joined list. Without this loop, a value pyproject.toml
+    # declares (for example the POSIX-only platform scope added for F33)
+    # existed only in source and never reached the wheel a user installs;
+    # `pip show`, PyPI's own facets and any scanner reading METADATA would
+    # have seen a package that states no platform constraint at all.
+    classifiers = project.get("classifiers", [])
+    if not isinstance(classifiers, list) or not all(isinstance(item, str) for item in classifiers):
+        raise ValueError("project.classifiers must be a list of strings")
+    for classifier in classifiers:
+        headers.append("Classifier: %s" % classifier)
     expression = project.get("license")
     if not isinstance(expression, str) or not expression.strip():
         raise ValueError(
