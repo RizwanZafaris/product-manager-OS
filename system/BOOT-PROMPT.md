@@ -254,6 +254,7 @@ agents/        README.md, TEAM.md, and twelve role identities, longer than
 examples/      README.md, expense-copilot-discovery.md,
                expense-copilot-prd.md, expense-copilot-journey.md,
                 expense-copilot-problem-framing.md expense-copilot-vision.md expense-copilot-product-strategy.md expense-copilot-roadmap.md,
+                expense-copilot-acceptance-criteria.md expense-copilot-decision-log.md,
                checkout-modernization-brownfield.md,
                conductor-transcript.md, ledgerline-strategy-kernel.md,
                ledgerline-jtbd-job-map.md, ledgerline-kano-survey.md,
