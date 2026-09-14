@@ -203,7 +203,13 @@ one journal line per run, appended. Artifacts belong in their templates: a
 filled copy of the task's template under products/<product>/<stage>/. Logs are
 the one exception and they sit beside the artifact they describe. The
 exact-match response cache lives in memory for the length of one process, so
-there is no cache file to go stale, and an empty response never enters it.
+there is no cache file to go stale, and an empty response never enters it. Its
+key binds the resolved candidate chain, not only the tier and the messages, so
+two calls that would answer from different concrete models never share a
+cached reply. The tier probe keeps its own short-lived, in-memory record of
+which model/provider/config combinations recently answered, so a run does not
+re-probe a target it just proved is up; that record is never a substitute for
+the per-call header check, which still runs on every real attempt.
 
 ## Where it may write, and what it refuses to destroy
 
@@ -285,6 +291,15 @@ PROBE_MAX_TOKENS = 300
 BASE_URL_DEFAULT = "http://localhost:20128/v1"
 READ_TIMEOUT_S = 600
 OPEN_FORM = "[OPEN: "
+
+# How long a tier probe's capability observation stays trustworthy. A probe
+# proves a model/provider/config combination answered once, not that it
+# always will, so this is deliberately short: long enough that a run does not
+# re-pay for a target it verified moments ago, short enough that a stale
+# observation cannot pass for current fact. Never a substitute for the
+# per-call header check in certify(), which runs on every real attempt
+# regardless of whether the probe that built the chain was cached.
+CAPABILITY_TTL_S = 300
 
 # The ceiling on the raw SSE body read for one call, whatever the tier asked
 # for. A tier that asks for a small answer gets a small bound; nothing gets
@@ -1198,15 +1213,21 @@ class Candidate:
     on every path that has one, never a tier alias. `tier` names the tier
     whose temperature and output budget the call uses. `verify` says the
     response header has to name `model` back. `degraded` marks the sanctioned
-    loud downgrade, which every artifact then carries on its face.
+    loud downgrade, which every artifact then carries on its face. `probe_key`
+    is the results/capability-cache key this candidate's evidence came from
+    (a bare tier alias, or the (tier, target_key(pinned-or-declared-id)) pair
+    a configured target is keyed by); None when nothing was probed for it, in
+    which case there is nothing to invalidate either.
     """
 
-    def __init__(self, tier, model, source, verify=True, degraded=False):
+    def __init__(self, tier, model, source, verify=True, degraded=False,
+                 probe_key=None):
         self.tier = tier
         self.model = str(model)
         self.source = source
         self.verify = verify
         self.degraded = degraded
+        self.probe_key = probe_key
 
     def label(self):
         return "%s=%s (%s%s)" % (self.tier, self.model, self.source,
@@ -1269,14 +1290,92 @@ def configured_targets(cfg):
     return out
 
 
-def probe(cfg, transport):
-    """One short call per tier, plus one per configured fallback target.
+# -------------------------------------------------- capability observations
+
+_CAPABILITY = {}   # identity -> (observed_at monotonic seconds, Reply)
+
+
+def _capability_identity(cfg, tier, key):
+    """What one capability observation is valid for.
+
+    tier and key say which probe slot this is: a bare tier alias (results[tier]
+    from the first probe loop), or the (tier, target_key(model)) pair a
+    configured target is keyed by. The pair form matters because the same
+    concrete model id can be pinned into more than one tier's fixedFallback
+    combo; folding tier into the key, not just passing it alongside an
+    unqualified target_key, is what keeps two tiers that pin the same model
+    from ever sharing one observation. base_url and whether a credential is
+    currently set say which deployment answered; the credential's own value
+    is never part of an identity, only whether one is present, so nothing
+    secret ever enters this cache. A changed endpoint, header set or
+    credential presence is a changed identity, so it never reuses another
+    config's observation.
+    """
+    endpoint = cfg.get("endpoint") or {}
+    return (tier, key, base_url(cfg), bool(api_key(cfg)),
+            json.dumps(endpoint.get("requestHeaders") or {}, sort_keys=True))
+
+
+def _capability_get(identity):
+    """The cached Reply for `identity`, or None when absent or stale."""
+    entry = _CAPABILITY.get(identity)
+    if entry is None:
+        return None
+    observed_at, reply = entry
+    if time.monotonic() - observed_at > CAPABILITY_TTL_S:
+        del _CAPABILITY[identity]
+        return None
+    return reply
+
+
+def _capability_put(identity, reply):
+    """Record one fresh, usable probe observation. Never caches a failure:
+    a failed probe is retried next time at full price, not remembered as a
+    reason to skip trying again."""
+    if reply.ok:
+        _CAPABILITY[identity] = (time.monotonic(), reply)
+
+
+def _invalidate_capability(cfg, tier, key):
+    """Drop a cached observation after a relevant failure.
+
+    A cached probe is a fact about the past, never a permanent certification:
+    when the concrete model this identity names actually fails a real call,
+    the next probe re-verifies instead of trusting the stale success. A no-op
+    when `key` is None, which means nothing was probed for this candidate in
+    the first place (an unprobed --no-probe pin, for instance).
+    """
+    if key is None:
+        return
+    _CAPABILITY.pop(_capability_identity(cfg, tier, key), None)
+
+
+def probe(cfg, transport, tiers=None):
+    """One short call per tier in `tiers`, plus one per configured fallback
+    target whose tier is in `tiers`.
 
     A tier name is a promise about which models may answer. This is the only
     thing that turns the promise into a fact, so it runs before every run, and
     it covers the fixedFallback pins and the keyless fallback model too: a
     fallback that was never probed is a fallback nobody has evidence for.
+
+    `tiers` narrows the probe to the tiers a specific route can actually
+    reach: None (the default) probes every tier, which is what the standalone
+    --probe diagnostic wants, a full picture of every configured target, not
+    just one route's. resolve_probe() passes the one tier a normal task run
+    needs (plus, for a judgment route, the cheaper tiers judgment_admission's
+    own downgrade check reads), so a cheap extraction or drafting task never
+    dispatches a judgment-tier call it has no use for.
+
+    A fresh-enough prior observation (see CAPABILITY_TTL_S) is served from
+    the in-process capability cache instead of dispatching another call: a
+    probe proves a target answered, and re-proving that every single run,
+    every single tier, is spend this runner does not need to make. The cache
+    never substitutes for the per-call header check in certify(), which the
+    real task call still runs on every attempt regardless of where the chain
+    that produced its candidates came from.
     """
+    tiers = tuple(tiers) if tiers is not None else TIER_ORDER
     results = {}
     say("Tier probe against", safe_url(base_url(cfg)),
         "(key: %s)" % ("present in the environment" if api_key(cfg)
@@ -1286,6 +1385,16 @@ def probe(cfg, transport):
            "verdict"))
 
     def one(tier, key, model_override, expect_model, shown):
+        identity = _capability_identity(cfg, tier, key)
+        cached = _capability_get(identity)
+        if cached is not None:
+            results[key] = cached
+            say("%-11s %-24s %-26s %-10s %-7s %s"
+                % (tier, shown, cached.model or "none",
+                   cached.provider or "unknown", "cached",
+                   "answered (capability cache, not re-sent; the real call "
+                   "still verifies the response header)"))
+            return cached
         messages = [{"role": "user", "content": PROBE_PROMPT}]
         reply = transport_call(cfg, tier, messages, transport,
                                max_tokens=PROBE_MAX_TOKENS,
@@ -1294,6 +1403,7 @@ def probe(cfg, transport):
         results[key] = reply
         if reply.ok:
             verdict = "answered"
+            _capability_put(identity, reply)
         elif reply.certification:
             verdict = "UNCERTIFIED: " + reply.certification[:70]
         elif reply.empty:
@@ -1309,12 +1419,22 @@ def probe(cfg, transport):
                verdict))
         return reply
 
-    for tier in TIER_ORDER:
+    for tier in tiers:
         # The one call that legitimately sends a tier alias: asking the
         # gateway what the alias resolves to is the whole point of a probe.
         one(tier, tier, None, None, tier_settings(cfg, tier)["model"])
     for tier, model, source in configured_targets(cfg):
-        key = target_key(model)
+        if tier not in tiers:
+            continue
+        # Keyed by (tier, target_key(model)), not target_key(model) alone:
+        # the same concrete model id can be pinned into more than one tier's
+        # fixedFallback combo (a judgment run probes every tier together),
+        # and a bare target_key would let the first tier's probe silently
+        # stand in for a second tier's identical pin, which build_candidates
+        # would then hand out as a "probed" candidate for a tier that was
+        # never itself probed, and which _invalidate_capability could never
+        # find again after a real call under that second tier failed.
+        key = (tier, target_key(model))
         if key in results:
             continue
         # A pinned id is concrete, so the probe holds the answer to it. The
@@ -1335,11 +1455,23 @@ def build_candidates(cfg, tier, results, probed=True, log=None):
 
       - fixedFallback pins, when the block is enabled. They replace the auto
         tiers entirely, which is what pinning means.
-      - the probe-resolved concrete id for the tier, otherwise. Judgment never
-        borrows a cheaper tier's model; that is the downgrade rule 3 forbids.
+      - the probe-resolved concrete id for the tier itself, otherwise, and
+        ONLY for that tier: extraction and drafting never borrow another
+        tier's resolved model, and judgment never borrows a cheaper tier's
+        model (rule 3), even when `results` happens to carry entries for
+        other tiers too. A caller-supplied `results` (args.probe_results)
+        can carry any shape; this tier's own key is the only one ever read
+        here.
       - the keyless fallback model, only when it is deliberately enabled and
         only when nothing else is available, marked degraded so every artifact
         produced through it says so.
+
+    A pinned or keyless-declared model is looked up in `results` by
+    (tier, target_key(model)), never by target_key(model) alone: the same
+    concrete model id can be pinned into more than one tier's fixedFallback
+    combo, and a bare target_key would let one tier's probe answer for
+    another tier's identical pin, which is also the identity
+    _invalidate_capability would then fail to match.
     """
     notes = log if log is not None else []
     out, seen = [], set()
@@ -1353,8 +1485,9 @@ def build_candidates(cfg, tier, results, probed=True, log=None):
     fixed = cfg.get("fixedFallback") or {}
     if fixed.get("enabled"):
         for model in pinned_models(cfg, tier):
+            probe_key = (tier, target_key(model))
             if probed:
-                reply = results.get(target_key(model))
+                reply = results.get(probe_key)
                 if reply is None:
                     notes.append("pinned model %s was not probed, so it is "
                                  "not called" % model)
@@ -1363,27 +1496,29 @@ def build_candidates(cfg, tier, results, probed=True, log=None):
                     notes.append("pinned model %s did not answer the probe: "
                                  "%s" % (model, reply.why_unusable()[:120]))
                     continue
-            add(Candidate(tier, model, "fixedFallback pin"))
+            add(Candidate(tier, model, "fixedFallback pin",
+                         probe_key=probe_key))
     else:
-        order = ["judgment"] if tier == "judgment" else \
-            [tier] + [t for t in TIER_ORDER if t != tier]
-        for candidate_tier in order:
-            reply = results.get(candidate_tier)
-            if reply is None or not reply.ok or not reply.model:
-                continue
-            add(Candidate(candidate_tier, reply.model, "probe"))
+        # This tier's own probe result ONLY: no other tier's key is ever
+        # read here, whatever else `results` happens to contain.
+        reply = results.get(tier)
+        if reply is not None and reply.ok and reply.model:
+            add(Candidate(tier, reply.model, "probe", probe_key=tier))
 
     if tier == "judgment" and not out:
         keyless = tier_settings(cfg, "judgment")["keyless"]
         if keyless.get("enabled"):
             declared = str(keyless.get("model") or "").strip()
-            reply = results.get(target_key(declared)) if declared else None
+            declared_key = (tier, target_key(declared)) if declared else None
+            reply = results.get(declared_key) if declared_key else None
             if reply is not None and reply.ok and reply.model:
                 add(Candidate("judgment", reply.model, "keylessFallback",
-                              degraded=True))
+                              degraded=True,
+                              probe_key=declared_key))
             elif declared and not probed:
                 # Nothing was probed, so the alias is all there is. It cannot
-                # be held to a header it never named.
+                # be held to a header it never named, and there is no probe
+                # observation to invalidate either.
                 add(Candidate("judgment", declared, "keylessFallback",
                               verify=False, degraded=True))
             elif declared:
@@ -1764,8 +1899,34 @@ def close_spend_session():
 _MEMO = {}
 
 
-def _memo_key(tier, messages):
-    return json.dumps([tier, messages], sort_keys=True)
+def _candidate_signature(chain):
+    """Exactly which concrete models one call would try, in order, and under
+    which policy each one is trusted.
+
+    tier and model decide who is sent the request and who answers it; source,
+    verify and degraded are part of the same policy decision (a fixedFallback
+    pin is not the same promise as a keyless degraded fallback, even calling
+    an identical model id, and an unverified candidate is not the same
+    promise as a verified one). All five travel together so two chains that
+    differ in any of them are two different requests, never the same cached
+    answer.
+    """
+    return [[c.tier, c.model, c.source, bool(c.verify), bool(c.degraded)]
+            for c in chain]
+
+
+def _memo_key(tier, messages, chain):
+    """Exact-match cache key.
+
+    Binds tier, messages AND the resolved candidate chain that would answer
+    them. tier and messages alone let two calls for different models with the
+    same tier and messages collide: the second call would be served the
+    first call's reply, naming a model it never asked and never received an
+    answer from. Binding the chain means a cache hit only reuses a reply that
+    the same concrete model (or fallback policy) would have produced again.
+    """
+    return json.dumps([tier, messages, _candidate_signature(chain)],
+                      sort_keys=True)
 
 
 def _byte_len(text):
@@ -1921,8 +2082,8 @@ def call_with_fallback(cfg, tier, messages, results, transport, log,
     caller that cannot say which part of its prompt is the evidence must not
     have any part of it silently summarized.
     """
-    # The exact-input contract is checked first, before the cache and before
-    # the chain. It is a property of the request, so it fails the same way
+    # The exact-input contract is checked first, before the chain and before
+    # the cache. It is a property of the request, so it fails the same way
     # whether or not a model happens to be connected.
     can_condense = evidence is not None and rebuild is not None
     if evidence is not None and len(evidence) > SPLIT_AT_CHARS \
@@ -1936,17 +2097,21 @@ def call_with_fallback(cfg, tier, messages, results, transport, log,
             "source or section, and run the task once per piece."
             % (len(evidence), SPLIT_AT_CHARS))
 
-    key = _memo_key(tier, messages)
-    if key in _MEMO:
-        log.append("served from this process's exact-match cache")
-        return _MEMO[key]
-
     chain = candidates
     if chain is None:
         chain = build_candidates(cfg, tier, results, probed=probed, log=log)
     if not chain:
         log.append("no concrete model is available for the %s tier" % tier)
         return None
+
+    # The cache is checked against the resolved chain, not only tier and
+    # messages: two calls that would try different concrete models, or a
+    # different fallback policy, must never share a cached reply, however
+    # identical their messages are. See _memo_key.
+    key = _memo_key(tier, messages, chain)
+    if key in _MEMO:
+        log.append("served from this process's exact-match cache")
+        return _MEMO[key]
 
     log.append("fallback chain for %s, on concrete model ids: %s"
                % (tier, " then ".join(c.label() for c in chain)))
@@ -1963,6 +2128,13 @@ def call_with_fallback(cfg, tier, messages, results, transport, log,
         if reply.ok:
             _MEMO[key] = reply
             return reply
+        # A relevant failure: whatever a probe (fresh or served from the
+        # capability cache) claimed about this candidate did not hold on a
+        # real call, so the next probe re-verifies instead of trusting a
+        # stale success again. A no-op when this candidate carries no
+        # probe_key, which means nothing was probed for it in the first
+        # place.
+        _invalidate_capability(cfg, candidate.tier, candidate.probe_key)
         if reply.certification:
             # Not a transport failure and not something the next link fixes: a
             # gateway that reroutes a named model reroutes the next one too,
@@ -2850,7 +3022,15 @@ def resolve_probe(args, cfg, tier, log):
                    "response header check is the only proof of which model "
                    "answered." % (tier, ", ".join(pinned)))
         return {}, False
-    return probe(cfg, args.transport), True
+    # A judgment route needs the cheaper tiers probed too: judgment_admission
+    # reads their resolved models to refuse a judgment candidate that is
+    # secretly the same concrete model a cheaper tier already resolved to,
+    # the silent downgrade rule 3 forbids. An extraction or drafting route has
+    # no such cross-tier check, so it probes only its own tier, the eligible
+    # target this route and its fallback actually need, not every tier the
+    # config happens to define.
+    probe_tiers = TIER_ORDER if tier == "judgment" else (tier,)
+    return probe(cfg, args.transport, tiers=probe_tiers), True
 
 
 # The exit status of deferred work. Not 0, which says the work was done, and
@@ -3424,7 +3604,16 @@ def _run_task(args, cfg, tasks, manifest_note, product, started_at):
                         % (probe_tier, got.sent_model, got.model or "none",
                            got.provider or "unknown", got.latency_s,
                            verdict_of(got)))
-    for key in sorted(k for k in results if str(k).startswith("target:")):
+    # A configured target's key is the (tier, target_key(model)) pair
+    # probe() stores it under, never a bare string: a tier alias's own key
+    # IS its tier name, so selecting by shape (a 2-tuple whose second
+    # element is a target_key) is what tells the two apart, not a string
+    # prefix a tuple can never start with. Sorted by (tier, target_key), so
+    # the same model id pinned into two tiers renders as two rows, grouped
+    # by tier.
+    for key in sorted(k for k in results
+                      if isinstance(k, tuple) and len(k) == 2
+                      and str(k[1]).startswith("target:")):
         got = results[key]
         log_body.append("| %s | %s | %s | %s | %.2fs | %s |"
                         % (got.tier, got.sent_model, got.model or "none",

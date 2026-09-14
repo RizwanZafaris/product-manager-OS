@@ -379,6 +379,7 @@ class ExactInputTests(unittest.TestCase):
 
     def setUp(self):
         runner._MEMO.clear()
+        runner._CAPABILITY.clear()
         self.log = []
 
     def test_extraction_over_the_limit_fails_instead_of_summarizing(self):
@@ -522,6 +523,79 @@ class ExactInputTests(unittest.TestCase):
                          "failure")
 
 
+class CacheBindingTests(unittest.TestCase):
+    """Finding S05: the exact-match cache must bind the resolved model.
+
+    _memo_key used to key only on (tier, messages). Two calls with identical
+    messages but a different candidate chain, a different concrete model,
+    were the same cache entry: the second call was silently served the first
+    call's reply, naming a model it never asked and never answered from.
+    """
+
+    def setUp(self):
+        runner._MEMO.clear()
+        runner._CAPABILITY.clear()
+        self.log = []
+
+    def _model_recording_stub(self, calls):
+        def stub(cfg, tier, messages, transport, **kwargs):
+            calls.append(kwargs.get("model_override"))
+            reply = runner.Reply(tier, "auto/" + tier)
+            reply.model = kwargs.get("model_override")
+            reply.text, reply.terminal = "PONG", True
+            reply.finish_reason = "stop"
+            return reply
+        return stub
+
+    def test_a_cache_hit_requires_the_same_resolved_model(self):
+        calls = []
+        messages = [{"role": "user", "content": "identical prompt"}]
+        real = runner.transport_call
+        runner.transport_call = self._model_recording_stub(calls)
+        try:
+            first = runner.call_with_fallback(
+                {}, "drafting", messages, {}, "http", self.log,
+                candidates=[runner.Candidate("drafting", "model-a", "probe")])
+            second = runner.call_with_fallback(
+                {}, "drafting", messages, {}, "http", self.log,
+                candidates=[runner.Candidate("drafting", "model-b", "probe")])
+        finally:
+            runner.transport_call = real
+
+        self.assertEqual(calls, ["model-a", "model-b"],
+                         "the second call, for a different model, was never "
+                         "dispatched: it was served the first call's cached "
+                         "reply instead")
+        self.assertEqual(first.model, "model-a")
+        self.assertEqual(second.model, "model-b",
+                         "a cache hit returned model-a's reply for a "
+                         "model-b request")
+
+    def test_the_same_resolved_model_still_reuses_the_cache(self):
+        # The fix must not turn caching off altogether: repeating the exact
+        # same tier, messages AND resolved candidate is still one call, even
+        # when the second call builds an equal but distinct Candidate object.
+        calls = []
+        messages = [{"role": "user", "content": "identical prompt"}]
+        real = runner.transport_call
+        runner.transport_call = self._model_recording_stub(calls)
+        try:
+            first = runner.call_with_fallback(
+                {}, "drafting", messages, {}, "http", self.log,
+                candidates=[runner.Candidate("drafting", "model-a", "probe")])
+            second = runner.call_with_fallback(
+                {}, "drafting", messages, {}, "http", self.log,
+                candidates=[runner.Candidate("drafting", "model-a", "probe")])
+        finally:
+            runner.transport_call = real
+
+        self.assertEqual(calls, ["model-a"],
+                         "an identical request (same tier, messages and "
+                         "resolved model) was dispatched twice")
+        self.assertIs(second, first,
+                      "same-request reuse stopped working")
+
+
 class RedactionTests(unittest.TestCase):
     """Finding 18: one redactor, any variable name, any length."""
 
@@ -611,6 +685,7 @@ class RunTaskTests(unittest.TestCase):
 
     def setUp(self):
         runner._MEMO.clear()
+        runner._CAPABILITY.clear()
         self.slug = "test-runner-run-%d" % os.getpid()
         self.template_text = TEMPLATE.read_text(encoding="utf-8")
         self.cfg = json.loads(
@@ -684,6 +759,31 @@ class RunTaskTests(unittest.TestCase):
                      if ".tmp-" in p.name]
         self.assertEqual(leftovers, [], leftovers)
 
+    def test_the_run_log_lists_a_pinned_target_row(self):
+        """Code-review follow-up (P2). probe() stores a configured (pinned
+        or keyless) target under the (tier, target_key(model)) compound
+        key, never a bare "target:<model>" string. The run-log's 'Tier
+        probe for this run' table used to select those rows by string
+        prefix, which a tuple can never match, so every run that used
+        fixedFallback or keylessFallback silently lost its pinned-target
+        rows from .run-log.md."""
+        probe_results = {
+            "extraction": _usable_reply("extraction", "test-model-1"),
+            ("extraction", runner.target_key("pinned-model-x")):
+                _usable_reply("extraction", "pinned-model-x"),
+        }
+        filled = self.template_text.replace("[source short name]",
+                                            "Ledgerline support export")
+        self._stub_body(filled)
+        self.assertEqual(
+            _quiet_run(self._args(probe_results=probe_results), self.cfg,
+                      self.tasks), 0)
+        log = self.log_path.read_text(encoding="utf-8")
+        self.assertIn("## Tier probe for this run", log)
+        self.assertIn("pinned-model-x", log,
+                     "a configured (pinned) target's probe row is missing "
+                     "from the run log")
+
     def test_a_second_run_refuses_to_overwrite_the_first(self):
         filled = self.template_text.replace("[source short name]", "First run")
         self._stub_body(filled)
@@ -699,6 +799,7 @@ class RunTaskTests(unittest.TestCase):
                          "a rerun overwrote finished work")
 
         runner._MEMO.clear()
+        runner._CAPABILITY.clear()
         self.assertEqual(
             _quiet_run(self._args(update=True), self.cfg, self.tasks), 0)
         self.assertIn("Second run",
@@ -742,6 +843,7 @@ class RunTaskTests(unittest.TestCase):
         self._stub_body(self.template_text.replace("[source short name]",
                                                    "Second run body"))
         runner._MEMO.clear()
+        runner._CAPABILITY.clear()
         self.assertEqual(
             _quiet_run(self._args(update=True), self.cfg, self.tasks), 0)
 
@@ -863,6 +965,7 @@ class CertificationTests(unittest.TestCase):
         runner.transport_call = stub
         try:
             runner._MEMO.clear()
+            runner._CAPABILITY.clear()
             out = runner.call_with_fallback({}, "drafting", [{"a": "b"}],
                                             results, "http", log)
         finally:
@@ -889,6 +992,7 @@ class CertificationTests(unittest.TestCase):
         runner.transport_call = stub
         try:
             runner._MEMO.clear()
+            runner._CAPABILITY.clear()
             with self.assertRaises(runner.QueuedWork) as caught:
                 runner.call_with_fallback({}, "drafting", [{"a": "b"}],
                                           results, "http", [])
@@ -966,6 +1070,7 @@ class PromptAssemblyTests(unittest.TestCase):
 
     def setUp(self):
         runner._MEMO.clear()
+        runner._CAPABILITY.clear()
         self.slug = "test-runner-prompt-%d" % os.getpid()
         self.tasks, _note = runner.load_manifest()
         self.cfg = json.loads(
@@ -1069,6 +1174,8 @@ class ConfiguredRoutingTests(unittest.TestCase):
         self.shipped = json.loads(
             (REPO / "routing" / "omniroute.config.json").read_text(
                 encoding="utf-8"))
+        runner._MEMO.clear()
+        runner._CAPABILITY.clear()
 
     def tearDown(self):
         os.environ.clear()
@@ -1094,7 +1201,7 @@ class ConfiguredRoutingTests(unittest.TestCase):
         cfg = self._cfg()
         cfg["tiers"]["judgment"]["keylessFallback"]["enabled"] = True
         results = {"judgment": _failed_reply("judgment"),
-                   runner.target_key("auto/reasoning"):
+                   ("judgment", runner.target_key("auto/reasoning")):
                        _usable_reply("judgment", "free-reasoner-1")}
         chain = runner.build_candidates(cfg, "judgment", results)
         self.assertEqual([c.model for c in chain], ["free-reasoner-1"])
@@ -1108,7 +1215,7 @@ class ConfiguredRoutingTests(unittest.TestCase):
         cfg = self._cfg()
         cfg["tiers"]["judgment"]["keylessFallback"]["enabled"] = True
         results = {"judgment": _failed_reply("judgment"),
-                   runner.target_key("auto/reasoning"):
+                   ("judgment", runner.target_key("auto/reasoning")):
                        _failed_reply("judgment")}
         chain = runner.build_candidates(cfg, "judgment", results)
         self.assertEqual(chain, [], "an empty chain was called a fallback")
@@ -1137,9 +1244,9 @@ class ConfiguredRoutingTests(unittest.TestCase):
         cfg["fixedFallback"]["enabled"] = True
         cfg["fixedFallback"]["combos"]["drafting"] = ["pin-a", "pin-b"]
         results = {"drafting": _usable_reply("drafting", "probe-model"),
-                   runner.target_key("pin-a"):
+                   ("drafting", runner.target_key("pin-a")):
                        _usable_reply("drafting", "pin-a"),
-                   runner.target_key("pin-b"):
+                   ("drafting", runner.target_key("pin-b")):
                        _usable_reply("drafting", "pin-b")}
         chain = runner.build_candidates(cfg, "drafting", results)
         self.assertEqual([c.model for c in chain], ["pin-a", "pin-b"],
@@ -1151,8 +1258,9 @@ class ConfiguredRoutingTests(unittest.TestCase):
         cfg["fixedFallback"]["enabled"] = True
         cfg["fixedFallback"]["combos"]["drafting"] = ["pin-a", "pin-b"]
         log = []
-        results = {runner.target_key("pin-a"): _failed_reply("drafting"),
-                   runner.target_key("pin-b"):
+        results = {("drafting", runner.target_key("pin-a")):
+                   _failed_reply("drafting"),
+                   ("drafting", runner.target_key("pin-b")):
                        _usable_reply("drafting", "pin-b")}
         chain = runner.build_candidates(cfg, "drafting", results, log=log)
         self.assertEqual([c.model for c in chain], ["pin-b"])
@@ -1163,7 +1271,7 @@ class ConfiguredRoutingTests(unittest.TestCase):
         cfg["fixedFallback"]["enabled"] = True
         cfg["fixedFallback"]["combos"]["judgment"] = ["pinned-pro-1"]
         os.environ.pop("OMNIROUTE_JUDGMENT_MODELS", None)
-        results = {runner.target_key("pinned-pro-1"):
+        results = {("judgment", runner.target_key("pinned-pro-1")):
                    _usable_reply("judgment", "pinned-pro-1")}
         chain = runner.build_candidates(cfg, "judgment", results)
         admitted, reason, _c = runner.judgment_admission(cfg, results, chain)
@@ -1199,9 +1307,12 @@ class ConfiguredRoutingTests(unittest.TestCase):
             runner.transport_call = real
         self.assertEqual(sent[:3], [None, None, None],
                          "the tier probes stopped asking the alias")
-        for pin in ("pin-x", "pin-y", "pin-z"):
+        for tier, pin in (("extraction", "pin-x"), ("drafting", "pin-y"),
+                         ("judgment", "pin-z")):
             self.assertIn(pin, sent, "a configured target was never probed")
-            self.assertIn(runner.target_key(pin), results)
+            self.assertIn((tier, runner.target_key(pin)), results,
+                         "the configured target was not stored under its "
+                         "own tier's key")
 
     # ---- the daily spend cap
 
@@ -1575,12 +1686,364 @@ class ConfiguredRoutingTests(unittest.TestCase):
         self.assertTrue(chain[0].verify,
                         "an unprobed pin must still be held to the header")
 
+    # ---- S03: probes spend only on the tiers a route can reach
+
+    def _tier_recording_stub(self, sent):
+        def stub(cfg_, tier, messages, transport, **kwargs):
+            sent.append(tier)
+            reply = runner.Reply(tier, "auto/" + tier)
+            reply.model = kwargs.get("model_override") or ("resolved-" + tier)
+            reply.text, reply.terminal = "PONG", True
+            reply.finish_reason = "stop"
+            return reply
+        return stub
+
+    def test_a_single_tier_route_probes_only_its_tier(self):
+        """A cheap, single-target task must never invoke a judgment probe:
+        the S03 evidence showed probe() dispatching auto/cheap, auto/coding
+        AND auto/reasoning:pro for every run, whatever the task needed."""
+        cfg = self._cfg()
+        sent = []
+        real = runner.transport_call
+        runner.transport_call = self._tier_recording_stub(sent)
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                results = runner.probe(cfg, "http", tiers=("extraction",))
+        finally:
+            runner.transport_call = real
+        self.assertEqual(sent, ["extraction"],
+                         "an extraction-only probe reached another tier: %r"
+                         % sent)
+        self.assertIn("extraction", results)
+        self.assertNotIn("drafting", results)
+        self.assertNotIn("judgment", results)
+
+    def test_resolve_probe_narrows_to_the_tasks_own_tier(self):
+        cfg = self._cfg()
+        sent = []
+        args = argparse.Namespace(probe_results={}, probe_ran=False,
+                                  no_probe=False, transport="http")
+        real = runner.transport_call
+        runner.transport_call = self._tier_recording_stub(sent)
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                runner.resolve_probe(args, cfg, "extraction", [])
+        finally:
+            runner.transport_call = real
+        self.assertEqual(sent, ["extraction"],
+                         "resolve_probe let an extraction task's probe reach "
+                         "tiers it does not use: %r" % sent)
+
+    def test_resolve_probe_for_judgment_still_probes_the_cheaper_tiers(self):
+        """judgment_admission's downgrade check (rule 3) reads the cheaper
+        tiers' resolved models to refuse a judgment candidate that is
+        secretly the same concrete model. Narrowing the probe must not blind
+        that check, so a judgment route keeps probing every tier."""
+        cfg = self._cfg()
+        sent = []
+        args = argparse.Namespace(probe_results={}, probe_ran=False,
+                                  no_probe=False, transport="http")
+        real = runner.transport_call
+        runner.transport_call = self._tier_recording_stub(sent)
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                runner.resolve_probe(args, cfg, "judgment", [])
+        finally:
+            runner.transport_call = real
+        self.assertEqual(sorted(sent), sorted(runner.TIER_ORDER),
+                         "a judgment route stopped probing the cheaper "
+                         "tiers, so its same-model-as-a-cheaper-tier check "
+                         "would go blind: %r" % sent)
+
+    def test_the_capability_cache_serves_a_fresh_observation(self):
+        cfg = self._cfg()
+        calls = {"n": 0}
+
+        def stub(cfg_, tier, messages, transport, **kwargs):
+            calls["n"] += 1
+            reply = runner.Reply(tier, "auto/" + tier)
+            reply.model = "resolved-extraction"
+            reply.text, reply.terminal = "PONG", True
+            reply.finish_reason = "stop"
+            return reply
+
+        real = runner.transport_call
+        runner.transport_call = stub
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                first = runner.probe(cfg, "http", tiers=("extraction",))
+                second = runner.probe(cfg, "http", tiers=("extraction",))
+        finally:
+            runner.transport_call = real
+        self.assertEqual(calls["n"], 1,
+                         "a fresh capability observation was not reused; a "
+                         "second probe within the TTL dispatched a call")
+        self.assertEqual(second["extraction"].model,
+                         first["extraction"].model)
+
+    def test_the_capability_cache_expires_after_its_ttl(self):
+        cfg = self._cfg()
+        calls = {"n": 0}
+
+        def stub(cfg_, tier, messages, transport, **kwargs):
+            calls["n"] += 1
+            reply = runner.Reply(tier, "auto/" + tier)
+            reply.model = "resolved-extraction"
+            reply.text, reply.terminal = "PONG", True
+            reply.finish_reason = "stop"
+            return reply
+
+        real = runner.transport_call
+        runner.transport_call = stub
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                runner.probe(cfg, "http", tiers=("extraction",))
+            self.assertEqual(calls["n"], 1)
+            # Age the stored observation past the TTL directly, rather than
+            # sleeping in a test or patching the process-wide clock.
+            for identity, (observed_at, cached) in list(
+                    runner._CAPABILITY.items()):
+                runner._CAPABILITY[identity] = (
+                    observed_at - runner.CAPABILITY_TTL_S - 1, cached)
+            with contextlib.redirect_stdout(io.StringIO()):
+                runner.probe(cfg, "http", tiers=("extraction",))
+        finally:
+            runner.transport_call = real
+        self.assertEqual(calls["n"], 2,
+                         "an observation past its TTL was still served from "
+                         "the capability cache instead of being re-verified")
+
+    def test_a_real_call_failure_invalidates_the_capability_cache(self):
+        cfg = self._cfg()
+
+        def answering(cfg_, tier, messages, transport, **kwargs):
+            reply = runner.Reply(tier, "auto/" + tier)
+            reply.model = "resolved-extraction"
+            reply.text, reply.terminal = "PONG", True
+            reply.finish_reason = "stop"
+            return reply
+
+        real = runner.transport_call
+        runner.transport_call = answering
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                results = runner.probe(cfg, "http", tiers=("extraction",))
+        finally:
+            runner.transport_call = real
+
+        candidates = runner.build_candidates(cfg, "extraction", results)
+        self.assertTrue(candidates)
+        self.assertEqual(candidates[0].probe_key, "extraction",
+                         "a probe-sourced candidate lost the key that named "
+                         "it, so a real failure could never invalidate it")
+
+        def failing(cfg_, tier, messages, transport, **kwargs):
+            reply = runner.Reply(tier, "auto/" + tier)
+            reply.error = "HTTP 503 from the gateway"
+            return reply
+
+        runner.transport_call = failing
+        try:
+            out = runner.call_with_fallback(
+                cfg, "extraction", [{"role": "user", "content": "x"}],
+                results, "http", [], candidates=candidates)
+        finally:
+            runner.transport_call = real
+        self.assertIsNone(out)
+
+        identity = runner._capability_identity(cfg, "extraction",
+                                               "extraction")
+        self.assertNotIn(identity, runner._CAPABILITY,
+                         "a real call's failure left the stale capability "
+                         "observation in place for the next probe to trust")
+
+    def test_a_cached_probe_still_requires_the_real_call_to_certify(self):
+        """S03 acceptance: a cached probe is never permanent certification.
+        The real task call must still verify the response header even when
+        the chain that produced its candidate came from the capability
+        cache, not a fresh probe."""
+        cfg = self._cfg()
+
+        def answering(cfg_, tier, messages, transport, **kwargs):
+            reply = runner.Reply(tier, "auto/" + tier)
+            reply.model = "resolved-extraction"
+            reply.text, reply.terminal = "PONG", True
+            reply.finish_reason = "stop"
+            return reply
+
+        real = runner.transport_call
+        runner.transport_call = answering
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                runner.probe(cfg, "http", tiers=("extraction",))
+                # Served from the capability cache this second time.
+                cached_results = runner.probe(cfg, "http",
+                                              tiers=("extraction",))
+        finally:
+            runner.transport_call = real
+
+        candidates = runner.build_candidates(cfg, "extraction",
+                                             cached_results)
+
+        def rerouted(cfg_, tier, messages, transport, **kwargs):
+            reply = runner.Reply(tier, "auto/" + tier)
+            reply.text, reply.terminal = "text", True
+            reply.finish_reason = "stop"
+            reply.expected_model = kwargs.get("expect_model") or ""
+            reply.header_model = "someone-else"
+            return runner.certify(reply)
+
+        runner.transport_call = rerouted
+        try:
+            with self.assertRaises(runner.QueuedWork) as caught:
+                runner.call_with_fallback(
+                    cfg, "extraction", [{"role": "user", "content": "x"}],
+                    cached_results, "http", [], candidates=candidates)
+        finally:
+            runner.transport_call = real
+        self.assertIn("someone-else", str(caught.exception),
+                      "a capability-cache-served candidate skipped the real "
+                      "call's response-header certification")
+
+    # ---- code-review follow-up: P2, a pin shared across tiers
+
+    def test_a_pin_shared_across_tiers_gets_its_own_probe_and_cache_entry(
+            self):
+        """P2 code-review finding. The same concrete model id pinned into
+        two different tiers' fixedFallback combos (a judgment run probes
+        every tier together) used to collide on one results/capability-cache
+        slot keyed by target_key(model) alone: the second tier's pin was
+        silently served the first tier's probe reply instead of getting its
+        own probe call, and a real call's failure under the second tier's
+        candidate could never find the entry that was actually written, so
+        it stayed cached as a false success. Built from the reviewer's
+        repro_invalidate_cross_tier.py."""
+        cfg = self._cfg()
+        cfg["fixedFallback"] = {
+            "enabled": True,
+            "combos": {
+                "extraction": ["shared-model"],
+                "drafting": ["other-model"],
+                "judgment": ["shared-model"],   # same id as extraction's pin
+            },
+        }
+        dispatched = []
+
+        def answering(cfg_, tier, messages, transport, **kwargs):
+            dispatched.append((tier, kwargs.get("model_override")))
+            reply = runner.Reply(tier, "auto/" + tier)
+            reply.model = kwargs.get("model_override") or ("resolved-" + tier)
+            reply.text, reply.terminal = "PONG", True
+            reply.finish_reason = "stop"
+            return reply
+
+        real = runner.transport_call
+        runner.transport_call = answering
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                results = runner.probe(cfg, "http", tiers=runner.TIER_ORDER)
+        finally:
+            runner.transport_call = real
+
+        self.assertIn(("extraction", "shared-model"), dispatched,
+                     "extraction's pin of shared-model was never probed")
+        self.assertIn(("judgment", "shared-model"), dispatched,
+                     "judgment's pin of the SAME model id was skipped as "
+                     "an already-probed duplicate instead of getting its "
+                     "own probe call")
+
+        extraction_key = ("extraction", runner.target_key("shared-model"))
+        judgment_key = ("judgment", runner.target_key("shared-model"))
+        self.assertIn(extraction_key, results)
+        self.assertIn(judgment_key, results)
+        self.assertIsNot(
+            results[extraction_key], results[judgment_key],
+            "both tiers' pins of the same model id shared one results slot "
+            "instead of getting independent probes")
+
+        candidates = runner.build_candidates(cfg, "judgment", results)
+        judgment_candidates = [c for c in candidates
+                               if c.model == "shared-model"]
+        self.assertTrue(judgment_candidates,
+                        "expected a judgment candidate for shared-model")
+        cand = judgment_candidates[0]
+        self.assertEqual(cand.tier, "judgment")
+        self.assertEqual(
+            cand.probe_key, judgment_key,
+            "the judgment candidate's probe_key does not name the identity "
+            "that was actually written for it")
+
+        identity_extraction = runner._capability_identity(
+            cfg, "extraction", extraction_key)
+        identity_judgment = runner._capability_identity(
+            cfg, "judgment", judgment_key)
+        self.assertIn(identity_extraction, runner._CAPABILITY)
+        self.assertIn(identity_judgment, runner._CAPABILITY)
+
+        def failing(cfg_, tier, messages, transport, **kwargs):
+            reply = runner.Reply(tier, "auto/" + tier)
+            reply.error = "HTTP 503 from the gateway"
+            return reply
+
+        runner.transport_call = failing
+        try:
+            out = runner.call_with_fallback(
+                cfg, "judgment", [{"role": "user", "content": "x"}], results,
+                "http", [], candidates=[cand])
+        finally:
+            runner.transport_call = real
+        self.assertIsNone(out)
+
+        self.assertNotIn(
+            identity_judgment, runner._CAPABILITY,
+            "a real failure under the judgment candidate did not "
+            "invalidate the identity that was actually written for it")
+        self.assertIn(
+            identity_extraction, runner._CAPABILITY,
+            "invalidating the judgment candidate's observation must not "
+            "touch extraction's independent, still-valid observation for "
+            "the same model id")
+
+    # ---- code-review follow-up: P3, no cross-tier borrowing
+
+    def test_extraction_never_borrows_another_tiers_probe_result(self):
+        """P3 code-review finding. build_candidates' auto (non-pinned) path
+        used to try [tier] + every other tier in TIER_ORDER for extraction
+        and drafting, so a caller-supplied results dict spanning multiple
+        tiers (resolve_probe's own narrowing does not protect this function
+        directly; args.probe_results can be shaped however a caller likes)
+        could silently hand an extraction task a drafting- or
+        judgment-resolved model."""
+        results = {
+            "extraction": _failed_reply("extraction"),
+            "drafting": _usable_reply("drafting", "drafting-model"),
+            "judgment": _usable_reply("judgment", "judgment-model"),
+        }
+        chain = runner.build_candidates(self.shipped, "extraction", results)
+        self.assertEqual(
+            chain, [],
+            "an extraction task with no usable extraction probe borrowed "
+            "another tier's resolved model instead of queueing")
+
+    def test_drafting_never_borrows_another_tiers_probe_result(self):
+        results = {
+            "extraction": _usable_reply("extraction", "extraction-model"),
+            "drafting": _failed_reply("drafting"),
+            "judgment": _usable_reply("judgment", "judgment-model"),
+        }
+        chain = runner.build_candidates(self.shipped, "drafting", results)
+        self.assertEqual(
+            chain, [],
+            "a drafting task with no usable drafting probe borrowed "
+            "another tier's resolved model instead of queueing")
+
 
 class QueueOutcomeTests(unittest.TestCase):
     """Findings 3 and 14 end to end: queued means one row and no artifact."""
 
     def setUp(self):
         runner._MEMO.clear()
+        runner._CAPABILITY.clear()
         self.saved_env = dict(os.environ)
         self.slug = "test-runner-queue-%d" % os.getpid()
         self.tasks, _note = runner.load_manifest()
@@ -1801,7 +2264,7 @@ class QueueOutcomeTests(unittest.TestCase):
             task="critique-strategy",
             probe_results={
                 "judgment": _failed_reply("judgment"),
-                runner.target_key("auto/reasoning"):
+                ("judgment", runner.target_key("auto/reasoning")):
                     _usable_reply("judgment", "free-reasoner-1")})
         self.assertEqual(_quiet_run(args, cfg, self.tasks), 0)
         artifact = (runner.PRODUCTS_DIR / self.slug / "planning"
@@ -1823,6 +2286,7 @@ class WholeRunTests(unittest.TestCase):
 
     def setUp(self):
         runner._MEMO.clear()
+        runner._CAPABILITY.clear()
         self.saved_env = dict(os.environ)
         os.environ.pop("OMNIROUTE_DAILY_CAP_USD", None)
         self.slug = "test-runner-whole-%d" % os.getpid()
@@ -1869,9 +2333,13 @@ class WholeRunTests(unittest.TestCase):
     def test_the_task_call_targets_the_model_the_probe_resolved(self):
         code, _out = self._main()
         self.assertEqual(code, 0)
-        self.assertEqual([b["model"] for b in self.sent[:3]],
-                         ["auto/cheap", "auto/coding", "auto/reasoning:pro"],
-                         "the probe stopped asking the tier aliases")
+        # gather-evidence is an extraction-tier task (Finding S03): the probe
+        # asks only the extraction alias, never drafting's or judgment's, and
+        # the real task call follows as the second and last request sent.
+        self.assertEqual([b["model"] for b in self.sent],
+                         ["auto/cheap", "cheap-1"],
+                         "an extraction-tier task probed a tier it does not "
+                         "use, or did not call the model it probed")
         self.assertEqual(self.sent[-1]["model"], "cheap-1",
                          "the real task call went out under a tier alias, so "
                          "the certified model was decoration")
