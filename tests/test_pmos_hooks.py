@@ -110,6 +110,42 @@ class ClaudeHookTests(unittest.TestCase):
         self.assertEqual(external.action, "ask")
         self.assertEqual(connector.action, "ask")
 
+    def test_force_push_is_denied_only_as_a_standalone_option_token(self):
+        """Regression: DESTRUCTIVE_COMMANDS used to match "-f" as a bare
+        substring, so a branch name that merely ends in "-f" (no leading
+        space before the "-") was denied as though it were a forced push.
+        "-f" and "--force" now have to appear as their own shell token.
+        "--force" still matches as a prefix, so "--force-with-lease" (a
+        real, if gentler, rewrite of remote history) stays denied exactly
+        as it did before this fix; only the untethered "-f" substring match
+        was the defect.
+        """
+        denied = (
+            "git push -f origin main",
+            "git push origin main -f",
+            "git push --force",
+            "git push --force-with-lease origin main",
+        )
+        for command in denied:
+            with self.subTest(command=command):
+                decision = decide("PreToolUse", {
+                    "tool_name": "Bash", "tool_input": {"command": command}})
+                self.assertEqual(decision.action, "deny")
+                self.assertEqual(decision.reason, "destructive command is blocked")
+
+        not_denied_as_destructive = (
+            "git push origin feat-f",
+            "git push origin fix-force-flag",
+        )
+        for command in not_denied_as_destructive:
+            with self.subTest(command=command):
+                decision = decide("PreToolUse", {
+                    "tool_name": "Bash", "tool_input": {"command": command}})
+                # Same outcome as any other ordinary, non-forced push: it
+                # still needs a human's approval, it is just no longer
+                # misclassified as a destructive command outright.
+                self.assertEqual(decision.action, "ask")
+
     def test_unknown_mcp_tools_never_default_to_allow(self):
         probes = (
             ("mcp__terminal__exec", {"command": "rm -rf /tmp/important"}),
@@ -251,6 +287,30 @@ class ClaudeHookTests(unittest.TestCase):
         self.assertEqual(decision.action, "deny")
         self.assertNotIn(secret, repr(decision.audit))
         self.assertNotIn(secret, rendered)
+
+    def test_a_labeled_example_credential_in_documentation_is_also_blocked(self):
+        """F35 false positive: SECRET_PATTERNS matches shape, not intent.
+
+        A docs or fixture line that explicitly labels a value as an example,
+        not a real credential, still trips the same pattern a leaked secret
+        would: the word "password" (or key/secret/token) immediately
+        followed by ":" or "=" and 20+ unbroken shape-matching characters is
+        enough, regardless of the sentence around it. This is the fail-closed
+        direction a shape-only scanner should err in: teaching the pattern to
+        trust a nearby word like "example" would make it trivial to smuggle a
+        real secret past the same check, so pmos/hooks.py is left unchanged
+        and this test pins the current, over-broad-but-safe behavior as a
+        known limitation rather than treating it as a defect to fix.
+        """
+        doc_line = ("The fixture below shows an example password: "
+                    "cf23df2207d99a74fbe169e3eba035e633b65d94 for illustration only.")
+        self.assertTrue(contains_secret({"content": doc_line}))
+        decision = decide("PreToolUse", {
+            "tool_name": "Write",
+            "tool_input": {"file_path": "docs/example.md", "content": doc_line}})
+        self.assertEqual(decision.action, "deny")
+        self.assertEqual(decision.reason,
+                         "secret-like material must be removed and rotated")
 
     def test_claude_event_specific_output_contracts(self):
         denied = HookDecision("deny", "blocked")

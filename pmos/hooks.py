@@ -40,7 +40,7 @@ DESTRUCTIVE_COMMANDS = (
                r"\s+(?:/|~|\$HOME|\.|\.\.)"),
     re.compile(r"(?i)\bgit\s+reset\s+--hard\b"),
     re.compile(r"(?i)\bgit\s+clean\s+-[A-Za-z]*f"),
-    re.compile(r"(?i)\bgit\s+push\b[^\n]*(?:--force|-f\b)"),
+    re.compile(r"(?i)\bgit\s+push\b[^\n]*(?:--force\b|(?<!\S)-f(?!\S))"),
     re.compile(r"(?i)\b(?:curl|wget)\b[^\n|]*\|\s*(?:sh|bash|zsh)\b"),
 )
 _SHELLS = frozenset({"sh", "bash", "zsh", "dash", "ksh", "pwsh", "powershell"})
