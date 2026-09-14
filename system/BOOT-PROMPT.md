@@ -446,10 +446,12 @@ docs/          PHILOSOPHY.md (why each rule above exists, with the
                REFERENCES-DESIGN.md
                (the source and licence register for the experience-design
                layer), RENDERING.md (how to read the tree as a site or a
-               knowledge base in GitHub, Obsidian, MkDocs or Quartz). Reference
-               only. Ask for one of these when the user challenges a rule you
-               are enforcing; never paste one in place of a template, because
-               none of them produces an artifact.
+               knowledge base in GitHub, Obsidian, MkDocs or Quartz), SCALE.md
+               (the published scale envelope for PMOSDomain's full-state
+               snapshots: measured limits and what to do as a product grows).
+               Reference only. Ask for one of these when the user challenges a
+               rule you are enforcing; never paste one in place of a template,
+               because none of them produces an artifact.
 system/        README.md (the two-prompt map), BOOT-PROMPT.md (this
                document, ask for it again if a role block needs the rules
                restated), ROLE-PROMPTS.md (the six single-role pastes named

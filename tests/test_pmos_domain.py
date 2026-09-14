@@ -3,6 +3,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from pmos.domain import (
     AllocationError,
@@ -835,6 +836,50 @@ class DomainTest(unittest.TestCase):
                     hasattr(getattr(PMOSDomain, name), "__wrapped__"),
                     f"{name} must participate in atomic snapshot persistence",
                 )
+
+    def test_scale_warning_none_for_a_small_domain(self):
+        # F34 / R12: a freshly bootstrapped domain is nowhere near
+        # MAX_SNAPSHOT_BYTES, so no warning is recorded.
+        initiative = self.d.create_initiative(self.product.id, "Small", actor_id=self.actor)
+        self.d.create_evidence(initiative.id, "note", "a small observation", actor_id=self.actor)
+        self.assertIsNone(self.d.scale_warning)
+
+    def test_scale_warning_fires_past_threshold_and_rides_in_commit_metadata(self):
+        # F34 / R12: once a snapshot crosses SNAPSHOT_WARNING_RATIO of
+        # MAX_SNAPSHOT_BYTES, scale_warning names the size, the limit and the
+        # next action, and a durable commit carries the same structure in its
+        # own metadata so a later reader need not re-decode the snapshot.
+        # The real 16 MiB limit is patched down to a few kilobytes so this
+        # stays a fast unit test rather than actually building a multi-MB
+        # snapshot.
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory, "scale.db")
+            store = Store(path)
+            domain = PMOSDomain(store, storage_id="scale-warning")
+            _org, product, owner, _membership = domain.bootstrap_workspace(
+                "Acme", "Ledger", "Owner"
+            )
+            initiative = domain.create_initiative(product.id, "Init", actor_id=owner.id)
+            with mock.patch("pmos.domain.MAX_SNAPSHOT_BYTES", 50_000), \
+                 mock.patch("pmos.domain.SNAPSHOT_WARNING_BYTES", 5_000):
+                self.assertIsNone(domain.scale_warning)
+                domain.create_evidence(initiative.id, "padding", "x" * 6_000, actor_id=owner.id)
+                warning = domain.scale_warning
+                self.assertIsNotNone(warning)
+                self.assertEqual(warning["limit_bytes"], 50_000)
+                self.assertGreaterEqual(warning["size_bytes"], 5_000)
+                self.assertIn("archive", warning["message"])
+                self.assertIn("docs/SCALE.md", warning["message"])
+
+                row = store._conn.execute(
+                    "SELECT metadata_json FROM commits WHERE product_id=? "
+                    "ORDER BY created_at DESC LIMIT 1",
+                    ("scale-warning",),
+                ).fetchone()
+                metadata = json.loads(bytes(row["metadata_json"]).decode("utf-8"))
+                self.assertIn("scale_warning", metadata)
+                self.assertEqual(metadata["scale_warning"], warning)
+            store.close()
 
 
 if __name__ == "__main__":
