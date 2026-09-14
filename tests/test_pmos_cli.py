@@ -912,6 +912,35 @@ class CliTests(unittest.TestCase):
                 self.assertEqual(main(reopen_args[:-3] + ["--turn-id", "reopen-stale", "--json"]), 1)
             self.assertEqual(json.loads(stale_output.getvalue())["outcome"]["status"], "conflict")
 
+    def test_export_out_existing_file_is_rejected_cleanly(self):
+        with TemporaryDirectory() as folder, TemporaryDirectory() as out_parent:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            out_file = Path(out_parent) / "archive-file"
+            out_file.write_text("nope", encoding="utf-8")
+            rc, result = self.export(folder, str(out_file))
+            self.assertEqual(rc, 2)
+            self.assertIn("--out", result["error"])
+            self.assertNotIn("Errno", result["error"])
+
+    def test_answer_refusal_hint_names_answer_help(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            status = self.status(folder)
+            answer_args = [
+                "answer", "--path", folder, "--product-id", "checkout",
+                "--question-id", "DISCOVER-1", "--answer", "x",
+                "--evidence", "{not-json",
+                "--expected-revision", status["revision_token"],
+                "--turn-id", "answer-bad-evidence", "--json",
+            ]
+            output = StringIO()
+            with redirect_stdout(output):
+                rc = main(answer_args)
+            self.assertEqual(rc, 2)
+            payload = json.loads(output.getvalue())
+            self.assertFalse(payload["ok"])
+            self.assertIn("pmos answer --help", payload["hint"])
+
     def test_actionable_missing_runtime_error_is_json(self):
         with TemporaryDirectory() as folder:
             self.assertEqual(main(["status", "--path", folder, "--json"]), 2)

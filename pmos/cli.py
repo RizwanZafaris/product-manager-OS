@@ -96,9 +96,12 @@ def _emit(value: Any, as_json: bool) -> None:
         print(value)
 
 
-def _error(exc: Exception, as_json: bool) -> int:
-    value = {"ok": False, "error": str(exc),
-             "hint": "Check the path, run `pmos status`, or use `pmos init --help`."}
+def _error(exc: Exception, as_json: bool, command: str | None = None) -> int:
+    if command is None:
+        hint = "Check the path, run `pmos status`, or use `pmos init --help`."
+    else:
+        hint = "Check the arguments with `pmos %s --help`, or run `pmos status` to see the current state." % command
+    value = {"ok": False, "error": str(exc), "hint": hint}
     _emit(value, as_json)
     return 2
 
@@ -548,6 +551,8 @@ def _export(args: argparse.Namespace) -> dict[str, Any]:
     # symlink at the export directory or either file it writes is refused
     # rather than silently followed.
     _reject_symlink(out_dir, "export directory")
+    if out_dir.exists() and not out_dir.is_dir():
+        raise ValidationError("--out must be a directory, but %s is a file" % out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     export_path = out_dir / "export.json"
     index_path = out_dir / "EXPORT.md"
@@ -697,7 +702,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         _emit(result, as_json)
         return 0 if result.get("ok", True) else 1
     except (OSError, sqlite3.DatabaseError, StoreError, ValueError, RuntimeError) as exc:
-        return _error(exc, as_json)
+        return _error(exc, as_json, getattr(args, "command", None))
 
 
 if __name__ == "__main__":
