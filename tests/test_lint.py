@@ -1780,6 +1780,63 @@ class IntegrityPinCoverageTests(unittest.TestCase):
             self.assertEqual(
                 expected, hashlib.sha256(target.read_bytes()).hexdigest(), rel)
 
+    def test_the_regulated_overlay_truth_table_is_a_correct_and_gate(self):
+        """F08. Parse the one tested applicability truth table out of
+        modules/regulated/README.md and prove it really is the AND-gate
+        os/STAGE-GATES.md requires (AI feature and applicable regulator),
+        not the finding's OR-shaped "a regulator alone is enough" rule.
+        """
+        text = (REPO / "modules" / "regulated" / "README.md").read_text(
+            encoding="utf-8")
+        section = text.split("## When this overlay activates", 1)[1]
+        section = section.split("\n## ", 1)[0]
+        rows = [line for line in section.splitlines()
+                if line.startswith("|") and not set(line) <= set("|- ")]
+        self.assertTrue(rows, "no table found under the activation heading")
+        table = {}
+        for row in rows[1:]:  # rows[0] is the header row
+            cells = [cell.strip() for cell in row.strip("|").split("|")]
+            self.assertEqual(4, len(cells), row)
+            case, ai, regulator, activates = cells
+            table[case] = (ai, regulator, activates)
+        self.assertEqual(
+            ["AI and regulated", "AI and unregulated",
+             "Non-AI and regulated", "Neither"], list(table))
+        for case, (ai, regulator, activates) in table.items():
+            expected = "Yes" if (ai, regulator) == ("Yes", "Yes") else "No"
+            self.assertEqual(expected, activates, case)
+
+    def test_stage_gates_references_the_readme_table_not_a_second_copy(self):
+        """F08. os/STAGE-GATES.md may only reference the truth table, and
+        both files must state the same AND condition, parsed from each.
+        """
+        import re
+        readme_text = (REPO / "modules" / "regulated" / "README.md"
+                       ).read_text(encoding="utf-8")
+        gates_text = (REPO / "os" / "STAGE-GATES.md").read_text(
+            encoding="utf-8")
+
+        anchor = lint.slug("When this overlay activates")
+        self.assertIn(anchor, lint.anchors_of(readme_text.split("\n")),
+                      "the README heading the reference points at moved")
+        self.assertIn("../modules/regulated/README.md#%s" % anchor,
+                      gates_text,
+                      "STAGE-GATES.md does not reference the README table")
+
+        def states_the_and_condition(text):
+            for match in re.finditer(
+                    r"financial or data regulator applies to it", text):
+                window = text[max(0, match.start() - 200):match.start()]
+                if (re.search(r"AI or machine[\s-]?learning", window)
+                        and " and " in window[-120:]):
+                    return True
+            return False
+
+        self.assertTrue(states_the_and_condition(readme_text),
+                        "README does not state the AND condition")
+        self.assertTrue(states_the_and_condition(gates_text),
+                        "STAGE-GATES.md does not state the AND condition")
+
 
 if __name__ == "__main__":
     unittest.main()
