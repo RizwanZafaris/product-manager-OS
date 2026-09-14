@@ -8,12 +8,13 @@ The tools are generated at server start by reading the manifest. Nothing is hand
 
 | Item | Detail |
 |---|---|
-| Tools | One per manifest entry, currently 41. The tool name is the entry id, verbatim, so ids and tools count one to one. |
+| Tools | One per manifest entry, currently 43. The tool name is the entry id, verbatim, so ids and tools count one to one. |
 | Description | Built from the entry: the router row, the literal triggers, the stage and gate, the tier, the skill to follow, where output lands, and the invariant ids that bind the run. |
 | Result | The plan for that route: skill to follow, files to read first, templates the output lands in, the invariant rules in full, the manifest note, routing readiness, and a JSON block for a machine consumer. |
 | Arguments | `request`, the user's own words, quoted back as data. `include_file_text`, off by default, inlines the text of the files under Read first. |
+| Runtime tool | One more tool beside the manifest tools: `pmos_status`, generated from [runtime_status.py](runtime_status.py) rather than from a manifest entry. It takes `path` and `product_id`, the same ones a `pmos` CLI command takes, opens the PM OS runtime read only the way `pmos status` does, and returns that product's phase report. It creates nothing, migrates nothing, writes nothing to the runtime, runs no model call, sends nothing, and signs no gate. |
 
-Both arguments are optional and neither one changes the route. The route is the tool you called.
+Both arguments are optional and neither one changes the route. The route is the tool you called. `pmos_status` takes its own two arguments instead, described above, and the same rule holds: calling it runs no model, writes nothing, and the gate stays where it always was.
 
 ## What it is not
 
@@ -41,7 +42,7 @@ The server finds the repository by walking up from its own file until it sees `h
 | `python3 harness/adapters/desktop/server.py` | Serves MCP over stdio. Needs the SDK. |
 | `python3 harness/adapters/desktop/server.py --list` | Prints the generated tool names, tiers, and stages. Standard library only. |
 | `python3 harness/adapters/desktop/server.py --plan write-prd` | Prints one route's plan. Standard library only. |
-| `python3 harness/adapters/desktop/selftest.py` | Checks the tool count against the manifest, the schemas, and the SDK-absent path. Exit 1 on any failure. |
+| `python3 harness/adapters/desktop/selftest.py` | Checks the tool count against the manifest, the schemas, and the SDK-absent path. Now also checks status parity: that `pmos_status`'s `phases` equal `pmos status --json`'s `phases` for the same product, fresh, after one accepted answer, and with a stale pin. For a symlinked artifact and a corrupt pin, it compares `pmos_status`'s result with a live `pmos status --json` for the same product. For a corrupt runtime database and a missing runtime, it checks only that `runtime_status.status()` returns `ok: false` with an error, without running the CLI. Exit 1 on any failure. |
 
 ## Two ways it fails closed
 

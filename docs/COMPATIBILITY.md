@@ -179,11 +179,20 @@ tier in `harness/tiers.md` a model may be routed to.
 | Host | What it gives you | Tested by | Not proven |
 |---|---|---|---|
 | A text editor, no model | Every template, framework, knowledge card and gate | The whole tree gate, `python3 lint.py --os` | Nothing is claimed beyond documents; that is the point |
-| `pmos` runtime | Local store, conductor, domain model, hooks, routing | The root unit suites on Python 3.11 and 3.13 in CI | Multi-machine coordination; it is a local runtime |
-| Claude Code plugin | One slash command per route, generated from the manifest | `python3 harness/adapters/claude-code/generate.py --check` in CI | That a live Claude Code session loads the plugin and a human drives a route end to end |
-| Desktop MCP server | One MCP tool per route, generated at server start | `python3 harness/adapters/desktop/selftest.py` in CI | That a desktop client accepts the handshake, or that a tool call round trips over stdio |
-| CLI adapter | The same route list at a shell prompt | Compilation of every tracked Python file in CI | An end-to-end session driven by someone other than a maintainer |
+| `pmos` runtime | Local store, conductor, domain model, hooks, routing, phase status (`pmos status`'s `phases`), and the development handoff (`pmos handoff`) | The root unit suites on Python 3.11 and 3.13 in CI | Multi-machine coordination; it is a local runtime |
+| Claude Code plugin | One slash command per route, generated from the manifest, including the `build-development-handoff` route for the development handoff | `python3 harness/adapters/claude-code/generate.py --check` in CI | That a live Claude Code session loads the plugin and a human drives a route end to end |
+| Desktop MCP server | One MCP tool per route, generated at server start, plus a read-only `pmos_status` tool for phase status | `python3 harness/adapters/desktop/selftest.py` in CI, which proves the `pmos_status` tool's `phases` equal `pmos status --json`'s for the same product | That a desktop client accepts the handshake, or that a tool call round trips over stdio |
+| CLI adapter | The same route list at a shell prompt, including `build-development-handoff`; route-only, so it hands you the plan and never calls `pmos status` or `pmos handoff` for you | Compilation of every tracked Python file in CI | An end-to-end session driven by someone other than a maintainer |
 | OpenRouter runtime path | Tier-routed model calls through a local gateway | The model matrix above, and [tools/ext_ai_probe.py](../tools/ext_ai_probe.py) | Any provider other than the one measured |
+
+The development handoff has two tested consumers: the `pmos` CLI (`pmos
+handoff`, with its own CLI tests) and the Claude Code `build-development-handoff`
+route, whose generated command tells the agent to run `pmos handoff` and read
+`handoff/CONTEXT.md`. Every other host is untested for the handoff, the
+desktop adapter included: its `pmos_status` tool is read-only phase status,
+proven equal to the CLI's own phases, and nothing in this repository drives a
+`pmos handoff` call, or reads its output, through the desktop adapter or the
+CLI route runner.
 
 Operating systems: the hosted gate runs on `ubuntu-latest`. The model matrix
 record does not name the operating system it was run on, so it adds no

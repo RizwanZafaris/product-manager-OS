@@ -102,6 +102,105 @@ and it never advances the interview. Every approval is labelled a local
 attestation (`approvals` in status), because actor IDs are typed, not
 authenticated.
 
+## Phase status
+
+`pmos status` also reports `phases`: one entry per question bank, DISCOVER
+through OPERATE, in stage order, built by the same read-only query an adapter
+can call on its own, such as the desktop adapter's `pmos_status` tool (see
+`docs/COMPATIBILITY.md`'s execution-host matrix and
+`harness/adapters/desktop/README.md`). In human mode the line
+prints as JSON, the same as every other list `status` already prints; add
+`--json` for the whole document. Each entry carries:
+
+- `phase` (the stage name, for example `DISCOVER`), `bank_id` (the bank's
+  internal id, for example `discover`), and `gate` (the gate number that
+  bank's approval satisfies).
+- `state`, one of `approved`, `stale`, `awaiting_approval`, `blocked` (a
+  parked answer), `in_progress`, or `not_started`.
+- `outcomes`: each Gate checklist line from the pinned contract, with the
+  question IDs that evidence it and `met` (`true` once every one of those
+  questions is answered and unparked, `false` while any is missing or
+  parked, `null` for a line no question can evidence, such as a human
+  sign-off the Conductor only reports the presence of).
+- `documents` and `named_documents`: `documents` lists the workspace
+  artifacts whose artifact block names this gate, each with its `id`, `path`,
+  `phase`, its current status and revision from `scan()`, and, once the gate
+  is approved, the revision the approval binds; `named_documents` lists the
+  workspace paths the bank's own questions land in, each with `present`
+  (`true` when that path is a regular file in the workspace).
+- `completed`: the accepted question IDs for this bank (`questions`), split
+  into `source_verified` and `supplied_unverified` counts.
+- `missing`: unanswered question IDs, parked question IDs, and unmet Gate
+  lines; for a stale bank it also carries `changed` (the artifacts that no
+  longer match the approved revision) and `reconcile` (the approved
+  artifacts that depend on one of those changed artifacts), both empty for
+  a bank that is not stale.
+- `next_action`: the one step that moves this phase forward, as data rather
+  than shell syntax, for example `{"action": "answer", "bank_id": "discover",
+  "question_id": "DISCOVER-1"}`, or `null` when this phase has nothing to do
+  right now. `action` is `answer`, `reopen`, or `gate`; the CLI turns this
+  into the shell command `status` already prints under `next`, and an
+  adapter renders its own form from the same data.
+- `required_approver`: `runtime` (the pinned bank's approver IDs, the same
+  ones a `pmos gate` submission is checked against), `attestation` (always
+  `local`), and `signoff_roles` (the human roles named in that gate's
+  sign-off table in `os/STAGE-GATES.md`, compiled into the contract; `null`
+  for a product pinned before that compilation existed).
+- `blocking_reason`: why this phase cannot move right now, for example
+  "waits for Gate 1 approval" or the Conductor's message for a stale or
+  parked bank, or `null` when nothing is blocking it.
+- `approval` and `rejections`: the same per-bank approval and rejection
+  summaries `status` already reports at the top level, repeated here beside
+  the phase they belong to.
+
+Building `phases` can itself run into a malformed workspace, for example a
+symlinked artifact under an artifact block `scan()` refuses to follow. That
+never hides the rest of `status`: `phases` comes back as an empty list and
+the top-level result carries `phases_error` naming what went wrong, instead
+of `status` failing outright.
+
+## Development handoff
+
+At Gate 3, DESIGN hands a development-ready package to engineering. Fill
+`templates/architecture/development-handoff.md` with links to the workspace
+artifacts that carry each section's detail, then check it with:
+
+```bash
+pmos handoff --path ./products/my-product --product-id checkout --json
+```
+
+This writes two files under the workspace every time it runs, whether or not
+the product is development-ready: `handoff/context-index.json`, the full
+package as data, and `handoff/CONTEXT.md`, a short Markdown index of the same
+data using relative links only, so the gaps are visible either way. It exits
+0 when the product is development-ready and 1 when it is not; it never
+modifies accepted history.
+
+A product is development-ready only when every one of these holds at once:
+
+- Gates 1 to 3 are approved and none of them is stale.
+- The `development-handoff.md` artifact exists, with its artifact block.
+- Every required section (problem; vision and strategy; outcomes and success
+  measures; scope and exclusions; requirements and acceptance criteria;
+  evidence and decisions; dependencies; interface and data contracts;
+  unresolved risks and constraints) links at least one workspace artifact,
+  or carries an `N/A because` line.
+- Every linked artifact actually resolves in the workspace.
+
+A `Gap:` line, an empty section, or a link that does not resolve blocks the
+designation, and `handoff/CONTEXT.md` names which. Run on a freshly
+initialized product with none of this done yet (a product named `demo` here,
+to show real output), `pmos handoff --json` returned:
+
+```json
+{"context": "handoff/CONTEXT.md", "development_ready": false, "index": "handoff/context-index.json", "missing": ["development-handoff.md artifact is missing", "Gate 1 is not approved", "Gate 2 is not approved", "Gate 3 is not approved", "Section 1. Problem is missing", "Section 2. Vision and strategy is missing", "Section 3. Outcomes and success measures is missing", "Section 4. Scope and exclusions is missing", "Section 5. Requirements and acceptance criteria is missing", "Section 6. Evidence and decisions is missing", "Section 7. Dependencies is missing", "Section 8. Interface and data contracts is missing", "Section 9. Unresolved risks and constraints is missing"], "ok": false, "product_id": "demo"}
+```
+
+As with every gate approval, `development_ready` reflects local attestation,
+never authenticated team approval: the package records who ran each gate and
+when, and that the attestation is `local`, but it does not and cannot confirm
+that actor's identity.
+
 An answer may carry the evidence class its question asks for or a stronger
 one, observed behavior being the strongest. A product keeps the contract it
 started with, and `pmos status` shows its pinned and shipped bank versions

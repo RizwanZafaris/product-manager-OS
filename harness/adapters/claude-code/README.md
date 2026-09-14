@@ -9,9 +9,11 @@ It adds no procedure. Every command names the `SKILL.md` that owns the work, the
 | Component | Path here | Count | Source |
 |---|---|---|---|
 | Plugin manifest | [.claude-plugin/plugin.json](.claude-plugin/plugin.json) | 1 | Generated. `name` and `version` come from the manifest. |
-| Slash commands | `commands/*.md` | 41 | Generated, one per manifest entry, named by its route id. |
-| Skills | `skills` | 28 | Symlink to `skills/` at the repository root. Referenced, never copied. |
+| Slash commands | `commands/*.md` | 43 | Generated, one per manifest entry, named by its route id. |
+| Skills | `skills` | 29 | Symlink to `skills/` at the repository root. Referenced, never copied. Skills under `skills/runtime/` are runtime skills listed in `skills/runtime-manifest.json`. |
 | Generator | [generate.py](generate.py) | 1 | Hand written. Standard library only. |
+
+This plugin is route-only. Every command hands you the plan for that route: the skill to follow, the files to read first, the templates the output lands in, and the gate it must pass, then stops. It runs no model call of its own, writes nothing, and signs no gate. `build-development-handoff`, the DESIGN-exit route for the development handoff, is generated the same way as every other command; its plan does not fill the template or run the check for you, it tells you to run `pmos handoff --path <workspace> --product-id <id> --json` yourself and read `handoff/CONTEXT.md` for what the package is still missing. Runtime status works the same way: this plugin carries no tool that opens the runtime, so the `phases` a product is actually in come from the `pmos` CLI (`pmos status`), never from a command here. The desktop MCP adapter is the one adapter with a tool of its own for that, `pmos_status`; see [its README](../desktop/README.md).
 
 Commands are namespaced by the plugin name, so the route ids become `/product-manager-os-harness:write-prd`, `/product-manager-os-harness:run-premortem`, and so on. Read one to see the shape: [commands/write-prd.md](commands/write-prd.md).
 
@@ -32,7 +34,7 @@ Then in the session:
 
 | Step | What you type | What you should see |
 |---|---|---|
-| List the routes | `/help`, then the custom commands tab | 41 commands under the plugin name |
+| List the routes | `/help`, then the custom commands tab | 43 commands under the plugin name |
 | Run one | `/product-manager-os-harness:write-prd a PRD for the payout retry screen` | The route card, then the skill it routes to |
 | Pick up an edit | `/reload-plugins` | Commands reloaded without restarting |
 
