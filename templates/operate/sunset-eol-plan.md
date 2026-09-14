@@ -28,11 +28,25 @@ aliases: ["Sunset / End-of-Life Plan", "sunset-eol-plan"]
 
 ## 1. The decision
 
+<!-- Two sentences of rationale copied from the metrics review, the decider, and
+     what reversing would have required. Do not relitigate the decision here; if
+     the rationale reads thin, go back to the metrics review. A trap: padding the
+     rationale to sound thorough turns this section into a second decision memo
+     and breaks the file's discipline of executing, not arguing. -->
+
 - Rationale, two sentences, from the metrics review: [quoted]
 - Decider: [name] · What would have reversed it: [the evidence that never arrived]
 - What this sunset frees up: [team, spend, roadmap room; the reason worth stating internally]
 
 ## 2. Who is affected
+
+<!-- One row per segment that loses something when the product shuts down, with
+     the count, the revenue or usage at stake, the contractual obligations, and
+     whether a regulator needs notice. A trap: leaving a segment off the table
+     because "they will be fine" creates a support fire on the shutdown date.
+     This fails when contractual notice periods are guessed rather than read from
+     the contracts; never put a notice date in section 4 without the contract's
+     minimum term in this row. -->
 
 | Segment | Count | Revenue or usage at stake | Contractual obligations (notice period, SLA) | Regulator notice needed |
 |---|---|---|---|---|
@@ -80,6 +94,12 @@ aliases: ["Sunset / End-of-Life Plan", "sunset-eol-plan"]
 
 ## 6. Decommission steps
 
+<!-- Every running cost and external dependency the product leaves behind, each
+     with a named owner and a box to tick. A trap: forgetting recurring billing
+     or an API consumer whose integration breaks silently on shutdown, leaving
+     a cost that outlives the product. Do not leave a box without an owner; an
+     unowned checkbox is a cost that never reaches zero. -->
+
 - [ ] Billing stopped and final invoices handled: [owner]
 - [ ] Integrations and API consumers notified and disconnected (see the [integrations register](../architecture/integrations.md)): [owner]
 - [ ] Infrastructure torn down, recurring costs at zero: [owner, verified how]
@@ -88,6 +108,11 @@ aliases: ["Sunset / End-of-Life Plan", "sunset-eol-plan"]
 - [ ] Contracts and vendor commitments closed out: [owner]
 
 ## 7. Post-sunset check
+
+<!-- A dated check, roughly 30 days after shutdown, that data is gone and costs
+     are zero, plus one paragraph of what the product taught the team. This fails
+     when the check has no date or no named person, because a post-sunset check
+     nobody owns never runs, and the team never learns from the sunset. -->
 
 - On [YYYY-MM-DD, 30 days after shutdown]: data deletion verified, costs confirmed at zero, by [name]
 - What this product taught us, one paragraph, logged in the [decision log](../execution/decision-log.md): [link to the entry]
