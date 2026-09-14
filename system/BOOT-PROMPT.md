@@ -452,7 +452,10 @@ docs/          PHILOSOPHY.md (why each rule above exists, with the
                snapshots: measured limits and what to do as a product grows),
                TEMPLATE-DISPOSITIONS.md (F21's per-template disposition table:
                each flagged template's score before and after, its filled
-               example, and a human disposition).
+               example, and a human disposition),
+               COVERAGE.md (per domain card and per role rung or
+               specialization: reference, worked example, expert-reviewed or
+               field-tested, none of the last two recorded anywhere yet).
                Reference only. Ask for one of these when the user challenges a
                rule you are enforcing; never paste one in place of a template,
                because none of them produces an artifact.
