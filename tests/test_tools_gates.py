@@ -638,6 +638,94 @@ class TemplateRubricGateTests(unittest.TestCase):
             self.assertIn("exempt from this rubric, with the reason:", output)
             self.assertIn("templates/definition/weak.md", output)
 
+    # F17: hidden_guidance_share, the informational metric added alongside
+    # the seven scored dimensions above. These pin that it measures the
+    # right thing, that it never moves "score", and that a section explains
+    # itself the same way whether its guidance sits in a comment or in the
+    # visible <details> convention docs/RENDERING.md documents.
+
+    def test_hidden_guidance_counts_words_inside_html_comments_only(self):
+        hidden, total, share = template_rubric.hidden_guidance(
+            "a b c d <!-- e f g h --> i j")
+        self.assertEqual(6, hidden)
+        self.assertEqual(12, total)
+        self.assertEqual(0.5, share)
+
+    def test_hidden_guidance_share_is_zero_with_no_comments(self):
+        hidden, total, share = template_rubric.hidden_guidance("a b c d")
+        self.assertEqual((0, 4, 0.0), (hidden, total, share))
+
+    def test_score_template_reports_hidden_guidance_alongside_the_score(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            report = self.score(tmp, STRONG_TEMPLATE)
+        self.assertIn("hidden_guidance_share", report)
+        self.assertIn("hidden_guidance_words", report)
+        self.assertIn("total_words", report)
+        self.assertGreater(report["hidden_guidance_words"], 0,
+                            "STRONG_TEMPLATE's guidance still lives in "
+                            "<!-- --> comments, so this must be nonzero")
+
+    def test_a_visible_details_block_explains_a_section_like_a_comment_does(self):
+        text = ("# X\n\nStage: DEFINE, feeds Gate 2\n\n## One\n"
+                "<details open>\n<summary>Guidance</summary>\n\n"
+                "What goes here, and what a bad answer looks like.\n\n"
+                "</details>\n")
+        with tempfile.TemporaryDirectory() as tmp:
+            report = self.score(tmp, text)
+        self.assertEqual(1, report["sections_explained"])
+        self.assertEqual(1.0, report["marks"]["self_explaining"])
+
+    def test_a_visible_details_block_is_not_counted_as_hidden(self):
+        text = ("# X\n\n## One\n<details open>\n<summary>Guidance</summary>\n\n"
+                "What goes here.\n\n</details>\n")
+        with tempfile.TemporaryDirectory() as tmp:
+            report = self.score(tmp, text)
+        self.assertEqual(0, report["hidden_guidance_words"])
+        self.assertEqual(0.0, report["hidden_guidance_share"])
+
+    def test_migrating_a_section_from_comment_to_details_does_not_move_the_score(self):
+        guidance = "What goes here, and a bad answer: a blank owner."
+        skeleton = ("# X\n\nStage: DEFINE, feeds Gate 2\n\n## One\n%s\n"
+                    "| a | b |\n|---|---|\n| [name] | [date] |\n\n"
+                    "Read [the PRD](prd.md).\n\n## Exit gate\n- [ ] Done.\n")
+        hidden_text = skeleton % ("<!-- %s -->" % guidance)
+        visible_text = skeleton % (
+            "<details open>\n<summary>Guidance</summary>\n\n%s\n\n</details>"
+            % guidance)
+        with tempfile.TemporaryDirectory() as tmp:
+            before = self.score(tmp, hidden_text)
+        with tempfile.TemporaryDirectory() as tmp:
+            after = self.score(tmp, visible_text)
+        self.assertEqual(before["score"], after["score"])
+        self.assertEqual(before["marks"], after["marks"])
+        self.assertGreater(before["hidden_guidance_share"], 0.0)
+        self.assertEqual(0.0, after["hidden_guidance_share"])
+
+    def test_highest_hidden_guidance_share_is_reported_and_ranked(self):
+        # Almost entirely comment, so its hidden share is far above the
+        # STRONG_TEMPLATE reference's, and both templates also appear in the
+        # separate "weakest" (by score) table earlier in the same output, so
+        # the ranking check below reads only the hidden-guidance section,
+        # never the first occurrence of either path anywhere in the output.
+        heavy_comment = " ".join(["word"] * 40)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.tree(
+                tmp, prd=STRONG_TEMPLATE,
+                hider="# Hider\n\n## One\n<!-- %s -->\n" % heavy_comment)
+            code, output = self.run_gate(root, "--hidden-top", "5")
+        self.assertEqual(0, code, output)
+        marker = "highest hidden-guidance share"
+        self.assertIn(marker, output)
+        section = output[output.index(marker):]
+        hider_line = next(line for line in section.splitlines()
+                          if "templates/definition/hider.md" in line)
+        prd_line = next(line for line in section.splitlines()
+                        if line.strip().startswith("templates/definition/prd.md"))
+        self.assertLess(section.index(hider_line), section.index(prd_line),
+                        "in the hidden-guidance ranking, the template hiding "
+                        "a larger share of its words must rank above one "
+                        "hiding a smaller share:\n%s" % section)
+
 
 class PmWorkingSetGateTests(unittest.TestCase):
     """tools/pm_working_set.py: the documents written weekly, held to the bar."""

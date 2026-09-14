@@ -75,8 +75,8 @@ One role per run, from `agents/`. Who leads which stage, what one agent hands th
 
 ## Tool expectations
 
-- **Read and edit files; prefer editing a copied template over generating a document from scratch.** The template's guidance comments are the procedure.
-- **Keep HTML guidance comments intact** in any copy you fill for a user, until the user asks to strip them for publication.
+- **Read and edit files; prefer editing a copied template over generating a document from scratch.** The template's guidance, whether an HTML comment or a visible `<details>` block, is the procedure.
+- **Keep guidance intact**, HTML comment or visible `<details>` block alike, in any copy you fill for a user, until the user asks to strip it for publication. See [docs/RENDERING.md](docs/RENDERING.md) for which templates use which form and the command that strips the visible one.
 - **Run the quality gate** (`python3 tools/ci_gate.py` at repo root) after any change to repo files, and before telling the user the tree is consistent. That command is the whole release suite. `python3 lint.py --os` is one gate inside it and checks only the document tree, so it reports `ok` on a tree the graph check, the docs contract, the security gate and the test suites reject.
 - **Do not write into `templates/`, `knowledge/`, `os/`, or `modules/regulated/`** on a normal product run. Product artifacts belong in the user's own workspace, laid out per [os/PRODUCT-WORKSPACE.md](os/PRODUCT-WORKSPACE.md): one folder per product, one subfolder per stage, filled copies keeping the template's file name. Use `examples/` only when the user wants a worked example kept in this repository.
 - **Model routing is not your concern** unless the user invokes Method 5; then read [routing/README.md](routing/README.md) and respect the tier doctrine.
