@@ -40,6 +40,12 @@ Skill: [architect agent](../../agents/architect-agent.md); [metrics-tree](../../
 
 ## 2. Logs
 
+<!-- One row per event class a reader needs to trace an incident. State the
+     minimum fields, how long the line is kept, and what PII is masked or excluded,
+     so an on-call engineer can answer "what did this user do?" without guessing.
+     A trap: logging the full card number or token to make debugging easier; that
+     habit survives long after the incident that excused it. -->
+
 | Event class | Fields required (minimum) | Retention | PII handling |
 |---|---|---|---|
 | request logs | timestamp, route, status, latency, caller id, trace id | `<period>` | `<mask or exclude which fields, per the data model>` |
@@ -47,6 +53,12 @@ Skill: [architect agent](../../agents/architect-agent.md); [metrics-tree](../../
 | security events | `<per security-architecture.md section 3>` | `<period>` | |
 
 ## 3. Traces and correlation
+
+<!-- Show how a single id carries from the user's report down to the slowest span.
+     Name the propagation header and which integrations carry it; if a partner or
+     inbound channel cannot take the header, say what id joins it instead. This
+     fails when each service logs under its own request id and no one can stitch a
+     path together during a post-mortem. -->
 
 - Trace propagation: `<mechanism and header>` across `<which services and integrations>`
 - One id joins user report to logs to trace: `<which id, and where a support agent finds it>`
@@ -62,6 +74,12 @@ Skill: [architect agent](../../agents/architect-agent.md); [metrics-tree](../../
 | | | | | |
 
 ## 5. Dashboard
+
+<!-- The dashboard is the first place an on-call engineer looks, so it must show
+     the SLOs and budget remaining, not just CPU and request volume. Name where it
+     lives and who keeps it accurate. A trap: a dashboard full of machine metrics
+     that looks green while the SLO burns; never let a tile replace the budget
+     number it is meant to reflect. -->
 
 - Dashboard location: `<link>` · Dashboard owner: `<name>`
 - Shows, at minimum: each SLO with budget remaining, traffic, error rate, latency percentiles, and the health of each row in the integrations register.
