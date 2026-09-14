@@ -119,7 +119,7 @@ Automated results marked "incomplete" or "needs review" are not evidence; each b
 | Language of the page, and of any foreign passages, is set | 3.1 | | inspect attributes | | | | |
 | Navigation sits in a consistent place across screens | 3.2.3 | | compare screens | | | | |
 | Help (contact details, chat, FAQ link) appears in the same relative order on every screen where it is offered | 3.2.6 | | compare screens that carry a help mechanism | | | | |
-| Content reflows at high zoom without horizontal scrolling or loss | 1.4 | | zoom to the level's reflow point | | | | |
+| Content reflows without two-dimensional scrolling: vertically scrolling content at 320 CSS px wide, horizontally scrolling content at 256 CSS px tall (SC 1.4.10) | 1.4 | | zoom to the level's reflow point | | | | |
 | Nothing changes context on focus or on input alone | 3.2 | | tab and type through selects and fields | | | | |
 | Content works in both orientations, unless a specific orientation is essential | 1.3 | | rotate the device | | | | |
 | Text resizes to 200 percent and survives text-spacing overrides without loss | 1.4 | | zoom to 200 percent; apply the text-spacing bookmarklet | | | | |
