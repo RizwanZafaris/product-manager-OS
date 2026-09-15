@@ -419,7 +419,7 @@ class Conductor:
         if actor_id not in bank.gate_approvers:
             return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
                 "blocked", snapshot.head.token, bank_id=bank_id,
-                message="gate actor is not authorized by the pinned question bank"))
+                message="gate actor is not authorized by the pinned question bank; its approvers are: " + ", ".join(bank.gate_approvers)))
         if (supplied["decision"] not in ("approved", "rejected") or not _UTC.match(supplied["approved_at"])
                 or not _valid_approved_at(supplied["approved_at"])):
             return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
@@ -490,13 +490,14 @@ class Conductor:
                     message="gate proof for %s recorded again; %s" % (bank_id, after.message)))
             status = "completed" if after.status == "completed" else "advanced"
             return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
-                status, snapshot.head.token, bank_id=bank_id, completed=status == "completed",
+                status, snapshot.head.token, bank_id=bank_id, completed=status == "completed", accepted=True,
                 message="gate proof recorded again; the earlier approval is kept as superseded"))
         state["gates"][bank_id] = record
         state["current_bank"] += 1
         status = "completed" if state["current_bank"] == len(self.banks) else "advanced"
         return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
-            status, snapshot.head.token, bank_id=bank_id, message="gate proof recorded", completed=status == "completed"))
+            status, snapshot.head.token, bank_id=bank_id, message="gate proof recorded", completed=status == "completed",
+            accepted=True))
 
     complete_gate = prove_gate
 

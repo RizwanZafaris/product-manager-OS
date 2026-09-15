@@ -242,6 +242,40 @@ class ConductorTest(unittest.TestCase):
         self.assertEqual(conductor.state()["banks"]["discover"]["challenges"]["discover.person"], 2)
         store.close()
 
+    def test_recorded_gate_proof_returns_accepted_true(self) -> None:
+        store, conductor = self.opening()
+        first = conductor.next_turn()
+        conductor.submit_answer("discover.person", "Mina exported the failures.", observed(),
+                                expected_revision=first.revision, turn_id="turn-1")
+        second = conductor.next_turn()
+        conductor.submit_answer("discover.cost", "The export reports the weekly cost.", artifact(),
+                                expected_revision=second.revision, turn_id="turn-2")
+        blocked = conductor.next_turn()
+        self.assertEqual(blocked.status, "blocked")
+        outcome = conductor.prove_gate("discover", gate_proof(),
+                                       expected_revision=blocked.revision, turn_id="gate-1")
+        self.assertEqual(outcome.status, "advanced")
+        self.assertTrue(outcome.accepted)
+        self.assertEqual(outcome.message, "gate proof recorded")
+        store.close()
+
+    def test_unauthorized_actor_message_names_pinned_approvers(self) -> None:
+        store, conductor = self.opening()
+        first = conductor.next_turn()
+        conductor.submit_answer("discover.person", "Mina exported the failures.", observed(),
+                                expected_revision=first.revision, turn_id="turn-1")
+        second = conductor.next_turn()
+        conductor.submit_answer("discover.cost", "The export reports the weekly cost.", artifact(),
+                                expected_revision=second.revision, turn_id="turn-2")
+        blocked = conductor.next_turn()
+        self.assertEqual(blocked.status, "blocked")
+        unauth_proof = dict(gate_proof(), actor_id="unknown-actor")
+        outcome = conductor.prove_gate("discover", unauth_proof,
+                                       expected_revision=blocked.revision, turn_id="gate-unauth")
+        self.assertEqual(outcome.status, "blocked")
+        self.assertIn("gate actor is not authorized by the pinned question bank; its approvers are: asha", outcome.message)
+        store.close()
+
     def test_park_is_preceded_by_exactly_two_challenges(self) -> None:
         store, conductor = self.opening()
         turn = conductor.next_turn()
