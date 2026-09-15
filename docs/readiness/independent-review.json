@@ -4,37 +4,28 @@
   "reviewer_kind": "independent-agent",
   "independent_implementation": true,
   "identity_assurance": "unauthenticated-local-claim",
-  "reviewed_at": "2026-09-15T03:46:53Z",
-  "reviewed_tree_sha256": "32887e31a314273b8138e57048f4af71a61ebbe0a5e26d427ffde8e7c8d1932e",
+  "reviewed_at": "2026-09-15T08:42:22Z",
+  "reviewed_tree_sha256": "0551e431e3680cf0805f32bc94bd3aae03a41030da80ddfe1c9910ff0fdbfb77",
   "scope": [
-    "PR #38 (feat/coherent-product-workflow) at 2d32737, reviewed through final-review packet v4 (REVIEW-PACKET.md, commit 58799b5 on branch critic/final-review-packet-4): CI, black-box QA, every OpenRouter critic verdict with its resolution, the senior review of every runtime commit and fix, the earlier final reviews, and the 47-finding audit ledger.",
-    "Review performed by deepseek/deepseek-v4-pro through OpenRouter (controller task FINAL4-deepseek, 2026-09-15T00:47:12Z, provider DeepInfra; it also accepted rounds 1 to 3). Recorded on the owner's decision D7 (answer: DeepSeek + adjudication). Claude Opus, which integrated this PR, ran this command on the reviewer's behalf and did not review.",
-    "Dissent on record: moonshotai/kimi-k2.6 rejected all four final-review rounds. Each real defect it raised was fixed (QA-1b in a485289, the cdf4a5b symlink race in fe4a496, QA-4 in 2d32737); its fourth round raised no new code defect. Its points and their answers are in the remediation ledger under final_review_rounds_2026_09_15."
+    "Fix for audit finding F25 on branch fix/f25-matrix-rerun at 00fe756 (parent main dce95d2): two clean dated model-matrix records and the Dated runs rows in docs/COMPATIBILITY.md, reviewed through the evidence packet REVIEW-PACKET.md on branch critic/f25-packet (round 2, 28,245 characters).",
+    "Review performed by deepseek/deepseek-v4-pro through OpenRouter (remediation controller task F25-deepseek; round 1 at 2026-09-15T08:38:54Z accepted with one P2 that the packet did not show completion_tokens; round 2 at 08:41:28Z accepted with six named checks and no P0 to P2). Recorded on the owner's decision D7. Claude Opus, which produced the change, ran this command on the reviewer's behalf and did not review."
   ],
   "evidence": [
     {
-      "command": "python3.12 tools/ci_gate.py at 2d32737",
+      "command": "python3.12 tools/ci_gate.py at 00fe756",
       "result": "release gates 21/22 passed; the one red gate is readiness-local, awaiting this record"
     },
     {
-      "command": "hosted gate jobs on Python 3.11 and 3.13 at 2d32737 (runs 34914046324 and 34914049375)",
-      "result": "21/22; only readiness-local failing; deletable-harness passing"
+      "command": "python3.12 -m unittest tests.test_pmos_matrix tests.test_pmos_probe tests.test_pmos_cli",
+      "result": "251 tests OK"
     },
     {
-      "command": "qa_probe.py 2d32737 (fresh clone, pip install --no-index ., temporary HOME, no provider calls)",
-      "result": "34 PASS, 0 FAIL, 0 WARN"
+      "command": "python3.12 tools/model_matrix.py --check",
+      "result": "model-matrix: ok (2026-09-09 record and generated table unchanged)"
     },
     {
-      "command": "qa_e2e.py 2d32737 (Start Here workspace, nine answers, Gate 1, direct edit, stale detection, reconcile, re-approval, handoff, export)",
-      "result": "17 PASS, 0 FAIL, 0 WARN"
-    },
-    {
-      "command": "remed_controller.py critic FINAL4-deepseek (deepseek/deepseek-v4-pro)",
-      "result": "accept with six named checks and three P3 follow-ups"
-    },
-    {
-      "command": "remed_controller.py critic FINAL4-kimi (moonshotai/kimi-k2.6)",
-      "result": "reject (2 P0, 3 P1, 2 P2, 1 P3), answered in packet v4 and the ledger; recorded over it by owner decision D7"
+      "command": "remed_controller.py critic tasks/F25-deepseek-orc.json (round 2, deepseek/deepseek-v4-pro)",
+      "result": "accept, six named checks, four P3"
     }
   ],
   "findings": [
@@ -42,22 +33,29 @@
       "id": "R1",
       "severity": "P3",
       "status": "open",
-      "summary": "d3620de: the stale branch has an integration test but no unit test",
-      "evidence": "FINAL4-deepseek issue 1"
+      "summary": "Denominators passed/answered are derived from cells, not stored as fields in the dated records",
+      "evidence": "round 2 critic issue 1"
     },
     {
       "id": "R2",
       "severity": "P3",
       "status": "open",
-      "summary": "0088934: a handoff test ignores an escaping second link",
-      "evidence": "FINAL4-deepseek issue 2"
+      "summary": "Spend is the gateway estimate from synced prices, which can sit below provider billing",
+      "evidence": "round 2 critic issue 2; disclosed in docs/COMPATIBILITY.md"
     },
     {
       "id": "R3",
       "severity": "P3",
       "status": "open",
-      "summary": "4e553fd and 7e388ef: wording notes on the usage report and on --quick percentages",
-      "evidence": "FINAL4-deepseek issue 3"
+      "summary": "Availability is measured after gateway retries (three upstream 429s for qwen3.8-flash)",
+      "evidence": "round 2 critic issue 3; disclosed in docs/COMPATIBILITY.md"
+    },
+    {
+      "id": "R4",
+      "severity": "P3",
+      "status": "open",
+      "summary": "Halted and stopped earlier attempts are not aggregated in any record",
+      "evidence": "round 2 critic issue 4; disclosed in the PR and packet"
     }
   ],
   "verdict": "accepted"
