@@ -1045,6 +1045,27 @@ class RunTaskTests(unittest.TestCase):
         self.assertIn("Second run body", rewritten,
                       "the rerun did not write the new body")
 
+    def test_an_update_rerun_refuses_a_symlinked_artifact(self):
+        filled = self.template_text.replace("[source short name]", "First run")
+        self._stub_body(filled)
+        self.assertEqual(_quiet_run(self._args(), self.cfg, self.tasks), 0)
+        self.assertTrue(self.artifact.exists())
+
+        target = self.artifact.with_name("trapped-target.md")
+        target.write_text("a target the runner must not read", encoding="utf-8")
+        self.artifact.unlink()
+        self.artifact.symlink_to(target)
+
+        self._stub_body(self.template_text.replace("[source short name]",
+                                                   "Second run body"))
+        runner._MEMO.clear()
+        runner._CAPABILITY.clear()
+        with self.assertRaises(runner.RunnerError) as ctx:
+            _quiet_run(self._args(update=True), self.cfg, self.tasks)
+        self.assertIn(self.artifact.as_posix(), str(ctx.exception))
+        self.assertFalse(target.read_text(encoding="utf-8").startswith(
+            "artifact"))
+
     def test_a_traversal_product_never_reaches_a_model_call(self):
         called = {"n": 0}
 

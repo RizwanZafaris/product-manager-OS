@@ -3852,8 +3852,18 @@ def _run_task(args, cfg, tasks, manifest_note, product, started_at):
     # --update, so a file that exists here is an --update rerun: its
     # artifact_id and depends_on carry over and its status goes back to draft.
     if template is not None and artifact is not None and kind == "artifact":
-        previous = (artifact.read_text(encoding="utf-8")
-                    if artifact.exists() else None)
+        if artifact.is_symlink():
+            raise RunnerError(
+                "%s is a symlink; a symlinked artifact is never read or "
+                "overwritten" % artifact)
+        try:
+            previous = (artifact.read_text(encoding="utf-8")
+                        if artifact.exists() else None)
+        except FileNotFoundError:
+            previous = None
+        except OSError as exc:
+            raise RunnerError(
+                "%s could not be read for the rerun: %s" % (artifact, exc))
         template_rel = template.relative_to(REPO).as_posix()
         artifact_text = workspace.stamp_artifact(
             artifact_text, template_rel, product, previous=previous)
