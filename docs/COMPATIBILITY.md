@@ -89,9 +89,36 @@ run is published alongside it, never in place of it.
 
 | Date | Commit | Gateway identity | Repeat | Completed / attempted | Passed / answered | Record |
 |---|---|---|---|---|---|---|
-| -- | -- | -- | -- | -- | -- | -- |
+| 2026-09-15 | `dce95d2` | OmniRoute 3.8.50 | 1 | 40 / 40 | 37 / 38 | [model-matrix-2026-09-15.json](readiness/model-matrix-2026-09-15.json) |
+| 2026-09-15 | `dce95d2` | OmniRoute 3.8.50 | 3 | 48 / 48 | 48 / 48 | [model-matrix-2026-09-15-repeat3.json](readiness/model-matrix-2026-09-15-repeat3.json) |
 
-No dated run has been recorded yet.
+Both 2026-09-15 runs were recorded from a clean working tree at `dce95d2`
+through the local OmniRoute gateway, with every model id pinned. The first ran
+the eight cases once against five paid models (`qwen/qwen3.8-flash`,
+`deepseek/deepseek-v4-flash`, `minimax/minimax-m3`, `moonshotai/kimi-k2.6`,
+`z-ai/glm-5.2`); the second repeated all eight cases three times against the
+two cheapest of them. Each record carries its exact command line, the tool and
+grader hashes and a hash of every case.
+
+What the first run found, from its record: the two unanswered calls are
+`kimi-k2.6` and `glm-5.2` on `quote-bound`, each of which spent the whole
+1024-token output cap and returned no text; the one answered failure is
+`kimi-k2.6` on `kill-criterion`, whose answer carried no YYYY-MM-DD check date.
+
+Read three things before relying on these rows:
+
+- Spend is the gateway's own estimate from its `X-OmniRoute-Response-Cost`
+  header (0.025833 USD and 0.003023 USD), not a provider invoice. The gateway
+  prices a call from its synced price table, which can sit below what the
+  provider actually billed.
+- The gateway retries some upstream failures before it answers. During these
+  runs it logged three upstream HTTP 429 responses for `qwen3.8-flash` and
+  retried the same model each time, so no cell shows them. Completed counts
+  here are measured after those retries.
+- `--check` validates only `docs/readiness/model-matrix.json` against the
+  table below, and it refuses any record that carries a non-zero cost. The
+  dated records are paid runs, so they are published beside that file rather
+  than rendered into the table, which still shows the 2026-09-09 run.
 
 ### The table
 
