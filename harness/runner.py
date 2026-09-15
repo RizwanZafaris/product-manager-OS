@@ -1783,7 +1783,7 @@ def _usd(text, what):
     except (TypeError, ValueError):
         raise RunnerError("%s is %r, which is not a number of dollars."
                           % (what, text))
-    if value < 0 or value != value or value == float('inf'):
+    if value != value or value in (float('inf'), float('-inf')) or value < 0:
         raise RunnerError("%s is %s, which is not a finite, nonnegative "
                           "number of dollars." % (what, value))
     return value
