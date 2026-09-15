@@ -981,21 +981,28 @@ def _evidence_date_in_future(value: str) -> bool:
     A date-only value is in the future when it is later than the current UTC
     date plus one day (one day of tolerance for time zones). A datetime is in
     the future when it is later than now UTC plus 300 seconds; a naive datetime
-    is read as UTC.
+    is read as UTC. Classification is by parsing: a value is date-only exactly
+    when datetime.date.fromisoformat accepts it, which also covers ISO week and
+    ordinal dates; otherwise it is a datetime parsed with
+    datetime.fromisoformat.
     """
+    import datetime as _datetime
     if not isinstance(value, str) or not value.strip():
         return False
     text = value.strip()
     try:
+        date_parsed = _datetime.date.fromisoformat(text)
+    except ValueError:
+        date_parsed = None
+    if date_parsed is not None:
+        return date_parsed > datetime.now(timezone.utc).date() + timedelta(days=1)
+    try:
         parsed = datetime.fromisoformat(text)
     except ValueError:
         return False
-    if "T" in text or " " in text and _is_datetime_form(text):
-        if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=timezone.utc)
-        return parsed > datetime.now(timezone.utc) + timedelta(seconds=300)
-    today = datetime.now(timezone.utc).date()
-    return parsed.date() > today + timedelta(days=1)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed > datetime.now(timezone.utc) + timedelta(seconds=300)
 
 
 def _is_web_address(value: str) -> bool:
@@ -1006,11 +1013,6 @@ def _is_web_address(value: str) -> bool:
     except ValueError:
         return False
     return parsed.scheme in ("http", "https") and bool(parsed.netloc)
-
-
-def _is_datetime_form(text: str) -> bool:
-    """A date-like ISO string that carries a time component."""
-    return "T" in text or (" " in text and len(text.split(" ", 1)[1]) >= 5)
 
 
 def _valid_approved_at(value: Any) -> bool:

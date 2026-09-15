@@ -1123,6 +1123,25 @@ class ConductorTest(unittest.TestCase):
         self.assertEqual(result.status, "challenge")
         self.assertEqual(result.message, "evidence date is in the future")
         store.close()
+        store = Store(Path(self.temp.name) / "dates-future-hour.sqlite")
+        conductor = Conductor(store, "payments", BANKS)
+        turn = conductor.next_turn()
+        future_hour = (datetime.now(timezone.utc) + timedelta(days=2)).strftime("%Y-%m-%d %H")
+        result = conductor.submit_answer("discover.person", "Mina exported the failures.",
+                                         dict(observed(), date=future_hour),
+                                         expected_revision=turn.revision, turn_id="date-future-hour")
+        self.assertEqual(result.status, "challenge")
+        self.assertEqual(result.message, "evidence date is in the future")
+        store.close()
+        store = Store(Path(self.temp.name) / "dates-past-hour.sqlite")
+        conductor = Conductor(store, "payments", BANKS)
+        turn = conductor.next_turn()
+        past_hour = (datetime.now(timezone.utc) - timedelta(days=2)).strftime("%Y-%m-%d %H")
+        result = conductor.submit_answer("discover.person", "Mina exported the failures.",
+                                         dict(observed(), date=past_hour),
+                                         expected_revision=turn.revision, turn_id="date-past-hour")
+        self.assertEqual(result.status, "accepted")
+        store.close()
 
     def test_malformed_optional_date_refuses_any_evidence_class(self) -> None:
         store, conductor = self.opening()
