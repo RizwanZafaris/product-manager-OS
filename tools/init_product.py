@@ -59,8 +59,9 @@ from workspace import (                                   # noqa: E402
     BARE_PATH_RE, FOLDER_FOR_STAGE, FOLDER_FOR_TEMPLATE_DIR, HEADER_LINE_RE,
     LEFT_ALONE, LINK_RE, REF_DEF_RE, PRODUCT_SLUG_RE, SPECIAL_DESTINATIONS,
     STAGE_FOLDERS,
-    WorkspaceError, broken_links, declared_stage, destination_for, read_text,
-    rewrite_links, rewrite_target, safe_product_slug,
+    WorkspaceError, broken_links, declared_stage, destination_for, not_an_artifact,
+    parse_artifact, read_text, rewrite_links, rewrite_target, safe_product_slug,
+    stamp_artifact,
 )
 
 # A checkout on exFAT, FAT or SMB carries a macOS AppleDouble sidecar
@@ -130,6 +131,8 @@ def add_template(slug, template, force=False, quiet=False):
     dest_dir = posixpath.dirname(dest_rel)
     rewritten, rewrites, skipped = rewrite_links(text, source_dir, dest_dir,
                                                  slug)
+    previous = read_text(dest) if dest.exists() else None
+    rewritten = stamp_artifact(rewritten, template_rel, slug, previous=previous)
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(rewritten, encoding="utf-8")
 
@@ -170,6 +173,54 @@ def relative_links(text):
                     and not raw.split("#")[0].startswith("/"):
                 total += 1
     return total
+
+
+def stamp_workspace(slug, quiet=False):
+    """Stamp the artifact block onto every identifiable filled copy.
+
+    Walks every .md under products/<slug>/ except README.md and STATE.md at the
+    workspace root and anything under gates/. A file whose parse_artifact
+    already reads is left as already stamped. Otherwise the template whose
+    destination_for matches the file is looked up among every shipped
+    template, and stamp_artifact is written back, preserving the body byte for
+    byte. Never replaces an existing artifact_id. Copies nothing.
+    """
+    workspace = PRODUCTS_DIR / slug
+    if not workspace.is_dir():
+        raise InitError("products/%s/ does not exist. Create it first: "
+                        "python3 tools/init_product.py %s" % (slug, slug))
+    workspace_rel = "products/%s" % slug
+    sidecars = SidecarFilter(workspace)
+    stamped = already = unidentified = 0
+    # Built once; the first template to land on a path claims it.
+    template_for = {}
+    for template in every_shipped_template():
+        template_for.setdefault(
+            destination_for(template, slug, read_text(REPO / template)),
+            template)
+    for path in sorted(p for p in workspace.rglob("*.md")
+                       if p.is_file() and not sidecars.excused(p)):
+        rel = path.relative_to(REPO).as_posix()
+        if not_an_artifact(posixpath.relpath(rel, workspace_rel)):
+            continue
+        text = read_text(path)
+        if parse_artifact(text):
+            already += 1
+            continue
+        match = template_for.get(rel)
+        if match is None:
+            unidentified += 1
+            if not quiet:
+                say("  no identifiable template:", rel)
+            continue
+        out = stamp_artifact(text, match, slug)
+        path.write_text(out, encoding="utf-8")
+        stamped += 1
+        if not quiet:
+            say("  stamped:", rel, "<-", match)
+    say("stamp: %d stamped, %d already stamped, %d unidentified file(s)."
+        % (stamped, already, unidentified))
+    return stamped
 
 
 def every_shipped_template():
@@ -289,6 +340,9 @@ def main(argv=None):
                         help="repoint every link in an existing workspace at "
                              "this workspace's own copies, where one exists. "
                              "Idempotent; copies nothing")
+    parser.add_argument("--stamp", action="store_true",
+                        help="stamp the artifact block onto every filled copy "
+                             "in the workspace. Copies nothing")
     parser.add_argument("--check", action="store_true",
                         help="re-resolve every link in an existing workspace "
                              "and copy nothing")
@@ -299,12 +353,18 @@ def main(argv=None):
 
     try:
         slug = safe_product_slug(args.slug)
+        if args.stamp and (args.add or args.add_all or args.relink
+                           or args.check):
+            raise InitError("--stamp copies nothing and does not combine with "
+                            "--add, --add-all, --relink or --check.")
         if args.check:
             if args.add:
                 raise InitError("--check reads a workspace and --add writes to "
                                 "one. Run them separately.")
             return 1 if check_workspace(slug) else 0
-        if args.relink:
+        if args.stamp:
+            stamp_workspace(slug)
+        elif args.relink:
             relink_workspace(slug)
         elif args.add_all:
             if not (PRODUCTS_DIR / slug).is_dir():

@@ -3,75 +3,84 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
-import hmac
 import json
 import os
+import shlex
 import sqlite3
 import stat
 import sys
 from pathlib import Path
 from typing import Any, Sequence
 
-from .conductor import Conductor, EvidenceClass, Question, QuestionBank, TurnOutcome
+from .banks import CONTRACT_PATH, LEGACY_ONBOARDING, parse_contract, shipped_banks
+from .conductor import TurnOutcome
+from .export import build_export, render_export_markdown
+from .handoff import build_handoff
 from .migrations import migrate_workspace, recover_workspace, rollback_workspace
+from .phases import phase_report
+from .product import PIN_PATH, local_gate_verifier, pinned_contract, product_banks, product_conductor, source_resolver
+from .reconcile import reconcile_report
 from .release import build_provenance, verify_provenance
 from .store import NotFoundError, Store, StoreError, ValidationError
 
+# The old private names stay for existing callers.
+_pinned_contract = pinned_contract
+_product_banks = product_banks
+_product_conductor = product_conductor
+_local_gate_verifier = local_gate_verifier
+_cli_source_resolver = source_resolver
 
-def _banks() -> tuple[QuestionBank, ...]:
-    return (QuestionBank(
-        "onboarding", "v1", (Question(
-            "first-outcome", "What outcome should the first product user achieve?",
-            EvidenceClass.OBSERVED_BEHAVIOR),),
-        gate_approvers=("local-reviewer",)),)
+# Exit code reserved for "this platform cannot run pmos at all". Distinct from
+# the generic caught-exception exit code (2) `_error` returns below and the
+# not-ok-result exit code (1) a rejected or incomplete outcome returns, so a
+# caller can tell "the platform refused to start" from "the command failed".
+UNSUPPORTED_PLATFORM_EXIT_CODE = 3
 
 
-def _local_gate_verifier(root: Path):
-    """Verify a bounded, non-symlink proof artifact below the workspace root."""
-    resolved_root = root.resolve()
+def _unsupported_platform_reason() -> str | None:
+    """None if this platform can run pmos; otherwise the one clause naming
+    what is missing, for the single line `main` prints before touching
+    anything else.
 
-    def verify(source: str, expected_hash: str) -> bool:
-        relative = Path(source)
-        if (relative.is_absolute() or not relative.parts or ".." in relative.parts or
-                relative.parts[0] == ".pmos" or "\\" in source):
-            return False
-        opened: list[int] = []
-        try:
-            directory_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | \
-                getattr(os, "O_NOFOLLOW", 0)
-            file_flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
-            current = os.open(resolved_root, directory_flags)
-            opened.append(current)
-            for component in relative.parts[:-1]:
-                current = os.open(component, directory_flags, dir_fd=current)
-                opened.append(current)
-            file_fd = os.open(relative.parts[-1], file_flags, dir_fd=current)
-            opened.append(file_fd)
-            metadata = os.fstat(file_fd)
-            if not stat.S_ISREG(metadata.st_mode) or metadata.st_size > 16 * 1024 * 1024:
-                return False
-            digest = hashlib.sha256()
-            total = 0
-            while True:
-                chunk = os.read(file_fd, 1024 * 1024)
-                if not chunk:
-                    break
-                total += len(chunk)
-                if total > 16 * 1024 * 1024:
-                    return False
-                digest.update(chunk)
-            return hmac.compare_digest(digest.hexdigest(), expected_hash)
-        except (OSError, ValueError, TypeError):
-            return False
-        finally:
-            for descriptor in reversed(opened):
-                try:
-                    os.close(descriptor)
-                except OSError:
-                    pass
+    Mirrors tools/review_gate.py's ``_dir_fd_operations_supported`` for the
+    dir_fd-relative, ``O_NOFOLLOW``-guarded filesystem calls every pmos write
+    depends on: creating ``.pmos``, opening ``runtime.sqlite``, walking a
+    migration destination, a release manifest or a skill path all resolve
+    each path component from an open directory descriptor with ``O_NOFOLLOW``
+    set, so a symlink planted at any parent is refused instead of followed.
+    See pmos/store.py, pmos/product.py, pmos/skills.py, pmos/release.py and
+    pmos/migrations.py. ``os.replace`` is covered by checking ``os.rename``:
+    both wrap the same ``renameat(2)`` on POSIX, but ``os.supports_dir_fd`` is
+    only ever populated under the name ``rename`` was registered with, so
+    probing ``os.replace`` directly would under-report support that is
+    actually there.
 
-    return verify
+    Also confirms the two OS-level primitives the runtime depends on outside
+    that shared path-walking code: the POSIX-only ``fcntl`` advisory lock
+    pmos/migrations.py's destination lock takes around migrate/rollback/
+    recover (``fcntl`` does not exist at all on Windows), and a sqlite3 that
+    can actually open a database, which pmos/store.py's ``Store`` needs for
+    every command that touches a workspace.
+
+    Checked first and unconditionally, so an unsupported platform gets one
+    clear line and this module's own documented exit code instead of a raw
+    OSError or NotImplementedError surfacing from deep inside whichever of
+    those calls happened to run first.
+    """
+    if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_DIRECTORY"):
+        return "POSIX O_NOFOLLOW/O_DIRECTORY open flags"
+    required = (os.open, os.stat, os.mkdir, os.rename, os.unlink)
+    if not all(function in os.supports_dir_fd for function in required):
+        return "dir_fd-relative filesystem operations (os.supports_dir_fd)"
+    try:
+        import fcntl  # noqa: F401 -- presence is the check; pmos/migrations.py imports it itself
+    except ImportError:
+        return "fcntl advisory file locking"
+    try:
+        sqlite3.connect(":memory:").close()
+    except sqlite3.Error:
+        return "a working sqlite3 module"
+    return None
 
 
 def _emit(value: Any, as_json: bool) -> None:
@@ -87,9 +96,12 @@ def _emit(value: Any, as_json: bool) -> None:
         print(value)
 
 
-def _error(exc: Exception, as_json: bool) -> int:
-    value = {"ok": False, "error": str(exc),
-             "hint": "Check the path, run `pmos status`, or use `pmos init --help`."}
+def _error(exc: Exception, as_json: bool, command: str | None = None) -> int:
+    if command is None:
+        hint = "Check the path, run `pmos status`, or use `pmos init --help`."
+    else:
+        hint = "Check the arguments with `pmos %s --help`, or run `pmos status` to see the current state." % command
+    value = {"ok": False, "error": str(exc), "hint": hint}
     _emit(value, as_json)
     return 2
 
@@ -138,10 +150,18 @@ def _paths(path: str | Path) -> tuple[Path, Path]:
 
 def _run_new_user(root: Path, product_id: str) -> dict[str, Any]:
     _root, database = _paths(root)
+    # The shipped contract is read and checked before the product exists, so a
+    # broken install fails init without leaving a product that has no pin.
+    raw = CONTRACT_PATH.read_bytes()
+    parse_contract(raw)
     with Store(database) as store:
-        store.create_product(product_id)
-        conductor = Conductor(store, product_id, _banks())
-        pending = conductor.next_turn(expected_revision=0)
+        head = store.create_product(product_id)
+        published = store.commit(product_id, {PIN_PATH: raw}, expected_revision=head,
+                                 metadata={"reason": "pin the question bank contract"})
+        if not published.committed:
+            raise StoreError("could not pin the question bank contract")
+        conductor = _product_conductor(store, root, product_id)
+        pending = conductor.next_turn(expected_revision=published.head)
         if pending.status != "question" or pending.question is None:
             raise StoreError("onboarding did not produce a deterministic first question")
         verified = store.verify()
@@ -194,10 +214,160 @@ def _status(args: argparse.Namespace) -> dict[str, Any]:
         head = store.head(product_id)
         report = store.verify()
         snapshot = store.read_snapshot(product_id)
-        return {"ok": report.ok, "status": "ready" if report.ok else "corrupt",
-                "root": str(root), "database": str(database), "product_id": product_id,
-                "revision": head.revision, "commit_hash": head.commit_hash,
-                "file_count": len(snapshot.files), "errors": list(report.errors)}
+        result = {"ok": report.ok, "status": "ready" if report.ok else "corrupt",
+                  "root": str(root), "database": str(database), "product_id": product_id,
+                  "revision": head.revision, "commit_hash": head.commit_hash,
+                  # The exact value to pass as --expected-revision: composing
+                  # <revision>:<commit_hash> by hand gives 0:None at revision 0.
+                  "revision_token": head.token,
+                  "file_count": len(snapshot.files), "errors": list(report.errors)}
+        if report.ok:
+            try:
+                result.update(_interview_status(store, root, product_id, head.token))
+            except (ValidationError, StoreError) as exc:
+                result["interview_error"] = str(exc)
+        return result
+
+
+def _interview_status(store: Store, root: Path, product_id: str, token: str) -> dict[str, Any]:
+    """Where the interview stands and the one next safe command, so status alone lets a user resume.
+
+    Position and staleness come from the Conductor itself (next_turn re-checks every gate proof), so status can
+    never disagree with what answer, reopen and gate would do. Commands are shell-quoted and carry the current
+    revision token; only the answer, reason, evidence and turn id are left as placeholders.
+    """
+    banks = _product_banks(store, product_id)
+    conductor = _product_conductor(store, root, product_id)
+    position = conductor.next_turn()
+    state = conductor.state()
+
+    def command(name: str, *parts: str) -> str:
+        return " ".join(["pmos", name, "--path", shlex.quote(str(root)), "--product-id", shlex.quote(product_id),
+                         *parts, "--expected-revision", shlex.quote(token), "--turn-id", "'<new turn id>'"])
+
+    parked, verified, unverified = [], 0, 0
+    for bank in banks:
+        bank_state = state["banks"].get(bank.id, {})
+        for question_id in bank_state.get("parked", []):
+            parked.append({"bank_id": bank.id, "question_id": question_id,
+                           "reopen": command("reopen", "--question-id", shlex.quote(question_id),
+                                             "--reason", "'<why you are reopening it>'")})
+        for record in bank_state.get("answers", {}).values():
+            if record.get("parked"):
+                continue
+            # An answer stored before evidence verification carries no label: it was never checked.
+            if record.get("verification") == "source_verified":
+                verified += 1
+            else:
+                unverified += 1
+    stale_banks: list[dict[str, Any]] = []
+    if position.status == "stale":
+        stale_gates = conductor.stale_gates()
+        if stale_gates and stale_gates[0]["bank_id"] == position.bank_id:
+            for entry in stale_gates:
+                bank_id = entry["bank_id"]
+                stale_banks.append({
+                    "bank_id": bank_id,
+                    "message": entry["message"],
+                    "changed": entry["changed"],
+                    "reconcile": entry["reconcile"],
+                    "gate": command("gate", "--bank-id", shlex.quote(bank_id),
+                                    "--evidence", "'<gate evidence json>'"),
+                })
+        else:
+            stale_banks.append({"bank_id": position.bank_id, "message": position.message,
+                                "changed": [], "reconcile": [],
+                                "gate": command("gate", "--bank-id", shlex.quote(position.bank_id),
+                                                "--evidence", "'<gate evidence json>'")})
+    question = None
+    if position.question is not None:
+        question = {"id": position.question.id, "prompt": position.question.prompt,
+                    "evidence_class": position.question.required_evidence.value}
+    if stale_banks:
+        next_command = stale_banks[0]["gate"]
+    elif position.status == "question" and question is not None:
+        next_command = command("answer", "--question-id", shlex.quote(question["id"]),
+                               "--answer", "'<your answer>'", "--evidence", "'<evidence json>'")
+    elif parked:
+        next_command = parked[0]["reopen"]
+    elif position.status == "blocked" and position.bank_id:
+        next_command = command("gate", "--bank-id", shlex.quote(position.bank_id),
+                               "--evidence", "'<gate evidence json>'")
+    else:
+        next_command = None
+    pinned = {bank.id: bank.version for bank in banks}
+    try:
+        shipped: dict[str, str] | None = {bank.id: bank.version for bank in shipped_banks()}
+    except ValidationError:
+        shipped = None
+    current = pinned == shipped
+    # _product_banks returns LEGACY_ONBOARDING itself only when the product has no pin.
+    if banks is LEGACY_ONBOARDING:
+        message = "This product started before the question bank contract and keeps the one-question onboarding bank."
+    elif not current:
+        message = ("This product keeps the question banks it started with; the shipped contract differs, "
+                   "and moving a product to it is not supported yet.")
+    else:
+        message = "This product runs the shipped question banks."
+    approvals: list[dict[str, Any]] = []
+    for bank in banks:
+        if bank.id not in state["gates"]:
+            continue
+        record = state["gates"][bank.id]
+        proof = record.get("proof", {})
+        manifest = record.get("manifest")
+        if manifest is None:
+            artifacts = None
+            dependencies = None
+        else:
+            artifacts = [item["id"] for item in manifest.get("artifacts", [])]
+            dependencies = [item["id"] for item in manifest.get("dependencies", [])]
+        superseded = len(state.get("superseded_gates", {}).get(bank.id, []))
+        approvals.append({
+            "bank_id": bank.id,
+            "attestation": record.get("attestation", "local"),
+            "actor_id": proof.get("actor_id"),
+            "approved_at": proof.get("approved_at"),
+            "artifacts": artifacts,
+            "dependencies": dependencies,
+            "superseded": superseded,
+        })
+    rejections: list[dict[str, Any]] = []
+    for bank in banks:
+        # The Conductor validates a rejection record on load: it always has its proof, manifest and rejected_at.
+        for record in state.get("gate_rejections", {}).get(bank.id, []):
+            rejections.append({
+                "bank_id": bank.id,
+                "actor_id": record["proof"]["actor_id"],
+                "rejected_at": record["rejected_at"],
+                "artifacts": [item["id"] for item in record["manifest"]["artifacts"]],
+            })
+    # The report carries data, not shell commands, so it goes in verbatim. It can
+    # scan the workspace (for example a symlinked artifact file) and raise
+    # ValidationError; that must not hide the rest of status.
+    phases_error = None
+    try:
+        phases = phase_report(conductor, pinned_contract(store, product_id), root)
+    except ValidationError as exc:
+        phases = []
+        phases_error = str(exc)
+    result = {"interview": position.status, "interview_message": position.message,
+              "current_bank_id": position.bank_id, "question": question,
+              "parked": parked, "stale_banks": stale_banks,
+              "source_verified": verified, "supplied_unverified": unverified,
+              "next": next_command,
+              "approvals": approvals,
+              "rejections": rejections,
+              "question_banks": {"pinned": pinned, "shipped": shipped,
+                                 "current": current, "message": message},
+              "phases": phases,
+              # F34: names size/limit/next action once the Conductor's durable
+              # state reaches 80% of MAX_STATE_BYTES; None below that. See
+              # pmos/conductor.py's scale_warning and docs/SCALE.md.
+              "capacity_warning": conductor.scale_warning}
+    if phases_error is not None:
+        result["phases_error"] = phases_error
+    return result
 
 
 def _verify(args: argparse.Namespace) -> dict[str, Any]:
@@ -230,8 +400,7 @@ def _answer(args: argparse.Namespace) -> dict[str, Any]:
     if not database.exists():
         raise ValidationError("runtime is missing; run `pmos init --path %s`" % root)
     with Store(database) as store:
-        conductor = Conductor(store, args.product_id, _banks(),
-                              gate_source_verifier=_local_gate_verifier(root))
+        conductor = _product_conductor(store, root, args.product_id)
         outcome = conductor.submit_answer(args.question_id, args.answer, _evidence(args.evidence),
                                           expected_revision=args.expected_revision, turn_id=args.turn_id)
         result = {"ok": outcome.accepted, "product_id": args.product_id,
@@ -241,20 +410,164 @@ def _answer(args: argparse.Namespace) -> dict[str, Any]:
         return result
 
 
+def _reopen(args: argparse.Namespace) -> dict[str, Any]:
+    root, database = _paths(args.path)
+    if not database.exists():
+        raise ValidationError("runtime is missing; run `pmos init --path %s`" % root)
+    with Store(database) as store:
+        conductor = _product_conductor(store, root, args.product_id)
+        outcome = conductor.reopen(args.question_id, expected_revision=args.expected_revision,
+                                    turn_id=args.turn_id, reason=args.reason)
+        result = {"ok": outcome.status == "reopened", "product_id": args.product_id,
+                  "outcome": _outcome_dict(outcome)}
+        if not result["ok"]:
+            result["error"] = "reopen was not accepted; provide the current revision and a new turn id"
+        return result
+
+
 def _gate(args: argparse.Namespace) -> dict[str, Any]:
     root, database = _paths(args.path)
     if not database.exists():
         raise ValidationError("runtime is missing; run `pmos init --path %s`" % root)
     with Store(database) as store:
-        conductor = Conductor(store, args.product_id, _banks(),
-                              gate_source_verifier=_local_gate_verifier(root))
+        conductor = _product_conductor(store, root, args.product_id)
         outcome = conductor.prove_gate(args.bank_id, _evidence(args.evidence),
                                        expected_revision=args.expected_revision, turn_id=args.turn_id)
-        result = {"ok": outcome.completed, "product_id": args.product_id,
-                  "outcome": _outcome_dict(outcome)}
-        if not outcome.completed:
+        return _gate_result(outcome, args.product_id)
+
+
+def _gate_result(outcome: TurnOutcome, product_id: str) -> dict[str, Any]:
+    # A gate that moves the interview to the next bank is a success even though the interview is not complete.
+    ok = outcome.status in ("advanced", "completed")
+    result = {"ok": ok, "product_id": product_id, "outcome": _outcome_dict(outcome)}
+    if outcome.status == "stale":
+        # A re-proof can be recorded while another approval is still stale:
+        # name it, and never report completion.
+        result["error"] = outcome.message
+    elif outcome.status == "rejected":
+        result["rejection_recorded"] = True
+        result["error"] = outcome.message
+    elif not ok:
+        if outcome.message:
+            result["error"] = "gate proof was not accepted: " + outcome.message
+        else:
             result["error"] = "gate proof was not accepted; provide a real source and current revision"
-        return result
+    return result
+
+
+def _relative_to_handoff_folder(root: Path, root_relative: str) -> str:
+    """Re-express a path already relative to root as it is reached from root/handoff."""
+    return os.path.relpath(str(root / root_relative), str(root / "handoff")).replace(os.sep, "/")
+
+
+def _context_markdown(package: dict[str, Any], root: Path) -> str:
+    """A short Markdown index of the handoff package, using relative links only."""
+    lines = ["# Development handoff context", "",
+             "Product: %s" % package["product_id"],
+             "Source revision: %s" % package["source_revision"],
+             "Development-ready: %s" % ("yes" if package["development_ready"] else "no"),
+             "", "## Missing", ""]
+    if package["missing"]:
+        lines.extend("- %s" % reason for reason in package["missing"])
+    else:
+        lines.append("- (none)")
+    lines.extend(["", "## Sections", ""])
+    for section in package["sections"]:
+        targets = [_relative_to_handoff_folder(root, link["path"]) for link in section["links"]]
+        suffix = " (%s)" % ", ".join(targets) if targets else ""
+        lines.append("- %s: %s%s" % (section["title"], section["status"], suffix))
+    lines.extend(["", "## Approvals", ""])
+    if package["approvals"]:
+        for item in package["approvals"]:
+            if item["approved"]:
+                detail = "approved by %s at %s; local attestation" % (item["actor_id"], item["approved_at"])
+                if item["stale"]:
+                    detail += "; stale"
+            else:
+                detail = "not approved"
+            lines.append("- Gate %d (%s): %s" % (item["gate"], item["bank_id"], detail))
+    else:
+        lines.append("- (none)")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _reject_symlink(path: Path, description: str) -> None:
+    """Refuse a pre-existing symlink at path, mirroring _paths()'s guard for .pmos."""
+    try:
+        metadata = path.lstat()
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        raise ValidationError("cannot inspect %s" % description) from exc
+    if stat.S_ISLNK(metadata.st_mode):
+        raise ValidationError("%s must not be a symlink" % description)
+
+
+def _handoff(args: argparse.Namespace) -> dict[str, Any]:
+    root, database = _paths(args.path)
+    if not database.exists():
+        raise ValidationError("PM OS is not initialized at %s; run `pmos init --path %s`" % (root, root))
+    with Store(database) as store:
+        conductor = _product_conductor(store, root, args.product_id)
+        package = build_handoff(conductor, pinned_contract(store, args.product_id), root)
+    handoff_dir = root / "handoff"
+    # A planted symlink here (or on either file below) must be refused rather
+    # than silently followed outside root/handoff/, the same posture _paths()
+    # takes for .pmos.
+    _reject_symlink(handoff_dir, "handoff directory")
+    handoff_dir.mkdir(parents=True, exist_ok=True)
+    index_path = handoff_dir / "context-index.json"
+    context_path = handoff_dir / "CONTEXT.md"
+    _reject_symlink(index_path, "handoff/context-index.json")
+    _reject_symlink(context_path, "handoff/CONTEXT.md")
+    index_text = json.dumps(package, sort_keys=True, indent=1, ensure_ascii=False) + "\n"
+    index_path.write_text(index_text, encoding="utf-8")
+    context_path.write_text(_context_markdown(package, root), encoding="utf-8")
+    return {"ok": package["development_ready"], "product_id": args.product_id,
+            "development_ready": package["development_ready"], "missing": list(package["missing"]),
+            "index": "handoff/context-index.json", "context": "handoff/CONTEXT.md"}
+
+
+def _reconcile(args: argparse.Namespace) -> dict[str, Any]:
+    root, database = _paths(args.path)
+    if not database.exists():
+        raise ValidationError("PM OS is not initialized at %s; run `pmos init --path %s`" % (root, root))
+    with Store(database) as store:
+        report = reconcile_report(store, root, args.product_id)
+    # ok signals a workspace with nothing pending and no conflict, useful for
+    # scripting; reconcile itself never fails just because there is something
+    # to reconcile.
+    ok = not report["pending"] and not report["conflicts"]
+    return {**report, "ok": ok}
+
+
+def _export(args: argparse.Namespace) -> dict[str, Any]:
+    root, database = _paths(args.path)
+    if not database.exists():
+        raise ValidationError("PM OS is not initialized at %s; run `pmos init --path %s`" % (root, root))
+    out_dir = Path(args.out).expanduser().resolve()
+    # The same symlink posture _handoff takes for root/handoff: a planted
+    # symlink at the export directory or either file it writes is refused
+    # rather than silently followed.
+    _reject_symlink(out_dir, "export directory")
+    if out_dir.exists() and not out_dir.is_dir():
+        raise ValidationError("--out must be a directory, but %s is a file" % out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    export_path = out_dir / "export.json"
+    index_path = out_dir / "EXPORT.md"
+    _reject_symlink(export_path, "export.json")
+    _reject_symlink(index_path, "EXPORT.md")
+    if export_path.exists() and not args.force:
+        raise ValidationError("%s already exists; pass --force to overwrite it" % export_path)
+    with Store(database) as store:
+        conductor = _product_conductor(store, root, args.product_id)
+        package = build_export(conductor, root)
+    export_text = json.dumps(package, sort_keys=True, indent=1, ensure_ascii=False) + "\n"
+    export_path.write_text(export_text, encoding="utf-8")
+    index_path.write_text(render_export_markdown(package), encoding="utf-8")
+    return {"ok": True, "product_id": args.product_id, "source_revision": package["source_revision"],
+            "export": str(export_path), "index": str(index_path)}
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -280,6 +593,7 @@ def _parser() -> argparse.ArgumentParser:
         if name == "verify":
             sub.add_argument("--provenance", help="provenance manifest to verify")
     for name, help_text in (("answer", "submit a caller-supplied answer and evidence"),
+                            ("reopen", "reopen a parked question so it can be answered with fresh evidence"),
                             ("gate", "submit caller-supplied gate proof")):
         sub = commands.add_parser(name, help=help_text)
         sub.add_argument("--path", default=".")
@@ -287,13 +601,33 @@ def _parser() -> argparse.ArgumentParser:
         sub.add_argument("--expected-revision", required=True,
                          help="head token returned by init/status/previous outcome")
         sub.add_argument("--turn-id", required=True, help="unique idempotency key for this submission")
-        sub.add_argument("--evidence", required=True, help="JSON object containing caller-supplied evidence")
+        if name != "reopen":
+            sub.add_argument("--evidence", required=True, help="JSON object containing caller-supplied evidence")
         sub.add_argument("--json", action="store_true", dest="json_command")
         if name == "answer":
             sub.add_argument("--question-id", required=True)
             sub.add_argument("--answer", required=True)
+        elif name == "reopen":
+            sub.add_argument("--question-id", required=True)
+            sub.add_argument("--reason", required=True)
         else:
             sub.add_argument("--bank-id", required=True)
+    handoff = commands.add_parser("handoff", help="write the development handoff context index")
+    handoff.add_argument("--path", default=".")
+    handoff.add_argument("--product-id", required=True)
+    handoff.add_argument("--json", action="store_true", dest="json_command")
+    reconcile = commands.add_parser(
+        "reconcile", help="show pending proposals and conflicts between the workspace and the runtime; read-only")
+    reconcile.add_argument("--path", default=".")
+    reconcile.add_argument("--product-id", required=True)
+    reconcile.add_argument("--json", action="store_true", dest="json_command")
+    export_cmd = commands.add_parser(
+        "export", help="write a portable, versioned export of a product's interview and approvals")
+    export_cmd.add_argument("--path", default=".")
+    export_cmd.add_argument("--product-id", required=True)
+    export_cmd.add_argument("--out", required=True, help="directory to write export.json and EXPORT.md into")
+    export_cmd.add_argument("--force", action="store_true", help="overwrite an existing export.json")
+    export_cmd.add_argument("--json", action="store_true", dest="json_command")
     migrate = commands.add_parser("migrate", help="migrate a legacy workspace with a dry-run option")
     migrate.add_argument("source")
     migrate.add_argument("--destination")
@@ -316,6 +650,20 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     as_json = bool(getattr(args, "json_output", False) or getattr(args, "json_command", False))
+    # Checked before any command dispatch, and before the try/except below
+    # even names sqlite3.DatabaseError, so a platform missing sqlite3 never
+    # forces evaluation of that attribute. `--help`/`--version`-style parsing
+    # above already exited on its own without touching the filesystem; every
+    # real command from here on does, so the gate sits in front of all of them.
+    platform_reason = _unsupported_platform_reason()
+    if platform_reason is not None:
+        message = ("pmos: unsupported platform, missing %s; see docs/COMPATIBILITY.md"
+                   % platform_reason)
+        if as_json:
+            print(json.dumps({"ok": False, "error": message}, sort_keys=True, ensure_ascii=False))
+        else:
+            sys.stderr.write(message + "\n")
+        return UNSUPPORTED_PLATFORM_EXIT_CODE
     try:
         if args.command in {"init", "new-user"}:
             result = _init(args)
@@ -325,8 +673,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             result = _verify(args)
         elif args.command == "answer":
             result = _answer(args)
+        elif args.command == "reopen":
+            result = _reopen(args)
         elif args.command == "gate":
             result = _gate(args)
+        elif args.command == "handoff":
+            result = _handoff(args)
+        elif args.command == "reconcile":
+            result = _reconcile(args)
+        elif args.command == "export":
+            result = _export(args)
         elif args.command == "migrate":
             result = migrate_workspace(args.source, args.destination, product_id=args.product_id,
                                        dry_run=args.dry_run).as_dict()
@@ -346,7 +702,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         _emit(result, as_json)
         return 0 if result.get("ok", True) else 1
     except (OSError, sqlite3.DatabaseError, StoreError, ValueError, RuntimeError) as exc:
-        return _error(exc, as_json)
+        return _error(exc, as_json, getattr(args, "command", None))
 
 
 if __name__ == "__main__":

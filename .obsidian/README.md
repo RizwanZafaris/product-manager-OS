@@ -6,7 +6,7 @@ Three files, core only.
 
 | File | What it sets |
 |---|---|
-| `app.json` | Editor and link defaults: wikilinks written as vault-root paths, links updated on rename, readable line length on |
+| `app.json` | Editor and link defaults: Markdown links written as relative paths (not wikilinks), links updated on rename, readable line length on |
 | `appearance.json` | Base font size and the light default; no custom CSS theme |
 | `graph.json` | The graph view, including the eight color groups below |
 

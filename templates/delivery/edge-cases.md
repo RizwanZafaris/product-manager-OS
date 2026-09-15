@@ -11,6 +11,7 @@ aliases: ["Edge-Case Register", "edge-cases"]
 **Stage:** BUILD into DELIVER (feeds [Gate 4: acceptance criteria met](../../os/STAGE-GATES.md), rechecked at Gate 5)
 **Knowledge:** [knowledge index](../../knowledge/INDEX.md)
 **Skill:** [acceptance agent](../../agents/acceptance-agent.md)
+Filled example: [Harbourgate Quay checkout payment flow](../../examples/harbourgate-edge-cases.md)
 
 <!-- The happy path is what the team builds by instinct. This register is where the
      product earns its keep. One rule governs the whole file: no case is left

@@ -11,6 +11,7 @@ aliases: ["Testing Strategy", "testing-strategy"]
 **Stage:** DELIVER (feeds [Gate 5: release readiness green](../../os/STAGE-GATES.md))
 **Knowledge:** [knowledge index](../../knowledge/INDEX.md)
 **Skill:** [acceptance agent](../../agents/acceptance-agent.md)
+Filled example: [Harbourgate](../../examples/harbourgate-testing-strategy.md)
 
 <!-- Fill every field, or write "N/A because <reason>". A blank field is a decision
      deferred to whoever finds it blank.

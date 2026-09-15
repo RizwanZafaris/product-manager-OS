@@ -22,6 +22,9 @@ from typing import Mapping
 ROOT = Path(__file__).resolve().parent
 PYPROJECT = ROOT / "pyproject.toml"
 RUNTIME_MANIFEST = ROOT / "skills" / "runtime-manifest.json"
+# Data files the pmos package reads at run time. The _package_entries loop packs
+# Python only, so these are packed by name, and a missing one fails the build.
+PACKAGE_DATA = ("question_banks.json",)
 WHEEL_TAG = "py3-none-any"
 
 
@@ -79,6 +82,17 @@ def _metadata() -> bytes:
         "Requires-Python: %s" % project["requires-python"],
         "Description-Content-Type: text/markdown",
     ]
+    # Core Metadata treats Classifier as a repeated field: one header line per
+    # value, never a joined list. Without this loop, a value pyproject.toml
+    # declares (for example the POSIX-only platform scope added for F33)
+    # existed only in source and never reached the wheel a user installs;
+    # `pip show`, PyPI's own facets and any scanner reading METADATA would
+    # have seen a package that states no platform constraint at all.
+    classifiers = project.get("classifiers", [])
+    if not isinstance(classifiers, list) or not all(isinstance(item, str) for item in classifiers):
+        raise ValueError("project.classifiers must be a list of strings")
+    for classifier in classifiers:
+        headers.append("Classifier: %s" % classifier)
     expression = project.get("license")
     if not isinstance(expression, str) or not expression.strip():
         raise ValueError(
@@ -122,6 +136,9 @@ def _package_entries() -> dict[str, bytes]:
             continue
         relative = path.relative_to(package_root).as_posix()
         entries["pmos/" + relative] = _regular_bytes(path, "runtime package asset")
+
+    for name in PACKAGE_DATA:
+        entries["pmos/" + name] = _regular_bytes(package_root / name, "runtime package data " + name)
 
     raw_manifest = _regular_bytes(RUNTIME_MANIFEST, "runtime skill manifest")
     manifest = json.loads(raw_manifest.decode("utf-8"))

@@ -11,6 +11,7 @@ aliases: ["Usability Test Plan", "usability-test-plan"]
 Stage: DISCOVER, feeds [Gate 1: problem worth solving](../../os/STAGE-GATES.md); rerun against prototypes in DESIGN and BUILD, where findings feed Gates 3 and 4
 Knowledge: [HEART metrics worksheet](../../frameworks/metrics/heart-metrics.md)
 Skill: [user-interview](../../skills/user-interview/SKILL.md) for moderation and notes, [research-agent](../../agents/research-agent.md) for recruiting
+Filled example: [Sahulat Bill Pay, menu script v0.3](../../examples/sahulat-usability-test-plan.md)
 
 > **Delete any section you do not need.** Five participants per segment is the usual round; a bigger round is usually better spent as a second round after fixes. Weight rules are in [WHICH-DOCUMENT.md](../../os/WHICH-DOCUMENT.md).
 

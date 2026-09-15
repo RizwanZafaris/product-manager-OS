@@ -10,7 +10,8 @@ aliases: ["Discovery Synthesis", "discovery-synthesis"]
 
 Stage: DISCOVER, feeds Gate 1 (problem worth solving)
 Knowledge: [Continuous discovery](../../knowledge/torres-continuous-discovery.md)
-Skill: [feedback-synthesis](../../skills/feedback-synthesis/SKILL.md)
+Skill: [feedback-synthesis](../../skills/feedback-synthesis/SKILL.md) · [Opportunity scoring](../../frameworks/discovery/opportunity-scoring.md) · [Assumption mapping](../../frameworks/discovery/assumption-mapping.md) · [Empathy map](../../frameworks/discovery/empathy-map.md)
+Filled example: [Ledgerline commercial pass](../../examples/ledgerline-discovery-synthesis.md)
 
 <!-- The bridge between raw research and a fundable problem statement. The
      [user research plan](user-research-plan.md) collects the evidence; this file
@@ -27,6 +28,11 @@ Skill: [feedback-synthesis](../../skills/feedback-synthesis/SKILL.md)
 **Owner:** [name] · **Date:** [YYYY-MM-DD] · **Research plan:** [link to the filled user-research-plan]
 
 ## 1. Research question
+
+<!-- State the question verbatim from the plan, then draw the scope boundary. A
+     good entry lets a reviewer see what was in scope and what was deliberately
+     out of scope. A trap: paraphrasing the question to make it match what was
+     found. This fails when the team answers a question the plan never asked. -->
 
 - **The question this research set out to answer:** [verbatim from the research plan]
 - **What it did NOT set out to answer:** [scope honesty; findings outside scope go to section 5 as leads, not conclusions]
@@ -45,7 +51,14 @@ Skill: [feedback-synthesis](../../skills/feedback-synthesis/SKILL.md)
 
 <!-- One block per theme, strongest support first. The quote is verbatim from a
      source, chosen because it carries the theme's weight, not because it is vivid.
-     The contradiction line is mandatory: write "none observed" only if it is true. -->
+     The contradiction line is mandatory: write "none observed" only if it is true.
+     A trap: inventing a theme from one vivid quote and giving it a source count of
+     one to look rigorous. This fails when the loudest interview sets the theme names
+     and the quieter pattern is missed. Do not weight by volume of the loudest quote;
+     weight by source count. Never drop the discordant interviews to make a theme
+     look clean. -->
+
+### Theme 1: [name the theme in the customers' terms]
 
 ### Theme 1: [name the theme in the customers' terms]
 
@@ -62,6 +75,12 @@ Skill: [feedback-synthesis](../../skills/feedback-synthesis/SKILL.md)
 - **Contradicting evidence:** []
 
 ## 4. Confidence
+
+<!-- Honest confidence with a next step, not a self-justifying rating. A good
+     entry names what limits confidence and what would raise it. A trap: calling
+     confidence high because the team felt good about the interviews. This fails
+     when the sample is small, the notes are paraphrases, or one segment dominates.
+     Never state high confidence without naming what would lower it. -->
 
 | Field | Answer |
 |---|---|

@@ -29,7 +29,7 @@ products/
     ├── execution/             decision log, risk register, stakeholder map, dependency register
     ├── delivery/              filled copies of templates/delivery/
     ├── operate/               filled copies of templates/operate/
-    ├── planning/              this product's roadmap and OKR copies
+    ├── planning/              this product's vision, strategy, roadmap and OKR copies
     └── gates/                 one file per gate attempt, copied from os/STAGE-GATES.md
 ```
 
@@ -59,6 +59,29 @@ Where the folder sits is your choice. Three arrangements work, and only the thir
 1. **Its own repository**, with this one cloned alongside as reference. The cleanest option for a team.
 2. **Inside your product's existing repository**, next to the code the documents describe.
 3. **Inside a clone of this repository.** Allowed, and the reason `products/` is the reserved name: nothing in this repository will ever ship a directory by that name, so your work cannot collide with an update. `/products/` is already in this repository's `.gitignore`, so work there is untracked by default and cannot be committed into the clone by accident. That also means the clone is not backing it up: to version it in place, `git add -f` each file, or remove that line from `.gitignore` and accept that your product work is now part of this repository's history.
+
+## What every copy carries
+
+Every filled copy the tools write opens with an artifact block, and the canonical blanks under `templates/` never carry one. The block that `python3 tools/init_product.py ledgerline --add templates/planning/product-strategy.md` writes is:
+
+```
+---
+artifact_id: ledgerline/planning/product-strategy
+phase: DEFINE
+gate: 2
+status: draft
+depends_on: ["ledgerline/planning/vision"]
+template: templates/planning/product-strategy.md
+---
+```
+
+**What each key means.** `artifact_id` is the product, the folder and the file name without `.md`, and it stays the same when the copy is refilled. `phase` and `gate` are read from the template; a template that declares no stage, such as the regulated AI PRD, takes the stage of the folder its copy lands in. `status` is `draft`, `in-review`, `approved` or `superseded`, and a new or refilled copy starts at `draft`. `depends_on` lists, by ID, the artifacts this one is built from, whether or not they exist yet. `template` names the blank the copy came from.
+
+**Who writes the block.** `--add` writes it. `--force` keeps the ID and the dependencies and puts the status back to `draft`. The runner writes it for a route that fills a template, where an `--update` rerun does the same. `python3 tools/init_product.py ledgerline --stamp` adopts a workspace made before the block existed, or made by hand, without touching any body: it stamps each copy whose template it can tell from where the file sits, and lists the files it cannot place.
+
+**What never carries it.** `README.md` and `STATE.md` at the workspace root, anything under `gates/`, the `<copy>.run-log.md` the runner writes beside a copy, and a report route's `<route>-report.md`. They are records of the work, not artifacts of it.
+
+**What checks it.** `python3 lint.py --workspace products/ledgerline` reports under `ARTIFACT` a copy in a stage folder with no block (naming `--stamp` as the fix), a missing key, a `phase`, `gate` or `status` outside its vocabulary, a `depends_on` that is not a list of IDs, an ID two files share, and a dependency the workspace does not contain yet. That last one is on purpose: a vision copied before its problem framing says so, rather than implying evidence that does not exist. Workspace mode is opt-in, so an unfinished draft never fails the repository's own build.
 
 ## A filled workspace, month nine
 

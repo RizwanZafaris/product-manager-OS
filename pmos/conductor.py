@@ -12,8 +12,10 @@ import hashlib
 import json
 import re
 from dataclasses import asdict, dataclass, field
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Callable, Mapping, Optional, Sequence
+from urllib.parse import urlparse
 
 from .store import NotFoundError, ProductHead, Store, ValidationError, canonical_json
 
@@ -41,6 +43,17 @@ class EvidenceClass(str, Enum):
     NAMED_COMMITMENT = "named_commitment"
     INTERVIEW_CLAIM = "interview_claim"
     TEAM_BELIEF = "team_belief"
+
+
+# The evidence ladder, rung 1 the strongest. An answer may carry its question's
+# class or a stronger one (the ladder in skills/conductor/questions/README.md).
+EVIDENCE_RUNG = {
+    EvidenceClass.OBSERVED_BEHAVIOR: 1,
+    EvidenceClass.ARTIFACT: 2,
+    EvidenceClass.NAMED_COMMITMENT: 3,
+    EvidenceClass.INTERVIEW_CLAIM: 4,
+    EvidenceClass.TEAM_BELIEF: 5,
+}
 
 
 @dataclass(frozen=True)
@@ -137,7 +150,10 @@ class Conductor:
     """
 
     def __init__(self, store: Store, product_id: str, banks: Sequence[QuestionBank], *,
-                 gate_source_verifier: Optional[Callable[[str, str], bool]] = None) -> None:
+                 gate_source_verifier: Optional[Callable[[str, str], bool]] = None,
+                 source_resolver: Optional[Callable[[str], Optional[bool]]] = None,
+                 gate_manifest: Optional[Callable[[str], Any]] = None,
+                 manifest_verifier: Optional[Callable[[Any], Any]] = None) -> None:
         if not isinstance(store, Store):
             raise ValidationError("store must be a Store")
         _identifier(product_id, "product id")
@@ -154,6 +170,15 @@ class Conductor:
         if gate_source_verifier is not None and not callable(gate_source_verifier):
             raise ValidationError("gate_source_verifier must be callable")
         self._gate_source_verifier = gate_source_verifier
+        if source_resolver is not None and not callable(source_resolver):
+            raise ValidationError("source_resolver must be callable")
+        self._source_resolver = source_resolver
+        if gate_manifest is not None and not callable(gate_manifest):
+            raise ValidationError("gate_manifest must be callable")
+        self._gate_manifest = gate_manifest
+        if manifest_verifier is not None and not callable(manifest_verifier):
+            raise ValidationError("manifest_verifier must be callable")
+        self._manifest_verifier = manifest_verifier
         try:
             self.store.head(product_id)
         except NotFoundError:
@@ -195,17 +220,25 @@ class Conductor:
         position = self._position(snapshot.head.token, state)
         if position.status != "question":
             return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
-                "blocked" if position.status == "blocked" else position.status, snapshot.head.token,
-                bank_id=position.bank_id, message=position.message, completed=position.completed))
+                position.status, snapshot.head.token, bank_id=position.bank_id, message=position.message, completed=position.completed))
         if position.question is None or position.question.id != question_id:
             return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
                 "conflict", snapshot.head.token, bank_id=position.bank_id,
                 message="answer does not match the current question", conflict_revision=snapshot.head.token))
         question = position.question
-        valid, reason, normalized_evidence = self._validate_answer(question, answer, evidence)
+        valid, reason, normalized_evidence, verification = self._validate_answer(question, answer, evidence)
         bank_state = state["banks"][position.bank_id]
+        _ensure_reopen_fields(bank_state)
+        # Fresh evidence is required: a submission repeating the evidence of an
+        # earlier rejected submission for this question is itself refused, even
+        # when it would otherwise pass.
+        earlier = [event.get("evidence") for event in bank_state["rejected"].get(question.id, [])
+                   if event.get("event") in ("challenged", "parked")]
+        if valid and normalized_evidence in earlier:
+            valid, reason = False, "this evidence was already rejected for this question; supply fresh evidence"
         if not valid:
             previous = int(bank_state["challenges"].get(question.id, 0))
+            rejected_events = bank_state["rejected"].setdefault(question.id, [])
             if previous >= 2:
                 # Two pushes are spent; this third invalid submission parks
                 # the question, per the protocol in os/CONDUCTOR.md: the
@@ -220,14 +253,29 @@ class Conductor:
                     "evidence": normalized_evidence,
                     "evidence_class": question.required_evidence.value,
                     "parked": True,
+                    "verification": "failed_validation",
                 }
-                bank_state["cursor"] += 1
+                if question.id in bank_state["reopened"]:
+                    # Parked again after a reopen: it is behind the cursor already.
+                    bank_state["reopened"].remove(question.id)
+                else:
+                    bank_state["cursor"] += 1
+                rejected_events.append({
+                    "event": "parked", "turn_id": turn_id,
+                    "answer": _parked_answer_text(answer), "evidence": normalized_evidence,
+                    "reason": reason,
+                })
                 outcome = TurnOutcome("parked", snapshot.head.token, bank_id=position.bank_id,
                                       question=question, message="question parked after two challenges: " + reason,
                                       challenge_count=2)
             else:
                 count = previous + 1
                 bank_state["challenges"][question.id] = count
+                rejected_events.append({
+                    "event": "challenged", "turn_id": turn_id,
+                    "answer": _parked_answer_text(answer), "evidence": normalized_evidence,
+                    "reason": reason,
+                })
                 outcome = TurnOutcome("challenge", snapshot.head.token, bank_id=position.bank_id,
                                       question=question, message=reason, challenge_count=count)
             return self._record(snapshot, state, turn_id, request_hash, outcome)
@@ -235,13 +283,83 @@ class Conductor:
             "answer": answer,
             "evidence": normalized_evidence,
             "evidence_class": question.required_evidence.value,
+            "verification": verification,
         }
-        bank_state["cursor"] += 1
+        if question.id in bank_state["reopened"]:
+            bank_state["reopened"].remove(question.id)
+        else:
+            bank_state["cursor"] += 1
         outcome = TurnOutcome("accepted", snapshot.head.token, bank_id=position.bank_id, question=question,
                               message="answer accepted", accepted=True)
         return self._record(snapshot, state, turn_id, request_hash, outcome)
 
     answer = submit_answer
+
+    def reopen(self, question_id: str, *, expected_revision: str | int | ProductHead,
+               turn_id: str, reason: str) -> TurnOutcome:
+        """Reopen a parked question in the current bank, retaining rejected history.
+
+        A parked question blocks its bank's gate for good without this: three
+        invalid submissions leave no public path back to answering it again.
+        Reopening appends a durable ``reopened`` event, removes the question
+        from the parked set, clears its accepted/challenged state so it earns
+        two fresh challenges, and moves nothing else.  The rejected history
+        stays in ``rejected``; fresh evidence is required to answer it again.
+        """
+        _identifier(question_id, "question id")
+        _identifier(turn_id, "turn id", MAX_TURN_ID_CHARS)
+        _bounded_text(reason, "reopen reason", MAX_TEXT_CHARS)
+        request_hash = _request_hash("reopen", {
+            "question_id": question_id, "reason": reason,
+        })
+        snapshot, state = self._load()
+        duplicate = self._duplicate(state, turn_id, request_hash, snapshot.head.token)
+        if duplicate is not None:
+            return duplicate
+        conflict = self._expected_conflict(expected_revision, snapshot.head)
+        if conflict:
+            return conflict
+        position = self._position(snapshot.head.token, state)
+        if position.status == "stale":
+            return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
+                "stale", snapshot.head.token, bank_id=position.bank_id, message=position.message))
+        index = int(state["current_bank"])
+        if index >= len(self.banks):
+            return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
+                "blocked", snapshot.head.token, message="only the current bank can be reopened"))
+        bank = self.banks[index]
+        bank_state = state["banks"][bank.id]
+        _ensure_reopen_fields(bank_state)
+        if question_id not in {question.id for question in bank.questions}:
+            return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
+                "blocked", snapshot.head.token, bank_id=bank.id,
+                message="only a parked question in the current bank can be reopened"))
+        if question_id not in bank_state["parked"]:
+            return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
+                "blocked", snapshot.head.token, bank_id=bank.id,
+                message="only a parked question in the current bank can be reopened"))
+        rejected = bank_state["rejected"].setdefault(question_id, [])
+        if sum(1 for event in rejected if event["event"] == "reopened") >= 3:
+            return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
+                "blocked", snapshot.head.token, bank_id=bank.id,
+                message="reopen limit reached for this question"))
+        history = rejected
+        if not history or history[-1]["event"] != "parked":
+            # A question parked before this history was kept: file its stored
+            # parked answer first, so nothing rejected is lost.
+            parked_record = bank_state["answers"][question_id]
+            history.append({"event": "parked", "turn_id": "", "answer": parked_record.get("answer", ""),
+                            "evidence": parked_record.get("evidence", {}),
+                            "reason": "parked before the rejected history was kept"})
+        bank_state["parked"].remove(question_id)
+        del bank_state["answers"][question_id]
+        bank_state["challenges"].pop(question_id, None)
+        bank_state["reopened"].append(question_id)
+        history.append({"event": "reopened", "turn_id": turn_id, "reason": reason})
+        outcome = TurnOutcome("reopened", snapshot.head.token, bank_id=bank.id,
+                              question=next(q for q in bank.questions if q.id == question_id),
+                              message="question reopened; answer it with fresh evidence")
+        return self._record(snapshot, state, turn_id, request_hash, outcome)
 
     def prove_gate(self, bank_id: str, evidence: Mapping[str, Any], *, expected_revision: str | int | ProductHead,
                    turn_id: str) -> TurnOutcome:
@@ -261,12 +379,19 @@ class Conductor:
         if conflict:
             return conflict
         index = int(state["current_bank"])
-        if index >= len(self.banks) or self.banks[index].id != bank_id:
+        position = self._position(snapshot.head.token, state)
+        # The earliest stale bank may be proved again; while it is stale,
+        # nothing later is gated on top of the approval that stopped verifying.
+        reproof = position.status == "stale" and position.bank_id == bank_id
+        if position.status == "stale" and not reproof:
+            return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
+                "stale", snapshot.head.token, bank_id=position.bank_id, message=position.message))
+        if not reproof and (index >= len(self.banks) or self.banks[index].id != bank_id):
             return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
                 "blocked", snapshot.head.token, bank_id=bank_id, message="only the current completed bank may be gated"))
         bank = self._by_id[bank_id]
         bank_state = state["banks"][bank_id]
-        if bank_state["cursor"] != len(bank.questions) or bank_state["parked"]:
+        if bank_state["cursor"] != len(bank.questions) or bank_state["parked"] or bank_state.get("reopened"):
             return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
                 "blocked", snapshot.head.token, bank_id=bank_id, message="all questions must be accepted before gate proof"))
         required_fields = {"source", "source_sha256", "actor_id", "requester_id",
@@ -294,8 +419,9 @@ class Conductor:
         if actor_id not in bank.gate_approvers:
             return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
                 "blocked", snapshot.head.token, bank_id=bank_id,
-                message="gate actor is not authorized by the pinned question bank"))
-        if supplied["decision"] != "approved" or not _UTC.match(supplied["approved_at"]):
+                message="gate actor is not authorized by the pinned question bank; its approvers are: " + ", ".join(bank.gate_approvers)))
+        if (supplied["decision"] not in ("approved", "rejected") or not _UTC.match(supplied["approved_at"])
+                or not _valid_approved_at(supplied["approved_at"])):
             return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
                 "blocked", snapshot.head.token, bank_id=bank_id,
                 message="gate decision or UTC approval timestamp is invalid"))
@@ -320,15 +446,58 @@ class Conductor:
             return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
                 "blocked", snapshot.head.token, bank_id=bank_id,
                 message="gate signer does not match the authorized actor"))
+        manifest = None
+        if self._gate_manifest is not None:
+            try:
+                manifest = self._gate_manifest(bank_id)
+            except ValidationError as exc:
+                return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
+                    "blocked", snapshot.head.token, bank_id=bank_id, message=str(exc)))
+        if manifest is None:
+            manifest = {"artifacts": [], "dependencies": []}
+        if not _manifest_ok(manifest):
+            return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
+                "blocked", snapshot.head.token, bank_id=bank_id,
+                message="gate manifest is malformed"))
+        manifest_sha256 = hashlib.sha256(canonical_json(manifest)).hexdigest()
         proof = dict(supplied)
-        state["gates"][bank_id] = {
-            "proof": proof,
-            "proof_sha256": hashlib.sha256(canonical_json(proof)).hexdigest(),
-        }
+        if supplied["decision"] == "rejected":
+            rejection = {"proof": proof,
+                         "proof_sha256": hashlib.sha256(canonical_json(proof)).hexdigest(),
+                         "manifest": manifest, "manifest_sha256": manifest_sha256,
+                         "attestation": "local",
+                         "rejected_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
+            state.setdefault("gate_rejections", {}).setdefault(bank_id, []).append(rejection)
+            return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
+                "rejected", snapshot.head.token, bank_id=bank_id,
+                message="gate rejected by %s; the bank stays open until its current revisions are approved" % actor_id))
+        record = {"proof": proof, "proof_sha256": hashlib.sha256(canonical_json(proof)).hexdigest(),
+                  "manifest": manifest, "manifest_sha256": manifest_sha256, "attestation": "local"}
+        if reproof:
+            # The approval that stopped verifying is kept, never deleted: a
+            # copy moves to an append-only list with when and why it was
+            # superseded. The bank cursor does not move.
+            archived = dict(state["gates"][bank_id], reason="superseded after proof changed",
+                            superseded_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+            state.setdefault("superseded_gates", {}).setdefault(bank_id, []).append(archived)
+            state["gates"][bank_id] = record
+            # The outcome comes from the refreshed position: re-proving one
+            # bank cannot complete the interview while another gate is stale.
+            after = self._position(snapshot.head.token, state)
+            if after.status == "stale":
+                return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
+                    "stale", snapshot.head.token, bank_id=after.bank_id,
+                    message="gate proof for %s recorded again; %s" % (bank_id, after.message)))
+            status = "completed" if after.status == "completed" else "advanced"
+            return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
+                status, snapshot.head.token, bank_id=bank_id, completed=status == "completed", accepted=True,
+                message="gate proof recorded again; the earlier approval is kept as superseded"))
+        state["gates"][bank_id] = record
         state["current_bank"] += 1
         status = "completed" if state["current_bank"] == len(self.banks) else "advanced"
         return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
-            status, snapshot.head.token, bank_id=bank_id, message="gate proof recorded", completed=status == "completed"))
+            status, snapshot.head.token, bank_id=bank_id, message="gate proof recorded", completed=status == "completed",
+            accepted=True))
 
     complete_gate = prove_gate
 
@@ -336,6 +505,43 @@ class Conductor:
         """Return a defensive JSON-compatible copy of persisted conductor state."""
         _snapshot, state = self._load()
         return json.loads(canonical_json(state).decode("utf-8"))
+
+    def stale_gates(self) -> list[dict[str, Any]]:
+        """List every gated bank whose approval no longer holds, earliest first.
+
+        Each entry has the shape {"bank_id", "message", "changed", "reconcile"}.
+        next_turn reports the first of them.
+        """
+        _snapshot, state = self._load()
+        return self._gate_problems(state, first_only=False)
+
+    @property
+    def scale_warning(self) -> Optional[dict[str, Any]]:
+        """A small mapping naming size, limit and next action once the durable
+        Conductor state reaches 80% of MAX_STATE_BYTES, or None under that
+        threshold.
+
+        Shaped like PMOSDomain.scale_warning (see docs/SCALE.md) for the
+        Conductor's own, much smaller, state limit: MAX_STATE_BYTES here is
+        1 MiB, not PMOSDomain's 16 MiB MAX_SNAPSHOT_BYTES, and this is the
+        limit a `pmos` command-line user actually meets. The threshold is
+        read from the module-level MAX_STATE_BYTES at call time (not cached),
+        so a caller that reconfigures it sees a consistent answer. The next
+        action this names is `pmos export`, the read-only archive path
+        pmos/export.py provides (F34).
+        """
+        snapshot, _state = self._load()
+        raw = snapshot.files.get(STATE_PATH)
+        size = len(raw) if raw is not None else len(canonical_json(self._new_state()))
+        threshold = int(MAX_STATE_BYTES * 0.8)
+        if size < threshold:
+            return None
+        percent = round(size * 100.0 / MAX_STATE_BYTES, 1)
+        message = ("conductor state is %d bytes, %s%% of the %d byte MAX_STATE_BYTES limit; "
+                   "export the product soon with `pmos export`; see docs/SCALE.md"
+                   % (size, percent, MAX_STATE_BYTES))
+        return {"size_bytes": size, "limit_bytes": MAX_STATE_BYTES,
+                "percent_of_limit": percent, "message": message}
 
     # ------------------------------ persistence ------------------------------
     def _load(self) -> tuple[Any, dict[str, Any]]:
@@ -357,7 +563,8 @@ class Conductor:
             "schema": STATE_VERSION,
             "current_bank": 0,
             "banks": {bank.id: {"version": bank.version, "definition_hash": bank.definition_hash,
-                                  "cursor": 0, "answers": {}, "challenges": {}, "parked": []}
+                                  "cursor": 0, "answers": {}, "challenges": {}, "parked": [],
+                                  "reopened": [], "rejected": {}}
                       for bank in self.banks},
             "gates": {}, "turn_results": {},
         }
@@ -365,8 +572,11 @@ class Conductor:
     def _validate_state(self, state: Any) -> None:
         if not isinstance(state, dict) or state.get("schema") != STATE_VERSION:
             raise ValidationError("unsupported conductor state")
-        if set(state) != {"schema", "current_bank", "banks", "gates", "turn_results"}:
-            raise ValidationError("conductor state has unknown or missing fields")
+        allowed_keys = {"schema", "current_bank", "banks", "gates", "turn_results", "superseded_gates", "gate_rejections"}
+        if not set(state).issubset(allowed_keys):
+            raise ValidationError("conductor state has unknown fields")
+        if not {"schema", "current_bank", "banks", "gates", "turn_results"}.issubset(set(state)):
+            raise ValidationError("conductor state has missing fields")
         if not isinstance(state["current_bank"], int) or not 0 <= state["current_bank"] <= len(self.banks):
             raise ValidationError("conductor state has invalid cursor")
         if not isinstance(state["banks"], dict) or set(state["banks"]) != set(self._by_id):
@@ -379,40 +589,85 @@ class Conductor:
                 raise ValidationError("conductor bank cursor is invalid")
             if not isinstance(saved.get("answers"), dict) or not isinstance(saved.get("challenges"), dict) or not isinstance(saved.get("parked"), list):
                 raise ValidationError("conductor bank state is invalid")
+            # reopened and rejected arrived with reopen (F03); states saved
+            # before it lack both and load as empty.
+            reopened = saved.get("reopened", [])
+            rejected = saved.get("rejected", {})
+            if not isinstance(reopened, list) or not isinstance(rejected, dict):
+                raise ValidationError("conductor bank state is invalid")
+            if len(reopened) != len(set(reopened)):
+                raise ValidationError("conductor reopened ids must be unique")
             question_ids = {question.id for question in bank.questions}
             if (not set(saved["answers"]).issubset(question_ids) or
                     not set(saved["challenges"]).issubset(question_ids) or
                     not set(saved["parked"]).issubset(question_ids) or
+                    not set(reopened).issubset(question_ids) or
+                    not set(rejected).issubset(question_ids) or
                     len(saved["parked"]) != len(set(saved["parked"]))):
                 raise ValidationError("conductor bank has unknown question state")
-            expected_answer_ids = {question.id for question in bank.questions[:saved["cursor"]]}
-            if set(saved["answers"]) != expected_answer_ids:
+            behind_cursor = {question.id for question in bank.questions[:saved["cursor"]]}
+            if not set(reopened).issubset(behind_cursor) or set(reopened) & set(saved["parked"]):
+                raise ValidationError("conductor reopened questions are invalid")
+            if set(saved["answers"]) != behind_cursor - set(reopened):
                 raise ValidationError("conductor answers do not match the durable cursor")
             for question_id, count in saved["challenges"].items():
                 if not isinstance(count, int) or isinstance(count, bool) or not 1 <= count <= 2:
                     raise ValidationError("conductor challenge count is invalid")
                 if question_id in saved["parked"] and count != 2:
                     raise ValidationError("parked question lacks two challenges")
+            known_events = {"challenged", "parked", "reopened"}
+            for rejected_id, events in rejected.items():
+                if not isinstance(events, list) or not events:
+                    raise ValidationError("conductor rejected history is invalid")
+                for event in events:
+                    if not isinstance(event, dict) or event.get("event") not in known_events:
+                        raise ValidationError("conductor rejected event is invalid")
+                    if "turn_id" not in event:
+                        raise ValidationError("conductor rejected event is invalid")
+                    if event["event"] in ("challenged", "parked") and not all(
+                            key in event for key in ("answer", "evidence", "reason")):
+                        raise ValidationError("conductor rejected event is invalid")
+                    if event["event"] == "reopened" and "reason" not in event:
+                        raise ValidationError("conductor rejected event is invalid")
         if not isinstance(state["gates"], dict) or not isinstance(state["turn_results"], dict):
             raise ValidationError("conductor state is invalid")
         completed_ids = {bank.id for bank in self.banks[:state["current_bank"]]}
         if set(state["gates"]) != completed_ids:
             raise ValidationError("conductor gates do not match the durable bank cursor")
+        if "superseded_gates" in state:
+            if not isinstance(state["superseded_gates"], dict):
+                raise ValidationError("conductor superseded gates is invalid")
+            for gid, records in state["superseded_gates"].items():
+                if gid not in completed_ids:
+                    raise ValidationError("conductor superseded gate id is not a completed bank")
+                if not isinstance(records, list):
+                    raise ValidationError("conductor superseded gate records is invalid")
+                for rec in records:
+                    _validate_gate_record(rec, "superseded")
+        if "gate_rejections" in state:
+            if not isinstance(state["gate_rejections"], dict):
+                raise ValidationError("conductor gate rejections is invalid")
+            for rid, records in state["gate_rejections"].items():
+                if rid not in self._by_id:
+                    raise ValidationError("conductor gate rejection id is not a known bank")
+                if not isinstance(records, list):
+                    raise ValidationError("conductor gate rejection records is invalid")
+                for rec in records:
+                    _validate_gate_record(rec, "rejection")
+                    if rec["proof"].get("decision") != "rejected":
+                        raise ValidationError("conductor gate rejection record is invalid")
         for bank in self.banks[:state["current_bank"]]:
             saved = state["banks"][bank.id]
-            if saved["cursor"] != len(bank.questions) or saved["parked"]:
+            if saved["cursor"] != len(bank.questions) or saved["parked"] or saved.get("reopened"):
                 raise ValidationError("gated bank is not complete")
         for bank_id, gate in state["gates"].items():
-            if not isinstance(gate, dict) or set(gate) != {"proof", "proof_sha256"} or \
-                    not isinstance(gate["proof"], dict):
-                raise ValidationError("stored gate proof is malformed")
-            actual = hashlib.sha256(canonical_json(gate["proof"])).hexdigest()
-            if gate.get("proof_sha256") != actual:
-                raise ValidationError("stored gate proof hash does not match")
+            _validate_gate_record(gate, "gate")
             bank = self._by_id[bank_id]
             base = {"source", "source_sha256", "actor_id", "requester_id",
                     "decision", "approved_at", *bank.gate_prerequisites}
             if set(gate["proof"]) != base or gate["proof"].get("actor_id") not in bank.gate_approvers:
+                raise ValidationError("stored gate proof violates its pinned policy")
+            if gate["proof"].get("decision") != "approved":
                 raise ValidationError("stored gate proof violates its pinned policy")
         if len(state["turn_results"]) > MAX_TURN_RESULTS:
             raise ValidationError("conductor idempotency record limit exceeded")
@@ -506,13 +761,110 @@ class Conductor:
             return TurnOutcome("conflict", head.token, message="expected revision is stale", conflict_revision=head.token)
         return None
 
+    def _gate_problems(self, state: Mapping[str, Any], *, first_only: bool) -> list[dict[str, Any]]:
+        # An approval is only as good as the proof and the artifacts it points
+        # at. With a verifier configured, each gated bank's recorded proof, then
+        # its manifest, is checked again, earliest bank first; a bank whose
+        # approval no longer holds keeps the interview stale until it is proved
+        # again. Each such bank is one {bank_id, message, changed, reconcile}
+        # entry; first_only stops at the first, which is all _position needs.
+        # pmos/domain.py has its own, separate evidence-invalidation path.
+        problems: list[dict[str, Any]] = []
+        if self._gate_source_verifier is None:
+            return problems
+        for bank in self.banks:
+            gate = state["gates"].get(bank.id)
+            if not gate:
+                continue
+            source = gate["proof"].get("source")
+            try:
+                verified = self._gate_source_verifier(source, gate["proof"].get("source_sha256"))
+            except Exception:
+                verified = False
+            if verified is not True:
+                problems.append({"bank_id": bank.id,
+                                "message": "gate proof %s for %s no longer verifies (changed or missing); "
+                                           "prove the gate again" % (source, bank.id),
+                                "changed": [], "reconcile": []})
+                if first_only:
+                    return problems
+                continue
+            if self._manifest_verifier is not None and "manifest" in gate:
+                try:
+                    check = self._manifest_verifier(gate["manifest"])
+                except ValidationError as exc:
+                    problems.append({"bank_id": bank.id,
+                                    "message": "approved artifacts for %s could not be checked: %s" % (bank.id, exc),
+                                    "changed": [], "reconcile": []})
+                    if first_only:
+                        return problems
+                    continue
+                except Exception:
+                    problems.append({"bank_id": bank.id,
+                                    "message": "approved artifacts for %s could not be checked; "
+                                               "prove the gate again" % bank.id,
+                                    "changed": [], "reconcile": []})
+                    if first_only:
+                        return problems
+                    continue
+                if not isinstance(check, dict) or not isinstance(check.get("changed"), list) or \
+                        not isinstance(check.get("reconcile"), list):
+                    problems.append({"bank_id": bank.id,
+                                    "message": "approved artifacts for %s could not be checked; "
+                                               "prove the gate again" % bank.id,
+                                    "changed": [], "reconcile": []})
+                    if first_only:
+                        return problems
+                    continue
+                if check["changed"]:
+                    parts = []
+                    malformed = False
+                    for item in check["changed"]:
+                        if not isinstance(item, dict) or "id" not in item or "reviewed" not in item \
+                                or "current" not in item:
+                            malformed = True
+                            break
+                        current = item["current"]
+                        current_prefix = "missing" if current is None else str(current)[:8]
+                        parts.append("%s (reviewed %s, now %s)" % (
+                            item["id"], str(item["reviewed"])[:8], current_prefix))
+                    if malformed:
+                        problems.append({"bank_id": bank.id,
+                                        "message": "approved artifacts for %s could not be checked; "
+                                                   "prove the gate again" % bank.id,
+                                        "changed": [], "reconcile": []})
+                        if first_only:
+                            return problems
+                        continue
+                    message = "approved artifacts for %s changed: %s" % (bank.id, "; ".join(parts))
+                    if check["reconcile"]:
+                        message += "; needs reconciliation: " + ", ".join(str(x) for x in check["reconcile"])
+                    message += "; prove the gate again"
+                    problems.append({"bank_id": bank.id, "message": message,
+                                    "changed": list(check["changed"]),
+                                    "reconcile": list(check["reconcile"])})
+                    if first_only:
+                        return problems
+        return problems
+
     def _position(self, revision: str, state: Mapping[str, Any]) -> TurnOutcome:
+        # The earliest approval that no longer holds wins; stale_gates() lists them all.
+        problems = self._gate_problems(state, first_only=True)
+        if problems:
+            return TurnOutcome("stale", revision, bank_id=problems[0]["bank_id"],
+                               message=problems[0]["message"])
+
         index = int(state["current_bank"])
         if index >= len(self.banks):
             return TurnOutcome("completed", revision, message="all banks and gates are complete", completed=True)
         bank = self.banks[index]
         saved = state["banks"][bank.id]
         cursor = int(saved["cursor"])
+        if saved.get("reopened"):
+            # A reopened question is offered before the cursor's next one.
+            reopened_id = saved["reopened"][0]
+            return TurnOutcome("question", revision, bank_id=bank.id,
+                               question=next(q for q in bank.questions if q.id == reopened_id))
         if cursor == len(bank.questions):
             if saved["parked"]:
                 return TurnOutcome("blocked", revision, bank_id=bank.id,
@@ -521,18 +873,24 @@ class Conductor:
                                message="answers are complete; gate prerequisites still require proof")
         return TurnOutcome("question", revision, bank_id=bank.id, question=bank.questions[cursor])
 
-    def _validate_answer(self, question: Question, answer: str, evidence: Mapping[str, Any]) -> tuple[bool, str, dict[str, str]]:
+    def _validate_answer(self, question: Question, answer: str, evidence: Mapping[str, Any]) -> tuple[bool, str, dict[str, str], str]:
         try:
             _bounded_text(answer, "answer", MAX_ANSWER_CHARS)
             normal = _evidence_mapping(evidence)
         except ValidationError as exc:
-            return False, str(exc), {}
+            return False, str(exc), {}, ""
         lowered = answer.strip().lower()
         if question.required_evidence is not EvidenceClass.TEAM_BELIEF and any(lowered.startswith(item) for item in _BANNED_OPENERS):
-            return False, "answer starts with a banned unsupported generalization", normal
-        evidence_class = normal.get("class")
-        if evidence_class != question.required_evidence.value:
-            return False, "evidence class must be " + question.required_evidence.value, normal
+            return False, "answer starts with a banned unsupported generalization", normal, ""
+        # The ladder is a minimum: evidence of the question's class or a stronger
+        # one is accepted, and the fields checked are those of the class supplied.
+        # An unknown or missing class is refused like a weaker one.
+        try:
+            supplied = EvidenceClass(normal.get("class"))
+        except ValueError:
+            supplied = None
+        if supplied is None or EVIDENCE_RUNG[supplied] > EVIDENCE_RUNG[question.required_evidence]:
+            return False, "evidence class must be " + question.required_evidence.value + " or stronger", normal, ""
         required: dict[EvidenceClass, tuple[str, ...]] = {
             EvidenceClass.OBSERVED_BEHAVIOR: ("source", "date", "location"),
             EvidenceClass.ARTIFACT: ("source", "location"),
@@ -540,10 +898,42 @@ class Conductor:
             EvidenceClass.INTERVIEW_CLAIM: ("person", "source", "date"),
             EvidenceClass.TEAM_BELIEF: ("source",),
         }
-        missing = [field for field in required[question.required_evidence] if not _truthy_text(normal.get(field))]
+        missing = [field for field in required[supplied] if not _truthy_text(normal.get(field))]
         if missing:
-            return False, "missing evidence fields: " + ", ".join(missing), normal
-        return True, "", normal
+            return False, "missing evidence fields: " + ", ".join(missing), normal, ""
+        # A supplied date must parse whatever the evidence class: a malformed
+        # date kept beside accepted evidence would read as a real one.
+        if _truthy_text(normal.get("date")) and not _valid_evidence_date(normal["date"]):
+            return False, "evidence date is not a valid ISO 8601 date or datetime", normal, ""
+        if _truthy_text(normal.get("date")) and _evidence_date_in_future(normal["date"]):
+            return False, "evidence date is in the future", normal, ""
+        # Acceptance is structural. Evidence is source_verified only when a
+        # configured resolver finds its source. The resolver answers True
+        # (found), False (a reference it can check that is missing, which
+        # refuses the answer) or None (not a reference it can check); any
+        # other answer or an error refuses. A web address is never checked
+        # here. Without a resolver, and for whatever it cannot check, the
+        # evidence stays explicitly supplied_unverified.
+        verification = "supplied_unverified"
+        source = normal.get("source", "")
+        if self._source_resolver is not None and source and not _is_web_address(source):
+            try:
+                found = self._source_resolver(source)
+            except Exception:
+                found = False
+            if found is not None and found is not True:
+                return False, "evidence source could not be resolved", normal, ""
+            if found is True:
+                verification = "source_verified"
+        return True, "", normal, verification
+
+
+def _ensure_reopen_fields(bank_state: dict[str, Any]) -> None:
+    """Backfill reopened and rejected on older states loaded from disk."""
+    if "reopened" not in bank_state:
+        bank_state["reopened"] = []
+    if "rejected" not in bank_state:
+        bank_state["rejected"] = {}
 
 
 def _coerce_bank(value: QuestionBank) -> QuestionBank:
@@ -575,6 +965,75 @@ def _truthy_text(value: Any) -> bool:
     return isinstance(value, str) and bool(value.strip())
 
 
+def _valid_evidence_date(value: str) -> bool:
+    """Parse an ISO 8601 date or datetime string."""
+    if not isinstance(value, str) or not value.strip():
+        return False
+    try:
+        datetime.fromisoformat(value.strip())
+        return True
+    except ValueError:
+        return False
+
+
+def _evidence_date_in_future(value: str) -> bool:
+    """Return True when an ISO 8601 date or datetime is in the future.
+
+    A date-only value is in the future when it is later than the current UTC
+    date plus one day (one day of tolerance for time zones). A datetime is in
+    the future when it is later than now UTC plus 300 seconds; a naive datetime
+    is read as UTC. Classification is by parsing: a value is date-only exactly
+    when datetime.date.fromisoformat accepts it, which also covers ISO week and
+    ordinal dates; otherwise it is a datetime parsed with
+    datetime.fromisoformat.
+    """
+    import datetime as _datetime
+    if not isinstance(value, str) or not value.strip():
+        return False
+    text = value.strip()
+    try:
+        date_parsed = _datetime.date.fromisoformat(text)
+    except ValueError:
+        date_parsed = None
+    if date_parsed is not None:
+        return date_parsed > datetime.now(timezone.utc).date() + timedelta(days=1)
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return False
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed > datetime.now(timezone.utc) + timedelta(seconds=300)
+
+
+def _is_web_address(value: str) -> bool:
+    """An http(s) address with a host. A drive letter, file: or any other
+    scheme is left to the source resolver."""
+    try:
+        parsed = urlparse(value)
+    except ValueError:
+        return False
+    return parsed.scheme in ("http", "https") and bool(parsed.netloc)
+
+
+def _valid_approved_at(value: Any) -> bool:
+    """Strictly parse an ISO 8601 timestamp with an explicit timezone."""
+    if not isinstance(value, str):
+        return False
+    text = value
+    if text.endswith("Z"):
+        text = text[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return False
+    if parsed.tzinfo is None:
+        return False
+    if parsed > datetime.now(timezone.utc) + timedelta(seconds=300):
+        return False
+    return True
+
+
 def _evidence_mapping(value: Mapping[str, Any]) -> dict[str, str]:
     if not isinstance(value, Mapping) or len(value) > 16:
         raise ValidationError("evidence must be a small mapping")
@@ -602,6 +1061,58 @@ def _outcome_data(outcome: TurnOutcome) -> dict[str, Any]:
     return data
 
 
+def _manifest_entry_ok(entry: Any) -> bool:
+    return (isinstance(entry, dict) and isinstance(entry.get("id"), str) and isinstance(entry.get("path"), str)
+            and isinstance(entry.get("revision"), str) and isinstance(entry.get("depends_on"), list)
+            and all(isinstance(x, str) for x in entry["depends_on"]))
+
+
+def _manifest_ok(manifest: Any) -> bool:
+    if not isinstance(manifest, dict):
+        return False
+    artifacts = manifest.get("artifacts")
+    dependencies = manifest.get("dependencies")
+    if not isinstance(artifacts, list) or not isinstance(dependencies, list):
+        return False
+    if not all(_manifest_entry_ok(entry) for entry in artifacts):
+        return False
+    if not all(_manifest_entry_ok(entry) for entry in dependencies):
+        return False
+    return True
+
+
+_GATE_RECORD_SHAPES = (frozenset({"proof", "proof_sha256"}),
+                       frozenset({"proof", "proof_sha256", "manifest", "manifest_sha256", "attestation"}))
+_REJECTION_KEYS = frozenset({"proof", "proof_sha256", "manifest", "manifest_sha256", "attestation", "rejected_at"})
+_RECORD_ERRORS = {"gate": "stored gate proof is malformed",
+                  "superseded": "conductor superseded gate record is invalid",
+                  "rejection": "conductor gate rejection record is invalid"}
+
+
+def _validate_gate_record(record: Any, kind: str) -> None:
+    """Check one stored gate, superseded or rejection record: its shape and its hashes.
+
+    A gate recorded before manifests keeps the two-key shape {proof, proof_sha256}, so a product that
+    passed a gate before this change still loads; one recorded since also carries the manifest it
+    approved, that manifest's hash and the local attestation label. A superseded record adds reason and
+    superseded_at to either shape, and a rejection record always carries its manifest.
+    """
+    if kind == "rejection":
+        allowed = (_REJECTION_KEYS,)
+    elif kind == "superseded":
+        allowed = tuple(shape | {"reason", "superseded_at"} for shape in _GATE_RECORD_SHAPES)
+    else:
+        allowed = _GATE_RECORD_SHAPES
+    if not isinstance(record, dict) or frozenset(record) not in allowed or not isinstance(record["proof"], dict):
+        raise ValidationError(_RECORD_ERRORS[kind])
+    if record["proof_sha256"] != hashlib.sha256(canonical_json(record["proof"])).hexdigest():
+        raise ValidationError("stored gate proof hash does not match" if kind == "gate" else _RECORD_ERRORS[kind])
+    if "manifest" in record and (
+            not _manifest_ok(record["manifest"]) or record["attestation"] != "local"
+            or record["manifest_sha256"] != hashlib.sha256(canonical_json(record["manifest"])).hexdigest()):
+        raise ValidationError(_RECORD_ERRORS[kind])
+
+
 def _outcome_from_data(data: Any) -> TurnOutcome:
     fields = {"status", "revision", "bank_id", "question", "message",
               "challenge_count", "accepted", "completed", "conflict_revision"}
@@ -619,7 +1130,7 @@ def _outcome_from_data(data: Any) -> TurnOutcome:
     except (TypeError, ValueError) as exc:
         raise ValidationError("stored turn result is invalid") from exc
     if (outcome.status not in {"question", "challenge", "blocked", "parked", "accepted",
-                              "advanced", "completed", "conflict"} or
+                              "advanced", "completed", "conflict", "stale", "reopened", "rejected"} or
             not isinstance(outcome.challenge_count, int) or
             isinstance(outcome.challenge_count, bool) or
             outcome.challenge_count < 0 or outcome.challenge_count > 2 or

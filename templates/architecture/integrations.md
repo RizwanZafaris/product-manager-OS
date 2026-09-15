@@ -11,6 +11,8 @@ aliases: ["Integrations Register", "integrations"]
 Stage: DESIGN, feeds [Gate 3: architecture and risks reviewed](../../os/STAGE-GATES.md)
 Knowledge: [knowledge index](../../knowledge/INDEX.md)
 Skill: [architect agent](../../agents/architect-agent.md)
+Filled example: [Fernbridge Core Platform](../../examples/domain-embedded-finance-baas-integrations.md)
+Filled example: [Quay Payment Service](../../examples/harbourgate-integrations.md)
 
 <!-- Every line that crosses a system boundary gets a row here and a detail block
      below. Integrations fail differently from code: the counterparty changes

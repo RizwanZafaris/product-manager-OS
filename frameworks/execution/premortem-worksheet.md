@@ -2,7 +2,7 @@
 layer: frameworks
 stage: DESIGN
 gate: 3
-feeds: ["templates/execution/risk-register.md", "templates/operate/post-launch-review.md", "templates/execution/dependency-register.md"]
+feeds: ["templates/execution/risk-register.md", "templates/operate/post-launch-review.md", "templates/execution/dependency-register.md", "templates/architecture/development-handoff.md"]
 method: "knowledge/INDEX.md"
 aliases: ["Premortem Worksheet", "premortem-worksheet"]
 ---
@@ -108,5 +108,6 @@ The premortem that turns back into a brainstorm. The facilitator lets "might" in
 - [Gate 3: architecture and risks reviewed](../../os/STAGE-GATES.md), whose checklist asks that a premortem ran and the register absorbed it
 - [Post-launch review](../../templates/operate/post-launch-review.md), section 5, where the causes are reconciled against what arrived
 - [Dependency register](../../templates/execution/dependency-register.md), for causes that are another team's date
+- [Development handoff](../../templates/architecture/development-handoff.md), section 9, unresolved risks and constraints, carried forward on purpose at Gate 3 rather than closed by omission
 - The [program-premortem skill](../../skills/program-premortem/SKILL.md), which drives this form and adds the twelve failure modes
 - Method background: [premortem entry in the knowledge index](../../knowledge/INDEX.md)

@@ -27,7 +27,7 @@ Lands in: `execution/decision-log.md` weight entry and STATE.md accepted answers
 
 Ask: Who must read this document and act on it?
 Wrong costs: A document written for nobody in particular is read by nobody at all.
-Evidence class: named roles, or named people where they exist.
+Evidence class: 5, a judgment the user owns: named roles, or named people where they exist.
 Cross-examine when: the answer is "the team" or "stakeholders". Move: category to name.
 Accept when: each reader named with the action their reading triggers.
 Lands in: `execution/decision-log.md` weight entry always; at one-pager weight, also `definition/one-pager.md` "Reviewers who must not be surprised" once DEFINE-3 lands the weight (full-PRD and BRD-stack weight route this answer to section 3 "Users and stories" of the PRD and section 4 "Stakeholders" of the BRD instead, filled during those templates' own drafting), and STATE.md accepted answers.
@@ -81,7 +81,7 @@ Lands in: `definition/assumptions-register.md` section 1, and STATE.md accepted 
 
 Ask: Does a model produce any user-facing output, and does a financial or data regulator govern any target market?
 Wrong costs: A deferred overlay resurfaces later with an eval gap or a regulator's reference number attached.
-Evidence class: a stated yes or no per half, each with one line of grounds.
+Evidence class: 5, a stated yes or no per half, each with one line of grounds.
 Cross-examine when: either half is "probably not". Move: banned openers, then: which markets, which data, which model, checked against what?
 Accept when: both halves answered with grounds. Yes to the model half attaches the AI overlay, eval rows replacing prose criteria via [../../ai-prd/SKILL.md](../../ai-prd/SKILL.md). Yes to the regulator half routes through [../../reg-gap-check/SKILL.md](../../reg-gap-check/SKILL.md) before Gate 2, because the regulated overlay's preconditions freeze here. Yes to both halves activates the regulated overlay itself, which is the rule in [../../../os/STAGE-GATES.md](../../../os/STAGE-GATES.md); a yes on the regulator half alone does not, and STATE.md records what the regulatory owner carries instead.
 Lands in: STATE.md position block (overlays active) and `execution/decision-log.md`, and STATE.md accepted answers.

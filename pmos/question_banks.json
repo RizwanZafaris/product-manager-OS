@@ -1,0 +1,1165 @@
+{
+ "banks": [
+  {
+   "forced_pair": [
+    "DISCOVER-1",
+    "DISCOVER-5"
+   ],
+   "gate": 1,
+   "gate_rendering": [
+    {
+     "evidenced_by": "DISCOVER-9, built on DISCOVER-1 and DISCOVER-2",
+     "line": "Problem statement one sentence, stated the same way",
+     "questions": [
+      "DISCOVER-9",
+      "DISCOVER-1",
+      "DISCOVER-2"
+     ]
+    },
+    {
+     "evidenced_by": "DISCOVER-5",
+     "line": "Five or more real conversations or equivalent primary data, cited by source",
+     "questions": [
+      "DISCOVER-5"
+     ]
+    },
+    {
+     "evidenced_by": "DISCOVER-5",
+     "line": "Personas under five cited interviews marked as assumptions",
+     "questions": [
+      "DISCOVER-5"
+     ]
+    },
+    {
+     "evidenced_by": "DISCOVER-3, DISCOVER-4",
+     "line": "Cost of inaction written down, calculation shown",
+     "questions": [
+      "DISCOVER-3",
+      "DISCOVER-4"
+     ]
+    },
+    {
+     "evidenced_by": "DISCOVER-6",
+     "line": "A plausible no-go seriously argued",
+     "questions": [
+      "DISCOVER-6"
+     ]
+    },
+    {
+     "evidenced_by": "DISCOVER-8",
+     "line": "Domain selected from the domain index, or \"none\" recorded",
+     "questions": [
+      "DISCOVER-8"
+     ]
+    },
+    {
+     "evidenced_by": "DISCOVER-7",
+     "line": "Gate 6 success signal named now",
+     "questions": [
+      "DISCOVER-7"
+     ]
+    },
+    {
+     "evidenced_by": "The signed gate attempt itself; the Conductor never records this line as pass on its own authority",
+     "line": "Go or no-go recorded with rationale",
+     "questions": []
+    }
+   ],
+   "id": "discover",
+   "questions": [
+    {
+     "accept_when": "one title, one company, one consequence, one citation.",
+     "ask": "Who exactly has this problem?",
+     "cross_examine": "the answer is a segment, a market, or a persona label. Move: category to name, one title, one named or precisely described company, one consequence that person personally eats.",
+     "evidence": "4, interview claim, or better; a named user beats a cited quote.",
+     "evidence_class": "interview_claim",
+     "evidence_rung": 4,
+     "handle": "name the person",
+     "id": "DISCOVER-1",
+     "lands_in": "`discovery/problem-framing.md` section 6 and `discovery/personas.md` evidence block, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "Every later stage is built for a composite nobody, and the beta is where you find out."
+    },
+    {
+     "accept_when": "a dated action with a place it is recorded, or the workaround artifact named.",
+     "ask": "What did that person do the last time the problem occurred?",
+     "cross_examine": "the answer describes what they want, plan, or would do. Move: interest to behavior, what did someone pay, or what broke that caused a call?",
+     "evidence": "1 or 2, observed behavior or an artifact of the workaround: a ticket, a spreadsheet, an export.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "last occurrence",
+     "id": "DISCOVER-2",
+     "lands_in": "`discovery/problem-framing.md` section 4 and `discovery/journey-map.md`, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "Intentions poll well and predict nothing; you scope against behavior or against air."
+    },
+    {
+     "accept_when": "number, unit, period, source, or a register row owning the guess.",
+     "ask": "What does the current workaround cost them, per what period?",
+     "cross_examine": "the number arrives without a unit, a period, and a source. Move: naked numbers, route to the assumptions register unless all three arrive.",
+     "evidence": "2, artifact, or an explicit assumptions-register entry.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "workaround cost",
+     "id": "DISCOVER-3",
+     "lands_in": "`discovery/problem-framing.md` section 5, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "A problem with no priced pain loses every roadmap argument it enters."
+    },
+    {
+     "accept_when": "what it costs, whom, per what period, with the arithmetic visible.",
+     "ask": "What does it cost to do nothing?",
+     "cross_examine": "the answer is a fear, not a figure. Move: naked numbers.",
+     "evidence": "2, artifact, or an explicit assumptions-register entry; the calculation shown either way.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "cost of nothing",
+     "id": "DISCOVER-4",
+     "lands_in": "`discovery/problem-framing.md` section 5 and `discovery/discovery-document.md` section 3, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "Without this line the honest default is to do nothing, and the gate should say so."
+    },
+    {
+     "accept_when": "a count, with each source cited, where primary data counts only when it is first-hand and cited by source; below five, every persona is marked as an assumption before this answer is accepted.",
+     "ask": "How many real user conversations, or equivalent primary data (observed usage, support tickets, recorded sessions), stand behind this, and where are they cited?",
+     "cross_examine": "the count includes teammates, secondhand summaries, or \"lots\". Move: banned openers, then re-ask at class.",
+     "evidence": "4, interview claims cited by source.",
+     "evidence_class": "interview_claim",
+     "evidence_rung": 4,
+     "handle": "conversation count",
+     "id": "DISCOVER-5",
+     "lands_in": "`discovery/discovery-document.md` section 2 citations and `discovery/personas.md` evidence blocks, and STATE.md accepted answers and evidence ledger.",
+     "options": null,
+     "wrong_costs": "Gate 1 requires five or more; fewer, undisclosed, turns personas into fiction the whole system then trusts."
+    },
+    {
+     "accept_when": "one observable condition that, if seen, ends the initiative.",
+     "ask": "What would make the honest answer no-go?",
+     "cross_examine": "the answer is \"nothing realistic\" or restates the pitch. Move: banned openers, then ask what observation this month would kill it.",
+     "evidence": "5, filed openly: a stated disconfirming condition someone could observe, because the condition, not its truth, is the deliverable.",
+     "evidence_class": "team_belief",
+     "evidence_rung": 5,
+     "handle": "the no-go case",
+     "id": "DISCOVER-6",
+     "lands_in": "`discovery/discovery-document.md` section 7, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "A gate that cannot fail is a ceremony, and Gate 1 requires the no-go case seriously argued."
+    },
+    {
+     "accept_when": "signal, threshold or direction, source system, all named before any solution exists.",
+     "ask": "What observable signal, measurable at Gate 6, says this worked?",
+     "cross_examine": "the signal is an adjective or has no source system. Move: naked numbers.",
+     "evidence": "2, a measurable signal plus the source system that will measure it.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "the Gate 6 signal",
+     "id": "DISCOVER-7",
+     "lands_in": "`discovery/discovery-document.md` section 5, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "Named after launch, the signal becomes whatever the launch produced."
+    },
+    {
+     "accept_when": "one card from the domain index named, or \"none\", either way recorded.",
+     "ask": "Which domain pack governs this product?",
+     "cross_examine": "a domain is claimed but no gatekeeper from its card can be named. Move: open the card together; if none of its rows bite, the honest answer is \"none\".",
+     "evidence": "2, artifact: the chosen card's gatekeeper list in [../../../knowledge/domains/README.md](../../../knowledge/domains/README.md) consulted, or \"none\" recorded with the table checked.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "the domain pack",
+     "id": "DISCOVER-8",
+     "lands_in": "STATE.md position block, `Domain:` line.",
+     "options": null,
+     "wrong_costs": "Every later gatekeeper and metric question gets answered generically, and the market-specific blocker surfaces at launch instead of here."
+    },
+    {
+     "accept_when": "one sentence in the section 3 form, each clause citing the accepted answer ID it comes from.",
+     "ask": "In one sentence, with no solution words, what is the problem?",
+     "cross_examine": "the sentence names a feature, a solution, or needs two sentences to say. Move: banned openers, then: state it as a person, a circumstance, and a consequence, nothing else.",
+     "evidence": "2, the accepted answers it cites: every clause traces to an accepted DISCOVER-1, DISCOVER-2, or DISCOVER-3 answer; this entry composes them, it does not gather new evidence.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "the problem statement",
+     "id": "DISCOVER-9",
+     "lands_in": "`discovery/problem-framing.md` section 3, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "With no accepted sentence in this exact form, every later reader states the problem differently, and DEFINE-4 traces objectives to a sentence nobody agreed on."
+    }
+   ],
+   "source": "skills/conductor/questions/discover.md",
+   "source_sha256": "06185a54f99e654c558fb3771480ddf675edf1de5e532150c26e8d479a6d013c",
+   "stage": "DISCOVER",
+   "version": "cb9aca3dbd67b2f91"
+  },
+  {
+   "forced_pair": [
+    "DEFINE-5",
+    "DEFINE-8"
+   ],
+   "gate": 2,
+   "gate_rendering": [
+    {
+     "evidenced_by": "DEFINE-4, DEFINE-5",
+     "line": "Every objective traces to Gate 1; every requirement traces to a PRD item",
+     "questions": [
+      "DEFINE-4",
+      "DEFINE-5"
+     ]
+    },
+    {
+     "evidenced_by": "DEFINE-5",
+     "line": "Every acceptance criterion can fail",
+     "questions": [
+      "DEFINE-5"
+     ]
+    },
+    {
+     "evidenced_by": "DEFINE-5, checked by the validation agent against `definition/nfr.md`",
+     "line": "Every NFR target is a number or names a dated owner",
+     "questions": [
+      "DEFINE-5"
+     ]
+    },
+    {
+     "evidenced_by": "DEFINE-7",
+     "line": "Assumptions register complete per assumption",
+     "questions": [
+      "DEFINE-7"
+     ]
+    },
+    {
+     "evidenced_by": "DEFINE-6",
+     "line": "Out of scope written and read by the sponsor",
+     "questions": [
+      "DEFINE-6"
+     ]
+    },
+    {
+     "evidenced_by": "Human signature on the one-pager, PRD, or BRD sign-off block; the Conductor reports presence or absence, never supplies it",
+     "line": "Sponsor signed the definition artifact at the chosen weight",
+     "questions": []
+    },
+    {
+     "evidenced_by": "DEFINE-8, via the ai-prd handoff",
+     "line": "AI overlay: eval sets with thresholds, not prose",
+     "questions": [
+      "DEFINE-8"
+     ]
+    },
+    {
+     "evidenced_by": "DEFINE-8, via the reg-gap-check handoff",
+     "line": "Regulated overlay: section 0 answered per market, lint green",
+     "questions": [
+      "DEFINE-8"
+     ]
+    }
+   ],
+   "id": "define",
+   "questions": [
+    {
+     "accept_when": "exactly one option, with one line of reasoning.",
+     "ask": "What does being wrong here cost?",
+     "cross_examine": "the answer hedges across two options. Move: banned openers, then force one.",
+     "evidence": "5 is acceptable, this is a judgment the user owns; the judgment must still pick one option.",
+     "evidence_class": "team_belief",
+     "evidence_rung": 5,
+     "handle": "stakes",
+     "id": "DEFINE-1",
+     "lands_in": "`execution/decision-log.md` weight entry and STATE.md accepted answers, at every weight.",
+     "options": "a) an afternoon, which implies decide and log or a ticket. b) a sprint, which implies a ticket with acceptance criteria. c) a quarter, which implies a one-pager or a full PRD. d) a license or a contract, which implies the full stack and a regulatory look.",
+     "wrong_costs": "Weight follows stakes; misjudge this and either a quarter of work gets a ticket or a two-day change gets a twelve-section spec."
+    },
+    {
+     "accept_when": "each reader named with the action their reading triggers.",
+     "ask": "Who must read this document and act on it?",
+     "cross_examine": "the answer is \"the team\" or \"stakeholders\". Move: category to name.",
+     "evidence": "5, a judgment the user owns: named roles, or named people where they exist.",
+     "evidence_class": "team_belief",
+     "evidence_rung": 5,
+     "handle": "audience",
+     "id": "DEFINE-2",
+     "lands_in": "`execution/decision-log.md` weight entry always; at one-pager weight, also `definition/one-pager.md` \"Reviewers who must not be surprised\" once DEFINE-3 lands the weight (full-PRD and BRD-stack weight route this answer to section 3 \"Users and stories\" of the PRD and section 4 \"Stakeholders\" of the BRD instead, filled during those templates' own drafting), and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "A document written for nobody in particular is read by nobody at all."
+    },
+    {
+     "accept_when": "reversible with the mechanism named, or irreversible with what it locks in named. The three answers so far pick the weight; the Conductor states the pick and why before continuing.",
+     "ask": "Can this be undone in a day with a flag, or does it set contracts, data models, or public commitments that outlive the team?",
+     "cross_examine": "\"we can always roll it back\" arrives with no named mechanism. Move: interest to behavior, has that rollback ever been performed?",
+     "evidence": "2 where the claim is a flag or a rollback path, an artifact should exist; otherwise a reasoned judgment.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "reversibility",
+     "id": "DEFINE-3",
+     "lands_in": "`execution/decision-log.md` weight entry, plus `definition/one-pager.md` section 3 \"Scope\" at one-pager weight (full-PRD and BRD-stack weight route this answer into section 4 \"Functional scope\" of the PRD instead, filled during that template's own drafting), and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "Treating a one-way door as reversible is how a weekend decision becomes a two-year migration."
+    },
+    {
+     "accept_when": "every objective traces, or the untraced ones are cut or explicitly flagged as new scope needing its own discovery.",
+     "ask": "Which Gate 1 problem statement does each objective trace to?",
+     "cross_examine": "an objective traces to a goal, a competitor, or a wish instead of the Gate 1 problem. Move: banned openers, then: cut it, or name the gap out loud in the document.",
+     "evidence": "2, the trace itself, objective to problem statement, line by line.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "objective traceability",
+     "id": "DEFINE-4",
+     "lands_in": "`definition/prd.md` section 2 at full-PRD or BRD-stack weight; `definition/one-pager.md` section 4 at one-pager weight, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "An objective that traces to nothing is scope smuggled past discovery."
+    },
+    {
+     "accept_when": "every requirement has a failing condition a tester could stage. Prose that cannot fail is returned, not accepted.",
+     "ask": "For each requirement, how does it fail?",
+     "cross_examine": "a criterion contains \"works well\", \"fast\", \"intuitive\", or any word a demo could not falsify. Move: naked numbers, threshold or it is not a criterion.",
+     "evidence": "2, a condition, an expected result, and a measurable threshold per requirement.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "how requirements fail",
+     "id": "DEFINE-5",
+     "lands_in": "`definition/acceptance-criteria.md`, plus `definition/frd.md` at BRD-stack weight, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "Prose that cannot fail cannot be tested, and its gaps ship silently."
+    },
+    {
+     "accept_when": "the list is written and the sponsor's acknowledgment is dated.",
+     "ask": "What is out of scope, and has the sponsor read the list?",
+     "cross_examine": "the list exists but the sponsor has \"seen it around\". Move: interest to behavior, where is the written yes?",
+     "evidence": "3, named commitment, the sponsor's written acknowledgment of the list.",
+     "evidence_class": "named_commitment",
+     "evidence_rung": 3,
+     "handle": "out of scope",
+     "id": "DEFINE-6",
+     "lands_in": "`definition/prd.md` section 7 at full-PRD or BRD-stack weight; `definition/one-pager.md` section 5 at one-pager weight, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "The unwritten exclusion is the launch-week surprise, delivered by the sponsor."
+    },
+    {
+     "accept_when": "each assumption carries all three fields and an owner.",
+     "ask": "Which assumptions is this built on?",
+     "cross_examine": "the register is empty or every confidence is high. Move: banned openers, an empty register on a new product is itself the strongest claim in the room.",
+     "evidence": "5, filed properly: each assumption gets a confidence, a validation method, and a validate-by date.",
+     "evidence_class": "team_belief",
+     "evidence_rung": 5,
+     "handle": "the assumptions",
+     "id": "DEFINE-7",
+     "lands_in": "`definition/assumptions-register.md` section 1, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "The unsigned assumption is the one that resurfaces in the launch review."
+    },
+    {
+     "accept_when": "both halves answered with grounds. Yes to the model half attaches the AI overlay, eval rows replacing prose criteria via [../../ai-prd/SKILL.md](../../ai-prd/SKILL.md). Yes to the regulator half routes through [../../reg-gap-check/SKILL.md](../../reg-gap-check/SKILL.md) before Gate 2, because the regulated overlay's preconditions freeze here. Yes to both halves activates the regulated overlay itself, which is the rule in [../../../os/STAGE-GATES.md](../../../os/STAGE-GATES.md); a yes on the regulator half alone does not, and STATE.md records what the regulatory owner carries instead.",
+     "ask": "Does a model produce any user-facing output, and does a financial or data regulator govern any target market?",
+     "cross_examine": "either half is \"probably not\". Move: banned openers, then: which markets, which data, which model, checked against what?",
+     "evidence": "5, a stated yes or no per half, each with one line of grounds.",
+     "evidence_class": "team_belief",
+     "evidence_rung": 5,
+     "handle": "overlays",
+     "id": "DEFINE-8",
+     "lands_in": "STATE.md position block (overlays active) and `execution/decision-log.md`, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "A deferred overlay resurfaces later with an eval gap or a regulator's reference number attached."
+    },
+    {
+     "accept_when": "a filled inventory, or a stated reason the product has no UI.",
+     "ask": "Does this change have a user-facing surface? If so, does the UI state inventory list every screen's states with an owner?",
+     "cross_examine": "the answer is \"we have a UI\" but the inventory is missing or incomplete. Move: banned openers, then: name every screen, name its states, name its owner.",
+     "evidence": "2, the inventory, or a stated reason the product has no UI.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "user-facing surface",
+     "id": "DEFINE-9",
+     "lands_in": "`definition/ui-state-inventory.md` and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "A screen whose states are unlisted ships with gaps in behavior, accessibility, and ownership."
+    }
+   ],
+   "source": "skills/conductor/questions/define.md",
+   "source_sha256": "8015edd4be640477af5839400d5db9b5120f3f4a2b454e45878eb94ae78082b3",
+   "stage": "DEFINE",
+   "version": "c5c480a5005f2332f"
+  },
+  {
+   "forced_pair": [
+    "DESIGN-4",
+    "DESIGN-5"
+   ],
+   "gate": 3,
+   "gate_rendering": [
+    {
+     "evidenced_by": "DESIGN-1",
+     "line": "At least one rejected alternative recorded as an ADR",
+     "questions": [
+      "DESIGN-1"
+     ]
+    },
+    {
+     "evidenced_by": "DESIGN-2",
+     "line": "Every integration names owner, protocol, SLA, failure behavior",
+     "questions": [
+      "DESIGN-2"
+     ]
+    },
+    {
+     "evidenced_by": "DESIGN-3",
+     "line": "Data model classifies PII with retention per class",
+     "questions": [
+      "DESIGN-3"
+     ]
+    },
+    {
+     "evidenced_by": "DESIGN-3, plus the architect-agent trust-boundary walk against `architecture/security-architecture.md`",
+     "line": "Security walk per component with mitigation owners",
+     "questions": [
+      "DESIGN-3"
+     ]
+    },
+    {
+     "evidenced_by": "DESIGN-6",
+     "line": "Observability names SLOs, thresholds, dashboard owner",
+     "questions": [
+      "DESIGN-6"
+     ]
+    },
+    {
+     "evidenced_by": "DESIGN-4, plus the program-premortem handoff",
+     "line": "A premortem ran and the risk register absorbed it",
+     "questions": [
+      "DESIGN-4"
+     ]
+    },
+    {
+     "evidenced_by": "DESIGN-4",
+     "line": "High risks have named owners and review dates",
+     "questions": [
+      "DESIGN-4"
+     ]
+    },
+    {
+     "evidenced_by": "DESIGN-5",
+     "line": "Dependency register complete with escalation contacts",
+     "questions": [
+      "DESIGN-5"
+     ]
+    },
+    {
+     "evidenced_by": "DESIGN-7",
+     "line": "AI overlay: least access, guardrails owned and tested",
+     "questions": [
+      "DESIGN-7"
+     ]
+    }
+   ],
+   "id": "design",
+   "questions": [
+    {
+     "accept_when": "a real alternative, the tradeoff that decided against it, and the consequence accepted by deciding.",
+     "ask": "What alternative was seriously considered and rejected, and what tradeoff decided it?",
+     "cross_examine": "the alternative is a strawman nobody would have built. Move: banned openers, then: what would a competent team choosing it have been optimizing for?",
+     "evidence": "2, the tradeoff written as an ADR.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "the rejected alternative",
+     "id": "DESIGN-1",
+     "lands_in": "`architecture/adr.md` (one ADR per decision, suffix names the decision), and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "A design with no rejected alternative has not been designed yet; it has been transcribed."
+    },
+    {
+     "accept_when": "every integration row carries owner, SLA, and failure behavior, and no row says it will be worked out later.",
+     "ask": "For every integration, who owns it, under what SLA, and what happens when it fails?",
+     "cross_examine": "the failure behavior is retry-and-hope, or the owner is a team, not a person. Move: category to name.",
+     "evidence": "3, the counterparty's commitment in writing, or the gap named per integration.",
+     "evidence_class": "named_commitment",
+     "evidence_rung": 3,
+     "handle": "integrations",
+     "id": "DESIGN-2",
+     "lands_in": "`architecture/integrations.md` sections 1 and 3, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "\"We will figure it out\" at design time becomes an incident owned by whoever is on call."
+    },
+    {
+     "accept_when": "every data class marked, retention stated per class, and the deletion path named.",
+     "ask": "Where does personally identifiable information live, and what is the retention per data class?",
+     "cross_examine": "\"we do not really store PII\" arrives without a walked data model. Move: interest to behavior, walk the model field by field.",
+     "evidence": "2, the data model with classes marked and retention stated.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "where PII lives",
+     "id": "DESIGN-3",
+     "lands_in": "`architecture/data-model.md` and `architecture/security-architecture.md`, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "Retention decided after launch is retention decided by whoever gets the deletion request."
+    },
+    {
+     "accept_when": "two distinct failure causes, each landed in the risk register with a likelihood, an impact, a named owner and a review date in the future; any score of 6 or more carries an active mitigation with a trigger, per the register's exit gate. Then hand off to [../../program-premortem/SKILL.md](../../program-premortem/SKILL.md) for the full twelve-mode pass; its PRESENT findings join the same register.",
+     "ask": "It is six months from now and this product failed: why?",
+     "cross_examine": "the first answer is generic (ran late, lost focus) or the second answer repeats the first. Move: banned openers; this question is always asked twice, and the second answer must differ from the first.",
+     "evidence": "5, filed as owned risks; the deliverable is the register row, not certainty.",
+     "evidence_class": "team_belief",
+     "evidence_rung": 5,
+     "handle": "the premortem",
+     "id": "DESIGN-4",
+     "lands_in": "`execution/risk-register.md` section 2, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "Teams reliably know how their project will fail and reliably are not asked."
+    },
+    {
+     "accept_when": "every dependency has a needed-by date, an escalation contact, and evidence of the counterparty's commitment or an honest register row saying it is unconfirmed.",
+     "ask": "Which teams does this product wait on, by what date, and who is the escalation contact?",
+     "cross_examine": "\"they know about it\". Move: interest to behavior, is it in their plan with a date, and can you point at it?",
+     "evidence": "3, the dependency in the other team's committed plan, not only in yours.",
+     "evidence_class": "named_commitment",
+     "evidence_rung": 3,
+     "handle": "who we wait on",
+     "id": "DESIGN-5",
+     "lands_in": "`execution/dependency-register.md` sections 1 and 2, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "The dependency discovered at integration time is owned by a team that never agreed to your date."
+    },
+    {
+     "accept_when": "SLOs with numbers, alert thresholds, and one named dashboard owner.",
+     "ask": "How will you see this misbehaving before users tell you?",
+     "cross_examine": "the answer is \"standard monitoring\" or a tool name with no thresholds. Move: naked numbers.",
+     "evidence": "2, SLOs, alert thresholds, and a dashboard owner written down before code exists.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "seeing it misbehave",
+     "id": "DESIGN-6",
+     "lands_in": "`architecture/observability.md` sections 1, 4, and 5, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "Without SLOs and alerts named now, the monitoring plan is the support queue."
+    },
+    {
+     "accept_when": "every agent's access is the minimum its task needs, and every guardrail row names an owner and a test. Skip this entry with a cited source when STATE.md says the AI overlay is not active.",
+     "ask": "What is the least access each agent needs, and does every guardrail have an owner and a test?",
+     "cross_examine": "any agent holds access \"for flexibility\", or any guardrail's test is a design review. Move: interest to behavior, show the test that exercised it.",
+     "evidence": "2, the permission table and the guardrail table, each row owned and tested.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "AI overlay, least access",
+     "id": "DESIGN-7",
+     "lands_in": "`definition/ai/agent-architecture.md` permission table and `definition/ai/guardrails.md` guardrail table, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "An over-permissioned agent is a breach with a project plan; an untested guardrail is a diagram."
+    },
+    {
+     "accept_when": "a record with section 6 decided, or a stated reason the product has no UI.",
+     "ask": "Does this change have a user-facing surface? If so, where is the design review record, and which accessibility checklist evidence cells are filled?",
+     "cross_examine": "the answer is \"no UI\" without a stated reason, or the record exists but section 6 is undecided. Move: interest to behavior, show the checklist cells.",
+     "evidence": "2, the record.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "user-facing surface",
+     "id": "DESIGN-8",
+     "lands_in": "`architecture/design-review-record.md` and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "A product with a UI ships without a walked design review or without accessibility evidence because no gate asked for either."
+    }
+   ],
+   "source": "skills/conductor/questions/design.md",
+   "source_sha256": "6edc97879e590e43f79f6796cd2c8125c7dcf6eab03a70e161bdbd1231257f6d",
+   "stage": "DESIGN",
+   "version": "c24ca51926aef54c5"
+  },
+  {
+   "forced_pair": [
+    "BUILD-1",
+    "BUILD-3"
+   ],
+   "gate": 4,
+   "gate_rendering": [
+    {
+     "evidenced_by": "BUILD-1",
+     "line": "Every criterion demonstrated passing, or a miss with owner and decision",
+     "questions": [
+      "BUILD-1"
+     ]
+    },
+    {
+     "evidenced_by": "BUILD-2",
+     "line": "No edge-case row undecided; expected behavior and linked test per case",
+     "questions": [
+      "BUILD-2"
+     ]
+    },
+    {
+     "evidenced_by": "BUILD-3",
+     "line": "Failure scenarios exercised, detection fired, recovery matched",
+     "questions": [
+      "BUILD-3"
+     ]
+    },
+    {
+     "evidenced_by": "BUILD-1, via the acceptance-agent evidence ledger against `delivery/testing-strategy.md`",
+     "line": "Coverage meets targets, gaps listed by name",
+     "questions": [
+      "BUILD-1"
+     ]
+    },
+    {
+     "evidenced_by": "BUILD-4",
+     "line": "Scope changes since Gate 2 all in the decision log with deciders",
+     "questions": [
+      "BUILD-4"
+     ]
+    },
+    {
+     "evidenced_by": "BUILD-5, BUILD-6",
+     "line": "AI overlay: evals ran on the shipping version, red team clean or escalated",
+     "questions": [
+      "BUILD-5",
+      "BUILD-6"
+     ]
+    }
+   ],
+   "id": "build",
+   "questions": [
+    {
+     "accept_when": "every Gate 2 criterion maps to a passing run, or appears as a miss with an owner and a decision.",
+     "ask": "Which acceptance criteria are demonstrated passing, and for each miss, who owns it and what was decided?",
+     "cross_examine": "the answer is a coverage figure or \"the suite is green\" with no mapping to criteria. Move: naked numbers, then: which criterion, which run, where recorded?",
+     "evidence": "2, test results a reader could open, criterion by criterion.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "criteria demonstrated",
+     "id": "BUILD-1",
+     "lands_in": "`delivery/testing-strategy.md` results section, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "\"Code complete\" quietly replaces \"criteria met\", and the difference ships to customers."
+    },
+    {
+     "accept_when": "the undecided count is zero; anything else is a named miss with an owner. Every case has an expected behavior and a linked test.",
+     "ask": "Which edge-case rows are still undecided?",
+     "cross_examine": "the register is suspiciously short for the surface area. Move: banned openers, then walk the hunting list in the template together.",
+     "evidence": "2, the edge-case register itself.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "undecided edges",
+     "id": "BUILD-2",
+     "lands_in": "`delivery/edge-cases.md` section 2, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "The rows nobody decided become production incidents decided by whoever is on call."
+    },
+    {
+     "accept_when": "each scenario in the table was exercised, detection fired, recovery matched or the divergence is written up.",
+     "ask": "Were the failure scenarios exercised, and did detection fire and recovery match the write-up?",
+     "cross_examine": "\"we tested failures\" arrives without a date or a scenario name. Move: interest to behavior, which scenario, run when, observed where?",
+     "evidence": "1, the exercise itself, dated, with what fired and what recovered.",
+     "evidence_class": "observed_behavior",
+     "evidence_rung": 1,
+     "handle": "failure rehearsal",
+     "id": "BUILD-3",
+     "lands_in": "`delivery/failure-scenarios.md` sections 1 and 3, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "A failure plan that was never run is a guess with a table of contents."
+    },
+    {
+     "accept_when": "every change is logged with a decider, including the rejections.",
+     "ask": "What changed in scope since Gate 2, and where is each change in the decision log with a decider named?",
+     "cross_examine": "\"nothing really changed\" on a build of any length. Move: banned openers, then diff the shipped surface against the Gate 2 scope list together.",
+     "evidence": "2, decision-log entries, one per change, each with a decider.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "scope drift",
+     "id": "BUILD-4",
+     "lands_in": "`execution/decision-log.md`, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "Scope absorbed to be agreeable leaves a baseline that no longer describes the product."
+    },
+    {
+     "accept_when": "the run is against the shipping version and every threshold passed or its miss is escalated with an owner. Skip this entry with a cited source when STATE.md says the AI overlay is not active.",
+     "ask": "Did the eval sets run against the model version that ships, and what happened at each threshold?",
+     "cross_examine": "the run predates the current model version, or a threshold miss is explained rather than escalated. Move: naked numbers.",
+     "evidence": "2, the eval run, version-stamped, threshold by threshold.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "AI overlay, evals on the shipping version",
+     "id": "BUILD-5",
+     "lands_in": "`definition/ai/eval-spec.md` results section, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "An eval suite run against last month's model is the most common way a green spec produces a red launch."
+    },
+    {
+     "accept_when": "findings listed, every fix re-tested, no unfixed break rated high.",
+     "ask": "What did the red team break, and was every fix re-tested?",
+     "cross_examine": "the red team found nothing, or a fix's re-test is \"should be fine now\". Move: banned openers; a clean red-team pass on a first attempt is a finding about the red team.",
+     "evidence": "2, the red-team findings and the re-test evidence per fix.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "what the red team broke",
+     "id": "BUILD-6",
+     "lands_in": "`definition/ai/red-team-review.md` and `execution/risk-register.md` for accepted residual risk, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "A fix that was never re-attacked is a hypothesis wearing a checkmark."
+    }
+   ],
+   "source": "skills/conductor/questions/build.md",
+   "source_sha256": "6efa0876cef3ea8eec2cf088c2bcca35aef68271aef837aa4ae8dbdc897c0a1a",
+   "stage": "BUILD",
+   "version": "c3a4361f05f8aa92a"
+  },
+  {
+   "forced_pair": [
+    "DELIVER-1",
+    "DELIVER-10"
+   ],
+   "gate": 5,
+   "gate_rendering": [
+    {
+     "evidenced_by": "DELIVER-2",
+     "line": "UAT exit criteria met, severity-1 defects closed",
+     "questions": [
+      "DELIVER-2"
+     ]
+    },
+    {
+     "evidenced_by": "DELIVER-1",
+     "line": "Rollback performed in pre-production, time recorded",
+     "questions": [
+      "DELIVER-1"
+     ]
+    },
+    {
+     "evidenced_by": "DELIVER-3",
+     "line": "Known issues listed with workaround or accepted-risk sign-off",
+     "questions": [
+      "DELIVER-3"
+     ]
+    },
+    {
+     "evidenced_by": "DELIVER-11, with DELIVER-5 for the support row",
+     "line": "Comms drafted and approved",
+     "questions": [
+      "DELIVER-11",
+      "DELIVER-5"
+     ]
+    },
+    {
+     "evidenced_by": "DELIVER-5",
+     "line": "On-call informed, runbook exists",
+     "questions": [
+      "DELIVER-5"
+     ]
+    },
+    {
+     "evidenced_by": "Human signatures; the Conductor reports presence or absence, never supplies them",
+     "line": "Every function signed its own readiness line",
+     "questions": []
+    },
+    {
+     "evidenced_by": "DELIVER-12, with BUILD-5 and BUILD-6 re-verified against the release candidate",
+     "line": "AI overlay: guardrails live, kill switch tested",
+     "questions": [
+      "DELIVER-12",
+      "BUILD-5",
+      "BUILD-6"
+     ]
+    },
+    {
+     "evidenced_by": "DELIVER-6",
+     "line": "Regulated overlay: section 0 still true of what ships",
+     "questions": [
+      "DELIVER-6"
+     ]
+    }
+   ],
+   "id": "deliver",
+   "questions": [
+    {
+     "accept_when": "performed, dated, timed, in a pre-production environment.",
+     "ask": "Was the rollback actually performed in pre-production, and how long did it take?",
+     "cross_examine": "\"we have a rollback plan\" arrives as a document, not a rehearsal. Move: interest to behavior, when was it run and how long did it take?",
+     "evidence": "1, the rehearsal, dated, with the time to roll back recorded.",
+     "evidence_class": "observed_behavior",
+     "evidence_rung": 1,
+     "handle": "the rollback",
+     "id": "DELIVER-1",
+     "lands_in": "`delivery/release-readiness.md` section 4, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "The industry's incident write-ups repeat one line: the rollback plan existed on paper and had never been run."
+    },
+    {
+     "accept_when": "exit criteria met, testers real or named proxies, severity-1 count zero.",
+     "ask": "Are the UAT exit criteria met with real users or named proxies, and is every severity-1 defect closed?",
+     "cross_examine": "the testers are teammates standing in for users without being named as proxies. Move: category to name.",
+     "evidence": "2, UAT results against the plan's exit criteria, testers named.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "UAT and severity ones",
+     "id": "DELIVER-2",
+     "lands_in": "`delivery/uat-plan.md` section 6, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "UAT signed by the build team is the build team agreeing with itself."
+    },
+    {
+     "accept_when": "every shipping issue listed with a workaround or a signed acceptance.",
+     "ask": "Which known issues ship, each with a workaround or an accepted-risk signature?",
+     "cross_examine": "the list is empty on a first release. Move: banned openers; zero known issues is a claim about your testing, not your product.",
+     "evidence": "3, each accepted risk signed by someone with standing.",
+     "evidence_class": "named_commitment",
+     "evidence_rung": 3,
+     "handle": "known issues",
+     "id": "DELIVER-3",
+     "lands_in": "`delivery/release-readiness.md` section 3, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "The unlisted known issue becomes support's discovery and the team's credibility bill."
+    },
+    {
+     "accept_when": "a named cohort, one channel, and prior evidence the channel reaches them.",
+     "ask": "Who is the first user cohort, through which channel, and what evidence says that channel reaches them?",
+     "cross_examine": "the cohort is a segment or the channel is \"marketing\". Move: category to name.",
+     "evidence": "2, evidence the channel has reached these people before.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "the first cohort",
+     "id": "DELIVER-4",
+     "lands_in": "the workspace gtm plan, first cohort section, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "A launch aimed at everybody arrives for nobody; the beachhead is a choice you defend."
+    },
+    {
+     "accept_when": "named acknowledgment from support and on-call, runbook path stated.",
+     "ask": "Do support and on-call know this release is coming, and does the runbook exist?",
+     "cross_examine": "\"they have been looped in\" without a named acknowledgment. Move: interest to behavior, who confirmed, and where is the runbook?",
+     "evidence": "3, their acknowledgment, plus the runbook as an artifact.",
+     "evidence_class": "named_commitment",
+     "evidence_rung": 3,
+     "handle": "support and on-call",
+     "id": "DELIVER-5",
+     "lands_in": "`delivery/release-readiness.md` sections 5 and 6, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "The launch support learns about from customers is the other repeat offender in incident write-ups."
+    },
+    {
+     "accept_when": "each answer re-verified, and any drift written up and re-signed by the regulatory owner. Where STATE.md records that the shipped overlay did not apply and names what the regulatory owner used in its place, the Gate 5 line re-checks that substitute instead, by name, in the same way. Skip this entry with a cited source only when STATE.md records that no regulator applies to the product.",
+     "ask": "Are the section 0 answers from Gate 2 still true of the artifact that ships?",
+     "cross_examine": "\"nothing changed\" without the line-by-line check. Move: interest to behavior, walk the four together.",
+     "evidence": "2, the answers re-checked line by line against the shipping artifact: model version, vendor terms, data residency, disclosures.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "regulated overlay drift",
+     "id": "DELIVER-6",
+     "lands_in": "`delivery/release-readiness.md` section 7, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "A deferred precondition can resurface with a regulator's reference number attached."
+    },
+    {
+     "accept_when": "one named alternative, one sentence a real cohort member would repeat.",
+     "ask": "Against which named alternative is this positioned, and what is the one sentence the first cohort hears?",
+     "cross_examine": "the alternative is \"doing nothing\" claimed without DISCOVER-2 behavior behind it, or the sentence needs three clauses. Move: banned openers.",
+     "evidence": "4, the alternative named from discovery evidence, not assumed.",
+     "evidence_class": "interview_claim",
+     "evidence_rung": 4,
+     "handle": "positioning",
+     "id": "DELIVER-7",
+     "lands_in": "the workspace gtm plan, positioning section, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "Positioned against nothing, the product is compared to everything, on the buyer's terms."
+    },
+    {
+     "accept_when": "ordered steps, each owned and dated, with the first reversible step first.",
+     "ask": "In what order do the launch steps run, and who owns each step?",
+     "cross_examine": "steps have owners but no dates, or the sequence is a single big-bang day. Move: naked numbers.",
+     "evidence": "2, the sequence written with owners and dates.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "launch sequence",
+     "id": "DELIVER-8",
+     "lands_in": "the workspace gtm plan, launch sequence section, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "A launch without a sequence is a date with hope attached."
+    },
+    {
+     "accept_when": "one metric, one threshold or direction, one date, one source system.",
+     "ask": "What is the one metric that says the launch worked, and by when?",
+     "cross_examine": "multiple metrics arrive, or the metric contradicts DISCOVER-7 without explanation. Move: naked numbers.",
+     "evidence": "2, a measurable signal plus the source system that will measure it, consistent with the Gate 1 signal from DISCOVER-7.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "the launch metric",
+     "id": "DELIVER-9",
+     "lands_in": "the workspace gtm plan, success measure section, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "Without one metric named in advance, the retrospective grades on a curve of whatever moved."
+    },
+    {
+     "accept_when": "condition, threshold, and the person with authority to pull it, named.",
+     "ask": "What condition pauses the rollout?",
+     "cross_examine": "the condition is \"if things look bad\". Move: naked numbers.",
+     "evidence": "3, the named authority's commitment to call the stop: an observable condition with a threshold and that authority named.",
+     "evidence_class": "named_commitment",
+     "evidence_rung": 3,
+     "handle": "the stop condition",
+     "id": "DELIVER-10",
+     "lands_in": "the workspace gtm plan, stop condition section, and `execution/risk-register.md`, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "A rollout with no stop condition stops only when the damage does."
+    },
+    {
+     "accept_when": "every row of release-readiness section 6 has an owner, an approver named from evidence, and a sent or scheduled date.",
+     "ask": "For each audience (support, sales or field, customers), is the message drafted, and who approved it in writing?",
+     "cross_examine": "an audience row has a message and no approver, or \"we'll send something\" stands in for a draft. Move: interest to behavior, who approved it and when?",
+     "evidence": "3, named commitment per audience, or \"silent release\" recorded with its decider.",
+     "evidence_class": "named_commitment",
+     "evidence_rung": 3,
+     "handle": "comms drafted and approved",
+     "id": "DELIVER-11",
+     "lands_in": "`delivery/release-readiness.md` section 6, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "A drafted message with no named approver ships as whatever the last editor left in it, and nobody is accountable for the version that went out."
+    },
+    {
+     "accept_when": "guardrail rows re-verified against the release candidate, and the kill switch pulled, dated, timed, runner named. Skip this entry with a cited source when STATE.md says the AI overlay is not active.",
+     "ask": "Were the guardrails verified live in the release candidate, and when was the kill switch last pulled there, by whom, and how long until fully stopped?",
+     "cross_examine": "the switch is described, not pulled, or one flag takes the host surface down too. Move: interest to behavior.",
+     "evidence": "1, the rehearsal in the release candidate, dated and timed.",
+     "evidence_class": "observed_behavior",
+     "evidence_rung": 1,
+     "handle": "kill switch tested",
+     "id": "DELIVER-12",
+     "lands_in": "the workspace copy of `templates/ai/guardrails.md` section 4 (Last tested) and `delivery/release-readiness.md` section 5, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "A kill switch that was designed but never tested is a fail dressed as a pass; the first real pull is the worst possible time to discover it does not work."
+    }
+   ],
+   "source": "skills/conductor/questions/deliver.md",
+   "source_sha256": "bfaa9d67a4bc0c6e4bada0b72604a21e4f937e1edfe7787b51ede18c1e8f1add",
+   "stage": "DELIVER",
+   "version": "c6769a8e35c607a07"
+  },
+  {
+   "forced_pair": [
+    "OPERATE-1",
+    "OPERATE-6"
+   ],
+   "gate": 6,
+   "gate_rendering": [
+    {
+     "evidenced_by": "OPERATE-1",
+     "line": "Gate 1 signal measured, source and calculation stated",
+     "questions": [
+      "OPERATE-1"
+     ]
+    },
+    {
+     "evidenced_by": "OPERATE-2",
+     "line": "Every key result scored number versus number",
+     "questions": [
+      "OPERATE-2"
+     ]
+    },
+    {
+     "evidenced_by": "OPERATE-3",
+     "line": "Input metrics examined, not just the headline",
+     "questions": [
+      "OPERATE-3"
+     ]
+    },
+    {
+     "evidenced_by": "OPERATE-4",
+     "line": "Operational load reviewed",
+     "questions": [
+      "OPERATE-4"
+     ]
+    },
+    {
+     "evidenced_by": "OPERATE-6",
+     "line": "Decision is one of persist, pivot, sunset",
+     "questions": [
+      "OPERATE-6"
+     ]
+    },
+    {
+     "evidenced_by": "OPERATE-6",
+     "line": "The decision's consequence is scheduled",
+     "questions": [
+      "OPERATE-6"
+     ]
+    },
+    {
+     "evidenced_by": "Drafted by the Conductor from the accepted answers, confirmed word by word by the user before filing",
+     "line": "What this pass taught us, three sentences, filed findably",
+     "questions": []
+    },
+    {
+     "evidenced_by": "OPERATE-10",
+     "line": "AI overlay: production evals compared with Gate 5, new populations re-evaluated",
+     "questions": [
+      "OPERATE-10"
+     ]
+    }
+   ],
+   "id": "operate",
+   "questions": [
+    {
+     "accept_when": "the same signal, measured, with source system and calculation a reader could re-run.",
+     "ask": "Was the Gate 1 success signal measured, with the source system and the calculation stated?",
+     "cross_examine": "the signal reported differs from the one DISCOVER-7 accepted, or the calculation is not shown. Move: naked numbers.",
+     "evidence": "2, the measurement, source system and calculation shown.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "the promised signal",
+     "id": "OPERATE-1",
+     "lands_in": "`operate/metrics-review.md` section 1, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "A signal promised at DISCOVER and unmeasured at OPERATE means the loop never closed and nobody can say whether the product worked."
+    },
+    {
+     "accept_when": "every key result scored actual against target, misses included.",
+     "ask": "For each key result, what is the number against the number?",
+     "cross_examine": "any result arrives as \"strong\", \"on track\", or \"improving\". Move: naked numbers.",
+     "evidence": "2, actual versus target per key result. Adjectives are returned unanswered.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "number versus number",
+     "id": "OPERATE-2",
+     "lands_in": "`operate/metrics-review.md` section 1, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "Adjectives grade themselves; a target either was hit or was not."
+    },
+    {
+     "accept_when": "each input metric's movement is stated and the headline's movement is attributed or honestly marked unexplained.",
+     "ask": "Did the input metrics move, or did the headline move for an unrelated reason?",
+     "cross_examine": "the headline moved and no input did, and the answer waves at momentum. Move: banned openers, then: what else changed in the period?",
+     "evidence": "2, input metric movement examined alongside the headline.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "did the drivers move",
+     "id": "OPERATE-3",
+     "lands_in": "`operate/metrics-review.md` section 2, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "A headline lifted by seasonality or a pricing change credits the product for weather."
+    },
+    {
+     "accept_when": "incident count, support volume, and on-call load stated with sources for the review window.",
+     "ask": "What does this cost to run, in incidents, support volume, and on-call load?",
+     "cross_examine": "\"operationally it is fine\" without counts. Move: naked numbers.",
+     "evidence": "2, the operational numbers from their source systems.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "cost to run",
+     "id": "OPERATE-4",
+     "lands_in": "`operate/metrics-review.md` section 3 and `operate/operational-readiness-review.md`, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "A product that hits its targets while burning its operators is a resignation letter on a delay."
+    },
+    {
+     "accept_when": "one input metric, one experiment, its cost, and what result would justify scaling it.",
+     "ask": "Which input metric is the next growth bet, and what is the cheapest experiment that would move it?",
+     "cross_examine": "the bet is on the headline itself, or the experiment starts at a quarter of work. Move: naked numbers, then: what is the version that costs a week?",
+     "evidence": "2, the chosen input metric from OPERATE-3's examined set, plus an experiment with a cost attached.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "the next bet",
+     "id": "OPERATE-5",
+     "lands_in": "the workspace growth plan, next bet section, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "Growth effort not aimed at an input metric is aimed at the headline, which no team can move directly."
+    },
+    {
+     "accept_when": "one decision, one scheduled consequence with a date and an owner. The Conductor recommends, the humans at Gate 6 decide.",
+     "ask": "Is the decision persist, pivot, or sunset, and what consequence is scheduled?",
+     "cross_examine": "the answer is \"keep watching it\". Move: banned openers; watching is persisting without admitting the cost.",
+     "evidence": "3, the decision of the humans at Gate 6: one of exactly three decisions, with its consequence scheduled: the next DISCOVER pass, the pivot's Gate 1, or the sunset plan with dates and an owner.",
+     "evidence_class": "named_commitment",
+     "evidence_rung": 3,
+     "handle": "persist, pivot, or sunset",
+     "id": "OPERATE-6",
+     "lands_in": "`operate/metrics-review.md` section 5 and `execution/decision-log.md`, and STATE.md accepted answers.",
+     "options": "a) persist, which implies the next DISCOVER pass is scheduled. b) pivot, which implies a new Gate 1 with a date. c) sunset, which implies a plan with dates and an owner.",
+     "wrong_costs": "The zombie portfolio is made of products where nobody decided anything."
+    },
+    {
+     "accept_when": "the loop or channel named, with one observed completion.",
+     "ask": "What loop or channel actually drives the input metric you are betting on?",
+     "cross_examine": "the mechanism is \"word of mouth\" or \"virality\" unobserved. Move: interest to behavior, show one instance of the loop completing.",
+     "evidence": "2, the mechanism traced: who does what, which triggers the metric, observed at least once.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "the loop behind the metric",
+     "id": "OPERATE-7",
+     "lands_in": "the workspace growth plan, mechanism section, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "An experiment on a metric with no mechanism behind it is a lottery ticket with a dashboard."
+    },
+    {
+     "accept_when": "one counter-metric, one threshold, watched over the same window.",
+     "ask": "Which counter-metric catches the damage if this experiment works for the wrong reason?",
+     "cross_examine": "\"there is no downside\". Move: banned openers; an experiment with no conceivable damage is not changing anything.",
+     "evidence": "2, a measurable counter-metric with a threshold and the same review window as the experiment.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "the counter-metric",
+     "id": "OPERATE-8",
+     "lands_in": "the workspace growth plan, guardrail section, and `operate/metrics-review.md` section 3, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "Growth that cannibalizes trust reports as success right up until the churn arrives."
+    },
+    {
+     "accept_when": "a result threshold and a date, and the owner who calls it.",
+     "ask": "What result kills the experiment?",
+     "cross_examine": "the condition is \"if it clearly fails\". Move: naked numbers.",
+     "evidence": "3, the owner's commitment to call it: an observable result plus a date, either of which ends it.",
+     "evidence_class": "named_commitment",
+     "evidence_rung": 3,
+     "handle": "the kill condition",
+     "id": "OPERATE-9",
+     "lands_in": "the workspace growth plan, kill condition section, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "Experiments without kill conditions become programs, and programs without results become furniture."
+    },
+    {
+     "accept_when": "a per-segment comparison against the Gate 5 run, and a re-evaluation date for each population added since. Skip this entry with a cited source when STATE.md says the AI overlay is not active.",
+     "ask": "Were production-sampled evals for the review window compared with the Gate 5 run, per segment, and was every population added since Gate 5 re-evaluated before it went live?",
+     "cross_examine": "the comparison is aggregate only, with no segment breakdown, or a population added since Gate 5 carries no re-evaluation date. Move: naked numbers.",
+     "evidence": "2, the dated eval run.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "AI overlay, production evals against Gate 5",
+     "id": "OPERATE-10",
+     "lands_in": "`definition/ai/eval-spec.md` results, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "A model that drifted since Gate 5 ships a different answer to a different segment, and nobody would know until a customer does."
+    }
+   ],
+   "source": "skills/conductor/questions/operate.md",
+   "source_sha256": "7466e80d14306bd274f6c37838297d28cda29e942f2d17327837d30e55e2e9cd",
+   "stage": "OPERATE",
+   "version": "c152333685e9d7027"
+  }
+ ],
+ "generated_by": "tools/question_banks.py",
+ "schema": 1,
+ "signoffs": {
+  "1": [
+   "Product owner",
+   "Sponsor or lead who can stop this"
+  ],
+  "2": [
+   "Product owner",
+   "Engineering lead",
+   "Business sponsor",
+   "Regulatory owner (regulated products only)"
+  ],
+  "3": [
+   "Architect or senior engineer",
+   "Product owner",
+   "Security reviewer"
+  ],
+  "4": [
+   "Engineering lead",
+   "QA owner",
+   "Product owner"
+  ],
+  "5": [
+   "Release owner",
+   "Product owner",
+   "Operations or support lead",
+   "Regulatory owner (regulated products only)"
+  ],
+  "6": [
+   "Product owner",
+   "Sponsor"
+  ]
+ }
+}

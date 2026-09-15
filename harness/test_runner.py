@@ -18,17 +18,24 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import copy
 import importlib.util
 import io
 import json
 import os
 import subprocess
 import sys
+import tempfile
 import unittest
 import urllib.error
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+PMOS_SPEND_LEDGER_DIR = tempfile.mkdtemp(prefix="pmos-spend-test-")
+os.environ["PMOS_SPEND_LEDGER"] = str(
+    Path(PMOS_SPEND_LEDGER_DIR) / "spend.sqlite")
 
 import runner                                            # noqa: E402
 
@@ -78,6 +85,59 @@ class FoldTests(unittest.TestCase):
         self.assertFalse(reply.ok, "finish_reason=length was accepted")
         self.assertTrue(reply.truncated)
         self.assertIn("length", reply.why_unusable())
+
+    def test_usage_frame_before_done_is_recorded_without_changing_text(self):
+        folded = _fold(
+            delta("hello", finish="stop"),
+            frame(usage={"prompt_tokens": 10, "completion_tokens": 4,
+                         "cost": 0.002}),
+            frame(usage={"prompt_tokens": 20, "completion_tokens": 8}))
+        self.assertEqual(folded.text, "hello")
+        self.assertTrue(folded.terminal)
+        self.assertEqual(folded.finish_reason, "stop")
+        # The last usage object wins whole: a key it lacks is not carried over
+        # from an earlier frame.
+        self.assertEqual(folded.usage, {"prompt_tokens": 20, "completion_tokens": 8})
+
+    def test_usage_frame_with_empty_choices_is_recorded(self):
+        folded = _fold(
+            delta("hello", finish="stop"),
+            frame(model="test-model-1", choices=[], usage={
+                "prompt_tokens": 5, "completion_tokens": 2}))
+        self.assertEqual(folded.text, "hello")
+        self.assertTrue(folded.terminal)
+        self.assertEqual(folded.finish_reason, "stop")
+        self.assertEqual(folded.usage["prompt_tokens"], 5)
+        self.assertEqual(folded.usage["completion_tokens"], 2)
+
+    def test_plain_json_body_fallback_reads_usage(self):
+        body = json.dumps({
+            "model": "test-model-1",
+            "choices": [{"message": {"content": "hi"}, "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": 3, "completion_tokens": 1, "cost": 0.001},
+        })
+        folded = runner._fold_sse(io.BytesIO(body.encode("utf-8")))
+        self.assertEqual(folded.text, "hi")
+        self.assertTrue(folded.terminal)
+        self.assertEqual(folded.usage["prompt_tokens"], 3)
+        self.assertEqual(folded.usage["completion_tokens"], 1)
+        self.assertEqual(folded.usage["cost"], 0.001)
+
+    def test_invalid_usage_fields_are_dropped(self):
+        folded = _fold(
+            delta("hello", finish="stop"),
+            frame(usage={"prompt_tokens": float('nan'),
+                         "completion_tokens": -5,
+                         "cost": True}))
+        self.assertIsNone(folded.usage)
+
+    def test_partial_usage_keeps_valid_keys_only(self):
+        folded = _fold(
+            delta("hello", finish="stop"),
+            frame(usage={"prompt_tokens": 7, "completion_tokens": "bad",
+                         "cost": "x"}))
+        self.assertEqual(folded.usage, {"prompt_tokens": 7})
+        self.assertEqual(folded.finish_reason, "stop")
 
     def test_malformed_frame_is_an_error(self):
         folded = _fold(delta("first half"), "data: {not json at all\n\n",
@@ -319,6 +379,7 @@ class ExactInputTests(unittest.TestCase):
 
     def setUp(self):
         runner._MEMO.clear()
+        runner._CAPABILITY.clear()
         self.log = []
 
     def test_extraction_over_the_limit_fails_instead_of_summarizing(self):
@@ -461,6 +522,266 @@ class ExactInputTests(unittest.TestCase):
                          "would spend a chunked pass on a fixable-by-nothing "
                          "failure")
 
+    # ---- S06: evidence condensation adds cost without proving fidelity ----
+
+    def test_required_facts_rule_is_explicit_and_testable(self):
+        """S06 item: check that required facts survive condensation, using
+        an explicit, testable rule. Proves the rule itself: a quoted span,
+        a bare number and a mixed id/code are each recognized, a plain word
+        is not, and condensation_fidelity() reports exactly what is missing.
+        """
+        original = ('The finding cites "the gate completed anyway" for '
+                   'invoice INV-2024-017, amount 12,500, filed 2026-09-12.')
+        self.assertEqual(
+            runner.required_facts(original),
+            {"the gate completed anyway", "INV-2024-017", "12,500",
+             "2024", "017", "09", "12", "2026"})
+        self.assertNotIn("finding", runner.required_facts(original),
+                         "an ordinary word was treated as a required fact")
+
+        condensed_complete = original
+        ok, missing = runner.condensation_fidelity(original,
+                                                    condensed_complete)
+        self.assertTrue(ok, missing)
+        self.assertEqual(missing, [])
+
+        condensed_lossy = "The finding cites the gate result for the invoice."
+        ok, missing = runner.condensation_fidelity(original, condensed_lossy)
+        self.assertFalse(ok)
+        self.assertIn("INV-2024-017", missing)
+        self.assertIn("12,500", missing)
+        self.assertIn("the gate completed anyway", missing)
+
+    def test_condense_appends_deterministic_facts_verbatim(self):
+        """S06 items: deterministic source selection before the semantic
+        summary is trusted, and exact quotations/numeric evidence retained.
+        The stub model paraphrases away every specific; the returned text
+        must still carry them, because this runner's own extraction put
+        them there, not the model's paraphrase.
+        """
+        evidence = ('The contract cites "Section 4.2 applies" for invoice '
+                   'INV-2024-017, amount 12,500.')
+
+        def stub(cfg, tier, messages, transport, **kwargs):
+            reply = runner.Reply(tier, "auto/coding")
+            reply.text = "a paraphrase that drops every specific"
+            reply.terminal, reply.finish_reason = True, "stop"
+            return reply
+
+        real_call = runner.transport_call
+        runner.transport_call = stub
+        try:
+            out = runner.condense(
+                {}, runner.Candidate("drafting", "test-model-1", "probe"),
+                evidence, "http", self.log)
+        finally:
+            runner.transport_call = real_call
+        self.assertIsNotNone(out, self.log)
+        self.assertIn("Section 4.2 applies", out,
+                      "an exact quotation did not survive condensation")
+        self.assertIn("INV-2024-017", out,
+                      "an id did not survive condensation")
+        self.assertIn("12,500", out,
+                      "a number did not survive condensation")
+        self.assertIn("a paraphrase that drops every specific", out,
+                      "the model's own summary was discarded, not just "
+                      "supplemented")
+
+    def test_condense_logs_chunk_id_hash_and_span(self):
+        """S06 item: retain source ids, hashes and spans. One chunk, so its
+        span in the source is exact and checkable."""
+        evidence = "hello condensed world"
+
+        def stub(cfg, tier, messages, transport, **kwargs):
+            reply = runner.Reply(tier, "auto/coding")
+            reply.text, reply.terminal, reply.finish_reason = (
+                "condensed", True, "stop")
+            return reply
+
+        real_call = runner.transport_call
+        runner.transport_call = stub
+        try:
+            runner.condense(
+                {}, runner.Candidate("drafting", "test-model-1", "probe"),
+                evidence, "http", self.log)
+        finally:
+            runner.transport_call = real_call
+        joined = "\n".join(self.log)
+        self.assertIn("id=chunk-1-of-1", joined)
+        expected_hash = runner._section_hash(evidence)[:16]
+        self.assertIn("hash=%s" % expected_hash, joined)
+        self.assertIn("span=(0, %d)" % len(evidence), joined)
+
+    def test_condense_uses_its_own_output_budget(self):
+        """S06 item: a summary-specific output budget, not the tier's own
+        (16384 for drafting), which condense used to inherit."""
+        captured = {}
+
+        def stub(cfg, tier, messages, transport, **kwargs):
+            captured["max_tokens"] = kwargs.get("max_tokens")
+            reply = runner.Reply(tier, "auto/coding")
+            reply.text, reply.terminal, reply.finish_reason = (
+                "condensed", True, "stop")
+            return reply
+
+        real_call = runner.transport_call
+        runner.transport_call = stub
+        try:
+            runner.condense(
+                {}, runner.Candidate("drafting", "test-model-1", "probe"),
+                "some short evidence", "http", self.log)
+        finally:
+            runner.transport_call = real_call
+        self.assertEqual(captured.get("max_tokens"), runner.CONDENSE_MAX_TOKENS)
+        self.assertLess(runner.CONDENSE_MAX_TOKENS,
+                        runner.tier_settings({}, "drafting")["max_tokens"],
+                        "the condense budget is not actually smaller than "
+                        "the tier's own")
+
+    def test_condense_refuses_beyond_the_aggregate_chunk_cap(self):
+        """S06 item: an aggregate call cap, independent of any dollar spend
+        cap. 50 same-sized paragraphs chunk one-per-paragraph, over
+        CONDENSE_MAX_CHUNKS; refusing must cost zero transport calls."""
+        paragraph = "z" * (runner.CHUNK_MAX_BYTES - 10)
+        evidence = "\n\n".join("p%d %s" % (i, paragraph) for i in range(50))
+        self.assertGreater(len(runner.chunk_evidence(evidence)),
+                           runner.CONDENSE_MAX_CHUNKS)
+        calls = {"n": 0}
+
+        def stub(cfg, tier, messages, transport, **kwargs):
+            calls["n"] += 1
+            raise AssertionError("a chunk was dispatched past the "
+                                 "aggregate call cap")
+
+        real_call = runner.transport_call
+        runner.transport_call = stub
+        try:
+            out = runner.condense(
+                {}, runner.Candidate("drafting", "test-model-1", "probe"),
+                evidence, "http", self.log)
+        finally:
+            runner.transport_call = real_call
+        self.assertIsNone(out)
+        self.assertEqual(calls["n"], 0)
+        self.assertTrue(any("aggregate call cap" in line for line in self.log),
+                        self.log)
+
+    def test_condense_queues_when_a_required_fact_does_not_survive(self):
+        """S06 item: if fidelity cannot be established, queue the task
+        rather than silently continuing. Forces the gap by making the
+        deterministic extractor itself report a fact the joined output
+        cannot possibly contain, isolating condense()'s own wiring of the
+        check from required_facts()'s own correctness (proven separately
+        above). Fails on the code before this change: condense() had no
+        fidelity check, so this raised nothing.
+        """
+        # Two chunks, neither equal to the whole evidence: the stub must
+        # only see the "required fact" when asked about the FULL original
+        # text (what condensation_fidelity checks against), never about an
+        # individual chunk (what the per-chunk deterministic append checks),
+        # so the deterministic append cannot accidentally satisfy its own
+        # check and this genuinely exercises the fidelity gate.
+        evidence = ("a" * 4000) + "\n\n" + ("b" * 4000)
+        self.assertGreater(len(runner.chunk_evidence(evidence)), 1)
+
+        def stub_required_facts(text):
+            if text == evidence:
+                return {"NEEDLE-THAT-CANNOT-SURVIVE"}
+            return set()
+
+        def stub_transport(cfg, tier, messages, transport, **kwargs):
+            reply = runner.Reply(tier, "auto/coding")
+            reply.text, reply.terminal, reply.finish_reason = (
+                "condensed fragment", True, "stop")
+            return reply
+
+        real_required_facts = runner.required_facts
+        real_call = runner.transport_call
+        runner.required_facts = stub_required_facts
+        runner.transport_call = stub_transport
+        try:
+            with self.assertRaises(runner.QueuedWork) as caught:
+                runner.condense(
+                    {}, runner.Candidate("drafting", "test-model-1", "probe"),
+                    evidence, "http", self.log)
+        finally:
+            runner.required_facts = real_required_facts
+            runner.transport_call = real_call
+        self.assertIn("NEEDLE-THAT-CANNOT-SURVIVE", str(caught.exception))
+
+
+class CacheBindingTests(unittest.TestCase):
+    """Finding S05: the exact-match cache must bind the resolved model.
+
+    _memo_key used to key only on (tier, messages). Two calls with identical
+    messages but a different candidate chain, a different concrete model,
+    were the same cache entry: the second call was silently served the first
+    call's reply, naming a model it never asked and never answered from.
+    """
+
+    def setUp(self):
+        runner._MEMO.clear()
+        runner._CAPABILITY.clear()
+        self.log = []
+
+    def _model_recording_stub(self, calls):
+        def stub(cfg, tier, messages, transport, **kwargs):
+            calls.append(kwargs.get("model_override"))
+            reply = runner.Reply(tier, "auto/" + tier)
+            reply.model = kwargs.get("model_override")
+            reply.text, reply.terminal = "PONG", True
+            reply.finish_reason = "stop"
+            return reply
+        return stub
+
+    def test_a_cache_hit_requires_the_same_resolved_model(self):
+        calls = []
+        messages = [{"role": "user", "content": "identical prompt"}]
+        real = runner.transport_call
+        runner.transport_call = self._model_recording_stub(calls)
+        try:
+            first = runner.call_with_fallback(
+                {}, "drafting", messages, {}, "http", self.log,
+                candidates=[runner.Candidate("drafting", "model-a", "probe")])
+            second = runner.call_with_fallback(
+                {}, "drafting", messages, {}, "http", self.log,
+                candidates=[runner.Candidate("drafting", "model-b", "probe")])
+        finally:
+            runner.transport_call = real
+
+        self.assertEqual(calls, ["model-a", "model-b"],
+                         "the second call, for a different model, was never "
+                         "dispatched: it was served the first call's cached "
+                         "reply instead")
+        self.assertEqual(first.model, "model-a")
+        self.assertEqual(second.model, "model-b",
+                         "a cache hit returned model-a's reply for a "
+                         "model-b request")
+
+    def test_the_same_resolved_model_still_reuses_the_cache(self):
+        # The fix must not turn caching off altogether: repeating the exact
+        # same tier, messages AND resolved candidate is still one call, even
+        # when the second call builds an equal but distinct Candidate object.
+        calls = []
+        messages = [{"role": "user", "content": "identical prompt"}]
+        real = runner.transport_call
+        runner.transport_call = self._model_recording_stub(calls)
+        try:
+            first = runner.call_with_fallback(
+                {}, "drafting", messages, {}, "http", self.log,
+                candidates=[runner.Candidate("drafting", "model-a", "probe")])
+            second = runner.call_with_fallback(
+                {}, "drafting", messages, {}, "http", self.log,
+                candidates=[runner.Candidate("drafting", "model-a", "probe")])
+        finally:
+            runner.transport_call = real
+
+        self.assertEqual(calls, ["model-a"],
+                         "an identical request (same tier, messages and "
+                         "resolved model) was dispatched twice")
+        self.assertIs(second, first,
+                      "same-request reuse stopped working")
+
 
 class RedactionTests(unittest.TestCase):
     """Finding 18: one redactor, any variable name, any length."""
@@ -551,6 +872,7 @@ class RunTaskTests(unittest.TestCase):
 
     def setUp(self):
         runner._MEMO.clear()
+        runner._CAPABILITY.clear()
         self.slug = "test-runner-run-%d" % os.getpid()
         self.template_text = TEMPLATE.read_text(encoding="utf-8")
         self.cfg = json.loads(
@@ -624,6 +946,31 @@ class RunTaskTests(unittest.TestCase):
                      if ".tmp-" in p.name]
         self.assertEqual(leftovers, [], leftovers)
 
+    def test_the_run_log_lists_a_pinned_target_row(self):
+        """Code-review follow-up (P2). probe() stores a configured (pinned
+        or keyless) target under the (tier, target_key(model)) compound
+        key, never a bare "target:<model>" string. The run-log's 'Tier
+        probe for this run' table used to select those rows by string
+        prefix, which a tuple can never match, so every run that used
+        fixedFallback or keylessFallback silently lost its pinned-target
+        rows from .run-log.md."""
+        probe_results = {
+            "extraction": _usable_reply("extraction", "test-model-1"),
+            ("extraction", runner.target_key("pinned-model-x")):
+                _usable_reply("extraction", "pinned-model-x"),
+        }
+        filled = self.template_text.replace("[source short name]",
+                                            "Ledgerline support export")
+        self._stub_body(filled)
+        self.assertEqual(
+            _quiet_run(self._args(probe_results=probe_results), self.cfg,
+                      self.tasks), 0)
+        log = self.log_path.read_text(encoding="utf-8")
+        self.assertIn("## Tier probe for this run", log)
+        self.assertIn("pinned-model-x", log,
+                     "a configured (pinned) target's probe row is missing "
+                     "from the run log")
+
     def test_a_second_run_refuses_to_overwrite_the_first(self):
         filled = self.template_text.replace("[source short name]", "First run")
         self._stub_body(filled)
@@ -639,10 +986,85 @@ class RunTaskTests(unittest.TestCase):
                          "a rerun overwrote finished work")
 
         runner._MEMO.clear()
+        runner._CAPABILITY.clear()
         self.assertEqual(
             _quiet_run(self._args(update=True), self.cfg, self.tasks), 0)
         self.assertIn("Second run",
                       self.artifact.read_text(encoding="utf-8"))
+
+    def test_a_complete_run_stamps_an_artifact_block(self):
+        filled = self.template_text.replace("[source short name]",
+                                            "Ledgerline support export")
+        self._stub_body(filled)
+        self.assertEqual(
+            _quiet_run(self._args(), self.cfg, self.tasks), 0)
+        self.assertTrue(self.artifact.exists())
+        text = self.artifact.read_text(encoding="utf-8")
+        parsed = runner.workspace.parse_artifact(text)
+        self.assertIsNotNone(parsed, "no artifact frontmatter was stamped")
+        self.assertEqual(parsed["artifact_id"],
+                         "%s/discovery/evidence-note" % self.slug)
+        self.assertEqual(parsed["phase"], "DISCOVER")
+        self.assertEqual(parsed["gate"], 1)
+        self.assertEqual(parsed["status"], "draft")
+        self.assertEqual(parsed["template"], "templates/discovery/evidence-note.md")
+        self.assertEqual(parsed["depends_on"], [])
+        self.assertIn("## Run provenance", text)
+
+    def test_an_update_rerun_keeps_the_prior_artifact_id_and_resets_status(self):
+        filled = self.template_text.replace("[source short name]", "First run")
+        self._stub_body(filled)
+        self.assertEqual(_quiet_run(self._args(), self.cfg, self.tasks), 0)
+        self.assertTrue(self.artifact.exists())
+
+        text = self.artifact.read_text(encoding="utf-8")
+        text = text.replace(
+            "artifact_id: %s/discovery/evidence-note" % self.slug,
+            "artifact_id: %s/discovery/renamed" % self.slug)
+        text = text.replace("status: draft", "status: approved")
+        # Both edits must land, or the assertions below prove nothing.
+        self.assertIn("artifact_id: %s/discovery/renamed" % self.slug, text)
+        self.assertIn("status: approved", text)
+        self.artifact.write_text(text, encoding="utf-8")
+
+        self._stub_body(self.template_text.replace("[source short name]",
+                                                   "Second run body"))
+        runner._MEMO.clear()
+        runner._CAPABILITY.clear()
+        self.assertEqual(
+            _quiet_run(self._args(update=True), self.cfg, self.tasks), 0)
+
+        rewritten = self.artifact.read_text(encoding="utf-8")
+        parsed = runner.workspace.parse_artifact(rewritten)
+        self.assertIsNotNone(parsed, "the rerun dropped the artifact block")
+        self.assertEqual(parsed["artifact_id"],
+                         "%s/discovery/renamed" % self.slug,
+                         "the rerun reset the artifact_id instead of keeping it")
+        self.assertEqual(parsed["status"], "draft",
+                         "the rerun left the prior approved status in place")
+        self.assertIn("Second run body", rewritten,
+                      "the rerun did not write the new body")
+
+    def test_an_update_rerun_refuses_a_symlinked_artifact(self):
+        filled = self.template_text.replace("[source short name]", "First run")
+        self._stub_body(filled)
+        self.assertEqual(_quiet_run(self._args(), self.cfg, self.tasks), 0)
+        self.assertTrue(self.artifact.exists())
+
+        target = self.artifact.with_name("trapped-target.md")
+        target.write_text("a target the runner must not read", encoding="utf-8")
+        self.artifact.unlink()
+        self.artifact.symlink_to(target)
+
+        self._stub_body(self.template_text.replace("[source short name]",
+                                                   "Second run body"))
+        runner._MEMO.clear()
+        runner._CAPABILITY.clear()
+        with self.assertRaises(runner.RunnerError) as ctx:
+            _quiet_run(self._args(update=True), self.cfg, self.tasks)
+        self.assertIn(self.artifact.as_posix(), str(ctx.exception))
+        self.assertFalse(target.read_text(encoding="utf-8").startswith(
+            "artifact"))
 
     def test_a_traversal_product_never_reaches_a_model_call(self):
         called = {"n": 0}
@@ -751,6 +1173,7 @@ class CertificationTests(unittest.TestCase):
         runner.transport_call = stub
         try:
             runner._MEMO.clear()
+            runner._CAPABILITY.clear()
             out = runner.call_with_fallback({}, "drafting", [{"a": "b"}],
                                             results, "http", log)
         finally:
@@ -777,6 +1200,7 @@ class CertificationTests(unittest.TestCase):
         runner.transport_call = stub
         try:
             runner._MEMO.clear()
+            runner._CAPABILITY.clear()
             with self.assertRaises(runner.QueuedWork) as caught:
                 runner.call_with_fallback({}, "drafting", [{"a": "b"}],
                                           results, "http", [])
@@ -854,6 +1278,7 @@ class PromptAssemblyTests(unittest.TestCase):
 
     def setUp(self):
         runner._MEMO.clear()
+        runner._CAPABILITY.clear()
         self.slug = "test-runner-prompt-%d" % os.getpid()
         self.tasks, _note = runner.load_manifest()
         self.cfg = json.loads(
@@ -948,6 +1373,112 @@ class PromptAssemblyTests(unittest.TestCase):
         self.assertIn("Certification:", artifact)
         self.assertIn("test-model-1", artifact)
 
+    # ---- S04: context is large and not selected by the current question --
+
+    def test_stage_narrows_a_multi_stage_read_to_its_own_section(self):
+        """S04 item: load only the current stage's dependency closure,
+        instead of the whole declared reads list. gather-evidence reads
+        os/OPERATING-LOOP.md (six stage sections, headed by stage name) and
+        templates/execution/state.md (no stage headings at all: nothing for
+        this rule to address). --stage DISCOVER must shrink the former and
+        leave the latter whole. Fails on the code before this change:
+        trusted_blocks() took no stage argument at all.
+        """
+        task = self.tasks["gather-evidence"]
+        invariants = runner.resolved_invariants(task)
+        full_log, narrow_log = [], []
+        full_blocks = runner.trusted_blocks(task, None, invariants, full_log)
+        narrow_blocks = runner.trusted_blocks(task, None, invariants,
+                                              narrow_log, stage="DISCOVER")
+        full_text = "\n\n".join(full_blocks)
+        narrow_text = "\n\n".join(narrow_blocks)
+
+        self.assertLess(len(narrow_text), len(full_text) * 0.6,
+                        "narrowing to one stage did not substantially "
+                        "shrink the assembled reads")
+        self.assertIn("Find a problem worth solving and prove someone has "
+                     "it.", narrow_text,
+                     "the DISCOVER section itself was dropped")
+        self.assertNotIn("Build to the spec, and keep the spec honest",
+                         narrow_text,
+                         "a different stage's section (BUILD) survived "
+                         "narrowing to DISCOVER")
+        self.assertIn("Build to the spec, and keep the spec honest",
+                     full_text,
+                     "the unnarrowed baseline should still carry every "
+                     "stage for this comparison to mean anything")
+
+        state_md = (REPO / "templates" / "execution" / "state.md").read_text(
+            encoding="utf-8")
+        self.assertIn(state_md, narrow_text,
+                      "a read with no stage headings was narrowed away "
+                      "instead of being left whole (fail open)")
+
+    def test_a_duplicate_read_is_sent_once(self):
+        """S04 item: deduplicate repeated sections by hash. A manifest
+        entry that (by error, or by two routes sharing a read) names the
+        same path twice must not double the bytes sent for it. Fails on
+        the code before this change: every named read was sent whole,
+        every time it was named.
+        """
+        task = {"id": "synthetic-duplicate-read", "skill": None,
+               "reads": ["templates/execution/state.md",
+                        "templates/execution/state.md"],
+               "invariants": []}
+        log = []
+        blocks = runner.trusted_blocks(task, None, [], log)
+        text = "\n\n".join(blocks)
+        marker = "## Accepted answers"
+        self.assertEqual(text.count(marker), 1,
+                         "the same file named twice was sent twice")
+        self.assertTrue(
+            any("duplicates content already loaded" in line for line in log),
+            log)
+
+    def test_narrowing_and_dedup_log_where_to_find_the_full_source(self):
+        """S04 item: keep the full original source retrievable. Both the
+        stage-narrowing path and the dedup path only ever drop text this
+        function itself just read from a repository path; the log has to
+        say which path still holds the full text."""
+        task = self.tasks["gather-evidence"]
+        invariants = runner.resolved_invariants(task)
+        log = []
+        runner.trusted_blocks(task, None, invariants, log, stage="DISCOVER")
+        self.assertTrue(
+            any("os/OPERATING-LOOP.md" in line
+                and "full text remains at os/OPERATING-LOOP.md" in line
+                for line in log),
+            log)
+        # And the path really is unmodified on disk: reading it again gets
+        # every stage, narrowing or not.
+        full = (REPO / "os" / "OPERATING-LOOP.md").read_text(encoding="utf-8")
+        self.assertIn("Build to the spec, and keep the spec honest", full)
+
+    def test_context_fits_reserves_the_tiers_output_budget(self):
+        """S04 item: estimate the fully assembled request and reserve
+        output space. The estimate has to grow with the tier's own
+        max_tokens, not just with the input text, or "reserve output
+        space" is not actually happening."""
+        trusted_text = "x" * 2000
+        drafting_fits, drafting_estimate = runner.context_fits(
+            self.cfg, "drafting", trusted_text, "", None, [])
+        extraction_fits, extraction_estimate = runner.context_fits(
+            self.cfg, "extraction", trusted_text, "", None, [])
+        drafting_max = runner.tier_settings(self.cfg, "drafting")["max_tokens"]
+        extraction_max = runner.tier_settings(self.cfg,
+                                              "extraction")["max_tokens"]
+        self.assertGreater(drafting_max, extraction_max,
+                           "fixture assumption: drafting reserves more "
+                           "output than extraction in this config")
+        input_tokens = runner._estimate_tokens(trusted_text, "", None)
+        self.assertEqual(drafting_estimate, int(input_tokens + drafting_max))
+        self.assertEqual(extraction_estimate,
+                         int(input_tokens + extraction_max))
+        self.assertGreater(drafting_estimate, extraction_estimate,
+                           "the larger tier's reserved output was not "
+                           "reflected in the estimate")
+        self.assertTrue(drafting_fits and extraction_fits)
+
 
 class ConfiguredRoutingTests(unittest.TestCase):
     """Finding 14: the config's own controls, wired and each one tested."""
@@ -957,6 +1488,8 @@ class ConfiguredRoutingTests(unittest.TestCase):
         self.shipped = json.loads(
             (REPO / "routing" / "omniroute.config.json").read_text(
                 encoding="utf-8"))
+        runner._MEMO.clear()
+        runner._CAPABILITY.clear()
 
     def tearDown(self):
         os.environ.clear()
@@ -982,7 +1515,7 @@ class ConfiguredRoutingTests(unittest.TestCase):
         cfg = self._cfg()
         cfg["tiers"]["judgment"]["keylessFallback"]["enabled"] = True
         results = {"judgment": _failed_reply("judgment"),
-                   runner.target_key("auto/reasoning"):
+                   ("judgment", runner.target_key("auto/reasoning")):
                        _usable_reply("judgment", "free-reasoner-1")}
         chain = runner.build_candidates(cfg, "judgment", results)
         self.assertEqual([c.model for c in chain], ["free-reasoner-1"])
@@ -996,7 +1529,7 @@ class ConfiguredRoutingTests(unittest.TestCase):
         cfg = self._cfg()
         cfg["tiers"]["judgment"]["keylessFallback"]["enabled"] = True
         results = {"judgment": _failed_reply("judgment"),
-                   runner.target_key("auto/reasoning"):
+                   ("judgment", runner.target_key("auto/reasoning")):
                        _failed_reply("judgment")}
         chain = runner.build_candidates(cfg, "judgment", results)
         self.assertEqual(chain, [], "an empty chain was called a fallback")
@@ -1025,9 +1558,9 @@ class ConfiguredRoutingTests(unittest.TestCase):
         cfg["fixedFallback"]["enabled"] = True
         cfg["fixedFallback"]["combos"]["drafting"] = ["pin-a", "pin-b"]
         results = {"drafting": _usable_reply("drafting", "probe-model"),
-                   runner.target_key("pin-a"):
+                   ("drafting", runner.target_key("pin-a")):
                        _usable_reply("drafting", "pin-a"),
-                   runner.target_key("pin-b"):
+                   ("drafting", runner.target_key("pin-b")):
                        _usable_reply("drafting", "pin-b")}
         chain = runner.build_candidates(cfg, "drafting", results)
         self.assertEqual([c.model for c in chain], ["pin-a", "pin-b"],
@@ -1039,8 +1572,9 @@ class ConfiguredRoutingTests(unittest.TestCase):
         cfg["fixedFallback"]["enabled"] = True
         cfg["fixedFallback"]["combos"]["drafting"] = ["pin-a", "pin-b"]
         log = []
-        results = {runner.target_key("pin-a"): _failed_reply("drafting"),
-                   runner.target_key("pin-b"):
+        results = {("drafting", runner.target_key("pin-a")):
+                   _failed_reply("drafting"),
+                   ("drafting", runner.target_key("pin-b")):
                        _usable_reply("drafting", "pin-b")}
         chain = runner.build_candidates(cfg, "drafting", results, log=log)
         self.assertEqual([c.model for c in chain], ["pin-b"])
@@ -1051,7 +1585,7 @@ class ConfiguredRoutingTests(unittest.TestCase):
         cfg["fixedFallback"]["enabled"] = True
         cfg["fixedFallback"]["combos"]["judgment"] = ["pinned-pro-1"]
         os.environ.pop("OMNIROUTE_JUDGMENT_MODELS", None)
-        results = {runner.target_key("pinned-pro-1"):
+        results = {("judgment", runner.target_key("pinned-pro-1")):
                    _usable_reply("judgment", "pinned-pro-1")}
         chain = runner.build_candidates(cfg, "judgment", results)
         admitted, reason, _c = runner.judgment_admission(cfg, results, chain)
@@ -1087,9 +1621,12 @@ class ConfiguredRoutingTests(unittest.TestCase):
             runner.transport_call = real
         self.assertEqual(sent[:3], [None, None, None],
                          "the tier probes stopped asking the alias")
-        for pin in ("pin-x", "pin-y", "pin-z"):
+        for tier, pin in (("extraction", "pin-x"), ("drafting", "pin-y"),
+                         ("judgment", "pin-z")):
             self.assertIn(pin, sent, "a configured target was never probed")
-            self.assertIn(runner.target_key(pin), results)
+            self.assertIn((tier, runner.target_key(pin)), results,
+                         "the configured target was not stored under its "
+                         "own tier's key")
 
     # ---- the daily spend cap
 
@@ -1127,6 +1664,364 @@ class ConfiguredRoutingTests(unittest.TestCase):
         with self.assertRaises(runner.RunnerError):
             runner.spend_gate(self.shipped)
 
+    def test_a_non_finite_cap_refuses_to_run(self):
+        os.environ[runner.SPEND_ENV] = "4"
+        for bad in ("nan", "NaN", "inf", "-inf", "Infinity"):
+            os.environ["OMNIROUTE_DAILY_CAP_USD"] = bad
+            with self.assertRaises(runner.RunnerError, msg=repr(bad)):
+                runner.spend_gate(self.shipped)
+
+    def test_a_non_finite_spend_refuses_to_run(self):
+        os.environ["OMNIROUTE_DAILY_CAP_USD"] = "10"
+        for bad in ("nan", "NaN", "inf", "-inf", "Infinity"):
+            os.environ[runner.SPEND_ENV] = bad
+            with self.assertRaises(runner.RunnerError, msg=repr(bad)):
+                runner.spend_gate(self.shipped)
+
+    # ---- billing facts
+
+    def test_call_reservation_with_a_ceiling_matches_the_arithmetic(self):
+        cfg = copy.deepcopy(self.shipped)
+        cfg["tiers"]["drafting"]["priceCeilingUsdPerMTok"] = {
+            "prompt": 2.0, "completion": 6.0}
+        messages = [{"content": "abcd"}, {"content": "ef"}]
+        # chars = 6, prompt_est = 6/2 + 500 = 503
+        # 503 * 2 / 1e6 + 100 * 6 / 1e6
+        expected = 503 * 2.0 / 1_000_000 + 100 * 6.0 / 1_000_000
+        self.assertAlmostEqual(
+            runner.call_reservation(cfg, "drafting", messages, 100), expected)
+
+    def test_call_reservation_is_none_without_a_ceiling(self):
+        cfg = copy.deepcopy(self.shipped)
+        cfg["tiers"]["drafting"].pop("priceCeilingUsdPerMTok", None)
+        self.assertIsNone(
+            runner.call_reservation(cfg, "drafting", [], 100))
+
+    def test_call_reservation_uses_tier_max_tokens_when_none(self):
+        cfg = copy.deepcopy(self.shipped)
+        cfg["tiers"]["drafting"]["priceCeilingUsdPerMTok"] = {
+            "prompt": 1.0, "completion": 1.0}
+        cfg["tiers"]["drafting"]["maxOutputTokens"] = 2048
+        messages = [{"content": "x" * 1000}]
+        prompt_est = 1000 / 2 + 500
+        expected = prompt_est * 1.0 / 1_000_000 + 2048 * 1.0 / 1_000_000
+        self.assertAlmostEqual(
+            runner.call_reservation(cfg, "drafting", messages, None), expected)
+
+    def test_price_ceiling_raises_on_a_malformed_ceiling(self):
+        cfg = copy.deepcopy(self.shipped)
+        cfg["tiers"]["drafting"]["priceCeilingUsdPerMTok"] = "not an object"
+        with self.assertRaises(runner.RunnerError):
+            runner.price_ceiling(cfg, "drafting")
+
+    def test_price_ceiling_raises_on_a_non_numeric_value(self):
+        cfg = copy.deepcopy(self.shipped)
+        cfg["tiers"]["drafting"]["priceCeilingUsdPerMTok"] = {
+            "prompt": "free", "completion": 3.0}
+        with self.assertRaises(runner.RunnerError):
+            runner.price_ceiling(cfg, "drafting")
+
+    def test_price_ceiling_is_none_when_absent(self):
+        cfg = copy.deepcopy(self.shipped)
+        cfg["tiers"]["drafting"].pop("priceCeilingUsdPerMTok", None)
+        self.assertIsNone(runner.price_ceiling(cfg, "drafting"))
+
+    def test_billed_cost_returns_the_reported_cost(self):
+        reply = runner.Reply("drafting", "auto/coding")
+        reply.cost_usd = 0.0125
+        self.assertEqual(runner.billed_cost(self.shipped, reply), 0.0125)
+
+    def test_billed_cost_returns_token_cost_at_the_ceiling(self):
+        cfg = copy.deepcopy(self.shipped)
+        cfg["tiers"]["drafting"]["priceCeilingUsdPerMTok"] = {
+            "prompt": 2.0, "completion": 6.0}
+        reply = runner.Reply("drafting", "auto/coding")
+        reply.prompt_tokens = 1000
+        reply.completion_tokens = 500
+        expected = 1000 * 2.0 / 1_000_000 + 500 * 6.0 / 1_000_000
+        self.assertAlmostEqual(runner.billed_cost(cfg, reply), expected)
+
+    def test_billed_cost_is_zero_for_a_refusal_with_no_text(self):
+        reply = runner.Reply("drafting", "auto/coding")
+        reply.status = 429
+        reply.text = ""
+        self.assertEqual(runner.billed_cost(self.shipped, reply), 0.0)
+
+    def test_billed_cost_is_none_when_nothing_was_reported(self):
+        reply = runner.Reply("drafting", "auto/coding")
+        reply.status = 200
+        self.assertIsNone(runner.billed_cost(self.shipped, reply))
+
+    def test_billed_cost_is_none_for_a_408_timeout(self):
+        reply = runner.Reply("drafting", "auto/coding")
+        reply.status = 408
+        reply.text = ""
+        self.assertIsNone(runner.billed_cost(self.shipped, reply))
+
+    def test_billed_cost_is_none_when_refusal_has_text(self):
+        reply = runner.Reply("drafting", "auto/coding")
+        reply.status = 429
+        reply.text = "rate limited"
+        self.assertIsNone(runner.billed_cost(self.shipped, reply))
+
+    def _ceiling_cfg(self):
+        cfg = copy.deepcopy(self.shipped)
+        cfg["tiers"]["drafting"]["priceCeilingUsdPerMTok"] = {
+            "prompt": 0.0, "completion": 1000.0}
+        return cfg
+
+    def _spend_session(self, limits=None):
+        path = str(Path(tempfile.mkdtemp(prefix="pmos-spend-test-")) /
+                   "spend.sqlite")
+        if limits is None:
+            limits = {runner.day_scope(): 0.5}
+        session = runner.SpendSession(path, limits, {}, "run:test:started")
+        return session, path
+
+    def test_reservation_over_cap_raises_queued_work(self):
+        cfg = self._ceiling_cfg()
+        session, _ = self._spend_session({runner.day_scope(): 0.5})
+        saved_spend = runner._SPEND
+        saved_dispatch = runner._dispatch
+        runner._SPEND = session
+        called = {"n": 0}
+
+        def stub(*a, **kw):
+            called["n"] += 1
+            return runner.Reply("drafting", "auto/coding")
+
+        runner._dispatch = stub
+        try:
+            with self.assertRaises(runner.QueuedWork):
+                runner.transport_call(cfg, "drafting", [{"content": "x"}],
+                                      "http", max_tokens=600)
+            self.assertEqual(called["n"], 0)
+        finally:
+            runner._dispatch = saved_dispatch
+            runner._SPEND = saved_spend
+            session.close()
+
+    def test_unknown_cost_settle_blocks_next_call(self):
+        cfg = self._ceiling_cfg()
+        session, _ = self._spend_session({runner.day_scope(): 1.0})
+        saved_spend = runner._SPEND
+        saved_dispatch = runner._dispatch
+        runner._SPEND = session
+        called = {"n": 0}
+
+        def stub(*a, **kw):
+            called["n"] += 1
+            reply = runner.Reply("drafting", "auto/coding")
+            reply.status = 200
+            reply.text = "ok"
+            return reply
+
+        runner._dispatch = stub
+        try:
+            runner.transport_call(cfg, "drafting", [{"content": "x"}],
+                                  "http", max_tokens=600)
+            self.assertEqual(called["n"], 1)
+            with self.assertRaises(runner.QueuedWork) as caught:
+                runner.transport_call(cfg, "drafting", [{"content": "x"}],
+                                      "http", max_tokens=600)
+            self.assertIn("unknown", str(caught.exception).lower())
+            self.assertIn("pmos.spend reconcile", str(caught.exception))
+            self.assertEqual(called["n"], 1)
+        finally:
+            runner._dispatch = saved_dispatch
+            runner._SPEND = saved_spend
+            session.close()
+
+    def test_transport_call_records_probe_operation_and_task_id(self):
+        cfg = self._ceiling_cfg()
+        path = str(Path(tempfile.mkdtemp(prefix="pmos-spend-test-")) /
+                   "spend.sqlite")
+        session = runner.SpendSession(path, {runner.day_scope(): 1.0}, {},
+                                      "run:S08-test:started",
+                                      task_id='S08-test')
+        saved_spend = runner._SPEND
+        saved_dispatch = runner._dispatch
+        runner._SPEND = session
+        called = {"n": 0}
+
+        def stub(*a, **kw):
+            called["n"] += 1
+            reply = runner.Reply("drafting", "auto/coding")
+            reply.status = 200
+            reply.text = "ok"
+            reply.model = "auto/coding-1"
+            reply.provider = "omniroute"
+            reply.cache = "miss"
+            reply.terminal = True
+            reply.finish_reason = "stop"
+            return reply
+
+        runner._dispatch = stub
+        try:
+            runner.transport_call(cfg, "drafting", [{"content": "x"}],
+                                   "http", max_tokens=600, operation='probe')
+            self.assertEqual(called["n"], 1)
+            ledger = runner.SpendLedger(path)
+            try:
+                rows = [entry for entry in ledger.reservations()
+                        if entry["key"].startswith("run:S08-test:started:")]
+            finally:
+                ledger.close()
+            self.assertEqual(len(rows), 1)
+            row = rows[0]
+            self.assertEqual(row["operation"], 'probe')
+            self.assertEqual(row["task_id"], 'S08-test')
+            self.assertEqual(row["resolved_model"], "auto/coding-1")
+            self.assertEqual(row["provider"], "omniroute")
+            self.assertEqual(row["cache_disposition"], "miss")
+            self.assertTrue(row["success"])
+        finally:
+            runner._dispatch = saved_dispatch
+            runner._SPEND = saved_spend
+            session.close()
+
+    def test_dispatch_crash_keeps_full_reservation(self):
+        cfg = self._ceiling_cfg()
+        session, _ = self._spend_session({runner.day_scope(): 1.0})
+        saved_spend = runner._SPEND
+        saved_dispatch = runner._dispatch
+        runner._SPEND = session
+        called = {"n": 0}
+
+        def stub(*a, **kw):
+            called["n"] += 1
+            raise RuntimeError("boom")
+
+        runner._dispatch = stub
+        try:
+            with self.assertRaises(RuntimeError):
+                runner.transport_call(cfg, "drafting", [{"content": "x"}],
+                                      "http", max_tokens=600)
+            self.assertEqual(called["n"], 1)
+            self.assertAlmostEqual(
+                session.ledger.committed(runner.day_scope()), 0.6)
+        finally:
+            runner._dispatch = saved_dispatch
+            runner._SPEND = saved_spend
+            session.close()
+
+    def test_reply_429_settles_at_zero(self):
+        cfg = self._ceiling_cfg()
+        session, _ = self._spend_session({runner.day_scope(): 1.0})
+        saved_spend = runner._SPEND
+        saved_dispatch = runner._dispatch
+        runner._SPEND = session
+        called = {"n": 0}
+
+        def stub(*a, **kw):
+            called["n"] += 1
+            reply = runner.Reply("drafting", "auto/coding")
+            reply.status = 429
+            reply.text = ""
+            return reply
+
+        runner._dispatch = stub
+        try:
+            runner.transport_call(cfg, "drafting", [{"content": "x"}],
+                                  "http", max_tokens=600)
+            self.assertEqual(called["n"], 1)
+            self.assertAlmostEqual(
+                session.ledger.committed(runner.day_scope()), 0.0)
+        finally:
+            runner._dispatch = saved_dispatch
+            runner._SPEND = saved_spend
+            session.close()
+
+    def test_no_price_ceiling_raises_queued_work(self):
+        cfg = copy.deepcopy(self.shipped)
+        session, _ = self._spend_session({runner.day_scope(): 1.0})
+        saved_spend = runner._SPEND
+        saved_dispatch = runner._dispatch
+        runner._SPEND = session
+        called = {"n": 0}
+
+        def stub(*a, **kw):
+            called["n"] += 1
+            return runner.Reply("drafting", "auto/coding")
+
+        runner._dispatch = stub
+        try:
+            with self.assertRaises(runner.QueuedWork) as caught:
+                runner.transport_call(cfg, "drafting", [{"content": "x"}],
+                                      "http", max_tokens=600)
+            self.assertIn("priceCeilingUsdPerMTok", str(caught.exception))
+            self.assertEqual(called["n"], 0)
+        finally:
+            runner._dispatch = saved_dispatch
+            runner._SPEND = saved_spend
+            session.close()
+
+    def test_two_sessions_one_ledger_file(self):
+        cfg = self._ceiling_cfg()
+        path = str(Path(tempfile.mkdtemp(prefix="pmos-spend-test-")) /
+                   "spend.sqlite")
+        saved_spend = runner._SPEND
+        saved_dispatch = runner._dispatch
+        runner._dispatch = lambda *a, **kw: None
+
+        def make_reply(cost):
+            reply = runner.Reply("drafting", "auto/coding")
+            reply.cost_usd = cost
+            return reply
+
+        try:
+            session1 = runner.SpendSession(
+                path, {runner.day_scope(): 1.0}, {}, "run:one:started")
+            runner._SPEND = session1
+            runner._dispatch = lambda *a, **kw: make_reply(0.6)
+            runner.transport_call(cfg, "drafting", [{"content": "x"}],
+                                  "http", max_tokens=600)
+            session1.close()
+
+            session2 = runner.SpendSession(
+                path, {runner.day_scope(): 1.0}, {}, "run:two:started")
+            runner._SPEND = session2
+            runner._dispatch = lambda *a, **kw: make_reply(0.0)
+            with self.assertRaises(runner.QueuedWork):
+                runner.transport_call(cfg, "drafting", [{"content": "x"}],
+                                      "http", max_tokens=600)
+            session2.close()
+        finally:
+            runner._dispatch = saved_dispatch
+            runner._SPEND = saved_spend
+
+    def test_open_spend_session_returns_none_with_no_cap(self):
+        cfg = copy.deepcopy(self.shipped)
+        env = {k: v for k, v in os.environ.items()
+               if k != "OMNIROUTE_DAILY_CAP_USD" and k != runner.SPEND_ENV}
+        with mock.patch.dict(os.environ, env, clear=True):
+            self.assertIsNone(runner.open_spend_session(cfg, "t", "s"))
+
+    def test_open_spend_session_uses_spend_env_as_external(self):
+        cfg = copy.deepcopy(self.shipped)
+        cfg["limits"] = cfg.get("limits", {})
+        cfg["limits"]["dailySpendCapUsdEnv"] = "OMNIROUTE_DAILY_CAP_USD"
+        # clear=True would also drop the module's temporary PMOS_SPEND_LEDGER
+        # and open the operator's real ledger, so it is carried over.
+        env = {"OMNIROUTE_DAILY_CAP_USD": "10", runner.SPEND_ENV: "1",
+               "PMOS_SPEND_LEDGER": os.environ["PMOS_SPEND_LEDGER"]}
+        with mock.patch.dict(os.environ, env, clear=True):
+            session = runner.open_spend_session(cfg, "t", "s")
+            self.assertIsNotNone(session)
+            self.assertEqual(Path(session.path),
+                             Path(os.environ["PMOS_SPEND_LEDGER"]),
+                             "a test session opened the operator's real ledger")
+            self.assertAlmostEqual(
+                session.external[runner.day_scope()], 1.0)
+            session.close()
+
+    def test_open_spend_session_raises_for_nan_task_cap(self):
+        cfg = copy.deepcopy(self.shipped)
+        cfg["limits"] = cfg.get("limits", {})
+        cfg["limits"]["taskSpendCapUsd"] = float('nan')
+        with self.assertRaises(runner.RunnerError):
+            runner.open_spend_session(cfg, "t", "s")
+
     # ---- no-probe
 
     def test_no_probe_without_pins_refuses_to_run(self):
@@ -1153,12 +2048,364 @@ class ConfiguredRoutingTests(unittest.TestCase):
         self.assertTrue(chain[0].verify,
                         "an unprobed pin must still be held to the header")
 
+    # ---- S03: probes spend only on the tiers a route can reach
+
+    def _tier_recording_stub(self, sent):
+        def stub(cfg_, tier, messages, transport, **kwargs):
+            sent.append(tier)
+            reply = runner.Reply(tier, "auto/" + tier)
+            reply.model = kwargs.get("model_override") or ("resolved-" + tier)
+            reply.text, reply.terminal = "PONG", True
+            reply.finish_reason = "stop"
+            return reply
+        return stub
+
+    def test_a_single_tier_route_probes_only_its_tier(self):
+        """A cheap, single-target task must never invoke a judgment probe:
+        the S03 evidence showed probe() dispatching auto/cheap, auto/coding
+        AND auto/reasoning:pro for every run, whatever the task needed."""
+        cfg = self._cfg()
+        sent = []
+        real = runner.transport_call
+        runner.transport_call = self._tier_recording_stub(sent)
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                results = runner.probe(cfg, "http", tiers=("extraction",))
+        finally:
+            runner.transport_call = real
+        self.assertEqual(sent, ["extraction"],
+                         "an extraction-only probe reached another tier: %r"
+                         % sent)
+        self.assertIn("extraction", results)
+        self.assertNotIn("drafting", results)
+        self.assertNotIn("judgment", results)
+
+    def test_resolve_probe_narrows_to_the_tasks_own_tier(self):
+        cfg = self._cfg()
+        sent = []
+        args = argparse.Namespace(probe_results={}, probe_ran=False,
+                                  no_probe=False, transport="http")
+        real = runner.transport_call
+        runner.transport_call = self._tier_recording_stub(sent)
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                runner.resolve_probe(args, cfg, "extraction", [])
+        finally:
+            runner.transport_call = real
+        self.assertEqual(sent, ["extraction"],
+                         "resolve_probe let an extraction task's probe reach "
+                         "tiers it does not use: %r" % sent)
+
+    def test_resolve_probe_for_judgment_still_probes_the_cheaper_tiers(self):
+        """judgment_admission's downgrade check (rule 3) reads the cheaper
+        tiers' resolved models to refuse a judgment candidate that is
+        secretly the same concrete model. Narrowing the probe must not blind
+        that check, so a judgment route keeps probing every tier."""
+        cfg = self._cfg()
+        sent = []
+        args = argparse.Namespace(probe_results={}, probe_ran=False,
+                                  no_probe=False, transport="http")
+        real = runner.transport_call
+        runner.transport_call = self._tier_recording_stub(sent)
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                runner.resolve_probe(args, cfg, "judgment", [])
+        finally:
+            runner.transport_call = real
+        self.assertEqual(sorted(sent), sorted(runner.TIER_ORDER),
+                         "a judgment route stopped probing the cheaper "
+                         "tiers, so its same-model-as-a-cheaper-tier check "
+                         "would go blind: %r" % sent)
+
+    def test_the_capability_cache_serves_a_fresh_observation(self):
+        cfg = self._cfg()
+        calls = {"n": 0}
+
+        def stub(cfg_, tier, messages, transport, **kwargs):
+            calls["n"] += 1
+            reply = runner.Reply(tier, "auto/" + tier)
+            reply.model = "resolved-extraction"
+            reply.text, reply.terminal = "PONG", True
+            reply.finish_reason = "stop"
+            return reply
+
+        real = runner.transport_call
+        runner.transport_call = stub
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                first = runner.probe(cfg, "http", tiers=("extraction",))
+                second = runner.probe(cfg, "http", tiers=("extraction",))
+        finally:
+            runner.transport_call = real
+        self.assertEqual(calls["n"], 1,
+                         "a fresh capability observation was not reused; a "
+                         "second probe within the TTL dispatched a call")
+        self.assertEqual(second["extraction"].model,
+                         first["extraction"].model)
+
+    def test_the_capability_cache_expires_after_its_ttl(self):
+        cfg = self._cfg()
+        calls = {"n": 0}
+
+        def stub(cfg_, tier, messages, transport, **kwargs):
+            calls["n"] += 1
+            reply = runner.Reply(tier, "auto/" + tier)
+            reply.model = "resolved-extraction"
+            reply.text, reply.terminal = "PONG", True
+            reply.finish_reason = "stop"
+            return reply
+
+        real = runner.transport_call
+        runner.transport_call = stub
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                runner.probe(cfg, "http", tiers=("extraction",))
+            self.assertEqual(calls["n"], 1)
+            # Age the stored observation past the TTL directly, rather than
+            # sleeping in a test or patching the process-wide clock.
+            for identity, (observed_at, cached) in list(
+                    runner._CAPABILITY.items()):
+                runner._CAPABILITY[identity] = (
+                    observed_at - runner.CAPABILITY_TTL_S - 1, cached)
+            with contextlib.redirect_stdout(io.StringIO()):
+                runner.probe(cfg, "http", tiers=("extraction",))
+        finally:
+            runner.transport_call = real
+        self.assertEqual(calls["n"], 2,
+                         "an observation past its TTL was still served from "
+                         "the capability cache instead of being re-verified")
+
+    def test_a_real_call_failure_invalidates_the_capability_cache(self):
+        cfg = self._cfg()
+
+        def answering(cfg_, tier, messages, transport, **kwargs):
+            reply = runner.Reply(tier, "auto/" + tier)
+            reply.model = "resolved-extraction"
+            reply.text, reply.terminal = "PONG", True
+            reply.finish_reason = "stop"
+            return reply
+
+        real = runner.transport_call
+        runner.transport_call = answering
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                results = runner.probe(cfg, "http", tiers=("extraction",))
+        finally:
+            runner.transport_call = real
+
+        candidates = runner.build_candidates(cfg, "extraction", results)
+        self.assertTrue(candidates)
+        self.assertEqual(candidates[0].probe_key, "extraction",
+                         "a probe-sourced candidate lost the key that named "
+                         "it, so a real failure could never invalidate it")
+
+        def failing(cfg_, tier, messages, transport, **kwargs):
+            reply = runner.Reply(tier, "auto/" + tier)
+            reply.error = "HTTP 503 from the gateway"
+            return reply
+
+        runner.transport_call = failing
+        try:
+            out = runner.call_with_fallback(
+                cfg, "extraction", [{"role": "user", "content": "x"}],
+                results, "http", [], candidates=candidates)
+        finally:
+            runner.transport_call = real
+        self.assertIsNone(out)
+
+        identity = runner._capability_identity(cfg, "extraction",
+                                               "extraction")
+        self.assertNotIn(identity, runner._CAPABILITY,
+                         "a real call's failure left the stale capability "
+                         "observation in place for the next probe to trust")
+
+    def test_a_cached_probe_still_requires_the_real_call_to_certify(self):
+        """S03 acceptance: a cached probe is never permanent certification.
+        The real task call must still verify the response header even when
+        the chain that produced its candidate came from the capability
+        cache, not a fresh probe."""
+        cfg = self._cfg()
+
+        def answering(cfg_, tier, messages, transport, **kwargs):
+            reply = runner.Reply(tier, "auto/" + tier)
+            reply.model = "resolved-extraction"
+            reply.text, reply.terminal = "PONG", True
+            reply.finish_reason = "stop"
+            return reply
+
+        real = runner.transport_call
+        runner.transport_call = answering
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                runner.probe(cfg, "http", tiers=("extraction",))
+                # Served from the capability cache this second time.
+                cached_results = runner.probe(cfg, "http",
+                                              tiers=("extraction",))
+        finally:
+            runner.transport_call = real
+
+        candidates = runner.build_candidates(cfg, "extraction",
+                                             cached_results)
+
+        def rerouted(cfg_, tier, messages, transport, **kwargs):
+            reply = runner.Reply(tier, "auto/" + tier)
+            reply.text, reply.terminal = "text", True
+            reply.finish_reason = "stop"
+            reply.expected_model = kwargs.get("expect_model") or ""
+            reply.header_model = "someone-else"
+            return runner.certify(reply)
+
+        runner.transport_call = rerouted
+        try:
+            with self.assertRaises(runner.QueuedWork) as caught:
+                runner.call_with_fallback(
+                    cfg, "extraction", [{"role": "user", "content": "x"}],
+                    cached_results, "http", [], candidates=candidates)
+        finally:
+            runner.transport_call = real
+        self.assertIn("someone-else", str(caught.exception),
+                      "a capability-cache-served candidate skipped the real "
+                      "call's response-header certification")
+
+    # ---- code-review follow-up: P2, a pin shared across tiers
+
+    def test_a_pin_shared_across_tiers_gets_its_own_probe_and_cache_entry(
+            self):
+        """P2 code-review finding. The same concrete model id pinned into
+        two different tiers' fixedFallback combos (a judgment run probes
+        every tier together) used to collide on one results/capability-cache
+        slot keyed by target_key(model) alone: the second tier's pin was
+        silently served the first tier's probe reply instead of getting its
+        own probe call, and a real call's failure under the second tier's
+        candidate could never find the entry that was actually written, so
+        it stayed cached as a false success. Built from the reviewer's
+        repro_invalidate_cross_tier.py."""
+        cfg = self._cfg()
+        cfg["fixedFallback"] = {
+            "enabled": True,
+            "combos": {
+                "extraction": ["shared-model"],
+                "drafting": ["other-model"],
+                "judgment": ["shared-model"],   # same id as extraction's pin
+            },
+        }
+        dispatched = []
+
+        def answering(cfg_, tier, messages, transport, **kwargs):
+            dispatched.append((tier, kwargs.get("model_override")))
+            reply = runner.Reply(tier, "auto/" + tier)
+            reply.model = kwargs.get("model_override") or ("resolved-" + tier)
+            reply.text, reply.terminal = "PONG", True
+            reply.finish_reason = "stop"
+            return reply
+
+        real = runner.transport_call
+        runner.transport_call = answering
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                results = runner.probe(cfg, "http", tiers=runner.TIER_ORDER)
+        finally:
+            runner.transport_call = real
+
+        self.assertIn(("extraction", "shared-model"), dispatched,
+                     "extraction's pin of shared-model was never probed")
+        self.assertIn(("judgment", "shared-model"), dispatched,
+                     "judgment's pin of the SAME model id was skipped as "
+                     "an already-probed duplicate instead of getting its "
+                     "own probe call")
+
+        extraction_key = ("extraction", runner.target_key("shared-model"))
+        judgment_key = ("judgment", runner.target_key("shared-model"))
+        self.assertIn(extraction_key, results)
+        self.assertIn(judgment_key, results)
+        self.assertIsNot(
+            results[extraction_key], results[judgment_key],
+            "both tiers' pins of the same model id shared one results slot "
+            "instead of getting independent probes")
+
+        candidates = runner.build_candidates(cfg, "judgment", results)
+        judgment_candidates = [c for c in candidates
+                               if c.model == "shared-model"]
+        self.assertTrue(judgment_candidates,
+                        "expected a judgment candidate for shared-model")
+        cand = judgment_candidates[0]
+        self.assertEqual(cand.tier, "judgment")
+        self.assertEqual(
+            cand.probe_key, judgment_key,
+            "the judgment candidate's probe_key does not name the identity "
+            "that was actually written for it")
+
+        identity_extraction = runner._capability_identity(
+            cfg, "extraction", extraction_key)
+        identity_judgment = runner._capability_identity(
+            cfg, "judgment", judgment_key)
+        self.assertIn(identity_extraction, runner._CAPABILITY)
+        self.assertIn(identity_judgment, runner._CAPABILITY)
+
+        def failing(cfg_, tier, messages, transport, **kwargs):
+            reply = runner.Reply(tier, "auto/" + tier)
+            reply.error = "HTTP 503 from the gateway"
+            return reply
+
+        runner.transport_call = failing
+        try:
+            out = runner.call_with_fallback(
+                cfg, "judgment", [{"role": "user", "content": "x"}], results,
+                "http", [], candidates=[cand])
+        finally:
+            runner.transport_call = real
+        self.assertIsNone(out)
+
+        self.assertNotIn(
+            identity_judgment, runner._CAPABILITY,
+            "a real failure under the judgment candidate did not "
+            "invalidate the identity that was actually written for it")
+        self.assertIn(
+            identity_extraction, runner._CAPABILITY,
+            "invalidating the judgment candidate's observation must not "
+            "touch extraction's independent, still-valid observation for "
+            "the same model id")
+
+    # ---- code-review follow-up: P3, no cross-tier borrowing
+
+    def test_extraction_never_borrows_another_tiers_probe_result(self):
+        """P3 code-review finding. build_candidates' auto (non-pinned) path
+        used to try [tier] + every other tier in TIER_ORDER for extraction
+        and drafting, so a caller-supplied results dict spanning multiple
+        tiers (resolve_probe's own narrowing does not protect this function
+        directly; args.probe_results can be shaped however a caller likes)
+        could silently hand an extraction task a drafting- or
+        judgment-resolved model."""
+        results = {
+            "extraction": _failed_reply("extraction"),
+            "drafting": _usable_reply("drafting", "drafting-model"),
+            "judgment": _usable_reply("judgment", "judgment-model"),
+        }
+        chain = runner.build_candidates(self.shipped, "extraction", results)
+        self.assertEqual(
+            chain, [],
+            "an extraction task with no usable extraction probe borrowed "
+            "another tier's resolved model instead of queueing")
+
+    def test_drafting_never_borrows_another_tiers_probe_result(self):
+        results = {
+            "extraction": _usable_reply("extraction", "extraction-model"),
+            "drafting": _failed_reply("drafting"),
+            "judgment": _usable_reply("judgment", "judgment-model"),
+        }
+        chain = runner.build_candidates(self.shipped, "drafting", results)
+        self.assertEqual(
+            chain, [],
+            "a drafting task with no usable drafting probe borrowed "
+            "another tier's resolved model instead of queueing")
+
 
 class QueueOutcomeTests(unittest.TestCase):
     """Findings 3 and 14 end to end: queued means one row and no artifact."""
 
     def setUp(self):
         runner._MEMO.clear()
+        runner._CAPABILITY.clear()
         self.saved_env = dict(os.environ)
         self.slug = "test-runner-queue-%d" % os.getpid()
         self.tasks, _note = runner.load_manifest()
@@ -1299,6 +2546,59 @@ class QueueOutcomeTests(unittest.TestCase):
         self.assertFalse(self.artifact.exists())
         self.assertIn("QUEUED", self._state())
 
+    def test_an_oversized_request_queues_before_any_provider_call(self):
+        """S04 item: reject, or narrow scope, before a provider call if the
+        request will not fit. Lowers CONTEXT_TOKEN_BUDGET far below what
+        even a small route estimates to, and proves the model is never
+        reached. Fails on the code before this change: there was no
+        context budget of any kind, so the stubbed call below would have
+        been made and this test would have raised AssertionError itself.
+        """
+        called = {"n": 0}
+
+        def stub(*a, **kw):
+            called["n"] += 1
+            raise AssertionError("a model was called over the context budget")
+
+        runner.call_with_fallback = stub
+        real_budget = runner.CONTEXT_TOKEN_BUDGET
+        runner.CONTEXT_TOKEN_BUDGET = 10
+        try:
+            self.assertEqual(_quiet_run(self._args(), self.cfg, self.tasks),
+                             runner.EXIT_QUEUED)
+        finally:
+            runner.CONTEXT_TOKEN_BUDGET = real_budget
+        self.assertEqual(called["n"], 0)
+        self.assertFalse(self.artifact.exists())
+        state = self._state()
+        self.assertIn("QUEUED", state)
+        self.assertIn("context budget", state)
+
+    def test_the_cap_queues_at_first_model_call_with_ledger(self):
+        called = {"n": 0}
+
+        def stub(*a, **kw):
+            called["n"] += 1
+            raise AssertionError("a model was called past the spend cap")
+
+        real_dispatch = runner._dispatch
+        runner._dispatch = stub
+        # clear=True would also drop the module's temporary PMOS_SPEND_LEDGER
+        # and open the operator's real ledger, so it is carried over.
+        env = {"OMNIROUTE_DAILY_CAP_USD": "10", runner.SPEND_ENV: "1",
+               "PMOS_SPEND_LEDGER": os.environ["PMOS_SPEND_LEDGER"]}
+        try:
+            with mock.patch.dict(os.environ, env, clear=True):
+                self.assertEqual(
+                    _quiet_run(self._args(), self.cfg, self.tasks),
+                    runner.EXIT_QUEUED)
+            self.assertEqual(called["n"], 0)
+            self.assertFalse(self.artifact.exists())
+            self.assertIn("QUEUED", self._state())
+            self.assertIsNone(runner._SPEND)
+        finally:
+            runner._dispatch = real_dispatch
+
     def test_a_tier_with_no_target_queues_rather_than_failing(self):
         def stub(*a, **kw):
             raise AssertionError("a call was made with an empty chain")
@@ -1354,7 +2654,7 @@ class QueueOutcomeTests(unittest.TestCase):
             task="critique-strategy",
             probe_results={
                 "judgment": _failed_reply("judgment"),
-                runner.target_key("auto/reasoning"):
+                ("judgment", runner.target_key("auto/reasoning")):
                     _usable_reply("judgment", "free-reasoner-1")})
         self.assertEqual(_quiet_run(args, cfg, self.tasks), 0)
         artifact = (runner.PRODUCTS_DIR / self.slug / "planning"
@@ -1376,6 +2676,7 @@ class WholeRunTests(unittest.TestCase):
 
     def setUp(self):
         runner._MEMO.clear()
+        runner._CAPABILITY.clear()
         self.saved_env = dict(os.environ)
         os.environ.pop("OMNIROUTE_DAILY_CAP_USD", None)
         self.slug = "test-runner-whole-%d" % os.getpid()
@@ -1422,9 +2723,13 @@ class WholeRunTests(unittest.TestCase):
     def test_the_task_call_targets_the_model_the_probe_resolved(self):
         code, _out = self._main()
         self.assertEqual(code, 0)
-        self.assertEqual([b["model"] for b in self.sent[:3]],
-                         ["auto/cheap", "auto/coding", "auto/reasoning:pro"],
-                         "the probe stopped asking the tier aliases")
+        # gather-evidence is an extraction-tier task (Finding S03): the probe
+        # asks only the extraction alias, never drafting's or judgment's, and
+        # the real task call follows as the second and last request sent.
+        self.assertEqual([b["model"] for b in self.sent],
+                         ["auto/cheap", "cheap-1"],
+                         "an extraction-tier task probed a tier it does not "
+                         "use, or did not call the model it probed")
         self.assertEqual(self.sent[-1]["model"], "cheap-1",
                          "the real task call went out under a tier alias, so "
                          "the certified model was decoration")
@@ -2229,6 +3534,31 @@ class StreamBoundTests(unittest.TestCase):
         self.assertLessEqual(len(reply.text), runner.content_cap(4096),
                              "a body larger than the call's own budget was "
                              "kept, and would have been written")
+
+    def test_call_http_asks_for_usage_and_copies_it_onto_the_reply(self):
+        body = (delta("an answer", finish="stop")
+                + frame(model="test-model-1", choices=[],
+                        usage={"prompt_tokens": 12, "completion_tokens": 3,
+                               "cost": 0.0004})
+                + "data: [DONE]\n\n")
+        sent = {}
+
+        def answer(request, timeout=None):
+            sent["body"] = json.loads(request.data.decode("utf-8"))
+            return _FakeResponse(body, {"X-OmniRoute-Model": "test-model-1"})
+
+        real_opener = runner._OPENER
+        runner._OPENER = answer
+        try:
+            reply = runner.call_http(_GATEWAY_CFG, "drafting",
+                                     [{"role": "user", "content": "hi"}])
+        finally:
+            runner._OPENER = real_opener
+        self.assertEqual(sent["body"]["stream_options"], {"include_usage": True})
+        self.assertTrue(reply.ok, reply.why_unusable())
+        self.assertEqual((reply.prompt_tokens, reply.completion_tokens,
+                          reply.cost_usd), (12, 3, 0.0004))
+        self.assertEqual(runner.billed_cost(_GATEWAY_CFG, reply), 0.0004)
 
     # runner-unbounded-sse-buffer-newline-bypass: the bound has to hold on the
     # read, not only on the count after it. Iterating a response calls

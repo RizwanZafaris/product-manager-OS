@@ -11,6 +11,7 @@ aliases: ["Analytics Instrumentation Spec", "analytics-instrumentation-spec"]
 **Stage:** DELIVER (feeds [Gate 5: release readiness green](../../os/STAGE-GATES.md)), but write it before BUILD starts
 **Knowledge:** [north star metric](../../knowledge/north-star-metric.md)
 **Skill:** [metrics-tree](../../skills/metrics-tree/SKILL.md)
+Filled example: [Meridian Planner, allied air force deployment](../../examples/domain-aerospace-defence-analytics-instrumentation-spec.md)
 
 <!-- The PRD names success metrics. This file is the only thing that makes them
      measurable. Every metric is computed from events, and events only exist if

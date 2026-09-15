@@ -30,6 +30,7 @@ caller keeps.
 
 from __future__ import annotations
 
+import json
 import posixpath
 import re
 import sys
@@ -63,6 +64,18 @@ PRODUCT_SLUG_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 # import harness/, which is deletable; lint.py sits at the root and is not.
 sys.path.insert(0, str(REPO))
 import lint as _lint                                       # noqa: E402
+# The artifact contract's reader lives in the runtime package, which the wheel ships.
+from pmos.artifacts import (                               # noqa: E402
+    ARTIFACT_FIELD_RE,
+    ARTIFACT_KEYS,
+    ARTIFACT_PHASES,
+    ARTIFACT_STATUSES,
+    FRONTMATTER_RE,
+    _parse_artifact_value,
+    artifact_revision,
+    not_an_artifact,
+    parse_artifact,
+)
 
 LINK_RE = _lint.LINK_RE
 REF_DEF_RE = _lint.REF_DEF_RE
@@ -89,8 +102,28 @@ def wrap_target(target, was_angled):
             if was_angled or " " in target or "(" in target or ")" in target
             else target)
 
-FRONTMATTER_RE = re.compile(r"\A---\r?\n(.*?)\r?\n---[ \t]*\r?\n", re.S)
 STAGE_FIELD_RE = re.compile(r"^stage:\s*(.+?)\s*$", re.M)
+
+# One template's dependencies, as repo-relative template paths. The chain is
+# the dependency chain, not the stage chain: vision needs problem-framing,
+# strategy needs vision, roadmap needs strategy, and the definition docs all
+# need the roadmap and the framing that opened the work.
+DEPENDS_ON = {
+    "templates/planning/vision.md":
+        ("templates/discovery/problem-framing.md",),
+    "templates/planning/product-strategy.md":
+        ("templates/planning/vision.md",),
+    "templates/planning/roadmap.md":
+        ("templates/planning/product-strategy.md",),
+    "templates/definition/prd.md":
+        ("templates/planning/roadmap.md", "templates/discovery/problem-framing.md"),
+    "templates/definition/one-pager.md":
+        ("templates/planning/roadmap.md", "templates/discovery/problem-framing.md"),
+    "templates/definition/brd.md":
+        ("templates/planning/roadmap.md", "templates/discovery/problem-framing.md"),
+    "templates/definition/frd.md":
+        ("templates/definition/prd.md",),
+}
 
 # Ten templates write the Stage/Knowledge/Skill header as a bare path rather
 # than a markdown link. The repository gate does not read those, because it
@@ -209,6 +242,24 @@ def declared_stage(text):
         return None
     field = STAGE_FIELD_RE.search(match.group(1))
     return field.group(1).strip().strip('"').upper() if field else None
+
+
+GATE_FIELD_RE = re.compile(r"^gate:\s*(.+?)\s*$", re.M)
+
+
+def declared_gate(text):
+    """The gate a file's frontmatter declares, an integer from 1 to 6, or None."""
+    match = FRONTMATTER_RE.match(text or "")
+    if not match:
+        return None
+    field = GATE_FIELD_RE.search(match.group(1))
+    if not field:
+        return None
+    try:
+        gate = int(field.group(1).strip().strip('"'))
+    except ValueError:
+        return None
+    return gate if 1 <= gate <= 6 else None
 
 
 def destination_for(template_rel, slug, text=None):
@@ -373,6 +424,104 @@ def relocate(text, template, destination, slug):
     dest_dir = posixpath.dirname(
         destination.resolve().relative_to(REPO.resolve()).as_posix())
     return rewrite_links(text, source_dir, dest_dir, slug)
+
+
+def artifact_id_for(slug, destination_rel):
+    """The artifact id for one destination, which is <slug>/<rest> with .md off.
+
+    destination_rel is the repo-relative path destination_for returns, of the
+    form products/<slug>/<rest>.md. folders are kept as written, so a copy at
+    products/demo/definition/ai/eval-spec.md becomes
+    demo/definition/ai/eval-spec, and products/demo/DESIGN.md becomes
+    demo/DESIGN.
+    """
+    destination_rel = str(destination_rel).replace("\\", "/")
+    prefix = "products/%s/" % slug
+    if not destination_rel.startswith(prefix) or not destination_rel.endswith(".md"):
+        raise WorkspaceError(
+            "%s is not a product artifact path of the form products/%s/<rest>.md"
+            % (destination_rel, slug))
+    rest = destination_rel[len(prefix):-len(".md")]
+    return "%s/%s" % (slug, rest)
+
+
+def _artifact_dep_ids(slug, template_rel):
+    """The artifact ids one template depends on, for one slug."""
+    ids = []
+    for dep in DEPENDS_ON.get(template_rel, ()):
+        dep_dest = destination_for(dep, slug, read_text(REPO / dep))
+        ids.append(artifact_id_for(slug, dep_dest))
+    return ids
+
+
+def render_artifact_block(fields):
+    """The frontmatter block for a dict holding all six keys."""
+    lines = ["---"]
+    for key in ARTIFACT_KEYS:
+        value = fields[key]
+        if key == "depends_on":
+            if isinstance(value, list):
+                rendered = json.dumps(value)
+            else:
+                rendered = str(value)
+        elif key == "gate":
+            if value is None:
+                rendered = "null"
+            else:
+                rendered = str(int(value))
+        else:
+            rendered = str(value)
+        lines.append("%s: %s" % (key, rendered))
+    lines.append("---")
+    return "\n".join(lines) + "\n"
+
+
+def stamp_artifact(text, template_rel, slug, previous=None):
+    """One copy's text with the artifact block stamped onto its frontmatter.
+
+    STATE.md is a journal, not an artifact, and is returned unchanged. The
+    template's own file is read under REPO because a runner's filled text may
+    have lost its frontmatter. The body after the frontmatter is returned byte
+    for byte.
+    """
+    template_rel = str(template_rel).replace("\\", "/")
+    template_text = read_text(REPO / template_rel)
+    destination_rel = destination_for(template_rel, slug, template_text)
+    if destination_rel == "products/%s/STATE.md" % slug:
+        return text
+    artifact_id = artifact_id_for(slug, destination_rel)
+    phase = declared_stage(template_text)
+    if phase is None:
+        # The regulated AI PRD has no frontmatter, so it declares no stage. A
+        # copy like it takes the stage whose folder it lands in, when exactly
+        # one stage has that folder (execution has two: BUILD and ALL STAGES).
+        folder = destination_rel[len("products/%s/" % slug):].rpartition("/")[0]
+        stages = [stage for stage, where in FOLDER_FOR_STAGE.items()
+                  if where == folder]
+        phase = stages[0] if len(stages) == 1 else None
+    if phase not in ARTIFACT_PHASES:
+        raise WorkspaceError(
+            "%s declares stage %r, which is not one of the artifact phases."
+            % (template_rel, phase))
+    # Read from the template's own frontmatter, not through parse_artifact: a
+    # canonical template carries no artifact_id, so parse_artifact returns None.
+    gate = declared_gate(template_text)
+    fields = {
+        "artifact_id": artifact_id,
+        "phase": phase,
+        "gate": gate,
+        "status": "draft",
+        "depends_on": _artifact_dep_ids(slug, template_rel),
+        "template": template_rel,
+    }
+    if previous is not None:
+        prev = parse_artifact(previous)
+        if prev:
+            fields["artifact_id"] = prev["artifact_id"]
+            fields["depends_on"] = prev["depends_on"]
+    match = FRONTMATTER_RE.match(text or "")
+    body = text[match.end():] if match else (text or "")
+    return render_artifact_block(fields) + body
 
 
 def read_text(path):

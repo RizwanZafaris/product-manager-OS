@@ -11,6 +11,9 @@ aliases: ["SLA and SLO Definition", "sla-slo-definition"]
 Stage: DELIVER, feeds [Gate 5: release readiness green](../../os/STAGE-GATES.md); the SLOs are rechecked at Gate 6
 Knowledge: [Knowledge index](../../knowledge/INDEX.md)
 Skill: [release-manager-agent](../../agents/release-manager-agent.md); the first SLO draft is written at DESIGN by the [architect-agent](../../agents/architect-agent.md)
+Filled example: [Aldergate Core, real-time posting and overnight batch](../../examples/domain-core-banking-sla-slo-definition.md)
+Filled example: [Gridline Outage Management (Urban Feeder Restoration)](../../examples/domain-energy-utilities-sla-slo-definition.md)
+Filled example: [Harbourgate Quay payment service](../../examples/harbourgate-sla-slo-definition.md)
 
 > **Delete any section you do not need.** An internal feature with no customer contract needs sections 2, 3, 5, and 6 only; delete the SLA section and say so. Weight rules are in [WHICH-DOCUMENT.md](../../os/WHICH-DOCUMENT.md).
 

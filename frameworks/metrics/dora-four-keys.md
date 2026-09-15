@@ -10,6 +10,8 @@ aliases: ["DORA Four Keys", "dora-four-keys"]
 
 Based on the delivery-performance research of Nicole Forsgren, Jez Humble, and Gene Kim, reported in Accelerate (2018). Explained here in this repository's own words.
 
+**Where this sits against current DORA.** DORA's own site now reports five software delivery performance metrics, not four. Three carry forward unchanged in substance: deployment frequency, lead time for changes (DORA now calls it "change lead time"), and change failure rate. The fourth, time to restore service, was renamed and narrowed in 2023 to failed deployment recovery time, scoped specifically to recovering from a deployment that caused the impairment rather than to incidents from external causes; this worksheet's "time to restore service" rows are the broader, pre-2023 measure. In 2024 DORA added a fifth measure this worksheet does not cover, deployment rework rate: the share of deployments that are unplanned work fixing a prior deployment's bugs. This sheet keeps teaching the 2018 four-key model on purpose, since it is simpler to run and the practices it names still hold; add deployment rework rate yourself, and read this sheet's "time to restore" as the predecessor of failed deployment recovery time, if your team wants current alignment. Source: dora.dev, ["DORA's software delivery performance metrics"](https://dora.dev/guides/dora-metrics/) and ["A history of DORA's software delivery metrics"](https://dora.dev/insights/dora-metrics-history), both verified 2026-09-14.
+
 ## What it is for
 
 Four numbers that describe how a team moves a change from a developer's machine to a customer: how often it deploys, how long a change waits, how often a deploy breaks something, and how fast service comes back. Two of them measure throughput (deployment frequency, lead time for changes) and two measure stability (change failure rate, time to restore service). They settle the argument that returns every planning period: engineering says the delivery system is why dates slip, product hears "it feels slow", and neither side is holding an instrument. The research behind these four found throughput and stability moving together in the teams that did well, which makes "deploy less often so we break less" a claim to test rather than a truism to accept. For a PM the payoff is narrower and more useful than a DevOps scorecard: these numbers set what a roadmap date can honestly promise, and they turn a request for platform time into a costed argument.
@@ -53,6 +55,8 @@ The arithmetic, written out because a delivery figure whose formula lives in a d
 
 The 20% noise band and its floors are a local heuristic authored here, not part of Forsgren, Humble, and Kim's research; Accelerate reports the four keys and the named performance bands, but sets no noise threshold for period-to-period scoring. Treat the 20% figure as a starting rule you can retune, not a number the DORA research specified.
 
+The same question, whether a number is a normative requirement, a research result, or a local heuristic like this one, sits behind other defaults in this operating system too, including [Gate 1](../../os/STAGE-GATES.md)'s five-conversation minimum and the [capacity plan](../../templates/planning/capacity-plan.md)'s 80 percent rule.
+
 Scale per key, against your own previous period: minus 1 worse, 0 unchanged, plus 1 better. "Unchanged" means inside the noise band, where the noise band is 20% of the previous period's value, floored at one deployment per week for frequency and at one hour for time to restore. Add the four rows for a total between minus 4 and plus 4.
 
 | Key | Previous | This period | Change | Noise band | Score (minus 1, 0, plus 1) |
@@ -67,7 +71,19 @@ Why the scale is this coarse: the timestamps underneath it are worse than the sc
 
 ### Step 3: decompose the worst key
 
-The stages must sum to the median within a working day. If they do not, the pipeline holds a step nobody has written down, and finding that step is the result.
+Do not sum the five stage medians and check that total against the reported end-to-end median: a median is not additive, so the two sums answer different questions and can disagree by an order of magnitude even when every stage is fully and correctly recorded.
+
+Counterexample. Three changes, two stages each:
+
+| Change | Stage A | Stage B | This change's own total |
+|---|---|---|---|
+| 1 | 1 day | 100 days | 101 days |
+| 2 | 100 days | 1 day | 101 days |
+| 3 | 1 day | 1 day | 2 days |
+
+Stage A's three values are 1, 100, 1, median 1 day. Stage B's three values are 100, 1, 1, median 1 day. Summed, the two stage medians come to 2 days. But each change's own total is 101, 101, and 2 days, so the median of those three totals is 101 days. Two days against 101 days, from data with no missing stage and no miscount: summing stage medians is the wrong operation, not evidence of a gap.
+
+Reconcile per change instead, then compare medians. For every change in the window, add that one change's own stage durations to get its own total. Take the median of those per-change totals, and compare it with the end-to-end median you measured independently in Step 1 (first commit to serving production, on the same changes). The two should agree, because they describe the same population measured two different ways. Only when the per-change median falls short of the independently measured end-to-end median do you have evidence of a step nobody wrote down, time none of the five rows below captures, most often a queue sitting between two of them. Look for that gap in the instrumentation, not in the arithmetic.
 
 | Stage (lead time) | Median time | Share of lead time | Who is waiting | Fix candidate |
 |---|---|---|---|---|
@@ -77,7 +93,7 @@ The stages must sum to the median within a working day. If they do not, the pipe
 | Tests done to release approved | | | | |
 | Approved to serving production | | | | |
 
-For time to restore, run the same shape over detect, page, diagnose, remediate, confirm.
+For time to restore, run the same shape over detect, page, diagnose, remediate, confirm, and reconcile the same way: per incident first, then compare the median of incident totals with the independently measured time-to-restore median.
 
 ### Step 4: one counter-metric per key
 
@@ -108,7 +124,7 @@ Invented figures for Ledgerline's expense-report copilot, one deployable service
 | Change failure rate | 2 of 4 deployments, 50% | 3 of 6 deployments, 50% | 10 points | 0 |
 | Time to restore, median | 5 hours | 7 hours | 1 hour (floor) | minus 1 |
 
-Total: 0. Decomposition of the 9-day median lead time: first commit to review requested 1.0 day; review requested to merged 5.0 days; merged to tests done 0.5 days; tests done to approved 2.5 days, held by a weekly change-approval board; approved to production 0.2 days. The stages sum to 9.2 days against a 9-day median, so no hidden step is implied, and two stages hold 7.5 of the 9 days. Counters: 1 of the 6 deployments carried no customer-visible change (a config revert), so the frequency rise is thinner than the chart; the deploy log shows 3 remedial deployments, matching the incident log, so failures are not being under-recorded.
+Total: 0. Decomposition of the 9-day median lead time: first commit to review requested 1.0 day; review requested to merged 5.0 days; merged to tests done 0.5 days; tests done to approved 2.5 days, held by a weekly change-approval board; approved to production 0.2 days. The stages sum to 9.2 days, close to the 9-day median measured directly from commit to production. Two stages, review-requested-to-merged and tests-done-to-approved, hold 7.5 of the 9 days between them; that concentration, not the closeness of the sum to the median, is the actionable finding. Counters: 1 of the 6 deployments carried no customer-visible change (a config revert), so the frequency rise is thinner than the chart; the deploy log shows 3 remedial deployments, matching the incident log, so failures are not being under-recorded.
 
 Reading: the total of 0 hides the finding. One deployment in two needs a repair, so the extra deploy the team earned this period went into fixing the last one, and the frequency chart rose while no more value shipped. The constraint is not cadence. It is a review queue plus a weekly board holding most of the lead time, with a test suite that misses policy-rule regressions doing most of the breaking. What went into planning was not "deploy less often" but two named items, a policy-rule test pack and a standing review slot, with the change failure rate as the number they are meant to move.
 

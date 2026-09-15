@@ -11,6 +11,7 @@ aliases: ["QBR / Board Update", "qbr-board-update"]
 **Stage:** OPERATE (feeds [Gate 6: outcomes verified, learn or sunset](../../os/STAGE-GATES.md))
 **Knowledge:** [knowledge index](../../knowledge/INDEX.md)
 **Skill:** [stakeholder-update](../../skills/stakeholder-update/SKILL.md)
+Filled example: [Ledgerline Expense Copilot, Q4 2026](../../examples/ledgerline-qbr-board-update.md)
 
 <!-- The metrics review is the instrument the team reads. This is the version
      leadership acts on, and it exists to get decisions, not applause. Every number

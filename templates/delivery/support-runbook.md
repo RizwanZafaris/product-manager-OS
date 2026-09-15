@@ -11,6 +11,7 @@ aliases: ["Support Runbook", "support-runbook"]
 Stage: DELIVER, feeds [Gate 5: release readiness green](../../os/STAGE-GATES.md); maintained through OPERATE
 Knowledge: [Knowledge index](../../knowledge/INDEX.md)
 Skill: [release-manager-agent](../../agents/release-manager-agent.md)
+Filled example: [Harbourgate payment tickets](../../examples/harbourgate-support-runbook.md)
 
 > **Delete any section you do not need.** A change with no new customer-visible behavior needs one row in the known-issues table of an existing runbook, not a new file. Weight rules are in [WHICH-DOCUMENT.md](../../os/WHICH-DOCUMENT.md).
 

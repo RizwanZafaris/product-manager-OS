@@ -11,6 +11,7 @@ aliases: ["Solution Architecture One-Pager", "solution-architecture"]
 Stage: DESIGN, feeds [Gate 3: architecture and risks reviewed](../../os/STAGE-GATES.md)
 Knowledge: [knowledge index](../../knowledge/INDEX.md)
 Skill: [architect agent](../../agents/architect-agent.md)
+Filled example: [Checkout modernisation (Quay)](../../examples/harbourgate-solution-architecture.md)
 
 <!-- The one-pager is the document an executive or a partner team actually reads. It
      sits above the system design document: one initiative may span several systems,

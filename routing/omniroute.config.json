@@ -23,19 +23,22 @@
       "model": "auto/cheap",
       "purpose": "Mechanical transforms where the answer is checkable: pull fields from documents, normalize backlogs, tag and summarize sources, convert formats, check a draft against a template's field list.",
       "temperature": 0,
-      "maxOutputTokens": 4096
+      "maxOutputTokens": 4096,
+      "priceCeilingUsdPerMTok": null
     },
     "drafting": {
       "model": "auto/coding",
       "purpose": "First complete drafts of structured artifacts: fill one named template from supplied evidence, write ADRs, produce diagrams-as-code, restructure a document without changing its claims.",
       "temperature": 0.3,
-      "maxOutputTokens": 16384
+      "maxOutputTokens": 16384,
+      "priceCeilingUsdPerMTok": null
     },
     "judgment": {
       "model": "auto/reasoning:pro",
       "purpose": "Work where being wrong is expensive and unverifiable locally: prioritization calls, premortems, red-team passes, gap analyses, gate reviews, anything a human will sign.",
       "temperature": 0.2,
       "maxOutputTokens": 16384,
+      "priceCeilingUsdPerMTok": null,
       "requires": "A connected provider that serves a pro reasoning model (a Claude Code, Codex or Gemini subscription via OAuth, or an API-key provider). On a keyless install this tier returns 404 'Combo has no executable targets' and judgment work queues; it is never routed to the cheap tier silently.",
       "keylessFallback": {
         "enabled": false,
@@ -74,8 +77,9 @@
     "gate-reviews": "judgment"
   },
   "limits": {
-    "doc": "Fail closed: at the cap, halt the tier and queue the work; never overspend and never silently downgrade judgment work to a cheaper tier.",
+    "doc": "Fail closed: at the cap, halt the tier and queue the work; never overspend and never silently downgrade judgment work to a cheaper tier. With a cap in force, every call first reserves the most it could bill in the shared spend ledger (pmos/spend.py) at its tier's priceCeilingUsdPerMTok, and a tier with no ceiling queues; an unknown cost holds its full reservation and blocks further calls until it is reconciled with python3 -m pmos.spend reconcile.",
     "dailySpendCapUsdEnv": "OMNIROUTE_DAILY_CAP_USD",
+    "taskSpendCapUsd": null,
     "onCapReached": "halt-tier-and-queue"
   }
 }

@@ -13,6 +13,14 @@ license = "MIT"
 license-files = ["LICENSE"]
 authors = [{name = "Product Manager OS contributors"}]
 dependencies = []
+# Scoped to what .github/workflows/lint.yml actually runs (ubuntu-latest
+# only): the runtime's dir_fd-relative filesystem operations and fcntl
+# advisory locks are POSIX-only and Windows is untested, so neither an
+# "OS Independent" tag nor a Windows/macOS classifier belongs here. Widen
+# this only alongside a hosted job that actually runs and passes there.
+classifiers = [
+    "Operating System :: POSIX :: Linux",
+]
 
 [project.scripts]
 pmos = "pmos.cli:main"

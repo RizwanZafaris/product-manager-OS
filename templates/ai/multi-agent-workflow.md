@@ -8,14 +8,16 @@ aliases: ["Multi-Agent Workflow", "multi-agent-workflow"]
 ---
 # Multi-Agent Workflow: [workflow name]
 
-Stage: AI overlay, active whenever two or more agents cooperate on one task; feeds Gate 3 (architecture and risks reviewed)
-Knowledge: ../../knowledge/INDEX.md
-Skill: ../../skills/ai-prd/SKILL.md
+Stage: AI overlay, active whenever two or more agents cooperate on one task; feeds [Gate 3: architecture and risks reviewed](../../os/STAGE-GATES.md)
+Knowledge: [AI products](../../knowledge/domains/ai-products.md)
+Skill: [AI PRD skill](../../skills/ai-prd/SKILL.md)
+Filled example: [Ledgerline Expense Copilot Receipt Draft](../../examples/ledgerline-multi-agent-workflow.md)
 
-<!-- agent-architecture.md says who the agents are and what they may touch. This
-     document says how they cooperate: the handoff order, the state they share, when a
-     human is pulled in, and what makes the whole thing stop. A multi-agent system
-     without written termination rules is a bill with no ceiling. -->
+<!-- [agent-architecture.md](agent-architecture.md) says who the agents are and what
+     they may touch. This document says how they cooperate: the handoff order, the
+     state they share, when a human is pulled in, and what makes the whole thing
+     stop. A multi-agent system without written termination rules is a bill with no
+     ceiling. -->
 
 **Workflow:** [one sentence: input in, outcome out]
 **Workflow owner:** [name] · **Document date:** [YYYY-MM-DD]
@@ -35,6 +37,14 @@ Skill: ../../skills/ai-prd/SKILL.md
 
 ## 2. Shared state
 
+<!-- Shared state is the only thing every agent in the workflow can see at once, so
+     a field with no declared owner is where two agents silently disagree. A trap:
+     leaving the schema as "whatever the last agent wrote", because that is not a
+     schema, it is a race. This fails when the human view names a dashboard that
+     was never built; a run in flight that nobody can inspect is not actually
+     observable. Never let two agents write the same field without the merge rule
+     stated here. -->
+
 - Where it lives: [store, path, or channel]
 - Schema: [fields, or link to the schema file]
 - Who may write which fields: [per-agent write map; two writers to one field needs a merge rule, written here]
@@ -42,10 +52,18 @@ Skill: ../../skills/ai-prd/SKILL.md
 
 ## 3. Escalation to a human
 
+<!-- Escalation exists so a stuck or disagreeing run reaches a person before it
+     burns budget or ships a bad output. A trap: writing a condition only a human
+     would notice by reading logs, like "seems off", instead of a number a monitor
+     can check. This fails when the escalation role is a named individual instead
+     of a rota, because the workflow then stops the day that person is out. Do not
+     let an agent decide for itself that a situation does not need escalation; that
+     call belongs to the conditions listed here. -->
+
 - Conditions that force escalation: [confidence below n / agents disagree / step SLA exceeded / cost cap approached / add]
 - Escalates to (role with a rota, not a name): [role]
 - What the human receives: [the run state, the disagreement, the recommended action]
-- Approval-gated actions inside the workflow route through the filled human-approval-gates.md, not through an agent's own judgment
+- Approval-gated actions inside the workflow route through the filled [human-approval-gates.md](human-approval-gates.md), not through an agent's own judgment
 
 ## 4. Termination
 
@@ -57,12 +75,23 @@ Skill: ../../skills/ai-prd/SKILL.md
 
 ## 5. Cost cap
 
-- Per-run token or spend ceiling: [n, ILLUSTRATIVE until agreed with [name]]
-- Per-day ceiling for the whole workflow: [n]
-- Max steps per run (loop guard): [n]
-- Max retries per step: [n]
-- At any ceiling: [halt and escalate / degrade to the cheap tier per ../../routing/README.md; state which]
-- Who reads the spend report, on what cadence: [name, cadence]
+<!-- Every cap here turns a runaway loop into a bounded, budgeted event instead of
+     an open-ended bill. A trap: setting the per-run ceiling and leaving the
+     per-day ceiling blank, because a workflow that respects one cap can still run
+     often enough to blow through the other. This fails when every ceiling
+     escalates to a human with no cheaper degrade path, so an ordinary volume
+     spike pages someone instead of costing a little more. Never leave a cap as a
+     round guess; derive it from the worked micro-example below or a measured
+     baseline, and name who actually reads the spend report. -->
+
+| Cap | Value |
+|---|---|
+| Per-run token or spend ceiling | [n, ILLUSTRATIVE until agreed with [name]] |
+| Per-day ceiling for the whole workflow | [n] |
+| Max steps per run (loop guard) | [n] |
+| Max retries per step | [n] |
+| At any ceiling | [halt and escalate / degrade to the cheap tier per ../../routing/README.md; state which] |
+| Who reads the spend report, on what cadence | [name, cadence] |
 
 ## Worked micro-example
 

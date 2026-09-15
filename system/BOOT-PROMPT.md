@@ -123,7 +123,8 @@ templates/architecture/ system-design.md, solution-architecture.md, adr.md,
                privacy-impact-assessment.md, accessibility-checklist.md,
                component-spec.md, design-md.md (the filled copy lands at
                products/<name>/DESIGN.md, not in a stage subfolder),
-               design-review-record.md, localisation-rtl-checklist.md
+               design-review-record.md, localisation-rtl-checklist.md,
+               development-handoff.md
 templates/execution/    stakeholder-map.md, risk-register.md, decision-log.md,
                dependency-register.md, state.md (the STATE.md blank the
                Conductor keeps per product), change-request.md,
@@ -251,7 +252,13 @@ agents/        README.md, TEAM.md, and twelve role identities, longer than
                hermes-agent.md. A skill is a procedure; an agent is an
                identity with standing rules.
 examples/      README.md, expense-copilot-discovery.md,
-               expense-copilot-prd.md, checkout-modernization-brownfield.md,
+               expense-copilot-prd.md, expense-copilot-journey.md,
+                expense-copilot-problem-framing.md expense-copilot-vision.md expense-copilot-product-strategy.md expense-copilot-roadmap.md,
+                expense-copilot-acceptance-criteria.md expense-copilot-decision-log.md,
+                expense-copilot-adr.md expense-copilot-data-model.md expense-copilot-api-contract.md,
+                expense-copilot-dependency-register.md expense-copilot-risk-register.md,
+                expense-copilot-development-handoff.md,
+               checkout-modernization-brownfield.md,
                conductor-transcript.md, ledgerline-strategy-kernel.md,
                ledgerline-jtbd-job-map.md, ledgerline-kano-survey.md,
                ledgerline-rice-scoring.md, ledgerline-north-star-tree.md,
@@ -434,13 +441,24 @@ docs/          PHILOSOPHY.md (why each rule above exists, with the
                CONDUCTOR-DESIGN.md, RUNTIME-QUICKSTART.md, THREAT-MODEL.md,
                ACCESSIBILITY.md, COMPATIBILITY.md (what has actually
                been run, on which models and hosts, with what result), GRAPH.md
-               (generated from each file's declaration), REFERENCES-DESIGN.md
+               (generated from each file's declaration), PHASE-INDEX.md
+               (generated: each phase's templates with the frameworks that feed
+               them, their filled examples and their working-copy IDs),
+               REFERENCES-DESIGN.md
                (the source and licence register for the experience-design
                layer), RENDERING.md (how to read the tree as a site or a
-               knowledge base in GitHub, Obsidian, MkDocs or Quartz). Reference
-               only. Ask for one of these when the user challenges a rule you
-               are enforcing; never paste one in place of a template, because
-               none of them produces an artifact.
+               knowledge base in GitHub, Obsidian, MkDocs or Quartz), SCALE.md
+               (the published scale envelope for PMOSDomain's full-state
+               snapshots: measured limits and what to do as a product grows),
+               TEMPLATE-DISPOSITIONS.md (F21's per-template disposition table:
+               each flagged template's score before and after, its filled
+               example, and a human disposition),
+               COVERAGE.md (per domain card and per role rung or
+               specialization: reference, worked example, expert-reviewed or
+               field-tested, none of the last two recorded anywhere yet).
+               Reference only. Ask for one of these when the user challenges a
+               rule you are enforcing; never paste one in place of a template,
+               because none of them produces an artifact.
 system/        README.md (the two-prompt map), BOOT-PROMPT.md (this
                document, ask for it again if a role block needs the rules
                restated), ROLE-PROMPTS.md (the six single-role pastes named

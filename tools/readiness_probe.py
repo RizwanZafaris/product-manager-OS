@@ -425,6 +425,7 @@ def probe_ci_covers_runtime():
         "claude-adapter", "desktop-adapter", "workspace-lifecycle",
         "workspace-links", "workspace-contract", "regulated-example",
         "regulated-template", "os-tree", "json-syntax", "graph-freshness",
+        "phase-index-freshness",
         "skill-rubric-freshness", "manifest-contract",
         "frontmatter", "security-policy", "docs-contract",
         "readiness-local",

@@ -28,8 +28,9 @@ and pipes inside inline code inside their cell, and fails any row in that table
 whose cell count is not three. A row can no longer hide a column, and a
 three-column table elsewhere in the file is no longer read as routing.
 
-stage and gate accept null, and only together. PLANNING artifacts are reviewed
-on their own cadence rather than at a gate, and reference rows (glossary,
+stage and gate accept null, and only together. Portfolio planning artifacts are
+reviewed on their own cadence rather than at a gate, and a product's vision,
+strategy and roadmap are DEFINE rows at gate 2. Reference rows (glossary,
 philosophy, domain and role cards) produce no artifact at all; inventing a stage
 for them would be a fabricated field. null means no gate applies, never that a
 gate was skipped.

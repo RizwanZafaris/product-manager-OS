@@ -16,7 +16,7 @@ This file is a hub node. Its job is to give the graph one place per stage to fan
 
 | Gate | Closes | What it demands, in one line |
 |---|---|---|
-| Gate 2: requirements signed off | DEFINE | Every criterion able to fail on a threshold, every assumption registered with a validate-by date, and the sponsor's signature on the business case itself, not only on the gate form. |
+| Gate 2: requirements signed off | DEFINE | The vision, strategy and roadmap approved by their named roles; every criterion able to fail on a threshold, every assumption registered with a validate-by date, and the sponsor's signature on the business case itself, not only on the gate form. |
 
 Pick the artifact weight before you open anything here: [WHICH-DOCUMENT.md](../WHICH-DOCUMENT.md). The gate asks the same questions at every weight and answers them in fewer words, never in fewer answers.
 
@@ -24,6 +24,9 @@ Pick the artifact weight before you open anything here: [WHICH-DOCUMENT.md](../W
 
 | Template | What it is for |
 |---|---|
+| [vision.md](../../templates/planning/vision.md) | Who it serves, which Gate 1 problem it answers and the change it aims for |
+| [product-strategy.md](../../templates/planning/product-strategy.md) | Where to play, how to win and what the product will not do |
+| [roadmap.md](../../templates/planning/roadmap.md) | Phases, each with an outcome, a success measure and its dependencies |
 | [one-pager.md](../../templates/definition/one-pager.md) | The light weight: problem, proposal, scope, one metric with a guardrail, up to three criteria |
 | [brd.md](../../templates/definition/brd.md) | Business objectives, scope, constraints, the return logic, and the sponsor's signature block |
 | [prd.md](../../templates/definition/prd.md) | Background, objectives, stories, scope, success metrics, launch criteria |
@@ -60,6 +63,9 @@ Knowledge behind the methods: [rice-prioritization.md](../../knowledge/rice-prio
 
 | Skill | Use when |
 |---|---|
+| [write-vision-strategy](../../skills/write-vision-strategy/SKILL.md) | A product's vision and strategy are the first thing the stage needs, before any requirements |
+| [strategy-critic](../../skills/strategy-critic/SKILL.md) | The strategy draft has to be checked for a crux, a guiding policy that refuses something, and bets that name what they do not do |
+| [roadmap-builder](../../skills/roadmap-builder/SKILL.md) | A scored backlog and the strategy have to become phases, each with an outcome, a success measure and its dependencies |
 | [write-prd](../../skills/write-prd/SKILL.md) | The requirements stack needs writing, sized first against the weight ladder |
 | [ai-prd](../../skills/ai-prd/SKILL.md) | The implementer is a model, so the criteria have to be eval rows |
 | [spec-review](../../skills/spec-review/SKILL.md) | A draft needs every untestable adjective found before a human reads it |
@@ -79,9 +85,11 @@ Per [agents/TEAM.md](../../agents/TEAM.md), section 1.
 
 No agent signs a gate, and no agent invents a number or a name.
 
+Every template of this stage, with the frameworks that feed it, its filled examples and the ID its working copy gets: [DEFINE in the phase index](../../docs/PHASE-INDEX.md#define).
+
 ## Where this sits in the loop
 
-Entry is a signed Gate 1 plus a logged weight decision. Exit feeds [design.md](design.md). The interview path through the same stage is [skills/conductor/questions/define.md](../../skills/conductor/questions/define.md).
+Entry is a signed Gate 1 plus a logged weight decision. The stage opens with the vision, strategy and roadmap, then the definition set at the logged weight. Exit feeds [design.md](design.md). The interview path through the same stage is [skills/conductor/questions/define.md](../../skills/conductor/questions/define.md).
 
 ## Graph links
 
@@ -89,9 +97,9 @@ Wikilinks below are additive: they exist so the Obsidian graph draws the edges. 
 
 - Loop and gates: [[os/OPERATING-LOOP.md]] · [[os/STAGE-GATES.md]] · [[os/WHICH-DOCUMENT.md]] · [[os/PRODUCT-WORKSPACE.md]]
 - Neighbor hubs: [[os/maps/discover.md]] · [[os/maps/design.md]] · [[os/maps/README.md]]
-- Templates: [[templates/definition/one-pager.md]] · [[templates/definition/brd.md]] · [[templates/definition/prd.md]] · [[templates/definition/frd.md]] · [[templates/definition/nfr.md]] · [[templates/definition/business-rules.md]] · [[templates/definition/assumptions-register.md]] · [[templates/definition/user-stories.md]] · [[templates/definition/acceptance-criteria.md]] · [[templates/definition/prfaq.md]] · [[templates/definition/design-brief.md]] · [[templates/definition/ux-writing-guide.md]] · [[templates/definition/ui-state-inventory.md]]
+- Templates: [[templates/planning/vision.md]] · [[templates/planning/product-strategy.md]] · [[templates/planning/roadmap.md]] · [[templates/definition/one-pager.md]] · [[templates/definition/brd.md]] · [[templates/definition/prd.md]] · [[templates/definition/frd.md]] · [[templates/definition/nfr.md]] · [[templates/definition/business-rules.md]] · [[templates/definition/assumptions-register.md]] · [[templates/definition/user-stories.md]] · [[templates/definition/acceptance-criteria.md]] · [[templates/definition/prfaq.md]] · [[templates/definition/design-brief.md]] · [[templates/definition/ux-writing-guide.md]] · [[templates/definition/ui-state-inventory.md]]
 - Overlay templates: [[templates/ai/eval-spec.md]] · [[templates/ai/guardrails.md]] · [[templates/ai/hallucination-controls.md]] · [[modules/regulated/README.md]]
 - Frameworks: [[frameworks/prioritization/rice-scoring-sheet.md]] · [[frameworks/prioritization/moscow.md]] · [[frameworks/prioritization/wsjf-cost-of-delay.md]] · [[frameworks/prioritization/weighted-decision-matrix.md]] · [[frameworks/prioritization/user-story-map.md]] · [[frameworks/prioritization/impact-mapping.md]] · [[frameworks/prioritization/decision-doors.md]] · [[frameworks/execution/estimation-sheet.md]] · [[frameworks/design/design-critique.md]]
 - Knowledge: [[knowledge/rice-prioritization.md]] · [[knowledge/amazon-pr-faq.md]] · [[knowledge/shape-up.md]] · [[knowledge/README.md]] · [[knowledge/design/interaction-design-principles.md]] · [[knowledge/design/content-design-and-forms.md]] · [[knowledge/design/accessibility-regulation.md]] · [[knowledge/design/component-driven-development.md]]
-- Skills: [[skills/write-prd/SKILL.md]] · [[skills/ai-prd/SKILL.md]] · [[skills/spec-review/SKILL.md]] · [[skills/story-writer/SKILL.md]] · [[skills/decision-memo/SKILL.md]] · [[skills/reg-gap-check/SKILL.md]] · [[skills/conductor/questions/define.md]]
+- Skills: [[skills/write-vision-strategy/SKILL.md]] · [[skills/strategy-critic/SKILL.md]] · [[skills/roadmap-builder/SKILL.md]] · [[skills/write-prd/SKILL.md]] · [[skills/ai-prd/SKILL.md]] · [[skills/spec-review/SKILL.md]] · [[skills/story-writer/SKILL.md]] · [[skills/decision-memo/SKILL.md]] · [[skills/reg-gap-check/SKILL.md]] · [[skills/conductor/questions/define.md]]
 - Agents: [[agents/TEAM.md]] · [[agents/drafting-agent.md]] · [[agents/research-agent.md]] · [[agents/acceptance-agent.md]] · [[agents/estimator-agent.md]] · [[agents/validation-agent.md]]

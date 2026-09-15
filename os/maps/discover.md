@@ -80,6 +80,8 @@ Per [agents/TEAM.md](../../agents/TEAM.md), section 1.
 
 No agent signs a gate, and no agent invents a number or a name.
 
+Every template of this stage, with the frameworks that feed it, its filled examples and the ID its working copy gets: [DISCOVER in the phase index](../../docs/PHASE-INDEX.md#discover).
+
 ## Where this sits in the loop
 
 Entry comes from a dated trigger or from a Gate 6 pivot. Exit feeds [define.md](define.md). The interview path through the same stage is [skills/conductor/questions/discover.md](../../skills/conductor/questions/discover.md).

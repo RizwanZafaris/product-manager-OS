@@ -320,6 +320,8 @@ CLI_TESTS = tuple(
         "test_planned_file_symlink_swap_and_migration_limits_fail_closed",
         "test_recovery_and_rollback_refuse_unknown_active_runtime",
         "test_isolated_install_imports_console_script",
+        "test_a_blank_workspace_reaches_completed_through_the_cli_alone",
+        "test_revision_bound_approvals_hold_through_the_cli",
     ))
 
 RELEASE_TESTS = tuple(
@@ -348,6 +350,8 @@ RELEASE_TESTS = tuple(
 DISTRIBUTION_TESTS = tuple(
     "test_readiness.DistributionMetadataTests." + name for name in (
         "test_the_built_wheel_declares_its_license",
+        "test_the_built_wheel_ships_the_question_bank_contract",
+        "test_a_missing_question_bank_contract_fails_the_build",
         "test_build_sdist_refuses_in_the_way_a_frontend_can_report",
     ))
 

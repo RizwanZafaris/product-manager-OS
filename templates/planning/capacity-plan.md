@@ -32,26 +32,32 @@ Skill: [estimator agent](../../agents/estimator-agent.md)
      (section 5). -->
 
 **Owner:** [name] · **Period:** [quarter] · **Date:** [YYYY-MM-DD] · **Status:** Draft / In review / Approved
-**Unit:** [team-weeks or person-days, one unit for the whole file] · **Linked roadmap:** [roadmap.md copy]
+**Unit:** [person-days or person-weeks, one unit for the whole file] · **Linked roadmap:** [roadmap.md copy]
 
 ## 1. The rules
 
 <!-- Stated so every reviewer argues from the same arithmetic. Edit the numbers to
      your context; keep the rules. -->
 
-- **The 80 percent rule.** Committed work is planned to no more than 80 percent of net available capacity. The other 20 percent absorbs interrupts, estimate error, and the standing demand nobody scheduled. When committed demand exceeds the line, an initiative moves to Next; the line does not move.
+- **The 80 percent rule.** Committed work is planned to no more than 80 percent of net available capacity. The other 20 percent absorbs interrupts, estimate error, and the standing demand nobody scheduled. When committed demand exceeds the line, an initiative moves to Next; the line does not move. This is a local heuristic, not a normative requirement or a cited research result: no external source sets 80 percent for every team. A different line is allowed only when section 7 records the figure used, the risk if it is wrong, an owner, and a review date.
 - **Ranges, not numbers.** Every initiative carries a low, likely, and high figure from the estimation sheet. The planning figure is the likely value, or the high value when confidence is low.
-- **One unit.** A file that mixes person-days and team-weeks hides a factor of five somewhere.
+- **One unit.** State person-days or person-weeks on the Unit line above and use only that unit below. A team-week alone is not a real unit: it never says how many people are on the team, so it cannot be compared to a person-count figure until that size is shown. Convert with the team size explicit: team-weeks x team size = person-weeks, and person-weeks x working days per week (5, for a standard week) = person-days. Example: 2 team-weeks for a 6-person team is 2 x 6 = 12 person-weeks, or 12 x 5 = 60 person-days. A file that mixes units without this conversion hides both the team-size factor and the working-day factor.
+- **Support counted once.** On-call and support work is subtracted from supply in section 2, and only there. Section 4's standing demand tracks other standing work; its defect-fixing row is scheduled bug-fix work, not the same hours again.
 
 ## 2. Supply per team
 
-<!-- Gross is people times working weeks. Subtract what is already spoken for
-     before drawing the line. The italic row is ILLUSTRATIVE. -->
+<!-- Gross is people times working weeks times working days per week, in
+     person-days (drop the working-day factor if this file's declared unit is
+     person-weeks instead). Subtract what is already spoken for before drawing
+     the line: leave, on-call and support (section 1's support-counted-once
+     rule), and recurring load. The italic row is ILLUSTRATIVE. -->
 
 | Team | People | Weeks | Gross | Leave | On-call and support | Recurring load (hiring, onboarding, meetings) | Net | Plannable (80 percent of net) |
 |---|---|---|---|---|---|---|---|---|
 | | | | | | | | | |
-| *extraction squad (ILLUSTRATIVE)* | *6* | *13* | *78* | *8* | *6* | *4* | *60* | *48* |
+| *extraction squad (ILLUSTRATIVE, person-days)* | *6* | *13* | *390* | *40* | *30* | *20* | *300* | *240* |
+
+*Arithmetic for the ILLUSTRATIVE row above, in person-days (delete with the row): Gross = people x weeks x working days per week = 6 x 13 x 5 = 390. Net = Gross - Leave - On-call and support - Recurring load = 390 - 40 - 30 - 20 = 300. Plannable = Net x 0.8 = 300 x 0.8 = 240.*
 
 ## 3. Demand per initiative
 
@@ -67,12 +73,14 @@ Skill: [estimator agent](../../agents/estimator-agent.md)
 ## 4. Standing demand
 
 <!-- Work that happens whether or not it is planned. Last period's actuals beat
-     this period's hopes. -->
+     this period's hopes. Defect fixing here is scheduled bug-fix work, not the
+     on-call and support hours section 2 already subtracted from supply: the
+     same hour is never entered in both places. -->
 
 | Item | Team | Units per period | Source |
 |---|---|---|---|
 | Tech debt interest | | | interest total in [tech-debt-register.md](../execution/tech-debt-register.md) |
-| Support and defect fixing | | | last period's actual |
+| Defect fixing | | | last period's actual, excluding on-call and support already subtracted in section 2 |
 | Platform, security, and compliance mandates | | | [named mandate] |
 | Experiment and analytics support | | | [experiment brief or analytics spec] |
 
@@ -86,7 +94,9 @@ Skill: [estimator agent](../../agents/estimator-agent.md)
 | Team | Plannable | Standing demand | Initiatives above the line | Committed | Utilization | Over or under | Moves to Next |
 |---|---|---|---|---|---|---|---|
 | | | | | | | | |
-| *extraction squad (ILLUSTRATIVE)* | *48* | *13* | *R-1, R-2, R-3 = 42* | *55* | *115 percent* | *over by 7* | *R-3; R-1 and R-2 commit* |
+| *extraction squad (ILLUSTRATIVE, person-days)* | *240* | *65* | *R-1, R-2, R-3 = 210* | *275* | *115 percent* | *over by 35* | *R-3; R-1 and R-2 commit* |
+
+*Arithmetic for the ILLUSTRATIVE row above, in person-days (delete with the row): Plannable (240) carries over from section 2. Committed = Standing demand + Initiatives above the line = 65 + 210 = 275. Utilization = Committed / Plannable = 275 / 240 = 1.1458, rounded to 115 percent. Over or under = Committed - Plannable = 275 - 240 = 35 person-days over.*
 
 ## 6. Gaps and hiring
 
@@ -103,6 +113,7 @@ Skill: [estimator agent](../../agents/estimator-agent.md)
 |---|---|---|
 | [e.g. no attrition on the extraction squad this quarter] | | [risk-register.md](../execution/risk-register.md) row |
 | [e.g. the compliance mandate stays at [n] units] | | [assumptions-register.md](../definition/assumptions-register.md) row |
+| [e.g. this plan commits to [n] percent of net capacity, not 80 percent, because [reason]] | | [risk-register.md](../execution/risk-register.md) row, with an owner and a review date |
 
 ---
 
@@ -110,12 +121,14 @@ Skill: [estimator agent](../../agents/estimator-agent.md)
 
 Done when every box is honestly ticked. The approved copy sets the Now column of [roadmap.md](roadmap.md) and travels with the definition set to [Gate 2](../../os/STAGE-GATES.md).
 
-- [ ] One unit is used throughout
-- [ ] Every supply row subtracts leave, on-call, and recurring load before the 80 percent line is drawn
+- [ ] One unit (person-days or person-weeks) is used throughout, and any team-weeks source figure shows its team-size conversion
+- [ ] Every supply row subtracts leave, on-call and support, and recurring load before the 80 percent line is drawn
+- [ ] On-call and support is subtracted once, in section 2 only; the standing-demand defect-fixing row does not repeat those hours
 - [ ] Every demand row carries low, likely, and high figures, and says whether missing work was checked
-- [ ] Standing demand includes debt interest and last period's support actual
+- [ ] Standing demand includes debt interest and last period's defect-fixing actual
 - [ ] No team is committed above its plannable figure; anything over the line is named and moved to Next
 - [ ] Every gap has an option, a decision owner, and a needed-by date
+- [ ] Any capacity line other than 80 percent is recorded in section 7 with the figure used, the risk if wrong, an owner, and a review date
 - [ ] The roadmap's Now column matches what sits above the line here
 - [ ] The ILLUSTRATIVE rows have been deleted
 - [ ] Signed by [name], [date]

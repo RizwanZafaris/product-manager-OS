@@ -1,6 +1,6 @@
 ---
 name: build-roadmap
-description: "Router row: A roadmap, quarterly plan, OKR set, or a stress-test of an existing one. No stage and no gate, judgment tier. Say: a roadmap; a quarterly plan; an OKR set; stress-test our roadmap."
+description: "Router row: A roadmap, quarterly plan, OKR set, or a stress-test of an existing one. DEFINE stage, Gate 2, judgment tier. Say: a roadmap; a quarterly plan; an OKR set; stress-test our roadmap."
 disable-model-invocation: true
 ---
 
@@ -12,8 +12,8 @@ GENERATED FILE. Do not hand-edit. Written by `harness/adapters/claude-code/gener
 |---|---|
 | Route id | `build-roadmap` |
 | Router row | A roadmap, quarterly plan, OKR set, or a stress-test of an existing one |
-| Stage | None. See the note below. |
-| Gate | None. See the note below. |
+| Stage | DEFINE |
+| Gate | 2 |
 | Tier | judgment. A tier name, never a model. |
 | Kind | artifact. Fills one template and files it in the product workspace. |
 | Skill | `skills/roadmap-builder/SKILL.md` |
@@ -22,14 +22,14 @@ The tier to model mapping lives in `routing/omniroute.config.json` and nowhere e
 
 ## Note from the manifest
 
-PLANNING overlay: reviewed on its own cadence, not at a gate, per os/OPERATING-LOOP.md.
+A product's roadmap orders phases, each with an outcome, a success measure and its dependencies, after the vision and strategy, and is approved at Gate 2 by the product owner and the engineering lead; a portfolio roadmap (which products enter the loop and when) and an OKR set on its own are planning work, reviewed on their own cadence, where no gate applies.
 
 ## What to do
 
 1. Read every file under Read first, in the order listed, before you produce anything.
 2. Follow `skills/roadmap-builder/SKILL.md` end to end. It owns the workflow; this file only routes to it.
 3. Land the output in the template below that fits the request. One template, not all of them.
-4. There is no gate on this output. Do not invent one, and do not report a gate as passed.
+4. Take the output to Gate 2 in `os/STAGE-GATES.md`. Report which boxes pass and which do not, then stop. A named human signs.
 5. Leave any unanswered field as `[OPEN: what is missing, who owns the answer]`. That is a valid value here.
 
 ## Read first

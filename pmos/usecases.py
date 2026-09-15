@@ -21,7 +21,7 @@ from types import MappingProxyType
 from typing import Any, Callable, Mapping
 
 from .cli import main as cli_main
-from .conductor import Conductor, EvidenceClass, Question, QuestionBank
+from .conductor import Conductor
 from .domain import (
     ApprovalError,
     LifecycleStage,
@@ -39,6 +39,7 @@ from .operations import (
     SourceControlAdapter,
     TransactionalOutbox,
 )
+from .product import product_banks
 from .routing import (
     ModelRouter,
     ModelSpec,
@@ -146,7 +147,7 @@ _CASE_ASSERTIONS: Mapping[str, tuple[str, ...]] = {
                           "verified restored content and chains"),
     "security": ("blocked secret material", "blocked out-of-bound write",
                  "required approval for external mutation"),
-    "new_user": ("initialized and completed the CLI onboarding gate",
+    "new_user": ("initialized, answered the first question bank and proved its gate through the CLI",
                  "reopened Store, Conductor, and durable domain state",
                  "validated a runtime skill contract and hook boundary",
                  "delivered and exactly acknowledged an operation outbox record"),
@@ -219,9 +220,9 @@ _CASE_EVIDENCE: Mapping[str, Mapping[str, _EvidenceExpectation]] = {
     },
     "new_user": {
         "cli_initialized": _EvidenceExpectation(_true, "successful CLI initialization"),
-        "cli_completed": _EvidenceExpectation(_true, "a completed CLI gate"),
+        "cli_completed": _EvidenceExpectation(_true, "a proved CLI gate"),
         "store_verified": _EvidenceExpectation(_true, "a verified Store reopen"),
-        "conductor_completed": _EvidenceExpectation(_true, "a durable conductor completion"),
+        "conductor_completed": _EvidenceExpectation(_true, "a durable conductor position after the gate"),
         "domain_reopened": _EvidenceExpectation(_true, "a durable domain reopen"),
         "hook_action": _EvidenceExpectation(_equals("allow"), "an allowed transition hook"),
         "skill_contract_count": _EvidenceExpectation(_at_least(1), "at least one verified skill"),
@@ -674,37 +675,48 @@ def new_user() -> UseCaseResult:
             return payload
 
         initialized = cli_json(["init", "--path", str(root), "--product-id", product_id])
-        initial_revision = initialized["onboarding"]["revision"]
-        answer = cli_json([
-            "answer", "--path", str(root), "--product-id", product_id,
-            "--question-id", "first-outcome", "--answer", "A customer completes setup.",
-            "--evidence", json.dumps({"class": "observed_behavior", "source": "session-1",
-                                        "date": "2026-09-04", "location": "research/1"}),
-            "--expected-revision", initial_revision, "--turn-id", "golden-answer-1",
-        ])
+        # Answer whatever bank init starts on, reading each question and revision from pmos status.
+        status = cli_json(["status", "--path", str(root), "--product-id", product_id])
+        answers = 0
+        while status["interview"] == "question":
+            if answers == 20:
+                raise AssertionError("new user interview did not reach its first gate")
+            question_id = status["question"]["id"]
+            cli_json([
+                "answer", "--path", str(root), "--product-id", product_id,
+                "--question-id", question_id, "--answer", "A customer completes setup.",
+                "--evidence", json.dumps({"class": "observed_behavior", "source": "session-1",
+                                            "date": "2026-09-04", "location": "research/1"}),
+                "--expected-revision", status["revision_token"], "--turn-id", "golden-answer-" + question_id,
+            ])
+            answers += 1
+            status = cli_json(["status", "--path", str(root), "--product-id", product_id])
+        if status["interview"] != "blocked":
+            raise AssertionError("new user interview did not reach its first gate")
+        gated_bank_id = status["current_bank_id"]
+        gate_revision = status["revision_token"]
+
         proof = root / "onboarding-proof.txt"
         proof_bytes = b"independent onboarding approval\n"
         proof.write_bytes(proof_bytes)
         gated = cli_json([
             "gate", "--path", str(root), "--product-id", product_id,
-            "--bank-id", "onboarding",
+            "--bank-id", gated_bank_id,
             "--evidence", json.dumps({
                 "source": proof.name, "source_sha256": hashlib.sha256(proof_bytes).hexdigest(),
                 "actor_id": "local-reviewer", "requester_id": "local-operator",
                 "decision": "approved", "approved_at": "2026-09-04T00:00:00Z",
             }),
-            "--expected-revision", answer["outcome"]["revision"], "--turn-id", "golden-gate-1",
+            "--expected-revision", gate_revision, "--turn-id", "golden-gate-1",
         ])
+        if gated["outcome"]["status"] not in ("advanced", "completed"):
+            raise AssertionError("CLI gate was not proved")
         runtime = root / ".pmos/runtime.sqlite"
         with Store(runtime) as store:
             store.assert_verified()
-            onboarding = Conductor(store, product_id, (
-                QuestionBank("onboarding", "v1", (
-                    Question("first-outcome", "What outcome should the first product user achieve?",
-                             EvidenceClass.OBSERVED_BEHAVIOR),
-                ), gate_approvers=("local-reviewer",)),
-            ))
-            if onboarding.next_turn().status != "completed":
+            position = Conductor(store, product_id, product_banks(store, product_id)).next_turn()
+            moved_on = position.status == "question" and position.bank_id != gated_bank_id
+            if position.status != "completed" and not moved_on:
                 raise AssertionError("CLI conductor state did not survive Store reopen")
 
             domain = PMOSDomain.open(store, storage_id="golden-domain")
@@ -744,7 +756,7 @@ def new_user() -> UseCaseResult:
             domain_reopened = True
             store_verified = reopened_store.verify().ok
     return _observed("new_user", cli_initialized=initialized["ok"] is True,
-                     cli_completed=gated["outcome"]["completed"] is True,
+                     cli_completed=gated["outcome"]["status"] in ("advanced", "completed"),
                      store_verified=store_verified, conductor_completed=True,
                      domain_reopened=domain_reopened, hook_action=hook.action,
                      skill_contract_count=len(contracts), operations_status=acknowledged.status.value)

@@ -13,6 +13,8 @@ import io
 import json
 import sys
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -310,6 +312,161 @@ class RecordTests(unittest.TestCase):
             self.assertTrue(any("no usable cost" in p for p in problems),
                             problems)
 
+    def test_case_hash_is_stable_for_an_unchanged_definition(self):
+        case = matrix.SUITE[0]
+        self.assertEqual(matrix.case_hash(case), matrix.case_hash(dict(case)))
+
+    def test_case_hash_changes_when_the_prompt_changes(self):
+        case = dict(matrix.SUITE[0])
+        reworded = dict(case, prompt=case["prompt"] + " Also add a note.")
+        self.assertNotEqual(matrix.case_hash(case), matrix.case_hash(reworded))
+
+    def test_grader_sha256_is_stable_and_reflects_grader_source(self):
+        first = matrix.grader_version()
+        second = matrix.grader_version()
+        self.assertEqual(first, second)
+        self.assertEqual(len(first), 64, "sha256 hex digest")
+
+    def test_a_grader_sha256_mismatch_fails_the_check(self):
+        with tempfile.TemporaryDirectory() as name:
+            tmp = Path(name)
+            report = self.report(grader_sha256="0" * 64)
+            out, doc = self.write(tmp, report,
+                                  matrix.BEGIN + "\n" + matrix.END + "\n")
+            problems = matrix.check(out, doc)
+            self.assertTrue(any("grader_sha256" in p for p in problems),
+                            problems)
+
+    def test_the_real_grader_sha256_passes_the_check(self):
+        with tempfile.TemporaryDirectory() as name:
+            tmp = Path(name)
+            report = self.report(grader_sha256=matrix.grader_version())
+            out, doc = self.write(tmp, report,
+                                  matrix.BEGIN + "\n" + matrix.END + "\n")
+            doc.write_text(matrix.splice(doc.read_text(encoding="utf-8"),
+                                         matrix.render(report)),
+                           encoding="utf-8")
+            self.assertEqual(matrix.check(out, doc), [])
+
+    def test_dated_out_path_names_the_day_and_never_names_the_default(self):
+        from datetime import datetime, timezone
+        when = datetime(2026, 9, 14, 12, 0, tzinfo=timezone.utc)
+        path = matrix.dated_out_path(when=when)
+        self.assertEqual(path.name, "model-matrix-2026-09-14.json")
+        self.assertEqual(path.parent, matrix.DEFAULT_OUT.parent)
+        self.assertNotEqual(path, matrix.DEFAULT_OUT)
+
+    def test_dated_out_path_changes_with_the_day(self):
+        from datetime import datetime, timezone
+        a = matrix.dated_out_path(
+            when=datetime(2026, 9, 9, 0, 0, tzinfo=timezone.utc))
+        b = matrix.dated_out_path(
+            when=datetime(2026, 9, 14, 0, 0, tzinfo=timezone.utc))
+        self.assertNotEqual(a, b)
+
+    def test_main_refuses_a_live_run_from_a_dirty_tree_without_allow_dirty(self):
+        def fake_git(*args):
+            return " M tools/model_matrix.py" if args[:1] == ("status",) \
+                else "f" * 40
+
+        with tempfile.TemporaryDirectory() as name:
+            out = Path(name) / "matrix.json"
+            with mock.patch.object(matrix.probe, "git", fake_git), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                code = matrix.main(["--models", "openrouter/v/m:free",
+                                    "--workers", "1", "--out", str(out)])
+            self.assertFalse(out.exists(), "a refused run must write nothing")
+        self.assertEqual(code, 2)
+
+    def test_main_records_a_dirty_run_prominently_with_allow_dirty(self):
+        def fake_git(*args):
+            return " M tools/model_matrix.py" if args[:1] == ("status",) \
+                else "f" * 40
+
+        def chat(model, prompt):
+            return {"text": "3200", "resolved_model": model,
+                    "latency_ms": 1.0, "cost_usd": 0.0,
+                    "cost_source": "test double"}
+
+        with tempfile.TemporaryDirectory() as name:
+            out = Path(name) / "matrix.json"
+            with mock.patch.object(matrix.probe, "git", fake_git), \
+                    mock.patch.object(matrix.probe, "omniroute_chat", chat), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                code = matrix.main(["--models", "openrouter/v/m:free",
+                                    "--case", "arithmetic", "--workers", "1",
+                                    "--out", str(out), "--allow-dirty"])
+            report = json.loads(out.read_text(encoding="utf-8"))
+        self.assertEqual(code, 0)
+        self.assertEqual(report["working_tree"], "dirty")
+        self.assertTrue(report["allow_dirty"])
+        self.assertIn("dirty_tree_warning", report)
+
+    def test_main_leaves_a_clean_tree_unaffected(self):
+        def fake_git(*args):
+            return "" if args[:1] == ("status",) else "f" * 40
+
+        def chat(model, prompt):
+            return {"text": "3200", "resolved_model": model,
+                    "latency_ms": 1.0, "cost_usd": 0.0,
+                    "cost_source": "test double"}
+
+        with tempfile.TemporaryDirectory() as name:
+            out = Path(name) / "matrix.json"
+            with mock.patch.object(matrix.probe, "git", fake_git), \
+                    mock.patch.object(matrix.probe, "omniroute_chat", chat), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                code = matrix.main(["--models", "openrouter/v/m:free",
+                                    "--case", "arithmetic", "--workers", "1",
+                                    "--out", str(out)])
+            report = json.loads(out.read_text(encoding="utf-8"))
+        self.assertEqual(code, 0)
+        self.assertEqual(report["working_tree"], "clean")
+        self.assertNotIn("dirty_tree_warning", report)
+
+    def test_main_records_command_line_and_tool_sha256(self):
+        def chat(model, prompt):
+            return {"text": "3200", "resolved_model": model,
+                    "latency_ms": 1.0, "cost_usd": 0.0,
+                    "cost_source": "test double"}
+
+        with tempfile.TemporaryDirectory() as name:
+            out = Path(name) / "matrix.json"
+            with mock.patch.object(matrix.probe, "omniroute_chat", chat), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                code = matrix.main(["--models", "openrouter/v/m:free",
+                                    "--case", "arithmetic", "--workers", "1",
+                                    "--out", str(out), "--allow-dirty"])
+            report = json.loads(out.read_text(encoding="utf-8"))
+        self.assertEqual(code, 0)
+        self.assertIn("--case", report["command_line"]["argv"])
+        self.assertIn("arithmetic", report["command_line"]["display"])
+        self.assertEqual(
+            report["tool_sha256"],
+            matrix.probe.sha256((matrix.REPO / "tools" / "model_matrix.py")
+                                .read_text(encoding="utf-8")))
+
+    def test_main_records_attempted_and_completed_denominators(self):
+        def chat(model, prompt):
+            return {"text": "3200", "resolved_model": model,
+                    "latency_ms": 1.0, "cost_usd": 0.0,
+                    "cost_source": "test double"}
+
+        with tempfile.TemporaryDirectory() as name:
+            out = Path(name) / "matrix.json"
+            with mock.patch.object(matrix.probe, "omniroute_chat", chat), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                code = matrix.main(["--models", "openrouter/v/a:free",
+                                    "openrouter/v/b:free", "--case",
+                                    "arithmetic", "--repeat", "2",
+                                    "--workers", "1", "--out", str(out),
+                                    "--allow-dirty"])
+            report = json.loads(out.read_text(encoding="utf-8"))
+        self.assertEqual(code, 0)
+        self.assertEqual(report["attempted"], 4)
+        self.assertEqual(report["completed"], 4)
+        self.assertEqual(report["repeat"], 2)
+
 
 class RenderTests(unittest.TestCase):
     """The generated block lands in a Markdown file the house style governs."""
@@ -365,6 +522,49 @@ class RenderTests(unittest.TestCase):
                       "no answer.", block)
         self.assertIn("0 USD across the 1 call(s) that carried a cost figure; "
                       "the other 1 carried none.", block)
+
+    def test_completed_and_answered_denominators_render_when_present(self):
+        # The capacity-classed error cell is "no_answer", not "answered", so
+        # it must not count toward "passed of answered".
+        report = self.report(attempted=3, repeat=2,
+                             gateway_identity="OmniRoute/1.2.3")
+        block = matrix.render(report)
+        self.assertIn("Completed 2 of 3 attempted (repeat 2). Passed 1 of 1 "
+                     "answered. Gateway identity: OmniRoute/1.2.3.", block)
+
+    def test_an_older_record_without_attempted_omits_the_new_sentence(self):
+        # The shipped 2026-09-09 record predates "attempted"; render() must
+        # reproduce it exactly, so the new sentence is additive only.
+        block = matrix.render(self.report())
+        self.assertNotIn("Completed", block)
+
+    def test_repeated_attempts_collapse_to_a_passed_of_answered_mark(self):
+        model = "openrouter/v/m:free"
+        cells = [
+            {"model": model, "case": "json-extract", "tier": "extraction",
+             "status": "graded", "passed": True, "attempt": 1, "repeats": 2,
+             "cost_usd": 0.0, "cost_status": "OK", "latency_ms": 5.0},
+            {"model": model, "case": "json-extract", "tier": "extraction",
+             "status": "graded", "passed": False, "attempt": 2, "repeats": 2,
+             "cost_usd": 0.0, "cost_status": "OK", "latency_ms": 5.0},
+        ]
+        by_model, _ = matrix.summarise(cells, [model], matrix.SUITE)
+        report = self.report(cells=cells)
+        report["by_model"] = by_model
+        block = matrix.render(report)
+        self.assertIn("| `%s` | 1/2 |" % model, block)
+
+    def test_a_dirty_allow_dirty_run_is_disclosed_prominently(self):
+        block = matrix.render(
+            self.report(working_tree="dirty", allow_dirty=True))
+        self.assertIn("RECORDED FROM A DIRTY WORKING TREE", block)
+        self.assertIn("--allow-dirty", block)
+
+    def test_a_dirty_run_without_allow_dirty_gets_no_prominent_banner(self):
+        # allow_dirty absent (an older record, or one main() refused before
+        # writing) must not claim the run was an acknowledged override.
+        block = matrix.render(self.report(working_tree="dirty"))
+        self.assertNotIn("RECORDED FROM A DIRTY WORKING TREE", block)
 
 
 class SpendCeilingTests(unittest.TestCase):
@@ -472,14 +672,152 @@ class SpendCeilingTests(unittest.TestCase):
             out = Path(name) / "matrix.json"
             with mock.patch.object(matrix.probe, "omniroute_chat", chat), \
                     contextlib.redirect_stdout(io.StringIO()):
+                # --allow-dirty: this test's own working tree may carry
+                # uncommitted changes (it runs from a live checkout, not a
+                # clean one), and that is not what this test is about; the
+                # dirty-tree gate itself is covered separately.
                 code = matrix.main(["--models", self.MODEL, "--workers", "1",
-                                    "--out", str(out)])
+                                    "--out", str(out), "--allow-dirty"])
             report = json.loads(out.read_text(encoding="utf-8"))
         self.assertEqual(code, 1)
         self.assertEqual(len(calls), 1)
         self.assertTrue(report["halted"])
         self.assertEqual(report["spent_usd"], 0.01)
         self.assertEqual(len(report["overspend"]), 1)
+
+    def test_repeat_gives_each_attempt_its_own_numbered_cell(self):
+        calls = []
+
+        def chat(model, prompt):
+            calls.append(model)
+            return self.answered(0.0)
+
+        with mock.patch.object(matrix.probe, "omniroute_chat", chat):
+            cells, ledger = matrix.run([self.MODEL], self.CASES[:1], 1, 0.0,
+                                       repeat=3)
+        self.assertEqual(len(cells), 3)
+        self.assertEqual([c["attempt"] for c in cells], [1, 2, 3])
+        self.assertTrue(all(c["repeats"] == 3 for c in cells))
+        self.assertIsNone(ledger["halted"])
+
+    def test_repeat_defaults_to_one_attempt(self):
+        with mock.patch.object(matrix.probe, "omniroute_chat",
+                               lambda m, p: self.answered(0.0)):
+            cells, _ = matrix.run([self.MODEL], self.CASES[:1], 1, 0.0)
+        self.assertEqual(cells[0]["attempt"], 1)
+        self.assertEqual(cells[0]["repeats"], 1)
+
+    def test_an_empty_reply_is_no_answer_not_a_graded_failure(self):
+        def chat(model, prompt):
+            return {"text": "   ", "resolved_model": self.MODEL,
+                    "latency_ms": 1.0, "cost_usd": 0.0,
+                    "cost_source": "test double"}
+
+        with mock.patch.object(matrix.probe, "omniroute_chat", chat):
+            cell = matrix.run_case(self.MODEL, self.CASES[0])
+        self.assertEqual(cell["status"], "graded")
+        self.assertFalse(cell["passed"])
+        self.assertEqual(matrix.answer_status_of(cell), "no_answer")
+
+    def test_a_no_answer_error_class_is_distinguished_from_a_transport_error(self):
+        def rate_limited(model, prompt):
+            return {"error": "omniroute_http_429",
+                    "error_detail": "All credentials are cooling down"}
+
+        def unavailable(model, prompt):
+            return {"error": "omniroute_unavailable",
+                    "error_detail": "Connection refused"}
+
+        with mock.patch.object(matrix.probe, "omniroute_chat", rate_limited):
+            capacity_cell = matrix.run_case(self.MODEL, self.CASES[0])
+        with mock.patch.object(matrix.probe, "omniroute_chat", unavailable):
+            transport_cell = matrix.run_case(self.MODEL, self.CASES[0])
+        self.assertEqual(matrix.answer_status_of(capacity_cell), "no_answer")
+        self.assertEqual(matrix.answer_status_of(transport_cell), "error")
+
+    def test_gateway_identity_is_captured_on_the_cell(self):
+        def chat(model, prompt):
+            answer = self.answered(0.0)
+            answer["gateway_identity"] = "OmniRoute/9.9.9"
+            return answer
+
+        with mock.patch.object(matrix.probe, "omniroute_chat", chat):
+            cell = matrix.run_case(self.MODEL, self.CASES[0])
+        self.assertEqual(cell["gateway_identity"], "OmniRoute/9.9.9")
+
+    def test_gateway_identity_falls_back_to_unknown(self):
+        with mock.patch.object(matrix.probe, "omniroute_chat",
+                               lambda m, p: self.answered(0.0)):
+            cell = matrix.run_case(self.MODEL, self.CASES[0])
+        self.assertEqual(cell["gateway_identity"], "unknown")
+
+    def test_an_unpriced_call_is_refused_before_dispatch_when_nothing_remains(self):
+        calls = []
+
+        def chat(model, prompt):
+            calls.append(model)
+            return self.answered(0.0)
+
+        with mock.patch.object(matrix.probe, "omniroute_chat", chat):
+            cells, ledger = matrix.run(["openrouter/v/paid-model"],
+                                       self.CASES[:2], 1, 0.0)
+        self.assertEqual(calls, [],
+                         "a zero ceiling leaves nothing to reserve for a "
+                         "model this tool tracks no price for")
+        self.assertEqual(cells, [])
+        self.assertIn("cannot be reserved", ledger["halted"])
+
+    def test_free_models_bypass_the_unpriced_reservation(self):
+        models = ["openrouter/v/free-a:free", "openrouter/v/paid-b"]
+        calls = []
+
+        def chat(model, prompt):
+            calls.append(model)
+            return self.answered(0.0)
+
+        with mock.patch.object(matrix.probe, "omniroute_chat", chat):
+            cells, ledger = matrix.run(models, self.CASES[:1], 1, 0.0)
+        self.assertEqual(calls, ["openrouter/v/free-a:free"],
+                         ":free dispatches even though the paid model, "
+                         "sharing the same zero ceiling, may not")
+        self.assertEqual(len(cells), 1)
+
+    def test_an_unpriced_model_never_has_more_than_one_call_outstanding(self):
+        # Regression guard for the overshoot F25 flags: before
+        # reserve_before_dispatch, four workers could each dispatch a paid
+        # call before any of them had settled, so the ceiling could be
+        # exceeded by up to workers-1 calls. Held open with an Event so the
+        # other three worker threads get a real chance to race in.
+        models = ["openrouter/v/paid-a", "openrouter/v/paid-b",
+                  "openrouter/v/paid-c", "openrouter/v/paid-d"]
+        release = threading.Event()
+        seen = []
+        seen_lock = threading.Lock()
+
+        def chat(model, prompt):
+            with seen_lock:
+                seen.append(model)
+            release.wait(2)
+            return self.answered(0.0)
+
+        outcome = {}
+
+        def go():
+            outcome["cells"], outcome["ledger"] = matrix.run(
+                models, self.CASES[:1], 4, 1.0)
+
+        with mock.patch.object(matrix.probe, "omniroute_chat", chat):
+            worker = threading.Thread(target=go)
+            worker.start()
+            # Give every worker thread time to reach its reservation check
+            # while the first call is deliberately held open.
+            time.sleep(0.3)
+            release.set()
+            worker.join(2)
+        self.assertEqual(len(seen), 1,
+                         "only one call may hold the reservation for a "
+                         "model with no tracked price, whatever --workers is")
+        self.assertEqual(len(outcome["cells"]), 1)
 
 
 class ShippedMatrixTests(unittest.TestCase):

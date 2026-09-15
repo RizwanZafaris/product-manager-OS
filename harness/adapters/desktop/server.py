@@ -28,12 +28,14 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import manifest_tools as mt  # noqa: E402
+import runtime_status as rs  # noqa: E402
 
 SDK_MISSING = ("product-manager-OS desktop adapter needs the MCP SDK, which is "
                "not installed for this interpreter (%s). Install it with: "
@@ -105,14 +107,21 @@ def make_server(root=None, gate=True):
 
     @server.list_tools()
     async def list_tools():
-        return [Tool(name=t["name"], description=t["description"],
-                     inputSchema=t["inputSchema"]) for t in tools]
+        manifest_listed = [Tool(name=t["name"], description=t["description"],
+                                inputSchema=t["inputSchema"]) for t in tools]
+        runtime_listed = Tool(name=rs.TOOL["name"], description=rs.TOOL["description"],
+                              inputSchema=rs.TOOL["inputSchema"])
+        return manifest_listed + [runtime_listed]
 
     @server.call_tool()
     async def call_tool(name, arguments):
+        if name == rs.TOOL["name"]:
+            result = rs.status(arguments or {})
+            return [TextContent(type="text",
+                                text=json.dumps(result, sort_keys=True, indent=1))]
         entry = by_name.get(name)
         if entry is None:
-            known = ", ".join(sorted(by_name))
+            known = ", ".join(sorted(list(by_name) + [rs.TOOL["name"]]))
             return [TextContent(type="text", text=(
                 "No route named %s is in harness/MANIFEST.json. The routes "
                 "are: %s." % (name, known)))]
@@ -157,6 +166,8 @@ def main(argv=None):
             entry = tool["entry"]
             print("%-34s %-9s %s" % (tool["name"], entry.get("tier"),
                                      entry.get("stage") or "no gate"))
+        print("%-34s %-9s %s" % (rs.TOOL["name"], "runtime",
+                                 "runtime tool, no manifest entry, signs no gate"))
         print("%d tools, one per manifest entry." % len(tools))
         return 0
 

@@ -15,8 +15,12 @@ Skill: [write-prd](../../skills/write-prd/SKILL.md); [ai-prd](../../skills/ai-pr
 > **Sections 0 to 13 are the spine. Section 13 pulls in the rest.** Fill the spine for
 > every product. Then use the companion table in section 13 to pull in only the
 > documents this product actually needs, rather than growing this one until nobody
-> reads it. Most of the length below is guidance in HTML comments, which you strip
-> when you publish; a filled PRD is far shorter than this blank.
+> reads it. Most of the length below is guidance inside a collapsible "Guidance"
+> block under each section, open by default and visible in every renderer this
+> repository supports. Delete every `<details>...</details>` block when you
+> publish, so a filled PRD is far shorter than this blank. See
+> [docs/RENDERING.md](../../docs/RENDERING.md) for why this form was chosen and
+> the exact command that strips the blocks.
 >
 > **Delete what does not apply.** An empty heading is worse than no heading: it reads
 > as an unanswered question and it teaches readers to skim. Delete it, or write
@@ -27,53 +31,68 @@ Skill: [write-prd](../../skills/write-prd/SKILL.md); [ai-prd](../../skills/ai-pr
 > with acceptance criteria attached. [os/WHICH-DOCUMENT.md](../../os/WHICH-DOCUMENT.md)
 > decides in three questions. Pick the weight before you write a word.
 
-<!-- The general-purpose PRD for this OS. It states what the product does, how you
-     will know it worked, and what would make you stop. The why-fund-it case lives
-     in brd.md; the how-it-is-built lives in the architecture templates; the
-     function-by-function detail lives in frd.md.
+<details open>
+<summary>Guidance</summary>
 
-     Fill four fields first, in this order: the objectives table in section 2, the
-     out-of-scope table in section 7, the kill criteria in section 9, and the four
-     risks in section 10. A PRD with those four answered is already useful; the rest
-     is detail. Note that out-of-scope comes before scope on purpose. Exclusions are
-     cheap to argue about now and expensive to argue about in week six.
+The general-purpose PRD for this OS. It states what the product does, how you
+will know it worked, and what would make you stop. The why-fund-it case lives
+in brd.md; the how-it-is-built lives in the architecture templates; the
+function-by-function detail lives in frd.md.
 
-     Based on the ideas of Marty Cagan, from Inspired (2008): a spec is only as good as
-     its answers to the four risks: will they use it (value), can they use it
-     (usability), can we build it (feasibility), does it work for the business
-     (viability). Section 10 forces each risk to a named answer with its strongest
-     counter-evidence attached.
+Fill four fields first, in this order: the objectives table in section 2, the
+out-of-scope table in section 7, the kill criteria in section 9, and the four
+risks in section 10. A PRD with those four answered is already useful; the rest
+is detail. Note that out-of-scope comes before scope on purpose. Exclusions are
+cheap to argue about now and expensive to argue about in week six.
 
-     Two overlays extend this document:
-     - Product contains a model: add the AI overlay, starting with
-       ../ai/eval-spec.md, because acceptance criteria for model behavior are eval
-       sets, not sentences. Stop and use ../../skills/ai-prd/SKILL.md instead.
-     - Product contains an AI or machine-learning feature AND a financial or
-       data regulator applies to it: the regulated module governs; see
-       ../../modules/regulated/README.md and use its template as shipped,
-       unmodified. Both halves are required, and ../../os/STAGE-GATES.md holds
-       the rule and what a regulated product with no model brings instead. -->
+Based on the ideas of Marty Cagan, from Inspired (2008): a spec is only as good as
+its answers to the four risks: will they use it (value), can they use it
+(usability), can we build it (feasibility), does it work for the business
+(viability). Section 10 forces each risk to a named answer with its strongest
+counter-evidence attached.
+
+Two overlays extend this document:
+- Product contains a model: add the AI overlay, starting with
+  ../ai/eval-spec.md, because acceptance criteria for model behavior are eval
+  sets, not sentences. Stop and use ../../skills/ai-prd/SKILL.md instead.
+- Product contains an AI or machine-learning feature AND a financial or
+  data regulator applies to it: the regulated module governs; see
+  ../../modules/regulated/README.md and use its template as shipped,
+  unmodified. Both halves are required, and ../../os/STAGE-GATES.md holds
+  the rule and what a regulated product with no model brings instead.
+
+</details>
 
 **Owner:** [name] · **Engineering lead:** [name] · **Design lead:** [name]
 **Date:** [YYYY-MM-DD] · **Status:** Draft / In review / Approved · **Version:** [n]
 **Who implements this:** [a human engineering team / a model, which routes this document to [ai-prd](../../skills/ai-prd/SKILL.md)]
 **Links:** [BRD](brd.md) · [problem framing](../discovery/problem-framing.md) · [FRD](frd.md) · [assumptions](assumptions-register.md)
 
-<!-- "Who implements this" is not a formality. A human reader resolves an ambiguous
-     sentence with judgment and asks you at standup. A model resolves it with a guess
-     you never see. If the answer is "a model", the acceptance criteria in this
-     document have to be executable, and that is a different skill. -->
+<details open>
+<summary>Guidance</summary>
+
+"Who implements this" is not a formality. A human reader resolves an ambiguous
+sentence with judgment and asks you at standup. A model resolves it with a guess
+you never see. If the answer is "a model", the acceptance criteria in this
+document have to be executable, and that is a different skill.
+
+</details>
 
 ## 0. The one read
 
-<!-- Write this last, put it first, keep it under 150 words. Assume most of your
-     readers will read this section and skim the rest. This section is what they
-     get, so it has to be true on its own. If it
-     cannot be written honestly in 150 words, the product is not yet understood.
+<details open>
+<summary>Guidance</summary>
 
-     Five sentences, in this order: the problem and who has it; what ships; the one
-     number that says it worked; the one thing this deliberately does not do; the
-     condition under which we stop. -->
+Write this last, put it first, keep it under 150 words. Assume most of your
+readers will read this section and skim the rest. This section is what they
+get, so it has to be true on its own. If it
+cannot be written honestly in 150 words, the product is not yet understood.
+
+Five sentences, in this order: the problem and who has it; what ships; the one
+number that says it worked; the one thing this deliberately does not do; the
+condition under which we stop.
+
+</details>
 
 **Problem:** [who has it, and what it costs them today]
 **What ships:** [one sentence, in user terms, not component terms]
@@ -87,10 +106,15 @@ Skill: [write-prd](../../skills/write-prd/SKILL.md); [ai-prd](../../skills/ai-pr
 Link, do not restate; the discovery file is the source of truth. End with the
 hypothesis this product tests, copied from the discovery document.]
 
-<!-- If this section is being written from memory rather than from a discovery file,
-     stop. A PRD written instead of the discovery work, rather than after it, is the
-     most common and most expensive failure in this whole system. Go and do the
-     DISCOVER stage. -->
+<details open>
+<summary>Guidance</summary>
+
+If this section is being written from memory rather than from a discovery file,
+stop. A PRD written instead of the discovery work, rather than after it, is the
+most common and most expensive failure in this whole system. Go and do the
+DISCOVER stage.
+
+</details>
 
 ## 2. Objectives
 
@@ -99,12 +123,17 @@ hypothesis this product tests, copied from the discovery document.]
 | O1 | | | | | | |
 | O2 | | | | | | |
 
-<!-- Objectives are outcomes in user or business terms, never "ship X". A target
-     nobody has agreed with the metric owner is labeled ILLUSTRATIVE until agreed,
-     and an ILLUSTRATIVE target cannot pass Gate 2.
+<details open>
+<summary>Guidance</summary>
 
-     Fill this table before section 4. A feature list with no objective above it is
-     a wish list with row numbers. -->
+Objectives are outcomes in user or business terms, never "ship X". A target
+nobody has agreed with the metric owner is labeled ILLUSTRATIVE until agreed,
+and an ILLUSTRATIVE target cannot pass Gate 2.
+
+Fill this table before section 4. A feature list with no objective above it is
+a wish list with row numbers.
+
+</details>
 
 ## 3. Users and stories
 
@@ -115,16 +144,21 @@ hypothesis this product tests, copied from the discovery document.]
 | US1 | As a [persona], I want [action], so that [outcome]. | | must | AC-[n] in [acceptance-criteria.md](acceptance-criteria.md) |
 | US2 | | | | |
 
-<!-- Every "must" story needs an acceptance criteria ID before Gate 2. A must
-     without testable acceptance is a hope, not a requirement. The IDs here (US1,
-     US2) are quoted by the FRD, the test plan, and the release readiness pack, so
-     they never get renumbered once this document is circulated.
+<details open>
+<summary>Guidance</summary>
 
-     This table is a summary for the reader of the PRD. The ids are DEFINED in
-     [user-stories.md](user-stories.md), which is where stories are split,
-     INVEST-checked and refined every sprint. Work them there and quote them
-     here, because editing a signed PRD every iteration is how a signature
-     stops meaning anything. -->
+Every "must" story needs an acceptance criteria ID before Gate 2. A must
+without testable acceptance is a hope, not a requirement. The IDs here (US1,
+US2) are quoted by the FRD, the test plan, and the release readiness pack, so
+they never get renumbered once this document is circulated.
+
+This table is a summary for the reader of the PRD. The ids are DEFINED in
+[user-stories.md](user-stories.md), which is where stories are split,
+INVEST-checked and refined every sprint. Work them there and quote them
+here, because editing a signed PRD every iteration is how a signature
+stops meaning anything.
+
+</details>
 
 ## 4. Functional scope
 
@@ -132,10 +166,15 @@ hypothesis this product tests, copied from the discovery document.]
 |---|---|---|---|---|
 | F1 | | | US[n] | FR-[n] in [frd.md](frd.md) |
 
-<!-- This table is the contract of record for WHAT ships. The FRD decomposes each
-     row; if the two disagree, this table wins and the FRD gets fixed. Scope creep
-     almost always enters through the FRD, never through here, which is why the
-     precedence rule is written down. -->
+<details open>
+<summary>Guidance</summary>
+
+This table is the contract of record for WHAT ships. The FRD decomposes each
+row; if the two disagree, this table wins and the FRD gets fixed. Scope creep
+almost always enters through the FRD, never through here, which is why the
+precedence rule is written down.
+
+</details>
 
 ## 5. Non-functional summary
 
@@ -152,15 +191,20 @@ Full register: [nfr.md](nfr.md) · Accessibility: [accessibility-checklist.md](.
 |---|---|---|---|---|
 | | | | | |
 
-<!-- A guardrail metric is one this product must NOT damage: support ticket volume,
-     page load elsewhere, refund rate, churn in the segment you did not target.
-     Every launch needs at least one, and it is the metric that tells you whether
-     the win was real or borrowed from somewhere else in the system.
+<details open>
+<summary>Guidance</summary>
 
-     If the instrumentation does not exist yet, building it is functional scope: add
-     the row to section 4 and write the event spec in
-     ../delivery/analytics-instrumentation-spec.md. A metric with no instrumented
-     source is a metric you will argue about in the review instead of reading. -->
+A guardrail metric is one this product must NOT damage: support ticket volume,
+page load elsewhere, refund rate, churn in the segment you did not target.
+Every launch needs at least one, and it is the metric that tells you whether
+the win was real or borrowed from somewhere else in the system.
+
+If the instrumentation does not exist yet, building it is functional scope: add
+the row to section 4 and write the event spec in
+../delivery/analytics-instrumentation-spec.md. A metric with no instrumented
+source is a metric you will argue about in the review instead of reading.
+
+</details>
 
 ## 7. Out of scope
 
@@ -168,18 +212,23 @@ Full register: [nfr.md](nfr.md) · Accessibility: [accessibility-checklist.md](.
 |---|---|---|---|
 | X1 | | | |
 
-<!-- Fill this before section 4. Two reasons.
+<details open>
+<summary>Guidance</summary>
 
-     The first is old: exclusions are cheap to argue about now and expensive in week
-     six, and the argument you avoid here happens later at ten times the cost.
+Fill this before section 4. Two reasons.
 
-     The second is new. When a model implements the spec, an unstated exclusion is
-     not a gap the reader notices and asks about; it is an invitation. Anything you
-     did not exclude is something an implementer may attempt. That turns this table
-     from a scope note into a boundary.
+The first is old: exclusions are cheap to argue about now and expensive in week
+six, and the argument you avoid here happens later at ten times the cost.
 
-     Include the exclusions people will assume in, not just the ones somebody
-     proposed. "No bulk import" belongs here even if nobody asked for bulk import. -->
+The second is new. When a model implements the spec, an unstated exclusion is
+not a gap the reader notices and asks about; it is an invitation. Anything you
+did not exclude is something an implementer may attempt. That turns this table
+from a scope note into a boundary.
+
+Include the exclusions people will assume in, not just the ones somebody
+proposed. "No bulk import" belongs here even if nobody asked for bulk import.
+
+</details>
 
 ## 8. Launch criteria
 
@@ -189,9 +238,14 @@ Full register: [nfr.md](nfr.md) · Accessibility: [accessibility-checklist.md](.
 | L2 | Non-functional targets met or waived by their owner | [nfr.md](nfr.md) | |
 | L3 | [rollback tested / support briefed / docs live / add your own] | | |
 
-<!-- The conditions under which this ships. These become Gate 4 and Gate 5 inputs;
-     the delivery templates verify them. Anything unmeasurable here will be argued
-     about in the launch meeting, so make every row checkable by a named person. -->
+<details open>
+<summary>Guidance</summary>
+
+The conditions under which this ships. These become Gate 4 and Gate 5 inputs;
+the delivery templates verify them. Anything unmeasurable here will be argued
+about in the launch meeting, so make every row checkable by a named person.
+
+</details>
 
 ## 9. Kill criteria
 
@@ -201,32 +255,37 @@ Full register: [nfr.md](nfr.md) · Accessibility: [accessibility-checklist.md](.
 | K2 | [the guardrail metric degrades] | | | |
 | K3 | [the enabling assumption busts] | [the row ID in [assumptions-register.md](assumptions-register.md) moves to BUSTED] | | |
 
-<!-- Read this before deciding you do not need it.
+<details open>
+<summary>Guidance</summary>
 
-     Every product document names the conditions for shipping. Almost none names the
-     conditions for stopping, and the result is predictable: nobody pulls the plug,
-     because nobody ever agreed what would justify it. The team then argues about
-     sunk cost instead of about evidence, and the argument is won by whoever is most
-     senior or most tired.
+Read this before deciding you do not need it.
 
-     A kill criterion written before launch is an argument you have while everyone is
-     still calm. Three rules make it real:
+Every product document names the conditions for shipping. Almost none names the
+conditions for stopping, and the result is predictable: nobody pulls the plug,
+because nobody ever agreed what would justify it. The team then argues about
+sunk cost instead of about evidence, and the argument is won by whoever is most
+senior or most tired.
 
-     - A threshold, not a mood. "Adoption is disappointing" is not a criterion.
-       "Weekly active use in the pilot cohort below 200 accounts at day 60"
-       (ILLUSTRATIVE, invented for this example) is.
-     - A check point, not a vigil. Name the date or the milestone when someone looks.
-       A criterion nobody is scheduled to check is not a criterion.
-     - A named caller. The person who is allowed to say stop, in advance, in writing.
-       Usually the same human who signs Gate 2.
+A kill criterion written before launch is an argument you have while everyone is
+still calm. Three rules make it real:
 
-     Stopping is not the only outcome. A criterion can trigger a rollback, a scope
-     cut, a pivot to the second option in the decision memo, or an extension with a
-     new threshold. Say which, per row.
+- A threshold, not a mood. "Adoption is disappointing" is not a criterion.
+  "Weekly active use in the pilot cohort below 200 accounts at day 60"
+  (ILLUSTRATIVE, invented for this example) is.
+- A check point, not a vigil. Name the date or the milestone when someone looks.
+  A criterion nobody is scheduled to check is not a criterion.
+- A named caller. The person who is allowed to say stop, in advance, in writing.
+  Usually the same human who signs Gate 2.
 
-     If a criterion fires and the team continues anyway, that is a legitimate
-     decision, and it goes in ../execution/decision-log.md with the reasoning. What
-     is not legitimate is having no criterion to fire. -->
+Stopping is not the only outcome. A criterion can trigger a rollback, a scope
+cut, a pivot to the second option in the decision memo, or an extension with a
+new threshold. Say which, per row.
+
+If a criterion fires and the team continues anyway, that is a legitimate
+decision, and it goes in ../execution/decision-log.md with the reasoning. What
+is not legitimate is having no criterion to fire.
+
+</details>
 
 ## 10. Four risks, answered
 
@@ -237,16 +296,21 @@ Full register: [nfr.md](nfr.md) · Accessibility: [accessibility-checklist.md](.
 | Feasibility: can we build it | | | |
 | Viability: does it work for the business | | | |
 
-<!-- The counter-evidence column is not optional and it is not rhetorical. Write the
-     single strongest fact, quote, or number that argues against your answer. If you
-     cannot find one, write "none found, and here is where I looked" and name the
-     sources. A risk row with an empty counter-evidence cell has not been thought
-     about; it has been asserted.
+<details open>
+<summary>Guidance</summary>
 
-     Low confidence is a legal answer. It routes the risk into
-     assumptions-register.md with a validation method and a date, and it usually
-     means the honest next step is a prototype or a test rather than more document.
-     An empty cell is not a legal answer. -->
+The counter-evidence column is not optional and it is not rhetorical. Write the
+single strongest fact, quote, or number that argues against your answer. If you
+cannot find one, write "none found, and here is where I looked" and name the
+sources. A risk row with an empty counter-evidence cell has not been thought
+about; it has been asserted.
+
+Low confidence is a legal answer. It routes the risk into
+assumptions-register.md with a validation method and a date, and it usually
+means the honest next step is a prototype or a test rather than more document.
+An empty cell is not a legal answer.
+
+</details>
 
 ## 11. Assumptions
 
@@ -254,17 +318,22 @@ Full register: [nfr.md](nfr.md) · Accessibility: [accessibility-checklist.md](.
 |---|---|---|---|---|---|
 | A1 | | | [row ID in assumptions-register.md, for example AS-004] | [YYYY-MM-DD] | |
 
-<!-- The short index only. The full register, with confidence, validation method and
-     status, is assumptions-register.md. The Register ID column carries that file's
-     own row ID so the two never drift; markdown cannot deep-link a table row, so
-     cite the ID rather than trying to link it.
+<details open>
+<summary>Guidance</summary>
 
-     What belongs here: the load-bearing guesses. Not every assumption, only the ones
-     that, if false, change what ships or whether it ships at all. If an assumption
-     appears in section 9 as a kill criterion, it belongs here too.
+The short index only. The full register, with confidence, validation method and
+status, is assumptions-register.md. The Register ID column carries that file's
+own row ID so the two never drift; markdown cannot deep-link a table row, so
+cite the ID rather than trying to link it.
 
-     Every row carries a validate-by date. An assumption with no date is a belief,
-     and beliefs do not expire on their own. -->
+What belongs here: the load-bearing guesses. Not every assumption, only the ones
+that, if false, change what ships or whether it ships at all. If an assumption
+appears in section 9 as a kill criterion, it belongs here too.
+
+Every row carries a validate-by date. An assumption with no date is a belief,
+and beliefs do not expire on their own.
+
+</details>
 
 ## 12. Open questions
 
@@ -272,25 +341,35 @@ Full register: [nfr.md](nfr.md) · Accessibility: [accessibility-checklist.md](.
 |---|---|---|---|---|
 | Q1 | | | | |
 
-<!-- Cap this table. Five open questions at Gate 2 is a document with honest gaps;
-     twenty is a document that has become a graveyard, and nobody reads a graveyard.
-     If the list is longer than five, the extras are not open questions: they are
-     either decisions nobody has made (route them to
-     ../planning/decision-memo.md) or scope nobody has cut (route them to
-     section 7).
+<details open>
+<summary>Guidance</summary>
 
-     Every row needs an owner and a date. A question with neither is a note. -->
+Cap this table. Five open questions at Gate 2 is a document with honest gaps;
+twenty is a document that has become a graveyard, and nobody reads a graveyard.
+If the list is longer than five, the extras are not open questions: they are
+either decisions nobody has made (route them to
+../planning/decision-memo.md) or scope nobody has cut (route them to
+section 7).
+
+Every row needs an owner and a date. A question with neither is a note.
+
+</details>
 
 ## 13. Companion documents
 
-<!-- The spine above is what every product fills. This table is how the rest of the
-     system reaches this document. Read the triggers, tick the ones that are true,
-     and open those templates. Leave the untriggered rows as they are; they are the
-     record of what you considered and did not need.
+<details open>
+<summary>Guidance</summary>
 
-     The pattern of a short mandatory core plus a menu pulled in by product type is
-     borrowed from the BMAD-METHOD project's PRD template, applied here to the
-     templates this repository already ships. -->
+The spine above is what every product fills. This table is how the rest of the
+system reaches this document. Read the triggers, tick the ones that are true,
+and open those templates. Leave the untriggered rows as they are; they are the
+record of what you considered and did not need.
+
+The pattern of a short mandatory core plus a menu pulled in by product type is
+borrowed from the BMAD-METHOD project's PRD template, applied here to the
+templates this repository already ships.
+
+</details>
 
 | Trigger, if this is true of your product | Open this | Stage |
 |---|---|---|
@@ -321,8 +400,13 @@ Full register: [nfr.md](nfr.md) · Accessibility: [accessibility-checklist.md](.
 | Business sponsor | | | The business case this PRD spends: the objectives, the ROI logic, and the budget behind them |
 | Gate 2 approver | | | That Gate 2 in [os/STAGE-GATES.md](../../os/STAGE-GATES.md) is met |
 
-<!-- The Gate 2 approver is a named person, and it is not the person who wrote this
-     document, and it is not an agent. Verify and report; never sign. -->
+<details open>
+<summary>Guidance</summary>
+
+The Gate 2 approver is a named person, and it is not the person who wrote this
+document, and it is not an agent. Verify and report; never sign.
+
+</details>
 
 ---
 

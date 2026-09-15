@@ -11,6 +11,7 @@ aliases: ["UAT Plan", "uat-plan"]
 **Stage:** DELIVER (feeds [Gate 5: release readiness green](../../os/STAGE-GATES.md))
 **Knowledge:** [knowledge index](../../knowledge/INDEX.md)
 **Skill:** [acceptance agent](../../agents/acceptance-agent.md)
+Filled example: [Harbourgate Quay payment service](../../examples/harbourgate-uat-plan.md)
 
 <!-- User acceptance testing answers one question the team cannot answer for itself:
      does this work for the people who will actually use it, doing their actual job?

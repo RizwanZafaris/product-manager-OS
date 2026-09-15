@@ -22,10 +22,11 @@ named.
 
 The seven dimensions, and what each one catches:
 
-1. self-explaining   Every section carries a guidance comment saying what goes
-                     in it and what a bad answer looks like. The PRD has one
-                     per section. A template whose sections are bare headings
-                     is a form, and a form teaches nobody.
+1. self-explaining   Every section carries guidance, in a comment or a visible
+                     block, saying what goes in it and what a bad answer
+                     looks like. The PRD has one per section. A template
+                     whose sections are bare headings is a form, and a form
+                     teaches nobody.
 2. worked example    At least one filled example, marked ILLUSTRATIVE so it can
                      never be mistaken for real evidence. Without one, the
                      first user invents the format and the second disagrees.
@@ -41,6 +42,15 @@ The seven dimensions, and what each one catches:
                      looks like. This is the dimension that separates this
                      tree's templates from a generic template pack, and it is
                      the one most often missing.
+
+Alongside the seven scored dimensions, every report also carries an eighth,
+informational number: hidden_guidance_share, the fraction of a template's
+words that sit inside an HTML comment, invisible in every renderer
+docs/RENDERING.md documents (F17). It does not enter WEIGHTS and it does not
+move the score: a template can score well and still hide all its guidance,
+and the PRD's own migration to a visible <details> convention is what this
+number exists to track across the rest of the tree. See hidden_guidance()
+below.
 """
 
 from __future__ import annotations
@@ -58,6 +68,23 @@ REFERENCE = TEMPLATES / "definition" / "prd.md"
 
 H2_RE = re.compile(r"^##\s+\S", re.M)
 COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
+# The visible form of a guidance block, matched whole so it can be stripped
+# the same way COMMENT_RE strips the hidden form, below. Anchored to the
+# exact convention docs/RENDERING.md documents (open by default, "Guidance"
+# as the fixed summary), not to any <details> tag: a template's own worked
+# example is free to use <details> for something else without losing points
+# here, or gaining them the way the bug below explains.
+#
+# Without this, migrating a section's guidance from a comment to this form
+# moved its score: the opening tags "<details open>" and "<summary>" each
+# happen to match FIELD_RE's <angle-bracket> branch, so a template with few
+# genuine fields (below the ten that saturate "fillable") could score higher
+# for the same content purely because its guidance became visible HTML
+# rather than a hidden comment, and a real link inside the guidance prose
+# would start counting toward "traceable" the same way. Guidance prose was
+# never meant to count toward the fillable-spine dimensions in either form.
+GUIDANCE_BLOCK_RE = re.compile(
+    r"<details open>\n<summary>Guidance</summary>\n\n.*?\n\n</details>", re.S)
 TABLE_ROW_RE = re.compile(r"^\|", re.M)
 # A fill-in field, in either convention this tree sanctions. lint.py accepts
 # both [square] and <angle> fields, and the first version of this rubric
@@ -79,6 +106,57 @@ LINK_RE = re.compile(r"\]\(\s*(?:<[^<>\n]*>|[^\s()]*)")
 ILLUSTRATIVE_RE = re.compile(
     r"illustrative|worked (micro-)?example|the example row|example row shows"
     r"|delete (?:it|the example|this row)|sample row", re.I)
+# A third gap sits beside the two ILLUSTRATIVE_RE already closed above, and F21
+# is what surfaced it: the tree also has a convention where the worked example
+# is not inside the template at all, but a separate filled document under
+# examples/, and the template links to it. ILLUSTRATIVE_RE cannot see that,
+# because there is nothing illustrative-shaped in the template's own text to
+# match; 39 templates carried a real completed example this way and scored as
+# having none, which is the false negative F21 asked this file to fix rather
+# than paper over with padding. EXAMPLE_LINK_RE and worked_example_link() below
+# recognise it: a Markdown link that resolves to a file under examples/, whose
+# own first five lines name this template's repo path back, the same
+# convention every examples/*.md file opens with ("Fills
+# [templates/...](../templates/...)."). A link to some other template's
+# example, or to a file that is not there, earns nothing, on purpose: the
+# credit is for a real, checkable, completed exercise, not for a link that
+# merely looks like one.
+EXAMPLE_LINK_RE = re.compile(r"(?<!!)\[[^\]]*\]\(([^)]+)\)")
+
+
+def worked_example_link(path, text):
+    """True when `text` links to an examples/ file that names this template.
+
+    `path` must already be the resolved, absolute path score_template() reads,
+    so a relative link can be resolved against its directory the way a reader
+    (or lint.py's own link gate) would resolve it.
+    """
+    try:
+        repo_relative = path.relative_to(REPO).as_posix()
+    except ValueError:
+        return False
+    examples_root = (REPO / "examples").resolve()
+    for match in EXAMPLE_LINK_RE.finditer(text):
+        target = match.group(1).strip().strip("<>").split("#", 1)[0].strip()
+        if not target or "://" in target:
+            continue
+        candidate = (path.parent / target).resolve()
+        try:
+            candidate.relative_to(examples_root)
+        except ValueError:
+            continue
+        if not candidate.is_file():
+            continue
+        try:
+            head = candidate.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        first_five = "\n".join(head.splitlines()[:5])
+        if repo_relative in first_five:
+            return True
+    return False
+
+
 EXIT_GATE_RE = re.compile(r"^##\s*Exit gate", re.M | re.I)
 # The vocabulary this tree uses when it tells you how a thing goes wrong.
 FAILURE_RE = re.compile(
@@ -117,20 +195,58 @@ WEIGHTS = {
     "fillable": 5,
 }
 
+# The visible form docs/RENDERING.md documents as the convention: a
+# collapsible block whose summary is the fixed word "Guidance", open by
+# default. A section carrying this counts as explaining itself exactly like a
+# section carrying an HTML comment does; only hidden_guidance() below cares
+# which of the two forms a template actually used.
+VISIBLE_GUIDANCE_MARKER = "<summary>Guidance</summary>"
+
 
 def sections_with_guidance(text):
-    """How many h2 sections are followed by a guidance comment before the next.
+    """How many h2 sections are followed by guidance before the next.
 
-    Measured per section rather than by counting comments anywhere, because a
-    template can carry one long preamble comment and leave twelve sections
+    Measured per section rather than by counting guidance anywhere, because a
+    template can carry one long preamble and leave twelve sections
     unexplained, and that is the shape this dimension exists to catch.
+
+    Guidance counts whether it is still hidden in an HTML comment, the form
+    every template but the PRD uses while F17's migration is deferred for
+    them, or already visible in the <details>/<summary>Guidance</summary>
+    convention the PRD migrated to. Which form a section uses does not change
+    whether it explains itself; hidden_guidance() is the number that tracks
+    the form.
     """
     parts = re.split(r"(?m)^##\s+", text)
     if len(parts) < 2:
         return 0, 0
     bodies = parts[1:]
-    explained = sum(1 for body in bodies if "<!--" in body)
+    explained = sum(1 for body in bodies
+                    if "<!--" in body or VISIBLE_GUIDANCE_MARKER in body)
     return explained, len(bodies)
+
+
+def hidden_guidance(text):
+    """(hidden words, total words, hidden share) for one template.
+
+    F17's own evidence was a hand count: the PRD held 3,111 whitespace-
+    separated words and about 1,555 of them sat inside HTML comments, which
+    every renderer docs/RENDERING.md documents hides in reading mode. This is
+    that same count, mechanized so every template carries the number rather
+    than only the one an audit happened to read by hand: whitespace-separated
+    words inside <!-- --> spans, divided by whitespace-separated words in the
+    whole file.
+
+    Purely informational, like the module docstring says. It is not one of
+    the seven WEIGHTS dimensions and does not move score: folding it in would
+    make a migration that only changes where guidance sits also move a number
+    that is supposed to measure something else.
+    """
+    total = len(text.split())
+    if not total:
+        return 0, 0, 0.0
+    hidden = sum(len(m.group(0).split()) for m in COMMENT_RE.finditer(text))
+    return hidden, total, round(hidden / total, 3)
 
 
 def score_template(path):
@@ -139,15 +255,20 @@ def score_template(path):
     if not path.is_absolute():
         path = (REPO / path).resolve()
     text = path.read_text(encoding="utf-8")
-    stripped = COMMENT_RE.sub("", text)
+    stripped = GUIDANCE_BLOCK_RE.sub("", COMMENT_RE.sub("", text))
     explained, total_sections = sections_with_guidance(text)
+    hidden_words, total_words, hidden_share = hidden_guidance(text)
     lines = len(text.splitlines())
 
     marks = {}
     # 1. Every section explains itself.
     marks["self_explaining"] = (explained / total_sections) if total_sections else 0.0
-    # 2. A worked example, marked so it cannot be mistaken for evidence.
-    marks["worked_example"] = 1.0 if ILLUSTRATIVE_RE.search(text) else 0.0
+    # 2. A worked example: either inline and marked so it cannot be mistaken
+    #    for evidence (ILLUSTRATIVE_RE), or a link to a real, completed one
+    #    living under examples/ (worked_example_link, see the comment above
+    #    EXAMPLE_LINK_RE for why this second form is credited).
+    marks["worked_example"] = 1.0 if (ILLUSTRATIVE_RE.search(text)
+                                      or worked_example_link(path, text)) else 0.0
     # 3. An exit gate that names where the output goes.
     marks["exit_gate"] = 1.0 if EXIT_GATE_RE.search(text) else 0.0
     # 4. Fields to fill. Saturates quickly: ten is plenty to prove the point.
@@ -176,6 +297,11 @@ def score_template(path):
         "warnings": warnings,
         "marks": {k: round(v, 3) for k, v in marks.items()},
         "score": round(score, 1),
+        # Informational only, from here down: never read by the WEIGHTS sum
+        # above, so a change in hidden_guidance_share never moves "score".
+        "total_words": total_words,
+        "hidden_guidance_words": hidden_words,
+        "hidden_guidance_share": hidden_share,
     }
 
 
@@ -200,6 +326,9 @@ def main(argv=None):
                         help="exit 1 if any template scores below this")
     parser.add_argument("--top", type=int, default=25,
                         help="how many of the weakest to print (default 25)")
+    parser.add_argument("--hidden-top", type=int, default=10,
+                        help="how many of the highest hidden-guidance share "
+                             "to print (default 10)")
     parser.add_argument("--path", help="score one file and stop")
     args = parser.parse_args(argv)
 
@@ -225,6 +354,10 @@ def main(argv=None):
     print("  reference score : %.1f  (%d lines, %d sections, %d explained)"
           % (reference["score"], reference["lines"], reference["sections"],
              reference["sections_explained"]))
+    print("  reference hidden guidance share: %.1f%%  (%d of %d words inside "
+          "<!-- --> comments)"
+          % (reference["hidden_guidance_share"] * 100,
+             reference["hidden_guidance_words"], reference["total_words"]))
     print("  templates scored: %d" % len(scored))
     if exempt:
         print("  exempt          : %d (listed below, excluded from the "
@@ -245,6 +378,21 @@ def main(argv=None):
               % (row["path"], row["score"], row["lines"], row["sections"],
                  worst.replace("_", " ")))
 
+    # F17's informational metric: which templates still hide most of their
+    # guidance in HTML comments, ranked over every template this rubric read,
+    # exempt ones included, because hiding guidance is a rendering question
+    # independent of whether the rubric's seven scored dimensions apply.
+    by_hidden = sorted(everything,
+                       key=lambda r: (-r["hidden_guidance_share"], r["path"]))
+    print("")
+    print("highest hidden-guidance share (%d):" % min(args.hidden_top,
+                                                       len(by_hidden)))
+    print("  %-52s %8s %8s %6s" % ("template", "hidden %", "hidden", "total"))
+    for row in by_hidden[:args.hidden_top]:
+        print("  %-52s %7.1f%% %8d %6d"
+              % (row["path"], row["hidden_guidance_share"] * 100,
+                 row["hidden_guidance_words"], row["total_words"]))
+
     if exempt:
         print("")
         print("exempt from this rubric, with the reason:")
@@ -256,12 +404,17 @@ def main(argv=None):
     if args.json:
         out = Path(args.json)
         out.parent.mkdir(parents=True, exist_ok=True)
+        hidden_values = [r["hidden_guidance_share"] for r in scored]
         out.write_text(json.dumps({
             "schema": 1,
             "reference": reference,
             "weights": WEIGHTS,
             "median": statistics.median(values),
             "mean": statistics.mean(values),
+            # Informational, alongside the score statistics above: never used
+            # to compute "median"/"mean" or any WEIGHTS-derived number.
+            "hidden_guidance_share_median": statistics.median(hidden_values),
+            "hidden_guidance_share_mean": statistics.mean(hidden_values),
             "templates": scored,
         }, indent=2) + "\n", encoding="utf-8")
         print("")

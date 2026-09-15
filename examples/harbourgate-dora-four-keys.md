@@ -96,9 +96,11 @@ The scores describe direction, not performance quality. The stability result is 
 
 ### Step 3: decompose the worst key
 
-The largest lead-time stage is release approval. The median stages sum exactly to the reported median:
+The largest lead-time stage is release approval. Reconciliation is what confirms nothing is missing, not stage medians summing to a total: the build and release system computed each of the 17 deployments' own stage times and its own total, and the median of those 17 per-deployment totals is the same 2.2 days already reported in Step 1. This period's five stage medians happen to add to that same figure, which is what a successful reconciliation looks like (see [dora-four-keys.md](../frameworks/metrics/dora-four-keys.md), Step 3, for a counterexample where the two disagree by two orders of magnitude):
 
 - 0.4 + 0.6 + 0.1 + 0.9 + 0.2 = 2.2 days
+
+Because the reconciled median and the stage-median sum agree here, none of the five rows below is hiding an undocumented queue.
 
 The share arithmetic is:
 

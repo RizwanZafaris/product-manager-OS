@@ -11,6 +11,7 @@ aliases: ["Interview Notes", "interview-notes"]
 Stage: DISCOVER, feeds [Gate 1: problem worth solving](../../os/STAGE-GATES.md)
 Knowledge: [Mom Test interview guide worksheet, note sheet](../../frameworks/discovery/mom-test-interview-guide.md), [Empathy map worksheet](../../frameworks/discovery/empathy-map.md)
 Skill: [user-interview](../../skills/user-interview/SKILL.md)
+Filled example: [Sahulat Bill Pay (INT-004)](../../examples/sahulat-interview-notes.md)
 
 > **Delete any section you do not need.** One file per session. If the study is small enough that the session block in [user-research-plan.md](user-research-plan.md) section 5 holds everything, use that and skip this file.
 

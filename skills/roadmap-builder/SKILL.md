@@ -90,4 +90,4 @@ A roadmap built in one sitting is a document; a roadmap the org believes is the 
 
 ## Exit gate
 
-The roadmap feeds the PLANNING track that runs across every stage of [../../os/OPERATING-LOOP.md](../../os/OPERATING-LOOP.md). Do not report it done until the roadmap template's fields are filled, every pinned item carries its external date, and the defense page exists.
+A product's roadmap is the third DEFINE artifact, after the vision and strategy, approved at Gate 2 by the product owner and the engineering lead in [../../os/STAGE-GATES.md](../../os/STAGE-GATES.md). A portfolio roadmap still feeds the PLANNING track that runs across every stage of [../../os/OPERATING-LOOP.md](../../os/OPERATING-LOOP.md). Do not report it done until the roadmap template's fields are filled, every pinned item carries its external date, and the defense page exists.

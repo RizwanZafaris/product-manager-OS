@@ -6,7 +6,7 @@ This directory is a legacy route adapter over a document system. It takes three 
 |---|---|
 | The router table in [../CLAUDE.md](../CLAUDE.md): which request goes to which skill, template, and read | [MANIFEST.json](MANIFEST.json), one entry per router row, addressed by a stable id |
 | The tier doctrine in [../routing/README.md](../routing/README.md): how expensive a model the work deserves | [tiers.md](tiers.md) as a decision you can run, [runner.py](runner.py) as the call that honors it |
-| The seven rules an agent must not break | [INVARIANTS.md](INVARIANTS.md), with every route naming the ids that bind it, and the four that bind every route always listed first on all 41 |
+| The seven rules an agent must not break | [INVARIANTS.md](INVARIANTS.md), with every route naming the ids that bind it, and the four that bind every route always listed first on all 43 |
 
 Nothing here decides anything on its own. An entry is an index into a file that already governs the work. [../tools/check_manifest.py](../tools/check_manifest.py) runs eight checks and proves the manifest and the router table agree, row for row and across all three of the table's columns, and fails the build when they drift. Column agreement is the half that used to be assumed: the skill a router row names has to be that entry's own skill, and a template named in a row has to be one the entry declares, so a row can no longer point somewhere the manifest does not.
 
@@ -25,7 +25,7 @@ This directory is the legacy adapter part. It is a real runner with real
 tests, and as of the audit it closed in this release, it agrees with the
 initializer about where every artifact lands, rewrites the links in a copy
 it places, distinguishes the four kinds of route rather than treating all
-forty-one as document producers, rolls a failed multi-file commit back,
+forty-three as document producers, rolls a failed multi-file commit back,
 and serializes journal writes under a lock. Those are the things that were
 wrong and are now right, and each one has a regression test that fails
 against the behaviour it replaced.
@@ -177,7 +177,7 @@ One manifest, three faces. Two read it at run time and one is generated from it,
                    |
                    |  tools/check_manifest.py proves these two agree
                    v
-             MANIFEST.json  (41 entries, one per row, in router order)
+             MANIFEST.json  (43 entries, one per row, in router order)
                    |
       +------------+------------+
       |            |            |
@@ -193,6 +193,8 @@ One manifest, three faces. Two read it at run time and one is generated from it,
 | [adapters/cli](adapters/cli/pmos.py) | Reads MANIFEST.json on every invocation. Nothing is generated, so it cannot drift | `check_manifest.py`, plus its own unresolvable-request exit code |
 | [adapters/desktop](adapters/desktop/README.md) | Builds its tool list from the manifest at server start, one tool per entry, in router order | `adapters/desktop/selftest.py`, which asserts count, order, uniqueness, and schema shape |
 | [adapters/claude-code](adapters/claude-code/README.md) | Generated files: one command per entry, written by `generate.py` | `generate.py --check`, which exits 1 on a hand-edit, a deleted file, or an invented command |
+
+Only the desktop adapter exposes runtime status: its `pmos_status` tool opens the `pmos` runtime read only and answers the same question `pmos status --json` does. The Claude Code plugin and the CLI route runner stay route-only, every route ending in a plan and a file list rather than a runtime call.
 
 Add a route and all three change from one edit to the manifest. Two of them need no build step at all; the third needs one command and has a checker that catches you forgetting it.
 

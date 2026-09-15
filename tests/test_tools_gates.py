@@ -130,9 +130,9 @@ class TemplateInventoryGateTests(unittest.TestCase):
             self.rewrite(catalog, "(16 templates)", "(15 templates)", 1)
             self.rewrite(catalog, "(11 templates)", "(10 templates)", 1)
             for name, before, after in (
-                    (self.CATALOG, "107 templates", "105 templates"),
-                    ("README.md", "all 107 blanks", "all 105 blanks"),
-                    ("docs/ARCHITECTURE.md", "all 107 templates",
+                    (self.CATALOG, "108 templates", "105 templates"),
+                    ("README.md", "all 108 blanks", "all 105 blanks"),
+                    ("docs/ARCHITECTURE.md", "all 108 templates",
                      "all 105 templates")):
                 self.rewrite(root / name, before, after)
             reported = {path for path, _message in self.findings(root)}
@@ -171,9 +171,9 @@ class TemplateInventoryGateTests(unittest.TestCase):
     def test_dropping_the_claim_is_not_a_way_to_pass(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = copy_tree(tmp)
-            self.rewrite(root / "README.md", "all 107 blanks", "the blanks")
+            self.rewrite(root / "README.md", "all 108 blanks", "the blanks")
             self.rewrite(root / "docs" / "ARCHITECTURE.md",
-                         "all 107 templates", "the templates")
+                         "all 108 templates", "the templates")
             messages = [message for _path, message in self.findings(root)]
             self.assertTrue(any(message.startswith("no operator document "
                                                    "states the template "
@@ -188,7 +188,7 @@ class TemplateInventoryGateTests(unittest.TestCase):
             root = copy_tree(tmp)
             self.assertEqual([], [item for item in check_docs(root)
                                   if item.severity == "error"])
-            self.rewrite(root / "README.md", "all 107 blanks", "all 98 blanks")
+            self.rewrite(root / "README.md", "all 108 blanks", "all 98 blanks")
             codes = {item.code for item in check_docs(root)
                      if item.severity == "error"}
             self.assertIn("inventory-count", codes)
@@ -637,6 +637,150 @@ class TemplateRubricGateTests(unittest.TestCase):
             self.assertEqual(0, code, output)
             self.assertIn("exempt from this rubric, with the reason:", output)
             self.assertIn("templates/definition/weak.md", output)
+
+    # F17: hidden_guidance_share, the informational metric added alongside
+    # the seven scored dimensions above. These pin that it measures the
+    # right thing, that it never moves "score", and that a section explains
+    # itself the same way whether its guidance sits in a comment or in the
+    # visible <details> convention docs/RENDERING.md documents.
+
+    def test_hidden_guidance_counts_words_inside_html_comments_only(self):
+        hidden, total, share = template_rubric.hidden_guidance(
+            "a b c d <!-- e f g h --> i j")
+        self.assertEqual(6, hidden)
+        self.assertEqual(12, total)
+        self.assertEqual(0.5, share)
+
+    def test_hidden_guidance_share_is_zero_with_no_comments(self):
+        hidden, total, share = template_rubric.hidden_guidance("a b c d")
+        self.assertEqual((0, 4, 0.0), (hidden, total, share))
+
+    def test_score_template_reports_hidden_guidance_alongside_the_score(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            report = self.score(tmp, STRONG_TEMPLATE)
+        self.assertIn("hidden_guidance_share", report)
+        self.assertIn("hidden_guidance_words", report)
+        self.assertIn("total_words", report)
+        self.assertGreater(report["hidden_guidance_words"], 0,
+                            "STRONG_TEMPLATE's guidance still lives in "
+                            "<!-- --> comments, so this must be nonzero")
+
+    def test_a_visible_details_block_explains_a_section_like_a_comment_does(self):
+        text = ("# X\n\nStage: DEFINE, feeds Gate 2\n\n## One\n"
+                "<details open>\n<summary>Guidance</summary>\n\n"
+                "What goes here, and what a bad answer looks like.\n\n"
+                "</details>\n")
+        with tempfile.TemporaryDirectory() as tmp:
+            report = self.score(tmp, text)
+        self.assertEqual(1, report["sections_explained"])
+        self.assertEqual(1.0, report["marks"]["self_explaining"])
+
+    def test_a_visible_details_block_is_not_counted_as_hidden(self):
+        text = ("# X\n\n## One\n<details open>\n<summary>Guidance</summary>\n\n"
+                "What goes here.\n\n</details>\n")
+        with tempfile.TemporaryDirectory() as tmp:
+            report = self.score(tmp, text)
+        self.assertEqual(0, report["hidden_guidance_words"])
+        self.assertEqual(0.0, report["hidden_guidance_share"])
+
+    def test_migrating_a_section_from_comment_to_details_does_not_move_the_score(self):
+        guidance = "What goes here, and a bad answer: a blank owner."
+        skeleton = ("# X\n\nStage: DEFINE, feeds Gate 2\n\n## One\n%s\n"
+                    "| a | b |\n|---|---|\n| [name] | [date] |\n\n"
+                    "Read [the PRD](prd.md).\n\n## Exit gate\n- [ ] Done.\n")
+        hidden_text = skeleton % ("<!-- %s -->" % guidance)
+        visible_text = skeleton % (
+            "<details open>\n<summary>Guidance</summary>\n\n%s\n\n</details>"
+            % guidance)
+        with tempfile.TemporaryDirectory() as tmp:
+            before = self.score(tmp, hidden_text)
+        with tempfile.TemporaryDirectory() as tmp:
+            after = self.score(tmp, visible_text)
+        self.assertEqual(before["score"], after["score"])
+        self.assertEqual(before["marks"], after["marks"])
+        self.assertGreater(before["hidden_guidance_share"], 0.0)
+        self.assertEqual(0.0, after["hidden_guidance_share"])
+
+    def test_highest_hidden_guidance_share_is_reported_and_ranked(self):
+        # Almost entirely comment, so its hidden share is far above the
+        # STRONG_TEMPLATE reference's, and both templates also appear in the
+        # separate "weakest" (by score) table earlier in the same output, so
+        # the ranking check below reads only the hidden-guidance section,
+        # never the first occurrence of either path anywhere in the output.
+        heavy_comment = " ".join(["word"] * 40)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.tree(
+                tmp, prd=STRONG_TEMPLATE,
+                hider="# Hider\n\n## One\n<!-- %s -->\n" % heavy_comment)
+            code, output = self.run_gate(root, "--hidden-top", "5")
+        self.assertEqual(0, code, output)
+        marker = "highest hidden-guidance share"
+        self.assertIn(marker, output)
+        section = output[output.index(marker):]
+        hider_line = next(line for line in section.splitlines()
+                          if "templates/definition/hider.md" in line)
+        prd_line = next(line for line in section.splitlines()
+                        if line.strip().startswith("templates/definition/prd.md"))
+        self.assertLess(section.index(hider_line), section.index(prd_line),
+                        "in the hidden-guidance ranking, the template hiding "
+                        "a larger share of its words must rank above one "
+                        "hiding a smaller share:\n%s" % section)
+
+    # F21: worked_example must also credit a real completed example living
+    # under examples/, not only the inline ILLUSTRATIVE_RE form, because 39
+    # templates in the tree carry the first kind and none of the second and
+    # were scoring as if they had no worked example at all.
+
+    def _template_and_examples(self, tmp):
+        root = Path(tmp)
+        template = root / "templates" / "definition" / "subject.md"
+        template.parent.mkdir(parents=True, exist_ok=True)
+        examples = root / "examples"
+        examples.mkdir(parents=True, exist_ok=True)
+        return root, template, examples
+
+    def test_a_linked_real_example_earns_worked_example_credit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, template, examples = self._template_and_examples(tmp)
+            template.write_text(
+                "# Subject\n\n"
+                "Filled example: [worked](../../examples/worked.md)\n\n"
+                "## One\n<!-- guidance -->\n", encoding="utf-8")
+            (examples / "worked.md").write_text(
+                "# Subject worked\n\n"
+                "Fills [templates/definition/subject.md]"
+                "(../templates/definition/subject.md). Everything here is "
+                "invented.\n", encoding="utf-8")
+            with unittest.mock.patch.object(template_rubric, "REPO", root):
+                report = template_rubric.score_template(template)
+        self.assertEqual(1.0, report["marks"]["worked_example"])
+
+    def test_a_link_to_an_example_for_a_different_template_earns_no_credit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, template, examples = self._template_and_examples(tmp)
+            template.write_text(
+                "# Subject\n\n"
+                "Filled example: [worked](../../examples/worked.md)\n\n"
+                "## One\n<!-- guidance -->\n", encoding="utf-8")
+            (examples / "worked.md").write_text(
+                "# Other worked\n\n"
+                "Fills [templates/definition/other.md]"
+                "(../templates/definition/other.md). Everything here is "
+                "invented.\n", encoding="utf-8")
+            with unittest.mock.patch.object(template_rubric, "REPO", root):
+                report = template_rubric.score_template(template)
+        self.assertEqual(0.0, report["marks"]["worked_example"])
+
+    def test_a_link_to_a_missing_example_earns_no_credit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, template, _examples = self._template_and_examples(tmp)
+            template.write_text(
+                "# Subject\n\n"
+                "Filled example: [worked](../../examples/missing.md)\n\n"
+                "## One\n<!-- guidance -->\n", encoding="utf-8")
+            with unittest.mock.patch.object(template_rubric, "REPO", root):
+                report = template_rubric.score_template(template)
+        self.assertEqual(0.0, report["marks"]["worked_example"])
 
 
 class PmWorkingSetGateTests(unittest.TestCase):

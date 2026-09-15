@@ -11,6 +11,7 @@ aliases: ["First 90 Days", "first-90-days"]
 **Stage:** PLANNING track (feeds every stage of the [operating loop](../../os/OPERATING-LOOP.md))
 **Knowledge:** [Grove on managerial output](../../knowledge/high-output-management.md)
 **Skill:** manual
+Filled example: [Hira Baig, Product Manager, Sahulat Bill Pay](../../examples/sahulat-first-90-days.md)
 
 <!-- A plan for taking over a product, not for surviving an onboarding. It exists
      because the first 90 days is when a new owner has the most permission to

@@ -11,6 +11,7 @@ aliases: ["PR/FAQ", "prfaq"]
 Stage: DEFINE, feeds Gate 2 (requirements signed off)
 Knowledge: [Amazon PR/FAQ](../../knowledge/amazon-pr-faq.md)
 Skill: [write-prd](../../skills/write-prd/SKILL.md)
+Filled example: [Wrenfield Verified Same-Day](../../examples/example-prfaq.md)
 
 <!-- The working-backwards method as practiced at Amazon, described by Colin Bryar
      and Bill Carr in Working Backwards and restated here in this repository's own

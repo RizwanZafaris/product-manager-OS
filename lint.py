@@ -1416,7 +1416,7 @@ def os_check(root, pins=None):
 # the ones that judge a file for being a template, a layer file, or a shipped
 # part of the repository. A user's draft is none of those.
 WORKSPACE_CHECKS = ("links", "secrets", "placeholders", "dashes",
-                    "banned metric strings")
+                    "banned metric strings", "artifact contract")
 
 
 def workspace_files(workspace):
@@ -1525,7 +1525,95 @@ def workspace_check(workspace, root=None):
                                                   root, None, anchor_cache):
                 fail(rp, i, code, message)
 
+    _artifact_pass(workspace, root, fail)
+
     return sorted(problems)
+
+
+def _artifact_pass(workspace, root, fail):
+    """The sixth workspace check: the artifact contract from tools/workspace.
+
+    A file inside one of the stage folders must carry the block. A file
+    elsewhere need not, but a block it does carry is checked like the rest and
+    its artifact_id counts. Every finding has code ARTIFACT, at line 1, with
+    the path relative to root, one finding each.
+    """
+    tools_dir = Path(__file__).resolve().parent / "tools"
+    if str(tools_dir) not in sys.path:
+        sys.path.insert(0, str(tools_dir))
+    import workspace as _workspace                                    # noqa: E402
+
+    slug = workspace.name
+    seen = {}
+    contents = {}
+    for path in workspace_files(workspace):
+        if path.suffix != ".md":
+            continue
+        inside = path.relative_to(workspace).as_posix()
+        if _workspace.not_an_artifact(inside):
+            continue
+        rp = path.relative_to(root).as_posix()
+        try:
+            raw = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue  # already reported above as ENCODING
+        fields = _workspace.parse_artifact(raw)
+        contents[rp] = (inside, fields)
+        in_stage = any(inside.startswith(folder + "/")
+                       for folder in _workspace.STAGE_FOLDERS)
+        if fields is None:
+            if in_stage:
+                fail(rp, 1, "ARTIFACT",
+                     "has no artifact block. Stamp it with: "
+                     "python3 tools/init_product.py %s --stamp" % slug)
+            continue
+        for key in _workspace.ARTIFACT_KEYS:
+            if key not in fields:
+                fail(rp, 1, "ARTIFACT",
+                     "artifact block is missing the %s key." % key)
+        phase = fields.get("phase")
+        if phase is not None and phase not in _workspace.ARTIFACT_PHASES:
+            fail(rp, 1, "ARTIFACT", "phase %r is not one of: %s."
+                 % (phase, ", ".join(_workspace.ARTIFACT_PHASES)))
+        status = fields.get("status")
+        if status is not None and status not in _workspace.ARTIFACT_STATUSES:
+            fail(rp, 1, "ARTIFACT", "status %r is not one of: %s."
+                 % (status, ", ".join(_workspace.ARTIFACT_STATUSES)))
+        gate = fields.get("gate")
+        if gate is not None:
+            if isinstance(gate, bool) or not isinstance(gate, int) \
+                    or gate < 1 or gate > 6:
+                fail(rp, 1, "ARTIFACT",
+                     "gate %r is neither null nor an integer from 1 to 6."
+                     % (gate,))
+        depends_on = fields.get("depends_on")
+        if depends_on is not None:
+            if not (isinstance(depends_on, list)
+                    and all(isinstance(item, str) for item in depends_on)):
+                fail(rp, 1, "ARTIFACT",
+                     "depends_on %r is not a list of strings." % (depends_on,))
+        artifact_id = fields.get("artifact_id")
+        if artifact_id is not None:
+            seen.setdefault(artifact_id, []).append(rp)
+    for artifact_id, rps in seen.items():
+        if len(rps) > 1:
+            for rp in rps:
+                fail(rp, 1, "ARTIFACT",
+                     "artifact_id %s is carried by more than one file: %s."
+                     % (artifact_id, ", ".join(rps)))
+    known_ids = set(seen)
+    for rp, (inside, fields) in contents.items():
+        if fields is None:
+            continue
+        depends_on = fields.get("depends_on")
+        if not (isinstance(depends_on, list)
+                and all(isinstance(item, str) for item in depends_on)):
+            continue
+        for dep in depends_on:
+            if dep not in known_ids:
+                fail(rp, 1, "ARTIFACT",
+                     "depends on %s and the workspace does not have it yet."
+                     % dep)
 
 
 def json_problems(root):

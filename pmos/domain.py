@@ -29,7 +29,36 @@ SCHEMA_VERSION = "pmos.domain.v2"
 SNAPSHOT_FORMAT = "pmos.domain.snapshot/v2"
 SNAPSHOT_PATH = "domain/state.json"
 MAX_SNAPSHOT_BYTES = 16 * 1024 * 1024
+# A snapshot at or above this fraction of MAX_SNAPSHOT_BYTES earns an actionable
+# warning instead of a silent commit; see docs/SCALE.md for the measured
+# envelope this threshold is based on.
+SNAPSHOT_WARNING_RATIO = 0.8
+SNAPSHOT_WARNING_BYTES = int(MAX_SNAPSHOT_BYTES * SNAPSHOT_WARNING_RATIO)
 _HEX_DIGITS = frozenset("0123456789abcdef")
+
+
+def _snapshot_scale_warning(size_bytes: int) -> Optional[Dict[str, Any]]:
+    """An actionable warning once a snapshot nears MAX_SNAPSHOT_BYTES, or None.
+
+    Names the size, the limit, and the next action.  This never raises and
+    never blocks a commit by itself; the hard MAX_SNAPSHOT_BYTES check is
+    separate.  The export command that acts on this warning ships in a later
+    slice, so today's action is to read docs/SCALE.md and plan ahead: archive
+    old audit history or split the product before the hard limit is hit.
+    """
+    if size_bytes < SNAPSHOT_WARNING_BYTES:
+        return None
+    percent = int((size_bytes * 100) // MAX_SNAPSHOT_BYTES)
+    return {
+        "size_bytes": size_bytes,
+        "limit_bytes": MAX_SNAPSHOT_BYTES,
+        "percent_of_limit": percent,
+        "message": (
+            "domain snapshot is %d bytes, %d%% of the %d byte MAX_SNAPSHOT_BYTES limit; "
+            "archive old audit history or export the product soon; "
+            "see docs/SCALE.md for measured figures and options"
+        ) % (size_bytes, percent, MAX_SNAPSHOT_BYTES),
+    }
 
 
 def _is_sha256(value: Any) -> bool:
@@ -495,6 +524,19 @@ class PMOSDomain:
         core = self._state_core()
         return hashlib.sha256(_canonical(core).encode("utf-8")).hexdigest()
 
+    @property
+    def scale_warning(self) -> Optional[Dict[str, Any]]:
+        """An actionable warning once this domain's snapshot nears MAX_SNAPSHOT_BYTES.
+
+        ``None`` while comfortably under the threshold.  Reflects the current
+        in-memory state, so it is accurate right after any mutation whether or
+        not a Store is attached.  A durable commit also carries the same
+        warning in its commit metadata under ``"scale_warning"`` when present.
+        See docs/SCALE.md for the measured envelope and what to do as a
+        product grows.
+        """
+        return _snapshot_scale_warning(len(self._encode_state_bytes()))
+
     def _state_core(self) -> Mapping[str, Any]:
         return {
             "clock": self._clock,
@@ -527,7 +569,14 @@ class PMOSDomain:
             "audit": [asdict(event) for event in self._audit],
         }
 
-    def _encode_state(self) -> bytes:
+    def _encode_state_bytes(self) -> bytes:
+        """The canonical encoded snapshot for the current state.
+
+        Does not enforce MAX_SNAPSHOT_BYTES; callers that persist or replace
+        state must use ``_encode_state`` instead. This split lets read-only
+        introspection (``scale_warning``) see the current size without ever
+        raising on an over-limit read.
+        """
         self._assert_invariants()
         core = self._state_core()
         document = {
@@ -536,7 +585,10 @@ class PMOSDomain:
             "state": core,
             "state_hash": hashlib.sha256(_canonical(core).encode("utf-8")).hexdigest(),
         }
-        encoded = _canonical(document).encode("utf-8")
+        return _canonical(document).encode("utf-8")
+
+    def _encode_state(self) -> bytes:
+        encoded = self._encode_state_bytes()
         if len(encoded) > MAX_SNAPSHOT_BYTES:
             raise PersistenceError("domain snapshot exceeds the safe size limit")
         return encoded
@@ -789,12 +841,21 @@ class PMOSDomain:
             raise PersistenceError("durable domain has no loaded head")
         encoded = self._encode_state()
         digest = self.state_digest
+        metadata: Dict[str, Any] = {
+            "format": SNAPSHOT_FORMAT, "schema_version": SCHEMA_VERSION, "state_hash": digest,
+        }
+        # A near-limit snapshot rides along in the commit's own metadata, so a
+        # later reader (export tooling, a status surface) can see it without
+        # a second pass over the full snapshot. See docs/SCALE.md.
+        warning = _snapshot_scale_warning(len(encoded))
+        if warning is not None:
+            metadata["scale_warning"] = warning
         try:
             result = self._store.commit(
                 self._storage_id,
                 {SNAPSHOT_PATH: encoded},
                 expected_revision=self._store_head,
-                metadata={"format": SNAPSHOT_FORMAT, "schema_version": SCHEMA_VERSION, "state_hash": digest},
+                metadata=metadata,
             )
         except StoreError as exc:
             raise PersistenceError("durable domain commit failed safely") from exc

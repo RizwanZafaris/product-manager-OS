@@ -74,6 +74,8 @@ Per [agents/TEAM.md](../../agents/TEAM.md), section 1.
 
 No agent signs a gate, and no agent invents a number or a name.
 
+Every template of this stage, with the frameworks that feed it, its filled examples and the ID its working copy gets: [BUILD in the phase index](../../docs/PHASE-INDEX.md#build).
+
 ## Where this sits in the loop
 
 Entry is a signed Gate 3 plus the instrumentation spec where the PRD names metrics. Exit feeds [deliver.md](deliver.md); a wrong requirement sends you back to Gate 2 explicitly, never silently. The interview path through the same stage is [skills/conductor/questions/build.md](../../skills/conductor/questions/build.md).

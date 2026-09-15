@@ -55,7 +55,7 @@ Lands in: `operate/metrics-review.md` section 3 and `operate/operational-readine
 
 Ask: Which input metric is the next growth bet, and what is the cheapest experiment that would move it?
 Wrong costs: Growth effort not aimed at an input metric is aimed at the headline, which no team can move directly.
-Evidence class: the chosen input metric from OPERATE-3's examined set, plus an experiment with a cost attached.
+Evidence class: 2, the chosen input metric from OPERATE-3's examined set, plus an experiment with a cost attached.
 Cross-examine when: the bet is on the headline itself, or the experiment starts at a quarter of work. Move: naked numbers, then: what is the version that costs a week?
 Accept when: one input metric, one experiment, its cost, and what result would justify scaling it.
 Lands in: the workspace growth plan, next bet section, and STATE.md accepted answers.
@@ -64,7 +64,7 @@ Lands in: the workspace growth plan, next bet section, and STATE.md accepted ans
 
 Ask: Is the decision persist, pivot, or sunset, and what consequence is scheduled?
 Wrong costs: The zombie portfolio is made of products where nobody decided anything.
-Evidence class: one of exactly three decisions, with its consequence scheduled: the next DISCOVER pass, the pivot's Gate 1, or the sunset plan with dates and an owner.
+Evidence class: 3, the decision of the humans at Gate 6: one of exactly three decisions, with its consequence scheduled: the next DISCOVER pass, the pivot's Gate 1, or the sunset plan with dates and an owner.
 Options: a) persist, which implies the next DISCOVER pass is scheduled. b) pivot, which implies a new Gate 1 with a date. c) sunset, which implies a plan with dates and an owner.
 Cross-examine when: the answer is "keep watching it". Move: banned openers; watching is persisting without admitting the cost.
 Accept when: one decision, one scheduled consequence with a date and an owner. The Conductor recommends, the humans at Gate 6 decide.
@@ -83,7 +83,7 @@ Lands in: the workspace growth plan, mechanism section, and STATE.md accepted an
 
 Ask: Which counter-metric catches the damage if this experiment works for the wrong reason?
 Wrong costs: Growth that cannibalizes trust reports as success right up until the churn arrives.
-Evidence class: a measurable counter-metric with a threshold and the same review window as the experiment.
+Evidence class: 2, a measurable counter-metric with a threshold and the same review window as the experiment.
 Cross-examine when: "there is no downside". Move: banned openers; an experiment with no conceivable damage is not changing anything.
 Accept when: one counter-metric, one threshold, watched over the same window.
 Lands in: the workspace growth plan, guardrail section, and `operate/metrics-review.md` section 3, and STATE.md accepted answers.
@@ -92,7 +92,7 @@ Lands in: the workspace growth plan, guardrail section, and `operate/metrics-rev
 
 Ask: What result kills the experiment?
 Wrong costs: Experiments without kill conditions become programs, and programs without results become furniture.
-Evidence class: an observable result plus a date, either of which ends it.
+Evidence class: 3, the owner's commitment to call it: an observable result plus a date, either of which ends it.
 Cross-examine when: the condition is "if it clearly fails". Move: naked numbers.
 Accept when: a result threshold and a date, and the owner who calls it.
 Lands in: the workspace growth plan, kill condition section, and STATE.md accepted answers.

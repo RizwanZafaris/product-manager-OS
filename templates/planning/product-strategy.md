@@ -1,14 +1,14 @@
 ---
 layer: templates
-stage: PLANNING
-gate: 1
+stage: DEFINE
+gate: 2
 feeds: []
 method: "knowledge/INDEX.md"
 aliases: ["Product Strategy", "product-strategy"]
 ---
 # Product Strategy: [product name]
 
-**Stage:** PLANNING track (feeds every stage of the [operating loop](../../os/OPERATING-LOOP.md))
+**Stage:** DEFINE, after the vision, approved at [Gate 2](../../os/STAGE-GATES.md) by the product owner and the business sponsor; see the [operating loop](../../os/OPERATING-LOOP.md)
 **Knowledge:** [Knowledge index, strategy kernel and Playing to Win entries](../../knowledge/INDEX.md)
 **Skill:** [write-vision-strategy](../../skills/write-vision-strategy/SKILL.md); [strategy-critic](../../skills/strategy-critic/SKILL.md) for the attack pass
 
@@ -153,4 +153,5 @@ This strategy is fit to operate on when:
 - [ ] Every success metric traces to the north star tree
 - [ ] Each risk has an early signal someone is actually watching
 
-Signed: [name], [role], [YYYY-MM-DD]
+Approved at Gate 2 by the product owner: [name], [YYYY-MM-DD]
+Approved at Gate 2 by the business sponsor: [name], [YYYY-MM-DD]

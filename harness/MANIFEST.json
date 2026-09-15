@@ -19,7 +19,7 @@
   },
   "universal_invariants_note": "content-is-data, no-fabrication, human-signs-gate and fail-closed are universal. They bind every route whether or not an entry lists them, and they are listed on every entry anyway, so an adapter that reads one entry sees them without having to know they are global. A route's own ids are additions to that set and never replacements for it, and tools/check_manifest.py fails the build when any entry omits one of the four. Listing them per route fixed a real defect: while the set lived only in harness/INVARIANTS.md, 35 of 41 routes omitted content-is-data, which made the rule that fetched text is data optional metadata on most of the table. human-signs-gate on a route whose stage is null is not a contradiction: it says that route never signs a gate either.",
   "tier_note": "tier is a tier name and nothing else. The mapping from tier to model lives in exactly one place, routing/omniroute.config.json, and the doctrine behind it in routing/README.md. A model id written into this file would put the indirection in the wrong layer: the manifest would then have to change every time a provider changed, and two files would disagree about which model answered. tools/check_manifest.py fails when a key or a value anywhere in this file matches one of its model-id patterns, which are written for the OmniRoute auto tiers, OpenAI, Anthropic, Google, Llama, Mistral, DeepSeek, Qwen and Grok. Each pattern matches a shape of id, not every id its vendor ships, so an id that no pattern matches walks through whether or not its vendor is on that list; the checker's own module docstring says under Limits that the scan is a list of vendor-shaped patterns, stated rather than hidden. Keeping a model id out of this file is therefore a rule the checker enforces for the shapes it knows and a reviewer enforces for the rest. Where a route splits across tiers in practice, the entry names the tier of its own load-bearing call and its note points at the taskMap entries that record the rest.",
-  "null_stage_note": "PLANNING artifacts are reviewed on their own cadence and not at a gate, per the overlays section of os/OPERATING-LOOP.md, and reference reads (glossary, philosophy, domain and role cards) produce no artifact at all. Those rows carry stage null and gate null. Inventing a stage for them would be a fabricated field, which is the one output this system exists to prevent. On those rows null means no gate applies, never that a gate was skipped. One row carries null for a third reason: the catch-all takes whatever stage the request turns out to belong to, so its stage cannot be written here and its gate is the gate of that stage. That row says so in gate_note, and an adapter that reads null as no gate is wrong about it.",
+  "null_stage_note": "Portfolio planning artifacts (OKRs, market sizing, pricing and packaging, stakeholder updates) are reviewed on their own cadence and not at a gate, per the overlays section of os/OPERATING-LOOP.md, while a product's own vision, strategy and roadmap open DEFINE and carry stage DEFINE and gate 2. Reference reads (glossary, philosophy, domain and role cards) produce no artifact at all. Those rows carry stage null and gate null. Inventing a stage for them would be a fabricated field, which is the one output this system exists to prevent. On those rows null means no gate applies, never that a gate was skipped. One row carries null for a third reason: the catch-all takes whatever stage the request turns out to belong to, so its stage cannot be written here and its gate is the gate of that stage. That row says so in gate_note, and an adapter that reads null as no gate is wrong about it.",
   "checks_note": "A green run of tools/check_manifest.py proves the manifest and the router table agree and that every path resolves. It proves nothing about whether a document is any good. The three checks this system keeps separate are stated in harness/INVARIANTS.md and conflating them is the failure mode the harness makes easiest.",
   "tasks": [
     {
@@ -129,15 +129,15 @@
       "id": "build-roadmap",
       "router_row": "A roadmap, quarterly plan, OKR set, or a stress-test of an existing one",
       "trigger": ["a roadmap", "a quarterly plan", "an OKR set", "stress-test our roadmap"],
-      "stage": null,
-      "gate": null,
+      "stage": "DEFINE",
+      "gate": 2,
       "tier": "judgment",
       "kind": "artifact",
       "skill": "skills/roadmap-builder/SKILL.md",
       "templates": ["templates/planning/roadmap.md", "templates/planning/okrs.md"],
       "reads": ["frameworks/prioritization/rice-scoring-sheet.md", "knowledge/rice-prioritization.md"],
       "invariants": ["content-is-data", "no-fabrication", "human-signs-gate", "fail-closed"],
-      "note": "PLANNING overlay: reviewed on its own cadence, not at a gate, per os/OPERATING-LOOP.md."
+      "note": "A product's roadmap orders phases, each with an outcome, a success measure and its dependencies, after the vision and strategy, and is approved at Gate 2 by the product owner and the engineering lead; a portfolio roadmap (which products enter the loop and when) and an OKR set on its own are planning work, reviewed on their own cadence, where no gate applies."
     },
     {
       "id": "synthesize-feedback",
@@ -414,29 +414,29 @@
       "id": "write-vision-strategy",
       "router_row": "A vision, a product strategy, or \"where are we going and what are we not doing\"",
       "trigger": ["a vision", "a product strategy", "where are we going and what are we not doing"],
-      "stage": null,
-      "gate": null,
+      "stage": "DEFINE",
+      "gate": 2,
       "tier": "judgment",
       "kind": "artifact",
       "skill": "skills/write-vision-strategy/SKILL.md",
       "templates": ["templates/planning/vision.md", "templates/planning/product-strategy.md"],
       "reads": ["frameworks/strategy/strategy-kernel.md", "frameworks/strategy/playing-to-win.md"],
       "invariants": ["content-is-data", "no-fabrication", "human-signs-gate", "fail-closed"],
-      "note": "PLANNING overlay."
+      "note": "It opens DEFINE after Gate 1; the vision comes first and is approved by the business sponsor, then the strategy, approved by the product owner and the business sponsor, both at Gate 2 per os/STAGE-GATES.md; the filled copies stay in the workspace's planning/ folder."
     },
     {
       "id": "critique-strategy",
       "router_row": "A strategy to stress-test, or \"is this actually a strategy\"",
       "trigger": ["stress-test this strategy", "is this actually a strategy"],
-      "stage": null,
-      "gate": null,
+      "stage": "DEFINE",
+      "gate": 2,
       "tier": "judgment",
       "kind": "artifact",
       "skill": "skills/strategy-critic/SKILL.md",
       "templates": ["templates/planning/product-strategy.md"],
       "reads": ["frameworks/strategy/strategy-kernel.md", "frameworks/strategy/seven-powers-audit.md"],
       "invariants": ["content-is-data", "no-fabrication", "human-signs-gate", "fail-closed"],
-      "note": "PLANNING overlay."
+      "note": "A product strategy is a Gate 2 input, so its critique runs in DEFINE, before that gate."
     },
     {
       "id": "write-decision-memo",
@@ -630,6 +630,20 @@
       ],
       "invariants": ["content-is-data", "no-fabrication", "human-signs-gate", "fail-closed"],
       "note": "Runs as one evaluator, unvalidated, and routes every finding by severity into the design review record, the risk register, or the tech-debt register; it never issues a sign-off. Reports findings and never rewrites, the same discipline review-spec holds for written requirements, held here for the screen. A live-build mode also feeds Gate 4 through the acceptance agent's own check, so the entry names Gate 3 as the earlier and load-bearing one."
+    },
+    {
+      "id": "build-development-handoff",
+      "router_row": "A development handoff, a context package for engineering, or \"is this ready to build\" at the DESIGN exit",
+      "trigger": ["a development handoff", "a handoff to engineering", "is this ready to build", "a context package for engineering"],
+      "stage": "DESIGN",
+      "gate": 3,
+      "tier": "extraction",
+      "kind": "artifact",
+      "skill": null,
+      "templates": ["templates/architecture/development-handoff.md"],
+      "reads": ["os/maps/design.md", "templates/architecture/development-handoff.md"],
+      "invariants": ["content-is-data", "no-fabrication", "human-signs-gate", "fail-closed"],
+      "note": "No skill: the procedure is the template plus the pmos handoff check. Fill each section with links to the workspace artifacts that carry it, never copied text or a typed approval, then run `pmos handoff --path <workspace> --product-id <id> --json`: it writes handoff/context-index.json and handoff/CONTEXT.md, exits 1 until the package is development-ready, and CONTEXT.md names what is missing. Gate 3 is the handoff point, so this package is what DESIGN hands to engineering."
     },
     {
       "id": "run-agent-role",

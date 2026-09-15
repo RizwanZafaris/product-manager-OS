@@ -1087,10 +1087,223 @@ class WorkspaceModeTests(unittest.TestCase):
     """Defect A. products/ is out of Git and out of tree mode, both correctly,
     and the cost was that a user's work was checked by nothing at all. This is
     the opt-in. Every fixture is built in a temporary directory, never under
-    the live repository, and never removed from it."""
+    the live repository, and never removed from it. The exceptions are the
+    init_product tests, which run the real tools/init_product.py the way
+    tools/readiness_probe.py does, on a slug no workspace uses, and remove
+    that slug's folder under products/ again."""
 
     DRAFT = ("# Discovery: demo\n\nStage: DISCOVER\n\n"
              "A filled draft that violates nothing.\n")
+
+    def _workspace(self):
+        import importlib
+        import sys
+        sys.path.insert(0, str(REPO / "tools"))
+        try:
+            return importlib.import_module("workspace")
+        finally:
+            sys.path.pop(0)
+
+    def _artifact_block(self, fields):
+        workspace = self._workspace()
+        return workspace.render_artifact_block(fields)
+
+    def test_an_artifact_pair_passes(self):
+        block = self._artifact_block({
+            "artifact_id": "demo/discovery/problem-framing",
+            "phase": "DISCOVER",
+            "gate": 1,
+            "status": "draft",
+            "depends_on": [],
+            "template": "templates/discovery/problem-framing.md",
+        })
+        vision_block = self._artifact_block({
+            "artifact_id": "demo/planning/vision",
+            "phase": "DEFINE",
+            "gate": 2,
+            "status": "draft",
+            "depends_on": ["demo/discovery/problem-framing"],
+            "template": "templates/planning/vision.md",
+        })
+        codes, messages = ws_run({
+            "products/demo/discovery/problem-framing.md": block + "Body.\n",
+            "products/demo/planning/vision.md": vision_block + "Body.\n",
+        })
+        self.assertNotIn("ARTIFACT", codes, messages)
+
+    def test_a_stage_file_with_no_block_is_reported_with_the_stamp_hint(self):
+        codes, messages = ws_run({
+            "products/demo/planning/vision.md": "# Vision\n\nNo block.\n",
+        })
+        self.assertIn("ARTIFACT", codes)
+        self.assertIn("python3 tools/init_product.py demo --stamp", messages)
+
+    def test_a_bad_status_is_reported(self):
+        block = self._artifact_block({
+            "artifact_id": "demo/planning/vision",
+            "phase": "DEFINE",
+            "gate": 2,
+            "status": "bogus",
+            "depends_on": [],
+            "template": "templates/planning/vision.md",
+        })
+        codes, messages = ws_run({
+            "products/demo/planning/vision.md": block + "Body.\n",
+        })
+        self.assertIn("ARTIFACT", codes)
+        self.assertIn("status 'bogus'", messages)
+
+    def test_a_bad_phase_is_reported(self):
+        block = self._artifact_block({
+            "artifact_id": "demo/planning/vision",
+            "phase": "BOGUS",
+            "gate": 2,
+            "status": "draft",
+            "depends_on": [],
+            "template": "templates/planning/vision.md",
+        })
+        codes, messages = ws_run({
+            "products/demo/planning/vision.md": block + "Body.\n",
+        })
+        self.assertIn("ARTIFACT", codes)
+        self.assertIn("phase 'BOGUS'", messages)
+
+    def test_a_gate_of_seven_is_reported(self):
+        block = self._artifact_block({
+            "artifact_id": "demo/planning/vision",
+            "phase": "DEFINE",
+            "gate": 7,
+            "status": "draft",
+            "depends_on": [],
+            "template": "templates/planning/vision.md",
+        })
+        codes, messages = ws_run({
+            "products/demo/planning/vision.md": block + "Body.\n",
+        })
+        self.assertIn("ARTIFACT", codes)
+        self.assertIn("gate 7", messages)
+
+    def test_depends_on_as_a_plain_string_is_reported(self):
+        block = self._artifact_block({
+            "artifact_id": "demo/planning/vision",
+            "phase": "DEFINE",
+            "gate": 2,
+            "status": "draft",
+            "depends_on": ["demo/discovery/problem-framing"],
+            "template": "templates/planning/vision.md",
+        })
+        # Typed by hand the way a user might: no brackets and no quotes.
+        line = 'depends_on: ["demo/discovery/problem-framing"]\n'
+        self.assertIn(line, block)
+        block = block.replace(line, "depends_on: demo/discovery/problem-framing\n")
+        codes, messages = ws_run({
+            "products/demo/planning/vision.md": block + "Body.\n",
+        })
+        self.assertIn("ARTIFACT", codes)
+        self.assertIn("depends_on 'demo/discovery/problem-framing' is not a list",
+                      messages)
+
+    def test_a_missing_key_is_reported(self):
+        block = self._artifact_block({
+            "artifact_id": "demo/planning/vision",
+            "phase": "DEFINE",
+            "gate": 2,
+            "status": "draft",
+            "depends_on": [],
+            "template": "templates/planning/vision.md",
+        })
+        # render_artifact_block needs every key, so the line goes by hand.
+        self.assertIn("status: draft\n", block)
+        block = block.replace("status: draft\n", "")
+        codes, messages = ws_run({
+            "products/demo/planning/vision.md": block + "Body.\n",
+        })
+        self.assertIn("ARTIFACT", codes)
+        self.assertIn("missing the status key", messages)
+
+    def test_a_duplicate_artifact_id_is_reported_on_each_file(self):
+        block = self._artifact_block({
+            "artifact_id": "demo/planning/vision",
+            "phase": "DEFINE",
+            "gate": 2,
+            "status": "draft",
+            "depends_on": [],
+            "template": "templates/planning/vision.md",
+        })
+        codes, messages = ws_run({
+            "products/demo/planning/vision.md": block + "Body.\n",
+            "products/demo/discovery/problem-framing.md": block + "Body.\n",
+        })
+        self.assertIn("ARTIFACT", codes)
+        self.assertEqual(messages.count("carried by more than one file"), 2,
+                         messages)
+        self.assertIn("products/demo/discovery/problem-framing.md", messages)
+        self.assertIn("products/demo/planning/vision.md", messages)
+
+    def test_the_vision_alone_is_a_gap(self):
+        block = self._artifact_block({
+            "artifact_id": "demo/planning/vision",
+            "phase": "DEFINE",
+            "gate": 2,
+            "status": "draft",
+            "depends_on": ["demo/discovery/problem-framing"],
+            "template": "templates/planning/vision.md",
+        })
+        codes, messages = ws_run({
+            "products/demo/planning/vision.md": block + "Body.\n",
+        })
+        self.assertIn("ARTIFACT", codes)
+        self.assertIn(
+            "depends on demo/discovery/problem-framing and the workspace "
+            "does not have it yet", messages)
+
+    def test_a_root_file_with_no_block_is_not_reported(self):
+        codes, messages = ws_run({
+            "products/demo/DESIGN.md": "# Design\n\nNo block.\n",
+        })
+        self.assertNotIn("ARTIFACT", codes, messages)
+
+    def test_a_root_file_with_a_block_is_checked_and_its_id_counts(self):
+        design = self._artifact_block({
+            "artifact_id": "demo/DESIGN",
+            "phase": "DESIGN",
+            "gate": 3,
+            "status": "bogus",
+            "depends_on": [],
+            "template": "templates/architecture/design-md.md",
+        })
+        vision = self._artifact_block({
+            "artifact_id": "demo/planning/vision",
+            "phase": "DEFINE",
+            "gate": 2,
+            "status": "draft",
+            "depends_on": ["demo/DESIGN"],
+            "template": "templates/planning/vision.md",
+        })
+        codes, messages = ws_run({
+            "products/demo/DESIGN.md": design + "Body.\n",
+            "products/demo/planning/vision.md": vision + "Body.\n",
+        })
+        self.assertIn("status 'bogus'", messages)
+        self.assertNotIn("does not have it yet", messages)
+
+    def test_a_file_under_gates_with_no_block_is_not_reported(self):
+        codes, messages = ws_run({
+            "products/demo/gates/gate-1.md": "# Gate 1\n\nNo block.\n",
+        })
+        self.assertNotIn("ARTIFACT", codes, messages)
+
+    def test_a_run_log_with_no_block_is_not_reported(self):
+        codes, messages = ws_run({
+            "products/demo/planning/vision.run-log.md": "# Run log\n\nNo block.\n",
+        })
+        self.assertNotIn("ARTIFACT", codes, messages)
+
+    def test_a_route_report_with_no_block_is_not_reported(self):
+        codes, messages = ws_run({
+            "products/demo/planning/vision-report.md": "# Report\n\nNo block.\n",
+        })
+        self.assertNotIn("ARTIFACT", codes, messages)
 
     def test_a_clean_workspace_passes(self):
         codes, messages = ws_run({"products/demo/discovery.md": self.DRAFT})
@@ -1107,6 +1320,218 @@ class WorkspaceModeTests(unittest.TestCase):
             "products/demo/sub/discovery.md": "[gate](../../../os/GATES.md)\n",
             "os/GATES.md": "# Gates\n"})
         self.assertEqual(set(), codes, messages)
+
+    def test_artifact_id_for_covers_planning_definition_ai_and_root_design(self):
+        ws = self._workspace()
+        self.assertEqual(
+            ws.artifact_id_for("demo", "products/demo/planning/product-strategy.md"),
+            "demo/planning/product-strategy")
+        self.assertEqual(
+            ws.artifact_id_for("demo", "products/demo/definition/ai/eval-spec.md"),
+            "demo/definition/ai/eval-spec")
+        self.assertEqual(
+            ws.artifact_id_for("demo", "products/demo/DESIGN.md"),
+            "demo/DESIGN")
+
+    def test_artifact_id_for_refuses_paths_outside_products_slug(self):
+        ws = self._workspace()
+        with self.assertRaises(ws.WorkspaceError):
+            ws.artifact_id_for("demo", "templates/planning/vision.md")
+        with self.assertRaises(ws.WorkspaceError):
+            ws.artifact_id_for("demo", "products/other/planning/vision.md")
+        with self.assertRaises(ws.WorkspaceError):
+            ws.artifact_id_for("demo", "products/demo/planning/vision.txt")
+
+    def _scratch_slug(self):
+        """A slug no workspace uses yet, whose folder is removed after the test."""
+        import os
+        import shutil
+        import time
+        slug = "stamp-test-%d-%d" % (os.getpid(), time.time_ns() % 1000000)
+        folder = REPO / "products" / slug
+        self.assertFalse(folder.exists(), folder)
+        self.addCleanup(shutil.rmtree, folder, ignore_errors=True)
+        return slug, folder
+
+    def _init_product(self, *args):
+        import subprocess
+        import sys
+        return subprocess.run(
+            [sys.executable, str(REPO / "tools" / "init_product.py"), *args],
+            cwd=str(REPO), capture_output=True, text=True, timeout=60)
+
+    def _new_workspace_with_strategy(self):
+        slug, folder = self._scratch_slug()
+        for args in ((slug,),
+                     (slug, "--add", "templates/planning/product-strategy.md")):
+            done = self._init_product(*args)
+            self.assertEqual(0, done.returncode, done.stderr)
+        return slug, folder
+
+    def test_init_product_stamps_the_copy_it_adds(self):
+        ws = self._workspace()
+        slug, folder = self._new_workspace_with_strategy()
+        fields = ws.parse_artifact((folder / "planning" / "product-strategy.md")
+                                   .read_text(encoding="utf-8"))
+        self.assertEqual(fields["artifact_id"], "%s/planning/product-strategy" % slug)
+        self.assertEqual(fields["phase"], "DEFINE")
+        self.assertEqual(fields["gate"], 2)
+        self.assertEqual(fields["status"], "draft")
+        self.assertEqual(fields["depends_on"], ["%s/planning/vision" % slug])
+        self.assertEqual(fields["template"], "templates/planning/product-strategy.md")
+        # The journal at the workspace root is not an artifact.
+        self.assertIsNone(ws.parse_artifact(
+            (folder / "STATE.md").read_text(encoding="utf-8")))
+
+    def test_init_product_stamp_restores_a_removed_block_and_reports_the_rest(self):
+        ws = self._workspace()
+        slug, folder = self._new_workspace_with_strategy()
+        copy = folder / "planning" / "product-strategy.md"
+        stamped = copy.read_text(encoding="utf-8")
+        copy.write_text(stamped[ws.FRONTMATTER_RE.match(stamped).end():],
+                        encoding="utf-8")
+        # Never artifacts: README.md and STATE.md at the workspace root,
+        # anything under gates/, a run log beside a copy and a route's report.
+        (folder / "README.md").write_text("# Demo\n", encoding="utf-8")
+        (folder / "gates" / "gate-2.md").write_text("# Gate 2\n", encoding="utf-8")
+        (folder / "planning" / "product-strategy.md.run-log.md").write_text(
+            "# Run log\n", encoding="utf-8")
+        (folder / "discovery" / "critique-strategy-report.md").write_text(
+            "# Report\n", encoding="utf-8")
+        done = self._init_product(slug, "--stamp")
+        self.assertEqual(0, done.returncode, done.stderr)
+        self.assertIn("stamp: 1 stamped, 0 already stamped, 0 unidentified file(s).",
+                      done.stdout)
+        # The same block comes back, and the body is untouched.
+        self.assertEqual(copy.read_text(encoding="utf-8"), stamped)
+        done = self._init_product(slug, "--stamp")
+        self.assertIn("stamp: 0 stamped, 1 already stamped, 0 unidentified file(s).",
+                      done.stdout)
+        notes = folder / "planning" / "hand-written-notes.md"
+        notes.write_text("# Notes\n\nNo template makes this file.\n", encoding="utf-8")
+        done = self._init_product(slug, "--stamp")
+        self.assertEqual(0, done.returncode, done.stderr)
+        self.assertIn("no identifiable template: products/%s/planning/"
+                      "hand-written-notes.md" % slug, done.stdout)
+        self.assertIn("stamp: 0 stamped, 1 already stamped, 1 unidentified file(s).",
+                      done.stdout)
+        self.assertEqual(notes.read_text(encoding="utf-8"),
+                         "# Notes\n\nNo template makes this file.\n")
+
+    def test_init_product_stamp_does_not_combine_with_add(self):
+        slug, folder = self._scratch_slug()
+        done = self._init_product(slug, "--stamp", "--add",
+                                  "templates/planning/product-strategy.md")
+        self.assertEqual(1, done.returncode)
+        self.assertIn("--stamp copies nothing", done.stderr)
+        self.assertFalse(folder.exists())
+
+    def test_stamp_artifact_takes_the_folder_stage_when_a_template_declares_none(self):
+        # The regulated AI PRD has no frontmatter. Its copy lands in
+        # definition/ai, the one folder of the AI OVERLAY stage. --add-all
+        # stopped on it before this fallback existed.
+        ws = self._workspace()
+        template_rel = "modules/regulated/templates/regulated-ai-prd-template.md"
+        text = ws.read_text(REPO / template_rel)
+        self.assertIsNone(ws.declared_stage(text))
+        fields = ws.parse_artifact(ws.stamp_artifact(text, template_rel, "demo"))
+        self.assertEqual(fields["artifact_id"], "demo/definition/ai/regulated-ai-prd")
+        self.assertEqual(fields["phase"], "AI OVERLAY")
+        self.assertIsNone(fields["gate"])
+        self.assertEqual(fields["template"], template_rel)
+
+    def test_stamp_artifact_on_product_strategy_for_demo(self):
+        ws = self._workspace()
+        template_rel = "templates/planning/product-strategy.md"
+        text = ws.read_text(REPO / template_rel)
+        body = "\n\n# Strategy\n\nBody line.\n"
+        stamped = ws.stamp_artifact(text + body, template_rel, "demo")
+        fields = ws.parse_artifact(stamped)
+        self.assertEqual(fields["artifact_id"], "demo/planning/product-strategy")
+        self.assertEqual(fields["phase"], "DEFINE")
+        self.assertEqual(fields["gate"], 2)
+        self.assertEqual(fields["status"], "draft")
+        self.assertEqual(fields["depends_on"], ["demo/planning/vision"])
+        self.assertEqual(fields["template"], template_rel)
+        self.assertTrue(stamped.endswith(body))
+        # Everything after the frontmatter, the template's own body included,
+        # comes back byte for byte.
+        original = text + body
+        match = ws.FRONTMATTER_RE.match(stamped)
+        self.assertEqual(stamped[match.end():],
+                         original[ws.FRONTMATTER_RE.match(original).end():])
+
+    def test_stamp_artifact_with_previous_keeps_old_id_and_depends_on(self):
+        ws = self._workspace()
+        template_rel = "templates/planning/product-strategy.md"
+        text = ws.read_text(REPO / template_rel)
+        previous = ("---\n"
+                    "artifact_id: demo/planning/old-name\n"
+                    "phase: DEFINE\n"
+                    "gate: 2\n"
+                    "status: approved\n"
+                    "depends_on: [\"demo/planning/vision\"]\n"
+                    "template: templates/planning/product-strategy.md\n"
+                    "---\n\nOld body.\n")
+        stamped = ws.stamp_artifact(text + "\n\nBody.\n", template_rel, "demo",
+                                   previous=previous)
+        fields = ws.parse_artifact(stamped)
+        self.assertEqual(fields["artifact_id"], "demo/planning/old-name")
+        self.assertEqual(fields["depends_on"], ["demo/planning/vision"])
+        self.assertEqual(fields["status"], "draft")
+
+    def test_stamp_artifact_leaves_state_md_unchanged(self):
+        ws = self._workspace()
+        template_rel = "templates/execution/state.md"
+        text = ws.read_text(REPO / template_rel)
+        stamped = ws.stamp_artifact(text, template_rel, "demo")
+        self.assertEqual(stamped, text)
+
+    def test_parse_artifact_round_trips_render_artifact_block(self):
+        ws = self._workspace()
+        fields = {
+            "artifact_id": "demo/definition/prd",
+            "phase": "DEFINE",
+            "gate": 3,
+            "status": "approved",
+            "depends_on": ["demo/planning/roadmap", "demo/discovery/problem-framing"],
+            "template": "templates/definition/prd.md",
+        }
+        block = ws.render_artifact_block(fields)
+        body = "\n\n# PRD\n\nText.\n"
+        parsed = ws.parse_artifact(block + body)
+        self.assertEqual(parsed, fields)
+
+    def test_artifact_revision_ignores_status_change_but_not_body_change(self):
+        ws = self._workspace()
+        fields = {
+            "artifact_id": "demo/definition/prd",
+            "phase": "DEFINE",
+            "gate": 3,
+            "status": "draft",
+            "depends_on": ["demo/planning/roadmap"],
+            "template": "templates/definition/prd.md",
+        }
+        a = ws.render_artifact_block(fields) + "\n\nBody.\n"
+        fields["status"] = "approved"
+        b = ws.render_artifact_block(fields) + "\n\nBody.\n"
+        self.assertEqual(ws.artifact_revision(a), ws.artifact_revision(b))
+        fields["status"] = "draft"
+        c = ws.render_artifact_block(fields) + "\n\nBody changed.\n"
+        self.assertNotEqual(ws.artifact_revision(a), ws.artifact_revision(c))
+
+    def test_parse_artifact_returns_malformed_depends_on_as_raw_string(self):
+        ws = self._workspace()
+        text = ("---\n"
+                "artifact_id: demo/definition/prd\n"
+                "phase: DEFINE\n"
+                "gate: 3\n"
+                "status: draft\n"
+                "depends_on: not-a-json-array\n"
+                "template: templates/definition/prd.md\n"
+                "---\n\nBody.\n")
+        fields = ws.parse_artifact(text)
+        self.assertEqual(fields["depends_on"], "not-a-json-array")
 
     def test_a_link_climbing_out_of_the_repository_is_still_caught(self):
         codes, messages = ws_run(
@@ -1354,6 +1779,63 @@ class IntegrityPinCoverageTests(unittest.TestCase):
             self.assertTrue(target.is_file(), rel)
             self.assertEqual(
                 expected, hashlib.sha256(target.read_bytes()).hexdigest(), rel)
+
+    def test_the_regulated_overlay_truth_table_is_a_correct_and_gate(self):
+        """F08. Parse the one tested applicability truth table out of
+        modules/regulated/README.md and prove it really is the AND-gate
+        os/STAGE-GATES.md requires (AI feature and applicable regulator),
+        not the finding's OR-shaped "a regulator alone is enough" rule.
+        """
+        text = (REPO / "modules" / "regulated" / "README.md").read_text(
+            encoding="utf-8")
+        section = text.split("## When this overlay activates", 1)[1]
+        section = section.split("\n## ", 1)[0]
+        rows = [line for line in section.splitlines()
+                if line.startswith("|") and not set(line) <= set("|- ")]
+        self.assertTrue(rows, "no table found under the activation heading")
+        table = {}
+        for row in rows[1:]:  # rows[0] is the header row
+            cells = [cell.strip() for cell in row.strip("|").split("|")]
+            self.assertEqual(4, len(cells), row)
+            case, ai, regulator, activates = cells
+            table[case] = (ai, regulator, activates)
+        self.assertEqual(
+            ["AI and regulated", "AI and unregulated",
+             "Non-AI and regulated", "Neither"], list(table))
+        for case, (ai, regulator, activates) in table.items():
+            expected = "Yes" if (ai, regulator) == ("Yes", "Yes") else "No"
+            self.assertEqual(expected, activates, case)
+
+    def test_stage_gates_references_the_readme_table_not_a_second_copy(self):
+        """F08. os/STAGE-GATES.md may only reference the truth table, and
+        both files must state the same AND condition, parsed from each.
+        """
+        import re
+        readme_text = (REPO / "modules" / "regulated" / "README.md"
+                       ).read_text(encoding="utf-8")
+        gates_text = (REPO / "os" / "STAGE-GATES.md").read_text(
+            encoding="utf-8")
+
+        anchor = lint.slug("When this overlay activates")
+        self.assertIn(anchor, lint.anchors_of(readme_text.split("\n")),
+                      "the README heading the reference points at moved")
+        self.assertIn("../modules/regulated/README.md#%s" % anchor,
+                      gates_text,
+                      "STAGE-GATES.md does not reference the README table")
+
+        def states_the_and_condition(text):
+            for match in re.finditer(
+                    r"financial or data regulator applies to it", text):
+                window = text[max(0, match.start() - 200):match.start()]
+                if (re.search(r"AI or machine[\s-]?learning", window)
+                        and " and " in window[-120:]):
+                    return True
+            return False
+
+        self.assertTrue(states_the_and_condition(readme_text),
+                        "README does not state the AND condition")
+        self.assertTrue(states_the_and_condition(gates_text),
+                        "STAGE-GATES.md does not state the AND condition")
 
 
 if __name__ == "__main__":

@@ -43,12 +43,15 @@ GATES = (
     Gate("compile", ("python3", "tools/readiness_probe.py", "compile-all")),
     Gate("root-tests", ("python3", "-m", "unittest", "-v",
          "test_lint", "test_readiness", "test_pmos_routing",
-         "test_tools_gates",
+        "test_tools_gates", "test_phase_index", "test_question_banks",
+        "test_pmos_artifacts", "test_pmos_phases",
+        "test_pmos_handoff",
          "test_pmos_store", "test_pmos_domain", "test_pmos_operations",
          "test_pmos_hooks", "test_pmos_usecases", "test_pmos_conductor",
          "test_pmos_skills", "test_pmos_cli", "test_pmos_release",
          "test_pmos_security", "test_pmos_review",
          "test_pmos_probe", "test_pmos_matrix", "test_pmos_invariants",
+         "test_pmos_journey",
          "test_contract_gates"), expects_tests=True,
          timeout=1800),
     Gate("harness-tests", ("python3", "-m", "unittest", "discover", "-s",
@@ -82,6 +85,11 @@ GATES = (
     # skill-rubric gate below cannot see that: it scores the live skills, so
     # it passes however stale the committed measurement is.
     Gate("skill-rubric-freshness", ("python3", "tools/skill_rubric.py",
+         "--check")),
+    # Same instrument as graph-freshness, for docs/PHASE-INDEX.md, which a
+    # reader uses to find a phase's frameworks, templates, filled examples
+    # and working-copy IDs, so a stale copy points them at the wrong one.
+    Gate("phase-index-freshness", ("python3", "tools/phase_index.py",
          "--check")),
     Gate("manifest-contract", ("python3", "tools/check_manifest.py",
          "--quiet")),

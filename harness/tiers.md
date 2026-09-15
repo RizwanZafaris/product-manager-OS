@@ -60,6 +60,27 @@ The config sets this as `limits.onCapReached: halt-tier-and-queue`. [runner.py](
 | The answering model is not the model that was certified | The response header naming the model came back with a different id, or with no id at all. The run did not happen on the model the artifact would claim, so there is nothing to write. It queues without trying the next link in the chain, because a gateway that reroutes one named model reroutes the next one too |
 | The daily spend cap is reached | Read from the variable `limits.dailySpendCapUsdEnv` names, with spend to date from `OMNIROUTE_DAILY_SPEND_USD`, and checked before the probe so a capped run spends nothing. At or over the cap the work queues and that is terminal |
 | A cap is set and no meter reports spend | An unavailable checker. Fail-closed answers that by queueing, never by running and hoping |
+| A call's reservation would pass the daily or task cap | Every call first reserves the most it could bill in the shared ledger at its tier's price ceiling, across processes, so two runs cannot both take the last allowance |
+| An earlier call's cost is unknown | Its full reservation stays charged, and new reservations in its scopes queue until someone reconciles it with the billed amount: `python3 -m pmos.spend status` lists them, and `python3 -m pmos.spend reconcile <key> <usd> <evidence>` clears one |
+| A cap is in force and the tier has no price ceiling | The most the call could bill is unknown, so nothing can be reserved; set `tiers.<tier>.priceCeilingUsdPerMTok` |
+
+The spend rows apply to every tier, not only judgment. The gateway's daily figure can include calls the ledger already recorded, so the same spend may be counted twice; that errs toward stopping early, never toward overspending.
+
+## Reading what the ledger actually spent
+
+`python3 -m pmos.spend status` lists open and unresolved reservations, but it does not summarize what happened. For that, `python3 tools/usage_report.py` reads the same ledger and reports usage grouped by operation, resolved model and provider, task id, and cache disposition, with a denominator of completed calls over attempted calls and a separate count of quality failures (a completed call whose reply was not usable) in every group. Pass `--ledger PATH` for a ledger other than the default, `--json` for one JSON object instead of text, and `--task-suite FILE` to overlay a fixed set of tasks the report should cover, including any task that runs on a subscription tier the ledger never sees.
+
+Every row also carries a cost certainty, taken straight from the reservation's own state so the ledger and the report can never disagree about the words:
+
+| State | Cost certainty label | What it means |
+|---|---|---|
+| `settled` | billed | The call finished and a real cost came back |
+| `open` | reserved worst case, not yet settled | The call has not settled yet; this is the most it could cost, not what it did cost |
+| `unknown` | unknown | The call finished with no reported cost; the full reservation stays charged until someone reconciles it |
+
+A tier billed through a subscription rather than a per-call price never opens a spend session at all (`transport_call` in `harness/runner.py` skips the ledger when no cap is in force), so the ledger has no rows for it. The report never turns that absence into a $0.00 figure: a `--task-suite` entry marked `"metered": false` shows its cost as the literal string `unavailable`, and its completed/success facts come only from what the suite file states.
+
+`python3 tools/usage_report.py --compare BEFORE AFTER` diffs two snapshots, each a ledger file or a JSON report this tool already wrote. No token or cost savings claim is valid from this output unless both sides were built against the same `--task-suite`: the compare output says `fixed_suite_match: true` only when both sides name exactly the same fixed set of tasks, `false` when they cover different work, and reports it as unavailable when either side carries no task suite at all. A delta printed under any other condition describes different work, not a saving.
 
 There is one sanctioned way to run judgment work on a cheaper model, and it is loud: set `tiers.judgment.keylessFallback.enabled` to true in the config. It is off by default. Every artifact produced under it carries the line `judgment tier: degraded, reviewed by a person before use` on its face, because an artifact that does not say it was degraded will be read as one that was not.
 
@@ -101,6 +122,29 @@ Nothing reaches disk until both checks pass, and then the artifact, its log, and
 - Artifacts land in a filled copy of the task's template, in the product workspace defined by [os/PRODUCT-WORKSPACE.md](../os/PRODUCT-WORKSPACE.md). Run state lands in that product's `STATE.md`. Logs sit beside the artifact they describe. The runner keeps no store of its own, so there is nothing to go stale and nothing to migrate.
 - It verifies and reports. It never signs a gate. The gates in [os/STAGE-GATES.md](../os/STAGE-GATES.md) are signed by a named human, and an artifact the runner wrote says so on its face.
 - The invariants that bind each task are listed in [INVARIANTS.md](INVARIANTS.md) and named per task in the manifest.
+
+## Context planning: only the current stage, and only once
+
+`trusted_blocks()` (S04, audit supplement) narrows what it sends in two ways, on top of always sending the skill, the invariant rules and the template verbatim.
+
+- **Deduplication by hash.** Every read is split into sections at each markdown heading, and a section whose exact content already appeared earlier in this same route (an earlier read, or a read named twice) is not sent again. This runs on every route, `--stage` or not, and it only ever removes an EXACT repeat: a paraphrase or a merely similar passage is untouched.
+- **Stage narrowing (`--stage`).** Pass `--stage DISCOVER` (or `DEFINE`, `DESIGN`, `BUILD`, `DELIVER`, `OPERATE`) when the caller already knows which of the six stages this run belongs to. A read whose sections are headed by a stage name (like [os/OPERATING-LOOP.md](../os/OPERATING-LOOP.md)'s `### 1. DISCOVER`) or by a matching gate number (like [os/STAGE-GATES.md](../os/STAGE-GATES.md)'s `## Gate 1: ...`) is narrowed to that stage's sections plus its headingless preamble. A read this rule finds no matching section in is sent whole: narrowing never guesses, and a file it cannot address is not a file it empties. Omit `--stage` and every read is sent in full, exactly as before this option existed.
+
+Both are logged by path, because narrowing or deduplication only ever drop text this runner just read from a repository file that stays on disk untouched: the full original is always one `--stage`-free run away.
+
+Before the call, `context_fits()` estimates the whole assembled request (trusted context, evidence and template) in tokens, the same characters-over-two heuristic the spend ledger uses for its own reservation, adds the tier's own `maxOutputTokens` as reserved output space, and compares the total against `CONTEXT_TOKEN_BUDGET`. Over budget queues the run before any provider call, the same fail-closed shape as a reached spend cap.
+
+## Condense fidelity: deterministic facts first, the model's words second
+
+`condense()` (S06, audit supplement) no longer trusts the model's paraphrase to carry a fragment's specifics. For each chunk, `required_facts()` extracts, by a fixed rule and not a judgment call:
+
+- a double-quoted span,
+- a bare numeral (digits, an optional thousands comma, an optional decimal part),
+- a token of 3 or more characters that mixes a digit with a letter (an id or a code).
+
+That extraction, not the model's summary, is what is relied on: it is appended verbatim to every chunk's condensed piece, labelled as deterministic and not model output, so a fact's survival never depends on the model choosing to keep it. Each chunk's id, content hash and best-effort span in the source are logged beside it. Every chunk call carries its own output budget (`CONDENSE_MAX_TOKENS`), smaller than the tier's own, and the whole pass refuses past an aggregate call cap (`CONDENSE_MAX_CHUNKS`) before dispatching anything past it. Once every chunk is in, `condensation_fidelity()` checks the required facts of the ORIGINAL evidence against the joined result; a fact that still did not survive queues the run rather than continuing on evidence known to be incomplete.
+
+The rule is deliberately mechanical and over-inclusive: a plain section number counts as a required fact on its own. A false positive here costs one extra verbatim fragment; a false negative would silently drop real evidence, which is the defect this exists for.
 
 ## The failure modes, plainly
 

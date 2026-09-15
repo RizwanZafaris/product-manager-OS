@@ -1,0 +1,191 @@
+---
+layer: templates
+stage: DESIGN
+gate: 3
+feeds: []
+method: "knowledge/INDEX.md"
+aliases: ["Development Handoff", "development-handoff"]
+---
+# Development Handoff: `<product or release name>`
+
+Stage: DESIGN, feeds [Gate 3: architecture and risks reviewed](../../os/STAGE-GATES.md)
+Knowledge: [knowledge index](../../knowledge/INDEX.md)
+Skill: [architect agent](../../agents/architect-agent.md)
+Filled example: [Ledgerline expense copilot](../../examples/expense-copilot-development-handoff.md)
+
+This is the development-ready package handed to engineering at the DESIGN exit. Each section points to the workspace artifact that carries the detailed content so the handoff is link complete instead of text complete.
+A section with no source says so on a line starting `Gap:`, and a section that does not apply says why on a line starting `N/A because`.
+
+<!-- Why link complete: engineering does not need the case for the problem restated, it
+     needs the exact artifact that carries it, at the revision Gate 3 approved. Text
+     copied here drifts from its source the first time that source changes and nobody
+     remembers to update the copy; a Link: line cannot drift, because there is nothing
+     to drift, only a pointer that resolves or does not.
+
+     pmos handoff reads this file mechanically. It finds the ten headings below by their
+     exact text, reads the lines under each numbered one, and reports each section as
+     linked, gap, not_applicable, broken, missing, or empty (the table under
+     Development-ready check defines each one). The package is development_ready only
+     once Gate 1, Gate 2 and Gate 3 are all approved and none are stale, and every
+     section is linked or explicitly not_applicable. None of that is a judgment call:
+     the tool never upgrades a Gap: line because a working link sits nearby, and it
+     never infers not_applicable from a section that was simply left empty. -->
+
+**Handoff owner:** `<name>` · **Prepared:** `<YYYY-MM-DD>`
+
+### Section map
+
+<!-- What each numbered section must show, and where that content usually already
+     lives. Skim this before opening the sections themselves. -->
+
+| # | Section | Must show | Typical source |
+|---|---|---|---|
+| 1 | Problem | the evidenced problem, and the cost of leaving it unsolved | `problem-framing.md` |
+| 2 | Vision and strategy | the future state and the strategic bet this serves | `vision.md`, `product-strategy.md` |
+| 3 | Outcomes and success measures | key results with a baseline, not only a target | `roadmap.md`, `okrs.md` |
+| 4 | Scope and exclusions | what ships, and what was deliberately left out | the signed DEFINE document |
+| 5 | Requirements and acceptance criteria | signed requirements plus criteria that can fail | the signed DEFINE document, `acceptance-criteria.md` |
+| 6 | Evidence and decisions | decisions already made, so they are not re-argued | `decision-log.md`, `adr.md` |
+| 7 | Dependencies | every external dependency, its owner, and its needed-by date | `dependency-register.md` |
+| 8 | Interface and data contracts | the contract consumers will build against | `api-contract.md`, `data-model.md` |
+| 9 | Unresolved risks and constraints | what could still go wrong, carried forward on purpose | `risk-register.md` |
+
+### Worked example
+
+<!-- Delete the example below when you fill this in. -->
+
+Three lines from a filled package (ILLUSTRATIVE), showing everything pmos handoff can
+read from one section:
+
+> Link: [prd.md](../definition/prd.md)
+> Gap: dependency-register.md has not been opened yet; the payout-rail work this
+> release needs from Treasury is tracked only in a Slack thread today.
+> N/A because this release changes internal batch jobs only: no API, no new
+> stored entity.
+
+The first line points at a real file, so the section reads as linked. The second is a
+real gap, not a formality: the package stays blocked at the development-ready check
+until the register exists and that line is replaced with a working link. The third is
+a complete answer on its own, because a section marked N/A because it does not apply
+is exactly as ready as one that links a file. A section is never linked and gapped at
+once: whichever Gap: line pmos handoff meets first wins, even with a working link
+sitting right above it.
+
+## 1. Problem
+
+<!-- The evidenced problem this release solves, not the solution. Link the discovery
+     artifacts that carry the trigger, the target user, and the cost of inaction. A bad
+     answer restates the feature as if it were the problem; a problem with no cost of
+     inaction is a wish, and it should never have cleared Gate 1. -->
+
+Link: [problem-framing.md](../discovery/problem-framing.md)
+Link: [discovery-document.md](../discovery/discovery-document.md)
+
+## 2. Vision and strategy
+
+<!-- The future state this release moves toward, and the strategic bet it serves. Link
+     vision.md and product-strategy.md; do not re-summarize them, because a summary
+     written once at DESIGN goes stale the next time strategy changes and nobody
+     remembers to come back and fix a summary nobody treats as the source of truth.
+     Treat a linked document that predates the current roadmap as a gap, not a
+     formality. -->
+
+Link: [vision.md](../planning/vision.md)
+Link: [product-strategy.md](../planning/product-strategy.md)
+
+## 3. Outcomes and success measures
+
+<!-- The key results this release is expected to move, each with a baseline, linked
+     from roadmap.md and okrs.md. A target with no baseline is not a measure, it is a
+     hope, and Gate 6 cannot verify a change against nothing. A common way this section
+     fails: a metric that appears only as a target column, never as a baseline anyone
+     actually measured before build started. -->
+
+Link: [roadmap.md](../planning/roadmap.md)
+Link: [okrs.md](../planning/okrs.md)
+
+## 4. Scope and exclusions
+
+<!-- What ships, linked from the document signed at Gate 2, and just as importantly
+     what was deliberately left out. A bad answer lists only what is in: a scope
+     section that never states an exclusion did not do the second half of its job, and
+     engineering is left guessing where the edge of the release actually is. -->
+
+Link: [prd.md](../definition/prd.md), [one-pager.md](../definition/one-pager.md), or [brd.md](../definition/brd.md)
+
+## 5. Requirements and acceptance criteria
+
+<!-- The signed requirements plus criteria specific enough to fail. Link the DEFINE
+     document actually signed at Gate 2, not a draft, and acceptance-criteria.md. The
+     trap here is a criterion that restates the requirement in different words instead
+     of naming a condition a tester can check and fail. -->
+
+Link: [prd.md](../definition/prd.md), [one-pager.md](../definition/one-pager.md), or [brd.md](../definition/brd.md) (whichever was signed at Gate 2)
+Link: [acceptance-criteria.md](../definition/acceptance-criteria.md)
+
+## 6. Evidence and decisions
+
+<!-- The decisions already made, so engineering does not re-open them mid-build. Link
+     decision-log.md and any ADRs this design produced. A decision log linked with
+     nothing recorded in it yet is a red flag, not evidence: the same call gets
+     re-argued the first time someone disagrees with it. -->
+
+Link: [decision-log.md](../execution/decision-log.md)
+Link: [adr.md](adr.md)
+
+## 7. Dependencies
+
+<!-- Every external dependency this release needs, linked from dependency-register.md,
+     each with an owning team and a needed-by date. A dependency with no named owner is
+     not a tracked dependency, it is a surprise waiting for a date to slip past with
+     nobody to escalate to. -->
+
+Link: [dependency-register.md](../execution/dependency-register.md)
+
+## 8. Interface and data contracts
+
+<!-- The contract consumers will build against, linked from api-contract.md and
+     data-model.md. Match the precision of api-contract.md's own worked micro-example: a
+     schema described in prose instead of pointing at the machine-readable spec file
+     fails the first consumer who tries to generate a client from it. -->
+
+Link: [api-contract.md](api-contract.md)
+Link: [data-model.md](data-model.md)
+
+## 9. Unresolved risks and constraints
+
+<!-- The risks this release is still carrying, and the constraints it must respect,
+     linked from risk-register.md with a premortem pass behind it. Carry a risk forward
+     on purpose; never close this section by omission. An empty section at Gate 3
+     usually means nobody ran the premortem naming how the release goes wrong, not that
+     nothing does. -->
+
+Link: [risk-register.md](../execution/risk-register.md)
+Link: [premortem-worksheet.md](../../frameworks/execution/premortem-worksheet.md)
+
+## Development-ready check
+
+<!-- This is the self-check pmos handoff runs before the package counts as ready: it
+     re-parses every section above by its heading text and applies the status table
+     below. A stale Gap: line left behind after the real artifact is linked is a common
+     trap, because the tool reads what the line says, not what has since become true;
+     replace or delete a Gap: line the moment its artifact exists. Run pmos handoff
+     locally before the Gate 3 review, not during it. -->
+
+| Status | What it means |
+|---|---|
+| `linked` | at least one `Link:` line resolves, and no `Gap:` line is present |
+| `not_applicable` | no links, but an `N/A because` line explains why |
+| `gap` | a `Gap:` line is present; it wins even over a working link in the same section |
+| `broken` | a link is present but at least one does not resolve in the workspace |
+| `missing` | pmos handoff could not find this heading at all |
+| `empty` | none of the above: no links, no `Gap:`, no `N/A because` |
+
+- Gate 1, Gate 2, and Gate 3 are approved and none are stale.
+- Every section links a workspace artifact or has an `N/A because` line.
+- No section has a `Gap:` line.
+- Every linked path resolves in the workspace.
+- No section reports `missing`: each heading above matches one of the nine section
+  titles exactly, byte for byte, the same way this file's own headings do.
+
+**Reviewed by:** `<name>` · **Review date:** `<YYYY-MM-DD>`

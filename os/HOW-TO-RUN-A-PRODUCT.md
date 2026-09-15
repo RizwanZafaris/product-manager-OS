@@ -31,7 +31,7 @@ Read [OPERATING-LOOP.md](OPERATING-LOOP.md) for the stage definitions and [STAGE
 
 ## Before stage 1: planning decides this enters the loop
 
-Ledgerline does not start because someone had an idea in a meeting. The quarterly plan in `../templates/planning/roadmap.md` carries a theme, "owners stop being surprised by cash", with a confidence level and a target period. The company OKRs in `../templates/planning/okrs.md` carry a key result about second-month retention, with a baseline and a target. The roadmap slot plus the retention KR is the mandate. The PM, Dana, opens the loop.
+Ledgerline does not start because someone had an idea in a meeting. The quarterly plan in `../templates/planning/roadmap.md` carries a theme, "owners stop being surprised by cash", with a confidence level and a target period. The company OKRs in `../templates/planning/okrs.md` carry a key result about second-month retention, with a baseline and a target. The roadmap slot plus the retention KR is the mandate. That is a portfolio decision: planning says Ledgerline enters the loop and why, and Ledgerline's own vision, strategy, and roadmap come later, inside DEFINE. The PM, Dana, opens the loop.
 
 The mandate is doing more work than it looks like it is doing. The roadmap row names a theme rather than a feature, so DISCOVER is allowed to come back with "alerts, not forecasts" and still be on plan. Had the row read "ship cash-flow forecasting in Q3", discovery would have had one honest outcome available to it, and Gate 1's no-go argument would have been theater. If your roadmap rows name solutions, your Gate 1s will pass unanimously and mean nothing.
 
@@ -62,6 +62,8 @@ The success signal deserves a second look, because it is the single most consequ
 The no-go argument is worth reproducing because a checklist line reading "at least one plausible reason to say no-go was seriously argued" is easy to satisfy dishonestly. Marcus argues it: a shortfall alert triggered by rules on the existing balance needs no forecast, no model, and no bank-feed dependency, and could ship in three weeks. The counter is in the interview notes: the Sunday-night spreadsheets exist because owners are trying to see forward, not to be told when it is too late. Four of the six spreadsheet-keepers had already received an overdraft notification from their bank, which is an alert, and had built the spreadsheet anyway. The argument loses on evidence rather than on seniority, and the exchange is filed in the gate attempt so the next person can see the fork.
 
 ## DEFINE, ending at Gate 2
+
+Before the business case, Dana writes Ledgerline's vision, strategy, and roadmap with phased outcomes, each approved by the named role: the vision (`../templates/planning/vision.md`) states who it serves, which Gate 1 problem it answers, and the change it aims for, approved by Priya as business sponsor; the strategy (`../templates/planning/product-strategy.md`) names where to play, how to win, and what the product will not do, tracing to the vision, approved by Dana as product owner and Priya as business sponsor; and the roadmap (`../templates/planning/roadmap.md`) orders phases, each with an outcome, a success measure, and its dependencies, tracing to the strategy, approved by Dana as product owner and Marcus as engineering lead.
 
 Business case first: `../templates/definition/brd.md` names objectives, scope, stakeholders, constraints, the ROI logic, and the sponsor who will sign it.
 

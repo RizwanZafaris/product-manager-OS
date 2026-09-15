@@ -9,8 +9,9 @@ aliases: ["AI Interaction Spec", "ai-interaction-spec"]
 # AI Interaction Spec: [feature name]
 
 Stage: AI overlay, active whenever the product contains a model; feeds Gate 4 (acceptance criteria met)
-Knowledge: ../../knowledge/design/ai-interaction-patterns.md
-Skill: ../../skills/ai-prd/SKILL.md
+Knowledge: [AI interaction patterns](../../knowledge/design/ai-interaction-patterns.md)
+Skill: [AI PRD skill](../../skills/ai-prd/SKILL.md)
+Filled example: [The Expense Copilot Draft-Report Panel](../../examples/ledgerline-ai-interaction-spec.md)
 
 <!-- Guardrails and hallucination-controls.md specify what the system is allowed to
      do. This document specifies what the user sees while it does it: how generation
@@ -19,7 +20,13 @@ Skill: ../../skills/ai-prd/SKILL.md
      control nobody can use; this is the half of the overlay that makes the other
      half legible. Design intent for the surface as a whole lives in
      ../definition/design-brief.md; this file is the AI-specific layer on top of it.
-     "feeds" in the frontmatter lists downstream consumers of this spec's outputs. -->
+     "feeds" in the frontmatter lists downstream consumers of this spec's outputs.
+
+     A trap: writing the disclosure label once and assuming the UI carries it
+     everywhere. This fails when a mixed document shows model text beside human text
+     and only the banner discloses it; label at the field, not only at the banner.
+     Never copy human-authored wording into the generated column; the disclosure
+     label must appear only where the model produced the value. -->
 
 **Feature:** [one sentence]
 **Interaction owner:** [name] · **Document date:** [YYYY-MM-DD]
@@ -28,7 +35,12 @@ Skill: ../../skills/ai-prd/SKILL.md
 
 <!-- A user forms different trust judgements about a human-written sentence and a
      generated one. Disclosure is not a badge for its own sake; it is the fact the
-     rest of this document depends on being visible. -->
+     rest of this document depends on being visible.
+
+     A trap: listing every surface in the table but leaving "What happens when the
+     user cannot tell" blank. This fails when a mixed report ships and the reviewer
+     cannot work out which half is generated; fill the gap, do not leave it as a
+     reading exercise. Do not reuse the label wording for a human-authored value. -->
 
 | Surface | How AI involvement is disclosed | Persistent or one-time | Test | Owner |
 |---|---|---|---|---|
@@ -43,7 +55,14 @@ Skill: ../../skills/ai-prd/SKILL.md
 
 <!-- The full set of states a generation-driven surface must design for, from
      ../../knowledge/design/ai-interaction-patterns.md, named because "loading"
-     and "wrong" are usually built by different people who never compare notes. -->
+     and "wrong" are usually built by different people who never compare notes.
+
+     This fails when the table lists Idle and Completed and stops there; every
+     state in the list is a state a real user will hit, including Reconnecting and
+     Resumed. A trap: leaving "Can the user act" blank for a mid-stream state; if
+     the stop control is not live during Streaming, section 4 is already broken.
+     Never write a latency budget without a stall notice; a spinner with no
+     timeout is a hang the user cannot distinguish from a model that is thinking. -->
 
 | State | Trigger | What the user sees | Can the user act during it | Test |
 |---|---|---|---|---|
@@ -67,7 +86,15 @@ Skill: ../../skills/ai-prd/SKILL.md
 
 <!-- hallucination-controls.md section 1 names what the system may state facts from.
      This section is where that source becomes visible to the user, claim by claim,
-     not buried in a settings page. -->
+     not buried in a settings page.
+
+     This fails when the source column says "the model" or "the system" rather than
+     a retrieved document or row; a source the model produced from memory is not a
+     source. A trap: showing a bare confidence percentage with no basis behind it;
+     "0.94" printed alone means nothing the reviewer can act on. Never let a claim
+     with no source row fall through to a generic footer; route it to the abstain
+     policy in [hallucination-controls.md](../../templates/ai/hallucination-controls.md)
+     instead. -->
 
 | Claim type | Source shown | Presentation (inline citation, footnote, expandable panel) | What clicking it does | Test | Owner |
 |---|---|---|---|---|---|
@@ -83,7 +110,14 @@ Skill: ../../skills/ai-prd/SKILL.md
 
 <!-- Every row here is a way the user overrides or interrupts the system. A generation
      surface with no stop control and no edit path is a surface the user cannot trust,
-     whatever the guardrails behind it say. -->
+     whatever the guardrails behind it say.
+
+     A trap: writing "stop generation" in the table but wiring it to cancel only
+     after the next token arrives; a stop that does not halt immediately is not a
+     stop control. This fails when regenerate keeps the prior output but the row
+     does not say so; the reviewer needs to know whether the old draft was kept or
+     replaced. Do not route a destructive model action through this table; it
+     belongs in [human-approval-gates.md](../../templates/ai/human-approval-gates.md). -->
 
 | Control | Available in which state (section 2) | Effect | Enforcement point | Test |
 |---|---|---|---|---|
@@ -98,12 +132,24 @@ Skill: ../../skills/ai-prd/SKILL.md
 
 ## 5. Escalation to a human
 
+<!-- A handoff path the user reaches when the model abstains or the user wants a
+     person. A good row names the trigger the user can see, the context the human
+     receives, and a response-time promise owned by an on-call rota, not invented
+     here. Never leave the context column blank; the human inherits a transcript
+     and feature context, not mind-reading. -->
+
 | Path | Trigger | Context handed over | Response-time promise | Owner | Test |
 |---|---|---|---|---|---|
 | [e.g. "Talk to a person" link] | [system abstains or user requests human] | [conversation transcript, feature context, user ID] | [e.g. < 15 min, ILLUSTRATIVE] | [name/role] | [test ID] |
 | [add] | | | | | |
 
 ## 5a. Model choice and fallback on removal
+
+<!-- What the user is told when the model they were using is withdrawn mid-conversation
+     and what a per-conversation picker discloses. A good row names the fallback
+     model that takes over and what a reopened conversation shows. Never promise
+     "seamless" fallback without a test that proves the conversation continues
+     with a named replacement, not a silent swap. -->
 
 | Decision | Value | Owner | Test |
 |---|---|---|---|
@@ -113,6 +159,12 @@ Skill: ../../skills/ai-prd/SKILL.md
 | Model shown on a reopened conversation | [the model each prior reply came from / only the current model] | [name] | [test ID] |
 
 ## 5b. Memory and attachments
+
+<!-- What the model remembers across conversations, what it carries within one, and
+     what the user can turn off or delete. A good row names each memory axis and
+     its user control, with a test that proves revocation removes content from what
+     the model actually receives. Never claim "memory is off" by the settings
+     screen alone; prove it by a test that checks the model's input after deletion. -->
 
 | Item | State the user sees | User control | Owner | Test |
 |---|---|---|---|---|
@@ -125,6 +177,12 @@ Skill: ../../skills/ai-prd/SKILL.md
 
 ## 5c. Ephemeral mode
 
+<!-- What the surface guarantees when the user asks for nothing to persist: what is
+     never written to durable storage, what still crosses the network, and what the
+     local device keeps. A good row names the guarantee and its owner. Never write
+     "no data stored" without naming the telemetry and usage analytics that still
+     cross the network; ephemeral is about writes, not about egress. -->
+
 | Axis | What the mode guarantees | Owner | Test |
 |---|---|---|---|
 | Durable storage | [what is never written] | [name] | [test ID] |
@@ -133,6 +191,12 @@ Skill: ../../skills/ai-prd/SKILL.md
 | Administrator control | [can the mode be forced on or exempted] | [name] | [test ID] |
 
 ## 5d. Tool approval scope and exemptions
+
+<!-- What an approval covers when the model asks to call a tool and which paths skip
+     the check. A good row names the scope of each approval and what happens when
+     the user leaves a call waiting. This fails when "automation" is exempted with
+     no compensating control; an exemption without a compensating control is a
+     hole, not a decision. -->
 
 | Question | Decision | Owner | Test |
 |---|---|---|---|
@@ -143,6 +207,12 @@ Skill: ../../skills/ai-prd/SKILL.md
 
 ## 5e. Moderation stream versus buffer
 
+<!-- Whether moderation checks run against the live token stream or the buffered
+     response, and which trade-off the product accepts. A good row names where each
+     check runs and the trade-off the team signed off. Never run both paths and
+     leave the trade-off unstated; stream means a harmful fragment may display before
+     retraction, buffer means latency before anything is shown. -->
+
 | Question | Decision | Owner | Test |
 |---|---|---|---|
 | Where moderation checks run | [against the stream as tokens arrive / against the complete buffered response] | [name] | [test ID] |
@@ -152,7 +222,14 @@ Skill: ../../skills/ai-prd/SKILL.md
 ## 6. Feedback and audit trail
 
 <!-- What section 4's feedback control actually writes down, and who reads it. Without
-     this, "thumbs down" is theatre. -->
+     this, "thumbs down" is theatre.
+
+     A trap: logging a thumbs-down event with no prompt version or model version;
+     the feedback is useless for triage without knowing which run it came from.
+     This fails when the review cadence column says "as needed"; name the owner
+     and the cadence or the trail is theatre. Do not let feedback feed only a log;
+     route it to the error taxonomy in [hallucination-controls.md](../../templates/ai/hallucination-controls.md)
+     or the eval set in [eval-spec.md](eval-spec.md). -->
 
 - Each feedback event records: [output shown, prompt version, model version, timestamp, user action, free-text reason if given]
 - Review cadence and owner: [name, cadence, e.g. weekly review by Product Owner]
@@ -163,9 +240,17 @@ Skill: ../../skills/ai-prd/SKILL.md
 <!-- Generated content breaks assumptions a static accessibility checklist does not
      carry: text that arrives token by token, a source panel that opens and closes,
      a stop control that must be reachable mid-stream. Walk these against
-     ../architecture/accessibility-checklist.md section 8 (dialogs, overlays, toasts)
-     for the citation panel and section 4 (controls) for stop and regenerate; the rows
-     below are the AI-specific additions that checklist does not cover. -->
+     [../architecture/accessibility-checklist.md](../architecture/accessibility-checklist.md)
+     section 8 (dialogs, overlays, toasts) for the citation panel and section 4
+     (controls) for stop and regenerate; the rows below are the AI-specific additions
+     that checklist does not cover.
+
+     A trap: walking the checks on a static screenshot; streaming text, a live stop
+     control and a citation popover behave differently while generation is running.
+     This fails when the reasoning disclosure is keyboard-operable on a loaded
+     page but not mid-stream; the pass must happen during live generation. Never
+     mark a row passed by visual inspection alone; a citation marker that looks
+     distinct but is not keyboard-operable fails the screen reader walk. -->
 
 | Check | How to verify | Evidence | Result | Owner |
 |---|---|---|---|---|

@@ -1,220 +1,40 @@
 {
   "schema": 1,
-  "reviewer_id": "Codex",
+  "reviewer_id": "deepseek/deepseek-v4-pro",
   "reviewer_kind": "independent-agent",
   "independent_implementation": true,
   "identity_assurance": "unauthenticated-local-claim",
-  "reviewed_at": "2026-09-12T00:20:10Z",
-  "reviewed_tree_sha256": "615ff734dc6e3da770db0483a6956322d2b29d182ab32077dcb672f0df6092ff",
+  "reviewed_at": "2026-09-15T03:46:53Z",
+  "reviewed_tree_sha256": "32887e31a314273b8138e57048f4af71a61ebbe0a5e26d427ffde8e7c8d1932e",
   "scope": [
-    "Exact tree e172cdd5a629810d900a65eef36ca19a02bd20b8 over accepted parent 583b749: all 32 changed paths, nineteen test moves, unchanged test identities, registry and class inventory, path references, clone-local imports, mutation discovery, and fresh-checkout workflow commands.",
-    "Complete local CI/readiness checks and supporting runner/record integrity inspection; three content corrections checked against source card and primary sources. No P0 or P1 found; one P3 attribution precision issue remains. Hosted GitHub execution, live ruleset state and seven external evidence gates are not independently verified by this local review.",
-    "Release gates and readiness integrity; reviewer implemented none of the reviewed tree; model: GPT-6"
+    "PR #38 (feat/coherent-product-workflow) at 2d32737, reviewed through final-review packet v4 (REVIEW-PACKET.md, commit 58799b5 on branch critic/final-review-packet-4): CI, black-box QA, every OpenRouter critic verdict with its resolution, the senior review of every runtime commit and fix, the earlier final reviews, and the 47-finding audit ledger.",
+    "Review performed by deepseek/deepseek-v4-pro through OpenRouter (controller task FINAL4-deepseek, 2026-09-15T00:47:12Z, provider DeepInfra; it also accepted rounds 1 to 3). Recorded on the owner's decision D7 (answer: DeepSeek + adjudication). Claude Opus, which integrated this PR, ran this command on the reviewer's behalf and did not review.",
+    "Dissent on record: moonshotai/kimi-k2.6 rejected all four final-review rounds. Each real defect it raised was fixed (QA-1b in a485289, the cdf4a5b symlink race in fe4a496, QA-4 in 2d32737); its fourth round raised no new code defect. Its points and their answers are in the remediation ledger under final_review_rounds_2026_09_15."
   ],
   "evidence": [
     {
-      "command": "/opt/homebrew/bin/python3.12 tools/ci_gate.py",
-      "result": "Exit 1; 20/21 gates pass. Only readiness-local fails on stale CI-6. Root, harness, regulated, security, docs, graph and remaining gates pass."
+      "command": "python3.12 tools/ci_gate.py at 2d32737",
+      "result": "release gates 21/22 passed; the one red gate is readiness-local, awaiting this record"
     },
     {
-      "command": "/opt/homebrew/bin/python3.12 tools/readiness.py",
-      "result": "Exit 1; 99/100, 48 passing criteria, only CI-6 stale. CI-1 full suite and CI-3 fresh-tree mutations pass. Seven external evidence gates remain required; tree clean and stable."
+      "command": "hosted gate jobs on Python 3.11 and 3.13 at 2d32737 (runs 34914046324 and 34914049375)",
+      "result": "21/22; only readiness-local failing; deletable-harness passing"
     },
     {
-      "command": "git status --short",
-      "result": "Clean before review and during inspection."
+      "command": "qa_probe.py 2d32737 (fresh clone, pip install --no-index ., temporary HOME, no provider calls)",
+      "result": "34 PASS, 0 FAIL, 0 WARN"
     },
     {
-      "command": "git show --stat HEAD",
-      "result": "e172cdd5a629810d900a65eef36ca19a02bd20b8; 32 changed paths including nineteen test renames."
+      "command": "qa_e2e.py 2d32737 (Start Here workspace, nine answers, Gate 1, direct edit, stale detection, reconcile, re-approval, handoff, export)",
+      "result": "17 PASS, 0 FAIL, 0 WARN"
     },
     {
-      "command": "cat os/OPERATING-LOOP.md",
-      "result": "Read release-review context; no product-stage gate signed."
+      "command": "remed_controller.py critic FINAL4-deepseek (deepseek/deepseek-v4-pro)",
+      "result": "accept with six named checks and three P3 follow-ups"
     },
     {
-      "command": "rg -n (CI-6/review_gate/583b749) /Users/rizwanzafar/.codex/memories/MEMORY.md",
-      "result": "Exit 127; rg unavailable. Used git grep and grep thereafter."
-    },
-    {
-      "command": "grep -nE (CI-6/review_gate/583b749) /Users/rizwanzafar/.codex/memories/MEMORY.md",
-      "result": "Historical search hits only; no historical claim relied upon for this exact-tree judgment."
-    },
-    {
-      "command": "git show HEAD --format=fuller",
-      "result": "Read commit diff; followed with targeted reads where output was truncated."
-    },
-    {
-      "command": "cat tools/ci_gate.py tools/readiness_probe.py",
-      "result": "Inspected runner and probe code; targeted reads completed truncated output."
-    },
-    {
-      "command": "git show HEAD -- tools/ci_gate.py tools/readiness.py tools/readiness_probe.py tests lint.py frameworks/design/ux-scorecard.md knowledge/design/visual-foundations.md",
-      "result": "Inspected content changes and code; path-limited test additions expanded output, followed by rename-aware diff."
-    },
-    {
-      "command": "sed -n '1,210p' tools/readiness_probe.py",
-      "result": "Read tracked-tree copying and cwd-relative import environment."
-    },
-    {
-      "command": "cat .github/workflows/lint.yml",
-      "result": "Both changed direct commands address tests/test_lint.py; regulated-module command remains in its own directory; fresh-checkout Python matrix and harness-deletion job inspected."
-    },
-    {
-      "command": "cat knowledge/design/ux-measurement.md",
-      "result": "Confirmed Sauro and Dumas CHI 2009 source and distinction from later SEQ naming/benchmarks."
-    },
-    {
-      "command": "git show HEAD --format= --find-renames (sed from test_contract_gates diff onward)",
-      "result": "Read rename-aware hunks for moved tests, import paths, required modules, inventory and mutation discovery."
-    },
-    {
-      "command": "sed -n '1,155p' tools/readiness_probe.py",
-      "result": "Confirmed run replaces PYTHONPATH with cwd/tests and substitutes sys.executable for python3."
-    },
-    {
-      "command": "sed -n '1,115p' tools/ci_gate.py",
-      "result": "All nineteen module names retained in canonical root suite; environment imports tests/."
-    },
-    {
-      "command": "grep -n -A22 'def clean_env' tools/readiness.py",
-      "result": "Verifier subprocesses receive checkout tests/ on PYTHONPATH."
-    },
-    {
-      "command": "git grep -nE 'test_[A-Za-z_]+\\.py' -- excluding independent-review.json and regulated import",
-      "result": "All active executable/evidence references resolve. Remaining bare names are historical entries, module basenames, fixtures, or contextual prose; no broken root test invocation found."
-    },
-    {
-      "command": "PYTHONDONTWRITEBYTECODE=1 /opt/homebrew/bin/python3.12 -m unittest tests/test_lint.py",
-      "result": "Exit 0; 129 tests, OK."
-    },
-    {
-      "command": "git diff --check HEAD^ HEAD",
-      "result": "Exit 0; no whitespace errors."
-    },
-    {
-      "command": "git log -2 --oneline",
-      "result": "HEAD e172cdd; immediate parent 583b749 matches supplied baseline."
-    },
-    {
-      "command": "sed -n '300,395p' tools/readiness_probe.py",
-      "result": "Full-suite probe reads canonical root argv, enforces required modules, positive counts and no skipped/expected failures."
-    },
-    {
-      "command": "sed -n '1,160p' tools/review_gate.py",
-      "result": "Read exact-tree Git discovery and fail-closed behavior."
-    },
-    {
-      "command": "git show HEAD --format= --find-renames (sed test_pmos_review through test_pmos_usecases)",
-      "result": "Completed moved-test path hunks; no class or method deletion."
-    },
-    {
-      "command": "sed -n '305,395p' tools/readiness_probe.py",
-      "result": "Confirmed all found modules run and counts are checked."
-    },
-    {
-      "command": "ps -eo pid,ppid,etime,command (filtered for gate processes)",
-      "result": "Sandbox denied ps; no process-inspection evidence claimed. Awaited original command sessions to completion."
-    },
-    {
-      "command": "sed -n '410,620p' tools/review_gate.py",
-      "result": "Read protected record writer and closed attestation schema; identity is an unauthenticated local claim."
-    },
-    {
-      "command": "cat docs/readiness/independent-review.json (first 60 lines)",
-      "result": "Existing record is for prior digest; baseline review examined as historical checkout evidence."
-    },
-    {
-      "command": "sed -n '620,820p' tools/review_gate.py",
-      "result": "Read recent-author check, record validation and CLI. Only --record is used to modify the record."
-    },
-    {
-      "command": "grep -nE (executor/Thread/timeout/workers/as_completed/subprocess) tools/readiness.py tools/ci_gate.py",
-      "result": "Checked subprocess execution, timeouts and current-interpreter substitution."
-    },
-    {
-      "command": "sed -n '1,125p' knowledge/design/README.md",
-      "result": "Read worksheet questionnaire exception; revised SUS comment is consistent."
-    },
-    {
-      "command": "sed -n '64,100p' frameworks/design/ux-scorecard.md",
-      "result": "Attribution is present; retained higher-is-easier polarity needs adaptation disclosure relative to 2009 study."
-    },
-    {
-      "command": "sed -n '350,430p' tools/readiness.py",
-      "result": "Reviewed exact-test count checks and evidence verifier."
-    },
-    {
-      "command": "sed -n '1,95p' tools/readiness_registry.py",
-      "result": "Read fixed argv and pinned-id contracts."
-    },
-    {
-      "command": "PYTHONDONTWRITEBYTECODE=1 /opt/homebrew/bin/python3.12 tools/readiness_probe.py deletable-harness",
-      "result": "Exit 0; tree gate, manifest, workspace contract and lint suite pass with harness deleted."
-    },
-    {
-      "command": "PYTHONDONTWRITEBYTECODE=1 /opt/homebrew/bin/python3.12 - (inline AST and inventory inspection)",
-      "result": "Exit 0; nineteen modules, 673 unique test ids; every inventory class present; imports resolve to checkout tests/; all moved class/method names unchanged from HEAD^."
-    },
-    {
-      "command": "PYTHONDONTWRITEBYTECODE=1 /opt/homebrew/bin/python3.12 - (inline registry resolution and mocked subprocess inspection)",
-      "result": "Exit 0; 335 unique registry-pinned ids each load one test; clone cwd/PYTHONPATH follow clone tests/, replace host path, preserve Python executable. Mock inspection created no files."
-    },
-    {
-      "command": "sed -n '660,770p' tools/readiness.py",
-      "result": "Read readiness exit-status and optional output behavior; no output file requested."
-    },
-    {
-      "command": "sed -n '150,220p' tools/ci_gate.py",
-      "result": "Confirmed canonical suite reports all gate results and nonzero on any failure."
-    },
-    {
-      "command": "git diff --name-only",
-      "result": "No implementation changes."
-    },
-    {
-      "command": "git status --porcelain=v1 --untracked-files=all",
-      "result": "Clean after gates and before recording."
-    },
-    {
-      "command": "git grep -nE (unittest/discover) -- .github README.md CONTRIBUTING.md tools tests (tail 50)",
-      "result": "Cross-checked executable suite references."
-    },
-    {
-      "command": "sed -n '632,665p' tools/readiness.py",
-      "result": "Read printed hard gates and external-evidence limitations."
-    },
-    {
-      "command": "sed -n '50,95p' docs/readiness/independent-review.json",
-      "result": "Read prior record provenance; did not treat old results as current verification."
-    },
-    {
-      "command": "git show HEAD --numstat",
-      "result": "Confirmed changes confined to stated move and three content fixes."
-    },
-    {
-      "command": "git grep -n 'Path(__file__)' -- tests",
-      "result": "All repository-root references in moved tests now resolve via parent.parent; conductor intentionally includes tests and repo root."
-    },
-    {
-      "command": "sed -n '425,515p' tools/readiness.py",
-      "result": "Checked stable-tree comparison, verifier caching and criterion reporting."
-    },
-    {
-      "command": "PYTHONDONTWRITEBYTECODE=1 /opt/homebrew/bin/python3.12 - (existing deletable-harness probe with direct workflow unittest argv)",
-      "result": "Exit 0; tests/test_lint.py invocation also passes on the tracked temporary tree after deleting harness. Only existing probe performs temporary fixture operations."
-    },
-    {
-      "command": "PYTHONDONTWRITEBYTECODE=1 /opt/homebrew/bin/python3.12 tools/review_gate.py --digest",
-      "result": "776 files; SHA256 615ff734dc6e3da770db0483a6956322d2b29d182ab32077dcb672f0df6092ff."
-    },
-    {
-      "command": "nl -ba frameworks/design/ux-scorecard.md (lines 66-80)",
-      "result": "Finding located at line 76; worksheet forbids imported benchmarks but does not disclose source-scale reversal."
-    },
-    {
-      "command": "web source lookup: WCAG21 and WCAG22 Reflow; Sauro_Dumas_CHI2009; MeasuringU evolution-of-seq",
-      "result": "W3C primary criteria confirm corrected orientation, dimensions and conditional exception. Direct MeasuringU fetch returned 403; indexed primary paper Figure 1 and author article confirm 2009 Very Easy-to-Very Difficult polarity, opposite worksheet. URLs: https://www.w3.org/TR/WCAG21/#reflow ; https://www.w3.org/TR/WCAG22/#reflow ; https://measuringu.com/papers/Sauro_Dumas_CHI2009.pdf ; https://measuringu.com/evolution-of-seq/"
+      "command": "remed_controller.py critic FINAL4-kimi (moonshotai/kimi-k2.6)",
+      "result": "reject (2 P0, 3 P1, 2 P2, 1 P3), answered in packet v4 and the ledger; recorded over it by owner decision D7"
     }
   ],
   "findings": [
@@ -222,8 +42,22 @@
       "id": "R1",
       "severity": "P3",
       "status": "open",
-      "summary": "Post-task scale reverses the cited 2009 instrument without identifying the adaptation.",
-      "evidence": "frameworks/design/ux-scorecard.md:76 uses 1 Very difficult to 7 Very easy. Sauro and Dumas CHI 2009 Figure 1 uses Very Easy on the left and Very Difficult on the right; author history confirms the reversal (https://measuringu.com/evolution-of-seq/). Label the worksheet as adapted with reversed polarity, or cite the later version and reconcile the source note; keep scoring direction explicit."
+      "summary": "d3620de: the stale branch has an integration test but no unit test",
+      "evidence": "FINAL4-deepseek issue 1"
+    },
+    {
+      "id": "R2",
+      "severity": "P3",
+      "status": "open",
+      "summary": "0088934: a handoff test ignores an escaping second link",
+      "evidence": "FINAL4-deepseek issue 2"
+    },
+    {
+      "id": "R3",
+      "severity": "P3",
+      "status": "open",
+      "summary": "4e553fd and 7e388ef: wording notes on the usage report and on --quick percentages",
+      "evidence": "FINAL4-deepseek issue 3"
     }
   ],
   "verdict": "accepted"

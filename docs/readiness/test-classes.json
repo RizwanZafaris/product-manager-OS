@@ -27,6 +27,12 @@
       "WorkspaceExclusion",
       "WorkspaceModeTests"
     ],
+    "test_phase_index": [
+      "PhaseIndexTests"
+    ],
+    "test_pmos_artifacts": [
+      "ArtifactManifestTests"
+    ],
     "test_pmos_cli": [
       "CliTests"
     ],
@@ -35,6 +41,9 @@
     ],
     "test_pmos_domain": [
       "DomainTest"
+    ],
+    "test_pmos_handoff": [
+      "HandoffTests"
     ],
     "test_pmos_hooks": [
       "ClaudeHookTests",
@@ -49,6 +58,9 @@
       "SubprocessesAreBounded",
       "TestClassesCannotVanish",
       "TransportsShareOneContract"
+    ],
+    "test_pmos_journey": [
+      "JourneyRuntimeTests"
     ],
     "test_pmos_matrix": [
       "GraderTests",
@@ -65,6 +77,9 @@
       "OperationsBoundaryTests",
       "OutboxTests",
       "ResearchTests"
+    ],
+    "test_pmos_phases": [
+      "PhaseReportTests"
     ],
     "test_pmos_probe": [
       "AdapterContractTests",
@@ -128,6 +143,9 @@
     ],
     "test_pmos_usecases": [
       "UseCaseMatrixTests"
+    ],
+    "test_question_banks": [
+      "QuestionBankCompileTests"
     ],
     "test_readiness": [
       "BuildArtifactIgnoreTests",

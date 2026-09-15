@@ -20,13 +20,13 @@ One subgraph per stage of the loop in [os/OPERATING-LOOP.md](../os/OPERATING-LOO
 
 | Measure | Count |
 |---|---|
-| Files scanned in the six declaring layers | 339 |
-| Files carrying frontmatter of any shape | 339 |
+| Files scanned in the six declaring layers | 340 |
+| Files carrying frontmatter of any shape | 340 |
 | Files with no frontmatter yet | 0 |
 | Files declaring a `feeds` key | 146 |
-| Nodes in the diagram | 257 |
-| Artifact nodes | 251 |
-| Edges in the diagram | 550 |
+| Nodes in the diagram | 258 |
+| Artifact nodes | 252 |
+| Edges in the diagram | 554 |
 | Feeds values that resolved to nothing | 0 |
 
 A file with no frontmatter is not an error, and a file with frontmatter has not necessarily declared a feed: every SKILL.md and agent file carries a name and a description already. The `feeds` pass lands file by file, and until it reaches a file, that file still contributes whatever its Stage header declares.
@@ -116,6 +116,9 @@ flowchart LR
     n_templates_definition_user_stories_md_a49e1cf8["definition/user-stories"]
     n_templates_definition_ux_writing_guide_md_5da176ac["definition/ux-writing-guide"]
     n_templates_operate_compliance_impact_assessment_md_26f196a7["operate/compliance-impact-assessment"]
+    n_templates_planning_product_strategy_md_09d425db["planning/product-strategy"]
+    n_templates_planning_roadmap_md_2afb97a8["planning/roadmap"]
+    n_templates_planning_vision_md_40cadae0["planning/vision"]
   end
   subgraph s_DESIGN["DESIGN"]
     direction LR
@@ -152,6 +155,7 @@ flowchart LR
     n_templates_architecture_data_model_md_80a5f8ca["architecture/data-model"]
     n_templates_architecture_design_md_md_7556683b["architecture/design-md"]
     n_templates_architecture_design_review_record_md_4b50f927["architecture/design-review-record"]
+    n_templates_architecture_development_handoff_md_64b0eebc["architecture/development-handoff"]
     n_templates_architecture_integrations_md_a45e4f74["architecture/integrations"]
     n_templates_architecture_localisation_rtl_checklist_md_76aa2954["architecture/localisation-rtl-checklist"]
     n_templates_architecture_observability_md_978fba88["architecture/observability"]
@@ -281,10 +285,7 @@ flowchart LR
     n_templates_planning_okrs_md_0ec1515d["planning/okrs"]
     n_templates_planning_positioning_md_bfa6b195["planning/positioning"]
     n_templates_planning_pricing_packaging_md_5a0c4db5["planning/pricing-packaging"]
-    n_templates_planning_product_strategy_md_09d425db["planning/product-strategy"]
     n_templates_planning_program_charter_md_73783114["planning/program-charter"]
-    n_templates_planning_roadmap_md_2afb97a8["planning/roadmap"]
-    n_templates_planning_vision_md_40cadae0["planning/vision"]
   end
   subgraph s_AI_OVERLAY["AI overlay track"]
     direction LR
@@ -350,6 +351,7 @@ flowchart LR
   n_templates_architecture_design_md_md_7556683b --> G3
   n_templates_architecture_design_review_record_md_4b50f927 --> G3
   n_templates_architecture_design_review_record_md_4b50f927 --> G4
+  n_templates_architecture_development_handoff_md_64b0eebc --> G3
   n_templates_architecture_integrations_md_a45e4f74 --> G3
   n_templates_architecture_localisation_rtl_checklist_md_76aa2954 --> G3
   n_templates_architecture_localisation_rtl_checklist_md_76aa2954 --> G4
@@ -437,7 +439,9 @@ flowchart LR
   n_templates_planning_growth_plan_md_ab26a0ea --> G6
   n_templates_planning_gtm_plan_md_61b54e46 --> G5
   n_templates_planning_pricing_packaging_md_5a0c4db5 --> G5
+  n_templates_planning_product_strategy_md_09d425db --> G2
   n_templates_planning_program_charter_md_73783114 --> G2
+  n_templates_planning_vision_md_40cadae0 --> G2
   n_agents_acceptance_agent_md_468449b6 -.-> n_agents_drafting_agent_md_57d815a7
   n_agents_acceptance_agent_md_468449b6 -.-> n_agents_release_manager_agent_md_550633f5
   n_agents_acceptance_agent_md_468449b6 -.-> n_templates_delivery_uat_plan_md_71125f94
@@ -536,6 +540,7 @@ flowchart LR
   n_frameworks_execution_fmea_md_32a78207 -.-> n_templates_definition_nfr_md_146602a4
   n_frameworks_execution_fmea_md_32a78207 -.-> n_templates_execution_risk_register_md_4a73bbfc
   n_frameworks_execution_fmea_md_32a78207 -.-> n_templates_operate_operational_readiness_review_md_8614622d
+  n_frameworks_execution_premortem_worksheet_md_8f901e68 -.-> n_templates_architecture_development_handoff_md_64b0eebc
   n_frameworks_execution_premortem_worksheet_md_8f901e68 -.-> n_templates_execution_dependency_register_md_5edd4dc1
   n_frameworks_execution_premortem_worksheet_md_8f901e68 -.-> n_templates_execution_risk_register_md_4a73bbfc
   n_frameworks_execution_premortem_worksheet_md_8f901e68 -.-> n_templates_operate_post_launch_review_md_8d9e56ee
@@ -878,11 +883,11 @@ flowchart LR
 | Stage | Gates | Artifacts with a declared relationship |
 |---|---|---|
 | DISCOVER | Gate 1 | 40 |
-| DEFINE | Gate 2 | 34 |
-| DESIGN | Gate 3 | 42 |
+| DEFINE | Gate 2 | 37 |
+| DESIGN | Gate 3 | 43 |
 | BUILD | Gate 4 | 11 |
 | DELIVER | Gate 5 | 22 |
 | OPERATE | Gate 6 | 29 |
-| PLANNING track | none | 46 |
+| PLANNING track | none | 43 |
 | AI overlay track | none | 11 |
 | ALL STAGES, cross cutting | none | 16 |
