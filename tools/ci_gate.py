@@ -69,6 +69,16 @@ GATES = (
          "workspace-links")),
     Gate("workspace-contract", ("python3",
          "tools/check_workspace_contract.py", "--quiet")),
+    # examples/journey-run.md is the runtime taking a fictional product
+    # through all six gates. Without this gate it is a claim about a run
+    # that happened once; with it, a change that breaks the loop or leaves
+    # the record stale fails here instead of shipping a false example.
+    Gate("journey-record", ("python3", "tools/journey_record.py", "--check")),
+    # The "What checks this" text in every skill and template is generated
+    # from their declared gates, the conductor's question banks and the gate
+    # sign-off tables. When any of those changes, 137 files would quietly
+    # describe the old contract; this gate makes that a failure instead.
+    Gate("what-checks-freshness", ("python3", "tools/what_checks.py", "--check")),
     # Structure only, which is why it is a separate gate from the worked
     # example below: an unfilled template is supposed to be unfilled.
     Gate("regulated-template", ("python3", "lint.py", "--template",

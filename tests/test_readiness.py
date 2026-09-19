@@ -586,6 +586,20 @@ class GeneratedEvidenceFreshnessTests(unittest.TestCase):
         argv = {tuple(gate.argv) for gate in ci_gate.GATES}
         self.assertIn(("python3", "tools/skill_rubric.py", "--check"), argv)
 
+    def test_the_journey_record_is_a_release_gate(self):
+        # examples/journey-run.md reports what the runtime returned on a
+        # six-gate run. Only a gate that regenerates it and compares can
+        # keep that report true after the runtime changes.
+        argv = {tuple(gate.argv) for gate in ci_gate.GATES}
+        self.assertIn(("python3", "tools/journey_record.py", "--check"), argv)
+
+    def test_the_what_checks_freshness_is_a_release_gate(self):
+        # Each skill's and template's "What checks this" text restates declarations kept
+        # elsewhere. Only a gate that regenerates and compares keeps the
+        # restatement from outliving the declarations it came from.
+        argv = {tuple(gate.argv) for gate in ci_gate.GATES}
+        self.assertIn(("python3", "tools/what_checks.py", "--check"), argv)
+
 
 class BuildArtifactIgnoreTests(unittest.TestCase):
     """A build artifact left in the tree must not become repository content."""
