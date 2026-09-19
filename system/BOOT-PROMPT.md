@@ -263,7 +263,7 @@ examples/      README.md, expense-copilot-discovery.md,
                ledgerline-jtbd-job-map.md, ledgerline-kano-survey.md,
                ledgerline-rice-scoring.md, ledgerline-north-star-tree.md,
                ledgerline-business-case.md,
-               ledgerline-harness-routing-run.md. Three journeys, each a
+               ledgerline-harness-routing-run.md, journey-run.md. Three journeys, each a
                data sheet and artifact map plus the filled artifacts it
                indexes. Ledgerline, pricing and selling the copilot:
                ledgerline-journey.md, ledgerline-positioning.md,
