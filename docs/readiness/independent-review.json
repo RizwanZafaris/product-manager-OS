@@ -4,59 +4,30 @@
   "reviewer_kind": "independent-agent",
   "independent_implementation": true,
   "identity_assurance": "unauthenticated-local-claim",
-  "reviewed_at": "2026-09-15T08:42:22Z",
-  "reviewed_tree_sha256": "0551e431e3680cf0805f32bc94bd3aae03a41030da80ddfe1c9910ff0fdbfb77",
+  "reviewed_at": "2026-09-19T14:57:23Z",
+  "reviewed_tree_sha256": "c84a3bf03d6d9051b40591fee1c89e6fa84c87255988acc9766b6902d27b90f0",
   "scope": [
-    "Fix for audit finding F25 on branch fix/f25-matrix-rerun at 00fe756 (parent main dce95d2): two clean dated model-matrix records and the Dated runs rows in docs/COMPATIBILITY.md, reviewed through the evidence packet REVIEW-PACKET.md on branch critic/f25-packet (round 2, 28,245 characters).",
-    "Review performed by deepseek/deepseek-v4-pro through OpenRouter (remediation controller task F25-deepseek; round 1 at 2026-09-15T08:38:54Z accepted with one P2 that the packet did not show completion_tokens; round 2 at 08:41:28Z accepted with six named checks and no P0 to P2). Recorded on the owner's decision D7. Claude Opus, which produced the change, ran this command on the reviewer's behalf and did not review."
+    "PR #40, 05c5561..72235e0: tools/journey_record.py and examples/journey-run.md; tools/what_checks.py and the generated What checks this text in 29 skills and 108 templates; the journey-record and what-checks-freshness gates and their tests; README, os/STAGE-GATES.md, CHANGELOG, examples/README.md and system/BOOT-PROMPT.md edits",
+    "Packet: the full 148-file diff with source excerpts (pmos/conductor.py gate proof, the STAGE-GATES strength paragraph and sign-off tables, question bank gate lines, tools/workspace.py stamp_artifact, the six-gate CLI test) and the gate results; the reviewer had no tools and could not open files. Named checks cover acceptance items A1 to A4; A5 (README, STAGE-GATES and CHANGELOG claim strength) was in the packet but not among the named checks"
   ],
   "evidence": [
     {
-      "command": "python3.12 tools/ci_gate.py at 00fe756",
-      "result": "release gates 21/22 passed; the one red gate is readiness-local, awaiting this record"
+      "command": "python3 tools/ci_gate.py at 72235e0",
+      "result": "release gates 23/24 passed; the one red gate is readiness-local, awaiting this record"
     },
     {
-      "command": "python3.12 -m unittest tests.test_pmos_matrix tests.test_pmos_probe tests.test_pmos_cli",
-      "result": "251 tests OK"
+      "command": "python3 tools/journey_record.py --check at 72235e0",
+      "result": "journey record matches a fresh run"
     },
     {
-      "command": "python3.12 tools/model_matrix.py --check",
-      "result": "model-matrix: ok (2026-09-09 record and generated table unchanged)"
+      "command": "python3 tools/what_checks.py --check at 72235e0",
+      "result": "matches its declarations; a second write rewrites 0 files"
     },
     {
-      "command": "remed_controller.py critic tasks/F25-deepseek-orc.json (round 2, deepseek/deepseek-v4-pro)",
-      "result": "accept, six named checks, four P3"
+      "command": "hosted CI runs 35447989597 and 35448059739 on 72235e0",
+      "result": "gate (3.11) and gate (3.13) 23/24 each, only readiness-local on CI-6; deletable-harness success"
     }
   ],
-  "findings": [
-    {
-      "id": "R1",
-      "severity": "P3",
-      "status": "open",
-      "summary": "Denominators passed/answered are derived from cells, not stored as fields in the dated records",
-      "evidence": "round 2 critic issue 1"
-    },
-    {
-      "id": "R2",
-      "severity": "P3",
-      "status": "open",
-      "summary": "Spend is the gateway estimate from synced prices, which can sit below provider billing",
-      "evidence": "round 2 critic issue 2; disclosed in docs/COMPATIBILITY.md"
-    },
-    {
-      "id": "R3",
-      "severity": "P3",
-      "status": "open",
-      "summary": "Availability is measured after gateway retries (three upstream 429s for qwen3.8-flash)",
-      "evidence": "round 2 critic issue 3; disclosed in docs/COMPATIBILITY.md"
-    },
-    {
-      "id": "R4",
-      "severity": "P3",
-      "status": "open",
-      "summary": "Halted and stopped earlier attempts are not aggregated in any record",
-      "evidence": "round 2 critic issue 4; disclosed in the PR and packet"
-    }
-  ],
+  "findings": [],
   "verdict": "accepted"
 }
