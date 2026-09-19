@@ -19,8 +19,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 42,
       "failure_modes": 5,
-      "links": 23,
-      "lines": 103
+      "links": 26,
+      "lines": 111
     },
     {
       "path": "skills/competitive-intel/SKILL.md",
@@ -31,8 +31,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 54,
       "failure_modes": 7,
-      "links": 11,
-      "lines": 79
+      "links": 14,
+      "lines": 87
     },
     {
       "path": "skills/conductor/SKILL.md",
@@ -43,8 +43,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 79,
       "failure_modes": 5,
-      "links": 15,
-      "lines": 73
+      "links": 17,
+      "lines": 81
     },
     {
       "path": "skills/decision-memo/SKILL.md",
@@ -55,8 +55,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 39,
       "failure_modes": 7,
-      "links": 10,
-      "lines": 83
+      "links": 13,
+      "lines": 91
     },
     {
       "path": "skills/design-review/SKILL.md",
@@ -67,8 +67,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 132,
       "failure_modes": 8,
-      "links": 40,
-      "lines": 88
+      "links": 43,
+      "lines": 96
     },
     {
       "path": "skills/escalation/SKILL.md",
@@ -79,8 +79,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 58,
       "failure_modes": 5,
-      "links": 6,
-      "lines": 73
+      "links": 9,
+      "lines": 81
     },
     {
       "path": "skills/experiment-designer/SKILL.md",
@@ -91,8 +91,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 49,
       "failure_modes": 11,
-      "links": 12,
-      "lines": 86
+      "links": 15,
+      "lines": 94
     },
     {
       "path": "skills/feedback-synthesis/SKILL.md",
@@ -103,8 +103,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 62,
       "failure_modes": 5,
-      "links": 9,
-      "lines": 95
+      "links": 12,
+      "lines": 103
     },
     {
       "path": "skills/gtm-launch-planner/SKILL.md",
@@ -115,8 +115,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 44,
       "failure_modes": 10,
-      "links": 16,
-      "lines": 84
+      "links": 19,
+      "lines": 92
     },
     {
       "path": "skills/launch-readiness/SKILL.md",
@@ -127,8 +127,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 60,
       "failure_modes": 7,
-      "links": 16,
-      "lines": 81
+      "links": 19,
+      "lines": 89
     },
     {
       "path": "skills/market-sizing/SKILL.md",
@@ -139,8 +139,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 52,
       "failure_modes": 9,
-      "links": 8,
-      "lines": 83
+      "links": 11,
+      "lines": 91
     },
     {
       "path": "skills/metrics-tree/SKILL.md",
@@ -151,8 +151,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 51,
       "failure_modes": 9,
-      "links": 16,
-      "lines": 86
+      "links": 19,
+      "lines": 94
     },
     {
       "path": "skills/okr-critic/SKILL.md",
@@ -163,8 +163,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 51,
       "failure_modes": 7,
-      "links": 8,
-      "lines": 79
+      "links": 11,
+      "lines": 87
     },
     {
       "path": "skills/persona-builder/SKILL.md",
@@ -175,8 +175,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 80,
       "failure_modes": 7,
-      "links": 17,
-      "lines": 90
+      "links": 20,
+      "lines": 98
     },
     {
       "path": "skills/pm-hiring/SKILL.md",
@@ -187,8 +187,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 36,
       "failure_modes": 7,
-      "links": 8,
-      "lines": 74
+      "links": 11,
+      "lines": 82
     },
     {
       "path": "skills/postmortem-facilitator/SKILL.md",
@@ -199,8 +199,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 55,
       "failure_modes": 7,
-      "links": 7,
-      "lines": 79
+      "links": 10,
+      "lines": 87
     },
     {
       "path": "skills/pricing-packaging/SKILL.md",
@@ -211,8 +211,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 65,
       "failure_modes": 9,
-      "links": 13,
-      "lines": 83
+      "links": 16,
+      "lines": 91
     },
     {
       "path": "skills/product-analyst/SKILL.md",
@@ -226,8 +226,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 53,
       "failure_modes": 6,
-      "links": 7,
-      "lines": 102
+      "links": 10,
+      "lines": 110
     },
     {
       "path": "skills/product-review/SKILL.md",
@@ -238,8 +238,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 69,
       "failure_modes": 5,
-      "links": 4,
-      "lines": 64
+      "links": 7,
+      "lines": 72
     },
     {
       "path": "skills/program-premortem/SKILL.md",
@@ -250,8 +250,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 38,
       "failure_modes": 5,
-      "links": 4,
-      "lines": 68
+      "links": 7,
+      "lines": 76
     },
     {
       "path": "skills/reg-gap-check/SKILL.md",
@@ -262,8 +262,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 43,
       "failure_modes": 5,
-      "links": 8,
-      "lines": 75
+      "links": 11,
+      "lines": 83
     },
     {
       "path": "skills/roadmap-builder/SKILL.md",
@@ -274,8 +274,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 68,
       "failure_modes": 5,
-      "links": 10,
-      "lines": 93
+      "links": 13,
+      "lines": 101
     },
     {
       "path": "skills/spec-review/SKILL.md",
@@ -286,8 +286,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 57,
       "failure_modes": 5,
-      "links": 13,
-      "lines": 69
+      "links": 16,
+      "lines": 77
     },
     {
       "path": "skills/stakeholder-update/SKILL.md",
@@ -298,8 +298,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 60,
       "failure_modes": 10,
-      "links": 13,
-      "lines": 86
+      "links": 16,
+      "lines": 94
     },
     {
       "path": "skills/story-writer/SKILL.md",
@@ -310,8 +310,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 45,
       "failure_modes": 6,
-      "links": 9,
-      "lines": 75
+      "links": 12,
+      "lines": 83
     },
     {
       "path": "skills/strategy-critic/SKILL.md",
@@ -322,8 +322,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 56,
       "failure_modes": 7,
-      "links": 11,
-      "lines": 78
+      "links": 14,
+      "lines": 86
     },
     {
       "path": "skills/user-interview/SKILL.md",
@@ -334,8 +334,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 55,
       "failure_modes": 8,
-      "links": 13,
-      "lines": 82
+      "links": 16,
+      "lines": 90
     },
     {
       "path": "skills/write-prd/SKILL.md",
@@ -346,8 +346,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 77,
       "failure_modes": 8,
-      "links": 31,
-      "lines": 86
+      "links": 34,
+      "lines": 94
     },
     {
       "path": "skills/write-vision-strategy/SKILL.md",
@@ -358,8 +358,8 @@
       "exit_gate_boxes": 0,
       "exit_gate_words": 96,
       "failure_modes": 7,
-      "links": 22,
-      "lines": 89
+      "links": 25,
+      "lines": 97
     }
   ],
   "exempt": [
