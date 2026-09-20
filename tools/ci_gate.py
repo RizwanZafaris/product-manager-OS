@@ -74,6 +74,11 @@ GATES = (
     # that happened once; with it, a change that breaks the loop or leaves
     # the record stale fails here instead of shipping a false example.
     Gate("journey-record", ("python3", "tools/journey_record.py", "--check")),
+    # examples/journey-chain.md is the same runtime driven from the committed expense copilot
+    # documents: every answer cites one of them and the handoff reports ready on their revisions.
+    # Without this gate it is a claim about one run; with it, a change that breaks the chain or
+    # leaves the record stale fails here instead of shipping a false example.
+    Gate("journey-chain", ("python3", "tools/journey_chain.py", "--check")),
     # The "What checks this" text in every skill and template is generated
     # from their declared gates, the conductor's question banks and the gate
     # sign-off tables. When any of those changes, 137 files would quietly

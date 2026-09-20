@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from .banks import CONTRACT_PATH, LEGACY_ONBOARDING, parse_contract, shipped_banks
-from .conductor import TurnOutcome
+from .conductor import STATE_PATH, TurnOutcome
 from .export import build_export, render_export_markdown
 from .handoff import build_handoff
 from .migrations import migrate_workspace, recover_workspace, rollback_workspace
@@ -81,6 +81,242 @@ def _unsupported_platform_reason() -> str | None:
     except sqlite3.Error:
         return "a working sqlite3 module"
     return None
+
+
+def _status_lines(payload: dict[str, Any]) -> list[str]:
+    lines: list[str] = []
+
+    current_bank_id = payload.get("current_bank_id")
+    phases = payload.get("phases") or []
+
+    current_phase = None
+    for phase in phases:
+        if phase.get("bank_id") == current_bank_id:
+            current_phase = phase
+            break
+
+    if current_phase is not None:
+        gate = current_phase.get("gate")
+        phase_name = current_phase.get("phase")
+        interview = payload.get("interview")
+
+        if interview != "question":
+            where = "Where you are: Gate %s, %s, %s" % (gate, phase_name, payload.get("interview"))
+            msg = payload.get("interview_message")
+            if msg:
+                where += " [%s]" % msg
+            lines.append(where)
+        else:
+            question_id = (payload.get("question") or {}).get("id", "")
+            missing_q = (current_phase.get("missing") or {}).get("questions", [])
+            completed_q = (current_phase.get("completed") or {}).get("questions", [])
+            total = len(missing_q) + len(completed_q)
+            answered = len(completed_q)
+            lines.append(
+                "Where you are: Gate %s, %s, question %s of %d (%d answered)."
+                % (gate, phase_name, question_id, total, answered)
+            )
+
+        if "next" in payload:
+            lines.append("Do this next: %s" % payload["next"])
+
+        named = current_phase.get("named_documents") or []
+        not_present = [d for d in named if not d.get("present")]
+        if not_present:
+            lines.append("Open next: %s" % (not_present[0].get("path") or ""))
+            rest = not_present[1:4]
+            if rest:
+                lines.append("This gate also expects: %s" % ", ".join(d.get("path") or "" for d in rest))
+
+    table_lines: list[tuple[Any, Any, str, str]] = []
+    for phase in phases:
+        gate = phase.get("gate")
+        phase_name = phase.get("phase")
+        state = (phase.get("state") or "").replace("_", " ")
+        completed_q = (phase.get("completed") or {}).get("questions", [])
+        missing_q = (phase.get("missing") or {}).get("questions", [])
+        answered = len(completed_q)
+        total = answered + len(missing_q)
+        blocking = phase.get("blocking_reason")
+        if state == "not started" and blocking:
+            info = str(blocking)
+        else:
+            info = "%d of %d answered" % (answered, total)
+        table_lines.append((gate, phase_name, state, info))
+
+    if table_lines:
+        if lines:
+            lines.append("")
+        gate_w = max((len(str(g)) for g, _, _, _ in table_lines), default=0)
+        phase_w = max((len(str(p)) for _, p, _, _ in table_lines), default=0)
+        state_w = max((len(s) for _, _, s, _ in table_lines), default=0)
+        for gate, phase_name, state, info in table_lines:
+            row = "Gate %-*s  %-*s  %-*s  %s" % (gate_w, gate, phase_w, phase_name, state_w, state, info)
+            lines.append(row)
+
+    return lines
+
+
+def _repin(args: argparse.Namespace) -> dict[str, Any]:
+    """Re-pin a product to the shipped question bank contract.
+
+    A product keeps the banks it started with, which is what stops a repository
+    update stranding it mid-interview, and which also left it on old questions
+    for good. This adopts the shipped contract and changes nothing else: answers
+    are kept, and gates are not touched here. An approval records the
+    fingerprint of the questions its bank asked, so a bank whose questions
+    changed reports its gate stale on the next turn, through the same path a
+    changed proof source takes. --dry-run reports what would change and writes
+    nothing.
+    """
+    root = Path(args.path).expanduser().resolve()
+    database = root / ".pmos" / "runtime.sqlite"
+
+    with Store(database) as store:
+        pinned = pinned_contract(store, args.product_id)
+        if pinned is None:
+            raise ValidationError("this product has no pinned contract to upgrade")
+
+    contract = parse_contract(CONTRACT_PATH.read_bytes())
+
+    pinned_banks = {b["id"]: b for b in pinned.get("banks", [])}
+    shipped_map = {b["id"]: b for b in contract.get("banks", [])}
+
+    unchanged: list[str] = []
+    changed: list[dict[str, Any]] = []
+    added: list[str] = []
+    removed: list[str] = []
+
+    for bank_id in shipped_map:
+        if bank_id not in pinned_banks:
+            added.append(bank_id)
+
+    for bank_id in pinned_banks:
+        if bank_id not in shipped_map:
+            removed.append(bank_id)
+
+    for bank_id in pinned_banks:
+        if bank_id in shipped_map:
+            pinned_questions = {
+                q["id"]: q
+                for q in pinned_banks[bank_id].get("questions", [])
+            }
+            shipped_questions = {
+                q["id"]: q
+                for q in shipped_map[bank_id].get("questions", [])
+            }
+
+            if pinned_questions == shipped_questions:
+                unchanged.append(bank_id)
+            else:
+                question_added = [
+                    qid for qid in shipped_questions if qid not in pinned_questions
+                ]
+                question_removed = [
+                    qid for qid in pinned_questions if qid not in shipped_questions
+                ]
+                question_modified = [
+                    qid
+                    for qid in pinned_questions
+                    if qid in shipped_questions
+                    and (
+                        pinned_questions[qid].get("ask")
+                        != shipped_questions[qid].get("ask")
+                        or pinned_questions[qid].get("evidence_class")
+                        != shipped_questions[qid].get("evidence_class")
+                    )
+                ]
+                changed.append({
+                    "bank_id": bank_id,
+                    "added": question_added,
+                    "removed": question_removed,
+                    "modified": question_modified,
+                })
+
+    gates_to_prove_again = (
+        [entry["bank_id"] for entry in changed] + removed
+    )
+
+    result: dict[str, Any] = {
+        "ok": True,
+        "product_id": args.product_id,
+        "dry_run": args.dry_run,
+        "pinned_banks": len(pinned_banks),
+        "unchanged": unchanged,
+        "changed": changed,
+        "added": added,
+        "removed": removed,
+        "gates_to_prove_again": gates_to_prove_again,
+    }
+
+    if not changed and not added and not removed:
+        result["message"] = (
+            "the pinned contract already matches the shipped contract; nothing to do"
+        )
+        return result
+
+    if args.dry_run:
+        result["message"] = (
+            "preview only, nothing was changed; "
+            "re-run without --dry-run to adopt it"
+        )
+        return result
+
+    raw = CONTRACT_PATH.read_bytes()
+
+    with Store(database) as store:
+        # A commit is the whole snapshot, not a patch: writing the pin alone would delete the
+        # conductor's own state, and with it every answer and approval this is meant to keep.
+        snapshot = store.read_snapshot(args.product_id)
+        files = dict(snapshot.files)
+        files[PIN_PATH] = raw
+        # The Conductor refuses to open a product whose recorded bank definitions no longer match
+        # the banks it is given, so the state has to move with the pin. Answers are kept as they
+        # are; each changed bank's cursor is recomputed so questions that are new or reworded get
+        # asked again, and its gate goes stale on the next turn because the approval recorded the
+        # fingerprint of the questions it was given.
+        state_raw = files.get(STATE_PATH)
+        if state_raw is not None:
+            state = json.loads(state_raw)
+            new_banks = {bank.id: bank for bank in shipped_banks()}
+            saved = state.get("banks", {})
+            for bank_id, bank in new_banks.items():
+                entry = saved.get(bank_id)
+                if entry is None:
+                    saved[bank_id] = {"version": bank.version, "definition_hash": bank.definition_hash,
+                                      "cursor": 0, "answers": {}, "challenges": {}, "parked": [],
+                                      "reopened": [], "rejected": {}}
+                    continue
+                entry["version"] = bank.version
+                entry["definition_hash"] = bank.definition_hash
+                answers = entry.get("answers") or {}
+                cursor = 0
+                for question in bank.questions:
+                    if question.id in answers:
+                        cursor += 1
+                    else:
+                        break
+                entry["cursor"] = min(entry.get("cursor", 0), cursor)
+            for bank_id in [bank_id for bank_id in saved if bank_id not in new_banks]:
+                del saved[bank_id]
+            state["banks"] = saved
+            state["current_bank"] = min(state.get("current_bank", 0), len(new_banks))
+            files[STATE_PATH] = json.dumps(state, sort_keys=True, ensure_ascii=False).encode("utf-8")
+        published = store.commit(
+            args.product_id,
+            files,
+            expected_revision=snapshot.head,
+            metadata={"reason": "re-pin the question bank contract"},
+        )
+        if not published.committed:
+            raise StoreError("could not re-pin the question bank contract")
+        result["revision"] = published.head.token
+
+    result["message"] = (
+        "re-pinned to the shipped contract; "
+        "the gates of the changed banks must be proved again"
+    )
+    return result
 
 
 def _emit(value: Any, as_json: bool) -> None:
@@ -306,7 +542,8 @@ def _interview_status(store: Store, root: Path, product_id: str, token: str) -> 
         message = "This product started before the question bank contract and keeps the one-question onboarding bank."
     elif not current:
         message = ("This product keeps the question banks it started with; the shipped contract differs, "
-                   "and moving a product to it is not supported yet.")
+                   "adopt it with `pmos repin`, which keeps every answer and asks the changed banks to prove "
+                   "their gates again.")
     else:
         message = "This product runs the shipped question banks."
     approvals: list[dict[str, Any]] = []
@@ -616,6 +853,11 @@ def _parser() -> argparse.ArgumentParser:
     handoff.add_argument("--path", default=".")
     handoff.add_argument("--product-id", required=True)
     handoff.add_argument("--json", action="store_true", dest="json_command")
+    repin = commands.add_parser("repin", help="re-pin a product to the shipped question bank contract")
+    repin.add_argument("--path", default=".")
+    repin.add_argument("--product-id", required=True)
+    repin.add_argument("--dry-run", action="store_true", help="report what would change and write nothing")
+    repin.add_argument("--json", action="store_true", dest="json_command")
     reconcile = commands.add_parser(
         "reconcile", help="show pending proposals and conflicts between the workspace and the runtime; read-only")
     reconcile.add_argument("--path", default=".")
@@ -679,6 +921,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             result = _gate(args)
         elif args.command == "handoff":
             result = _handoff(args)
+        elif args.command == "repin":
+            result = _repin(args)
         elif args.command == "reconcile":
             result = _reconcile(args)
         elif args.command == "export":
@@ -699,7 +943,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             result = {"ok": True, "output": output, **result}
         else:  # pragma: no cover
             raise ValidationError("unknown command")
-        _emit(result, as_json)
+        if args.command == "status" and not as_json:
+            for line in _status_lines(result):
+                print(line)
+            _emit({k: v for k, v in result.items() if k != "phases"}, False)
+        else:
+            _emit(result, as_json)
         return 0 if result.get("ok", True) else 1
     except (OSError, sqlite3.DatabaseError, StoreError, ValueError, RuntimeError) as exc:
         return _error(exc, as_json, getattr(args, "command", None))

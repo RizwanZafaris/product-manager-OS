@@ -37,6 +37,19 @@ _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 _UTC = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 
 
+def bank_fingerprint(bank: "QuestionBank") -> str:
+    """The questions a bank asks, as one hash.
+
+    Recorded with a gate approval so a later contract change is visible the same
+    way a changed proof source is: something recorded at approval time no longer
+    matches what is true now. Only the parts a person answers against are hashed,
+    so re-pinning an identical contract changes nothing.
+    """
+    return hashlib.sha256(canonical_json(
+        [[question.id, question.prompt, question.evidence_class.value]
+         for question in bank.questions])).hexdigest()
+
+
 class EvidenceClass(str, Enum):
     OBSERVED_BEHAVIOR = "observed_behavior"
     ARTIFACT = "artifact"
@@ -472,7 +485,8 @@ class Conductor:
                 "rejected", snapshot.head.token, bank_id=bank_id,
                 message="gate rejected by %s; the bank stays open until its current revisions are approved" % actor_id))
         record = {"proof": proof, "proof_sha256": hashlib.sha256(canonical_json(proof)).hexdigest(),
-                  "manifest": manifest, "manifest_sha256": manifest_sha256, "attestation": "local"}
+                  "manifest": manifest, "manifest_sha256": manifest_sha256, "attestation": "local",
+                  "contract_sha256": bank_fingerprint(bank)}
         if reproof:
             # The approval that stopped verifying is kept, never deleted: a
             # copy moves to an append-only list with when and why it was
@@ -789,6 +803,15 @@ class Conductor:
                 if first_only:
                     return problems
                 continue
+            recorded_contract = gate.get("contract_sha256")
+            if recorded_contract is not None and recorded_contract != bank_fingerprint(bank):
+                problems.append({"bank_id": bank.id,
+                                "message": "the question bank %s changed since this gate was approved; "
+                                           "prove the gate again against the current questions" % bank.id,
+                                "changed": [], "reconcile": []})
+                if first_only:
+                    return problems
+                continue
             if self._manifest_verifier is not None and "manifest" in gate:
                 try:
                     check = self._manifest_verifier(gate["manifest"])
@@ -1081,8 +1104,14 @@ def _manifest_ok(manifest: Any) -> bool:
     return True
 
 
+# A gate recorded before manifests keeps the two-key shape, one recorded since adds the manifest it
+# approved, and one recorded since contract pinning also carries the fingerprint of the questions the
+# bank asked when it was approved. Older shapes stay loadable: a product that passed a gate before any
+# of these changes still opens.
 _GATE_RECORD_SHAPES = (frozenset({"proof", "proof_sha256"}),
-                       frozenset({"proof", "proof_sha256", "manifest", "manifest_sha256", "attestation"}))
+                       frozenset({"proof", "proof_sha256", "manifest", "manifest_sha256", "attestation"}),
+                       frozenset({"proof", "proof_sha256", "manifest", "manifest_sha256", "attestation",
+                                  "contract_sha256"}))
 _REJECTION_KEYS = frozenset({"proof", "proof_sha256", "manifest", "manifest_sha256", "attestation", "rejected_at"})
 _RECORD_ERRORS = {"gate": "stored gate proof is malformed",
                   "superseded": "conductor superseded gate record is invalid",

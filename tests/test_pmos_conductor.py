@@ -548,7 +548,7 @@ class ConductorTest(unittest.TestCase):
         approved = conductor.prove_gate("discover", gate_proof(), expected_revision=turn.revision, turn_id="m-g1")
         self.assertEqual(approved.status, "advanced")
         gate = conductor.state()["gates"]["discover"]
-        self.assertEqual(set(gate), {"proof", "proof_sha256", "manifest", "manifest_sha256", "attestation"})
+        self.assertEqual(set(gate), {"proof", "proof_sha256", "manifest", "manifest_sha256", "attestation", "contract_sha256"})
         self.assertEqual(gate["manifest"]["artifacts"][0]["id"], "spec")
         self.assertEqual(gate["manifest_sha256"], hashlib.sha256(canonical_json(gate["manifest"])).hexdigest())
         self.assertEqual(gate["attestation"], "local")
@@ -728,7 +728,7 @@ class ConductorTest(unittest.TestCase):
         (archived,) = state["superseded_gates"]["discover"]
         self.assertEqual(archived["manifest"]["artifacts"][0]["revision"], "a" * 64)
         self.assertEqual(set(archived), {"proof", "proof_sha256", "manifest", "manifest_sha256",
-                                         "attestation", "reason", "superseded_at"})
+                                         "attestation", "contract_sha256", "reason", "superseded_at"})
         self.assertEqual(state["current_bank"], 1)
         self.assertEqual(conductor.next_turn().question.id, "define.sponsor")
         store.close()

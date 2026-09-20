@@ -70,6 +70,32 @@ class CliTests(unittest.TestCase):
             self.assertEqual(result["outcome"]["status"], "accepted")
         self.fail("the bank did not finish")
 
+    def test_status_human_output_leads_with_where_you_are_and_what_to_open(self):
+        # The payload always carried this; it was buried in a one-line JSON dump of phases.
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            output = StringIO()
+            with redirect_stdout(output):
+                self.assertEqual(main(["status", "--path", folder, "--product-id", "checkout"]), 0)
+            text = output.getvalue()
+            self.assertIn("Where you are: Gate 1, DISCOVER, question DISCOVER-1 of", text)
+            self.assertIn("Do this next: pmos answer", text)
+            self.assertIn("Open next: discovery/problem-framing.md", text)
+            self.assertIn("Gate 6", text)
+            # the wall of JSON the summary replaces is gone from human output
+            self.assertNotIn("\"named_documents\"", text)
+
+    def test_status_json_output_still_carries_phases(self):
+        # --json is a machine contract: the human summary must not touch it.
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            output = StringIO()
+            with redirect_stdout(output):
+                self.assertEqual(main(["--json", "status", "--path", folder, "--product-id", "checkout"]), 0)
+            payload = json.loads(output.getvalue())
+            self.assertEqual(len(payload["phases"]), 6)
+            self.assertNotIn("Where you are", output.getvalue())
+
     def test_status_alone_resumes_the_interview_after_init(self):
         with TemporaryDirectory() as parent:
             folder = str(Path(parent) / "work space")
@@ -149,8 +175,58 @@ class CliTests(unittest.TestCase):
             status = self.status(folder)
             self.assertEqual(status["question_banks"]["pinned"]["discover"], "c0000000000000000")
             self.assertFalse(status["question_banks"]["current"])
-            self.assertIn("not supported yet", status["question_banks"]["message"])
+            # the pin is still kept; the difference is that status now names the way out
+            self.assertIn("adopt it with `pmos repin`", status["question_banks"]["message"])
             self.assertEqual(status["question"]["prompt"], "Who has this problem, by name?")
+
+    def test_repin_adopts_the_shipped_contract_and_stales_the_changed_bank(self):
+        # A product pinned to older questions can now adopt the shipped ones. Answers survive;
+        # the bank whose questions changed must prove its gate again, through the same staleness
+        # path a changed proof source takes.
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            contract = json.loads(CONTRACT_PATH.read_bytes())
+            contract["banks"][0]["version"] = "c0000000000000000"
+            contract["banks"][0]["questions"][0]["ask"] = "Who has this problem, by name?"
+            self.pin(folder, json.dumps(contract).encode("utf-8"))
+            status = self.answer_bank(folder, "discover")
+            proof_bytes = b"discover"
+            Path(folder, "gate-discover.txt").write_bytes(proof_bytes)
+            evidence = {"source": "gate-discover.txt", "source_sha256": hashlib.sha256(proof_bytes).hexdigest(),
+                        "actor_id": "local-reviewer", "requester_id": "local-operator",
+                        "decision": "approved", "approved_at": "2026-09-04T00:00:00Z"}
+            output = StringIO()
+            with redirect_stdout(output):
+                rc = main(["gate", "--path", folder, "--product-id", "checkout", "--bank-id", "discover",
+                           "--evidence", json.dumps(evidence), "--expected-revision", status["revision_token"],
+                           "--turn-id", "gate-discover", "--json"])
+            self.assertEqual(rc, 0, output.getvalue())
+            self.assertEqual(self.status(folder)["stale_banks"], [])
+
+            preview = StringIO()
+            with redirect_stdout(preview):
+                self.assertEqual(main(["--json", "repin", "--path", folder, "--product-id", "checkout",
+                                       "--dry-run"]), 0)
+            planned = json.loads(preview.getvalue())
+            self.assertEqual([entry["bank_id"] for entry in planned["changed"]], ["discover"])
+            self.assertEqual(planned["changed"][0]["modified"], ["DISCOVER-1"])
+            self.assertEqual(planned["gates_to_prove_again"], ["discover"])
+            # a preview writes nothing
+            self.assertEqual(self.status(folder)["question_banks"]["pinned"]["discover"], "c0000000000000000")
+            self.assertEqual(self.status(folder)["stale_banks"], [])
+
+            applied = StringIO()
+            with redirect_stdout(applied):
+                self.assertEqual(main(["--json", "repin", "--path", folder, "--product-id", "checkout"]), 0)
+            done = json.loads(applied.getvalue())
+            self.assertTrue(done["ok"])
+            after = self.status(folder)
+            self.assertEqual(after["question_banks"]["pinned"], after["question_banks"]["shipped"])
+            self.assertTrue(after["question_banks"]["current"])
+            self.assertEqual([item["bank_id"] for item in after["stale_banks"]], ["discover"])
+            self.assertIn("changed since this gate was approved", after["stale_banks"][0]["message"])
+            # the answers are still there: the bank is not back at its first question
+            self.assertEqual(after["source_verified"] + after["supplied_unverified"], 9)
 
     def test_a_corrupt_pin_is_reported_rather_than_raised(self):
         with TemporaryDirectory() as folder:
