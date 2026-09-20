@@ -4,49 +4,33 @@
   "reviewer_kind": "independent-agent",
   "independent_implementation": true,
   "identity_assurance": "unauthenticated-local-claim",
-  "reviewed_at": "2026-09-20T23:32:48Z",
-  "reviewed_tree_sha256": "23ffd0c834aa36a4de769dfc65353b357d93c07edce497693b0c86fb2ceed301",
+  "reviewed_at": "2026-09-20T23:54:51Z",
+  "reviewed_tree_sha256": "994916219740df25c38b5a21f9cea6a225c1270d346b0bf0eea6fb5f37abe88d",
   "scope": [
-    "Change set 63818ee..796acd1: four golden-path findings from the Opus 5 and Fable 5.1 audit, plus the review-gate defect that surfaced when the first record of them passed locally and failed in CI",
-    "Round band3-1 accepted the golden-path work (6de7a57) with eleven named checks over a 258,000 character packet. Round reviewgate-1 then REJECTED the branch with a P0: the record on it was pinned to a digest no clean checkout reproduces. This record is the fix for that, made on a pristine clone with the corrected tool"
+    "Change set a468445..5a21bb8: two release gates that compared constants to constants, being the four hardcoded enforcement bullets in examples/journey-run.md and the literal conductor_completed=True backing the thirteen_use_cases_green hard gate"
   ],
   "evidence": [
     {
-      "command": "tools/review_gate.py --digest on the recording machine, before the fix",
-      "result": "836 files, 81266fe8a5a9..., because four probe workspaces sat under the gitignored products/"
+      "command": "the generated table, from a real run",
+      "result": "four attempted gate refusals with the runtime's own messages, one per rule: unanswered questions, a skipped bank, a proof missing actor_id, and an actor outside the pinned approvers"
     },
     {
-      "command": "tools/review_gate.py --digest on a pristine clone of the same commit",
-      "result": "824 files, 76bc6270227f..., which is why hosted CI reported readiness-local failing on 1 criteria while the same tree passed 25 of 25 locally"
+      "command": "the repositioning that made three of them real",
+      "result": "before it, rows three and four both reported the unanswered-questions message, so they were evidence of the wrong rule; they now run after discover is answered and before it is gated"
     },
     {
-      "command": "after adding products to ROOT_SKIP_DIRS, creating a real workspace with init_product.py",
-      "result": "the digest is byte-identical before and after, so a reviewer's own product no longer moves the tree a record is pinned to"
+      "command": "the vacuity test, on a full copy of this tree with the approver branch disabled",
+      "result": "journey_record.py --check now stops and says the runtime allowed the 'unauthorized' gate probe with outcome 'advanced'; before this change the same deletion left the gate green"
     },
     {
-      "command": "tests/test_pmos_review",
-      "result": "Ran 72 tests, OK; 70 before and 2 added, one for the skip and one proving a force-added file under products/ still moves the digest"
+      "command": "run_use_case('new_user')",
+      "result": "observes conductor_position 'question' and conductor_moved_past_gated_bank True, where the field it replaces recorded the literal True under a name no run of that case has ever been true of"
     },
     {
-      "command": "python3 lint.py --os at 796acd1",
-      "result": "ok, 11 checks (OS tree mode)"
+      "command": "python3.11 tools/ci_gate.py at 5a21bb8",
+      "result": "24 of 25; the one red gate is readiness-local, failing only CI-6, awaiting this record"
     }
   ],
-  "findings": [
-    {
-      "id": "R1",
-      "severity": "P0",
-      "status": "resolved",
-      "summary": "The branch carried a CI-6 record pinned to a tree digest no clean checkout reproduces, so the gate it satisfies could only ever pass on the machine that wrote it",
-      "evidence": "Raised by round reviewgate-1 against 796acd1 and resolved by this record, which is made on a pristine clone with products excluded from the digest"
-    },
-    {
-      "id": "R2",
-      "severity": "P2",
-      "status": "open",
-      "summary": "The failure a reader sees when this happens says only that readiness-local is failing on 1 criteria, and never that the recorded digest and the live tree differ or by how much",
-      "evidence": "Cost one full CI cycle to diagnose by hand; the gate could print the two digests and the file counts it compared"
-    }
-  ],
+  "findings": [],
   "verdict": "accepted"
 }
