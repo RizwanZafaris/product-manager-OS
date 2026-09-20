@@ -56,8 +56,11 @@ def _gap_and_na(lines: list[str]) -> tuple[list[str], list[str]]:
             text = text[2:].lstrip()
         if text.startswith("Gap:"):
             gaps.append(text[len("Gap:"):].strip())
+        # A bare "N/A because" exempts a section without saying why, so it does not count.
         if text.startswith("N/A because"):
-            not_applicable.append(text[len("N/A because"):].strip())
+            reason = text[len("N/A because"):].strip()
+            if reason:
+                not_applicable.append(reason)
     return gaps, not_applicable
 
 
@@ -162,13 +165,20 @@ def _section_status(lines: list[str], links: list[dict[str, Any]]) -> str:
             return "gap"
     if any(not item["exists"] for item in links):
         return "broken"
-    if links:
+    # Only a link to a file carrying an artifact block counts as content. The runtime records a
+    # revision for those and for nothing else, so a link to an ordinary file would let a handoff
+    # report ready on a scratch file, and editing that file afterwards could not stale anything.
+    if any(item["artifact_id"] is not None for item in links):
         return "linked"
+    # An unbound link beats a reasoned exemption: linking a file claims the section applies, so a
+    # section cannot be exempt and linked to a scratch file at the same time.
+    if links:
+        return "unbound"
     for raw in lines:
         text = raw.lstrip()
         if text.startswith("- "):
             text = text[2:].lstrip()
-        if text.startswith("N/A because"):
+        if text.startswith("N/A because") and text[len("N/A because"):].strip():
             return "not_applicable"
     return "empty"
 
@@ -294,6 +304,9 @@ def build_handoff(conductor, contract: dict[str, Any] | None, root) -> dict[str,
             missing.append("Section %s has a gap" % section["title"])
         elif section["status"] == "empty":
             missing.append("Section %s is empty" % section["title"])
+        elif section["status"] == "unbound":
+            missing.append("Section %s links only to files with no artifact block"
+                           % section["title"])
         else:
             missing.append("Section %s is %s" % (section["title"], section["status"]))
 

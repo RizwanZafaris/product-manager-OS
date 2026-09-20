@@ -177,15 +177,16 @@ Link: [premortem-worksheet.md](../../frameworks/execution/premortem-worksheet.md
 
 | Status | What it means |
 |---|---|
-| `linked` | at least one `Link:` line resolves, and no `Gap:` line is present |
-| `not_applicable` | no links, but an `N/A because` line explains why |
+| `linked` | at least one link resolves to a file carrying an artifact block, and no `Gap:` line is present |
+| `unbound` | every link resolves, but none of the targets carries an artifact block, so nothing records their revision and an edit could not stale the approval |
+| `not_applicable` | no links, but an `N/A because` line gives a reason; the words alone do not exempt a section |
 | `gap` | a `Gap:` line is present; it wins even over a working link in the same section |
 | `broken` | a link is present but at least one does not resolve in the workspace |
 | `missing` | pmos handoff could not find this heading at all |
-| `empty` | none of the above: no links, no `Gap:`, no `N/A because` |
+| `empty` | none of the above: no links, no `Gap:`, and no `N/A because` with a reason |
 
 - Gate 1, Gate 2, and Gate 3 are approved and none are stale.
-- Every section links a workspace artifact or has an `N/A because` line.
+- Every section links a workspace artifact that carries an artifact block, or has an `N/A because` line with a reason.
 - No section has a `Gap:` line.
 - Every linked path resolves in the workspace.
 - No section reports `missing`: each heading above matches one of the nine section
