@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from pmos.artifacts import build_manifest, check_manifest
 from pmos.conductor import Conductor, EvidenceClass, Question, QuestionBank
 from pmos.handoff import SECTIONS, build_handoff
 from pmos.store import Store
@@ -43,6 +44,15 @@ def sample_contract() -> dict[str, object]:
     }
 
 
+# Which gate each of the nine sections is bound by. A real workspace's sections are
+# artifacts of the phases that produced them, so the fixture stamps them that way: the
+# three DISCOVER sections at gate 1, DEFINE at 2, DESIGN at 3. The fixture used to stamp
+# every one with the literal `gate: None`, which put them in no manifest at all, and the
+# positive assertions below then passed over artifacts nothing had bound.
+SECTION_GATES = {title: 1 + index // 3 for index, title in enumerate(SECTIONS)}
+BANK_OF_GATE = {1: "discover", 2: "define", 3: "design"}
+
+
 class HandoffTests(unittest.TestCase):
     PRODUCT_ID = "payments"
 
@@ -52,8 +62,20 @@ class HandoffTests(unittest.TestCase):
         self.store = Store(self.root / "runtime.sqlite")
         self.contract = sample_contract()
         self._write_baseline_workspace()
+        # Wired the way pmos/product.py wires a real product. Without these two the
+        # Conductor records an empty manifest for every approval, no artifact is ever
+        # bound to a gate, and the whole class passes over evidence nothing holds.
         self.conductor = Conductor(self.store, self.PRODUCT_ID, BANKS,
-                                  gate_source_verifier=self._gate_source_verifier)
+                                  gate_source_verifier=self._gate_source_verifier,
+                                  gate_manifest=self._gate_manifest,
+                                  manifest_verifier=self._manifest_verifier)
+
+    def _gate_manifest(self, bank_id: str) -> dict:
+        gates = {"discover": 1, "define": 2, "design": 3}
+        return build_manifest(self.root, gates[bank_id])
+
+    def _manifest_verifier(self, manifest) -> dict:
+        return check_manifest(self.root, manifest)
 
     def tearDown(self) -> None:
         self.store.close()
@@ -82,7 +104,7 @@ class HandoffTests(unittest.TestCase):
                 block(
                     f"demo/sections/{index}",
                     "ALL STAGES",
-                    None,
+                    SECTION_GATES[title],
                     "approved",
                     [],
                     "templates/sections.md",
@@ -301,6 +323,54 @@ class HandoffTests(unittest.TestCase):
         self.assertTrue(discover["stale"])
         self.assertFalse(result["development_ready"])
         self.assertIn("Gate 1 approval is stale", result["missing"])
+
+    def test_rewriting_a_bound_section_artifact_withdraws_readiness(self) -> None:
+        """The binding this class exists to prove, and never proved before.
+
+        Every section artifact used to be stamped with the literal `gate: None`,
+        so no approval's manifest held any of them and this edit changed nothing
+        a gate could notice.
+        """
+        self._approve()
+        self.assertTrue(self._result()["development_ready"])
+        bound = self.root / "sections" / "4.md"      # gate 2, by SECTION_GATES
+        bound.write_text(bound.read_text(encoding="utf-8") + "\nRewritten after approval.\n",
+                         encoding="utf-8")
+        result = self._result()
+        self.assertFalse(result["development_ready"])
+        self.assertIn("Gate 2 approval is stale", result["missing"])
+
+    def test_a_section_citing_a_later_gate_artifact_is_not_ready(self) -> None:
+        """OPUS-1, reproduced and then refused.
+
+        A file can carry an artifact block and still sit in no approval this
+        handoff requires: build_manifest collects the artifacts whose declared
+        gate equals the gate being approved, so a block naming gate 4 is bound
+        by nothing, and rewriting it stales nothing. Before this check, such a
+        citation read as "linked" and the package reported development ready
+        over evidence that could change underneath it.
+        """
+        self._write("sections/later.md",
+                    block("demo/sections/later", "ALL STAGES", 4, "approved", [],
+                          "templates/sections.md", "Body.\n"))
+        self._write("development-handoff.md", BLOCK_TEMPLATE.format(
+            artifact_id="demo/development-handoff", phase="ALL STAGES", gate="null",
+            status="approved", depends_on="[]", template="templates/development-handoff.md",
+            body=self._section_body(("8. Interface and data contracts",
+                                     "[later](sections/later.md)"))))
+        self._approve()
+        result = self._result()
+        section = next(item for item in result["sections"]
+                       if item["title"] == "8. Interface and data contracts")
+        self.assertEqual(section["status"], "unapproved")
+        self.assertFalse(result["development_ready"])
+        self.assertIn("Section 8. Interface and data contracts cites sections/later.md, "
+                      "which declares gate 4 and is bound by no gate 1-3 approval",
+                      result["missing"])
+        # And the reason it matters: the citation is not held to anything.
+        later = self.root / "sections" / "later.md"
+        later.write_text(later.read_text(encoding="utf-8") + "\nRewritten.\n", encoding="utf-8")
+        self.assertEqual([item["bank_id"] for item in self.conductor.stale_gates()], [])
 
     def test_no_development_handoff_is_not_ready(self) -> None:
         (self.root / "development-handoff.md").unlink()
