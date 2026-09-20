@@ -1,172 +1,173 @@
 {
-  "schema": 1,
-  "title": "Test classes shipped at the repository root",
-  "note": "A floor and a ceiling at once: test_pmos_invariants asserts that the TestCase classes defined in each root test module are exactly these. A class cannot be deleted, renamed or added without editing this file in the same change, which is where a reviewer sees it. Written after commit a92cefa removed four tests from test_pmos_skills.py without any gate noticing; the loss was found by a grep five merges later.",
-  "modules": {
-    "test_contract_gates": [
-      "ModelIdGateTests",
-      "WorkspaceContractGateTests"
-    ],
-    "test_lint": [
-      "GraphDeclarationTests",
-      "GraphTruthTests",
-      "IntegrityPinCoverageTests",
-      "JsonSyntaxTests",
-      "LinkFormatTests",
-      "LinkTruthTests",
-      "OsTreeGateTests",
-      "PathGateFenceTests",
-      "RegulatedPrdDepthTests",
-      "ReviewGateTests",
-      "ScratchDirectoryExclusion",
-      "SecretGateTests",
-      "SkillDeclarationTests",
-      "TrackedDotUnderscoreFileIsLinted",
-      "WikilinkTests",
-      "WorkflowTests",
-      "WorkspaceExclusion",
-      "WorkspaceModeTests"
-    ],
-    "test_phase_index": [
-      "PhaseIndexTests"
-    ],
-    "test_pmos_artifacts": [
-      "ArtifactManifestTests"
-    ],
-    "test_pmos_cli": [
-      "CliTests"
-    ],
-    "test_pmos_conductor": [
-      "ConductorTest"
-    ],
-    "test_pmos_domain": [
-      "DomainTest"
-    ],
-    "test_pmos_handoff": [
-      "HandoffTests"
-    ],
-    "test_pmos_hooks": [
-      "ClaudeHookTests",
-      "RuntimeHookTests"
-    ],
-    "test_pmos_invariants": [
-      "CostIsNeverManufactured",
-      "ExfatSidecarsDoNotCrashTheToolsScan",
-      "GitPathsKeepTheirBytes",
-      "RegressionsReachHostedCI",
-      "SidecarPredicatesAgree",
-      "SubprocessesAreBounded",
-      "TestClassesCannotVanish",
-      "TransportsShareOneContract"
-    ],
-    "test_pmos_journey": [
-      "JourneyRuntimeTests"
-    ],
-    "test_pmos_matrix": [
-      "GraderTests",
-      "RecordTests",
-      "RenderTests",
-      "SelectionTests",
-      "ShippedMatrixTests",
-      "SpendCeilingTests"
-    ],
-    "test_pmos_operations": [
-      "AdapterContractTests",
-      "AdoptionTests",
-      "AnalyticsTests",
-      "OperationsBoundaryTests",
-      "OutboxTests",
-      "ResearchTests"
-    ],
-    "test_pmos_phases": [
-      "PhaseReportTests"
-    ],
-    "test_pmos_probe": [
-      "AdapterContractTests",
-      "BodyCostTypingReachesTheRunLoopTests",
-      "BudgetTests",
-      "CanonicalCoverageTests",
-      "CrossTransportCostAndIdentityTests",
-      "DiscoveryBoundaryTests",
-      "DiscoveryCatalogBoundaryTests",
-      "DiscoveryOnlyTests",
-      "DispatchAccountingTests",
-      "ErrorsWithoutBillingAreUnknownTests",
-      "ExecutionLimitTests",
-      "GatewayEligibilityTests",
-      "GatewayHttpBoundaryTests",
-      "ProbeConfigurationTests",
-      "ProvenanceErrorsStillBillTests",
-      "ProvenanceTests",
-      "SharedAcceptanceMatrixTests",
-      "SkillRubricTests",
-      "UnknownCostTests",
-      "ZeroBudgetTests"
-    ],
-    "test_pmos_release": [
-      "ReleaseProvenanceTests"
-    ],
-    "test_pmos_review": [
-      "AppleDoubleSidecarTests",
-      "AttestationParentSymlinkTests",
-      "AttestationReadPathTests",
-      "AttestationSymlinkTests",
-      "DamagedRepositoryTests",
-      "GitDiscoveryConservatismTests",
-      "GitDiscoveryFailureFailsClosedTests",
-      "IndependentReviewGateTests",
-      "ReadinessRecordCommitFieldTests",
-      "RecentAuthorsUnreadableHistoryTests",
-      "RecordReviewTests",
-      "RootSkipDirectoryTrackedContentTests",
-      "TrackedFilenameByteFidelityTests",
-      "TrackedMetadataNameTests",
-      "WorktreeGitLinkTests"
-    ],
-    "test_pmos_routing": [
-      "RoutingTests"
-    ],
-    "test_pmos_security": [
-      "DocumentationContractFixtureTests",
-      "PublicRuntimeAdversarialTests",
-      "SecurityGateFixtureTests"
-    ],
-    "test_pmos_skills": [
-      "OpenRouterTests",
-      "SkillRegistrySidecarTests",
-      "SkillRegistryTests",
-      "TrackedSidecarsAreNeverExcusedTests",
-      "UnpriceableCatalogRowsTests"
-    ],
-    "test_pmos_store": [
-      "StoreTest"
-    ],
-    "test_pmos_usecases": [
-      "UseCaseMatrixTests"
-    ],
-    "test_question_banks": [
-      "QuestionBankCompileTests"
-    ],
-    "test_readiness": [
-      "BuildArtifactIgnoreTests",
-      "DistributionMetadataTests",
-      "GeneratedEvidenceFreshnessTests",
-      "ProbeMarkdownWalkIgnoresSidecarsTests",
-      "ReleaseGateContractTests",
-      "RubricValidationTests",
-      "VerdictAndOutputTests",
-      "VerifierExecutionTests"
-    ],
-    "test_tools_gates": [
-      "CiGateVerdictTests",
-      "FrontmatterInitGateTests",
-      "GraphFreshnessGateTests",
-      "PmWorkingSetGateTests",
-      "ReadinessCategoryExitTests",
-      "ReadinessProbeCiWiringTests",
-      "ReadinessProbeMutationAnchorTests",
-      "TemplateInventoryGateTests",
-      "TemplateRubricGateTests"
-    ]
-  }
+ "schema": 1,
+ "title": "Test classes shipped at the repository root",
+ "note": "A floor and a ceiling at once: test_pmos_invariants asserts that the TestCase classes defined in each root test module are exactly these. A class cannot be deleted, renamed or added without editing this file in the same change, which is where a reviewer sees it. Written after commit a92cefa removed four tests from test_pmos_skills.py without any gate noticing; the loss was found by a grep five merges later.",
+ "modules": {
+  "test_contract_gates": [
+   "ModelIdGateTests",
+   "WorkspaceContractGateTests"
+  ],
+  "test_lint": [
+   "GraphDeclarationTests",
+   "GraphTruthTests",
+   "IntegrityPinCoverageTests",
+   "JsonSyntaxTests",
+   "LinkFormatTests",
+   "LinkTruthTests",
+   "OsTreeGateTests",
+   "PathGateFenceTests",
+   "RegulatedPrdDepthTests",
+   "ReviewGateTests",
+   "ScratchDirectoryExclusion",
+   "SecretGateTests",
+   "SkillDeclarationTests",
+   "TrackedDotUnderscoreFileIsLinted",
+   "WikilinkTests",
+   "WorkflowTests",
+   "WorkspaceExclusion",
+   "WorkspaceModeTests"
+  ],
+  "test_phase_index": [
+   "PhaseIndexTests"
+  ],
+  "test_pmos_artifacts": [
+   "ArtifactManifestTests"
+  ],
+  "test_pmos_cli": [
+   "CliTests"
+  ],
+  "test_pmos_conductor": [
+   "ConductorTest"
+  ],
+  "test_pmos_domain": [
+   "DomainTest"
+  ],
+  "test_pmos_handoff": [
+   "HandoffTests"
+  ],
+  "test_pmos_hooks": [
+   "ClaudeHookTests",
+   "RuntimeHookTests"
+  ],
+  "test_pmos_invariants": [
+   "CostIsNeverManufactured",
+   "ExfatSidecarsDoNotCrashTheToolsScan",
+   "GitPathsKeepTheirBytes",
+   "RegressionsReachHostedCI",
+   "SidecarPredicatesAgree",
+   "SubprocessesAreBounded",
+   "TestClassesCannotVanish",
+   "TransportsShareOneContract"
+  ],
+  "test_pmos_journey": [
+   "JourneyRuntimeTests"
+  ],
+  "test_pmos_matrix": [
+   "GraderTests",
+   "RecordTests",
+   "RenderTests",
+   "SelectionTests",
+   "ShippedMatrixTests",
+   "SpendCeilingTests"
+  ],
+  "test_pmos_operations": [
+   "AdapterContractTests",
+   "AdoptionTests",
+   "AnalyticsTests",
+   "OperationsBoundaryTests",
+   "OutboxTests",
+   "ResearchTests"
+  ],
+  "test_pmos_phases": [
+   "PhaseReportTests"
+  ],
+  "test_pmos_probe": [
+   "AdapterContractTests",
+   "BodyCostTypingReachesTheRunLoopTests",
+   "BudgetTests",
+   "CanonicalCoverageTests",
+   "CrossTransportCostAndIdentityTests",
+   "DiscoveryBoundaryTests",
+   "DiscoveryCatalogBoundaryTests",
+   "DiscoveryOnlyTests",
+   "DispatchAccountingTests",
+   "ErrorsWithoutBillingAreUnknownTests",
+   "ExecutionLimitTests",
+   "GatewayEligibilityTests",
+   "GatewayHttpBoundaryTests",
+   "ProbeConfigurationTests",
+   "ProvenanceErrorsStillBillTests",
+   "ProvenanceTests",
+   "SharedAcceptanceMatrixTests",
+   "SkillRubricTests",
+   "UnknownCostTests",
+   "ZeroBudgetTests"
+  ],
+  "test_pmos_release": [
+   "ReleaseProvenanceTests"
+  ],
+  "test_pmos_review": [
+   "AppleDoubleSidecarTests",
+   "AttestationParentSymlinkTests",
+   "AttestationReadPathTests",
+   "AttestationSymlinkTests",
+   "DamagedRepositoryTests",
+   "GitDiscoveryConservatismTests",
+   "GitDiscoveryFailureFailsClosedTests",
+   "IndependentReviewGateTests",
+   "ReadinessRecordCommitFieldTests",
+   "RecentAuthorsUnreadableHistoryTests",
+   "RecordReviewTests",
+   "RootSkipDirectoryTrackedContentTests",
+   "TrackedFilenameByteFidelityTests",
+   "TrackedMetadataNameTests",
+   "WorktreeGitLinkTests"
+  ],
+  "test_pmos_routing": [
+   "RoutingTests"
+  ],
+  "test_pmos_security": [
+   "DocumentationContractFixtureTests",
+   "PublicRuntimeAdversarialTests",
+   "SecurityGateFixtureTests"
+  ],
+  "test_pmos_skills": [
+   "OpenRouterTests",
+   "SkillRegistrySidecarTests",
+   "SkillRegistryTests",
+   "TrackedSidecarsAreNeverExcusedTests",
+   "UnpriceableCatalogRowsTests"
+  ],
+  "test_pmos_store": [
+   "StoreTest"
+  ],
+  "test_pmos_usecases": [
+   "UseCaseMatrixTests"
+  ],
+  "test_question_banks": [
+   "QuestionBankCompileTests"
+  ],
+  "test_readiness": [
+   "BuildArtifactIgnoreTests",
+   "DistributionMetadataTests",
+   "GeneratedEvidenceFreshnessTests",
+   "ProbeMarkdownWalkIgnoresSidecarsTests",
+   "ReleaseGateContractTests",
+   "RubricValidationTests",
+   "VerdictAndOutputTests",
+   "VerifierExecutionTests"
+  ],
+  "test_tools_gates": [
+   "CiGateVerdictTests",
+   "FrontmatterInitGateTests",
+   "GateCountGateTests",
+   "GraphFreshnessGateTests",
+   "PmWorkingSetGateTests",
+   "ReadinessCategoryExitTests",
+   "ReadinessProbeCiWiringTests",
+   "ReadinessProbeMutationAnchorTests",
+   "TemplateInventoryGateTests",
+   "TemplateRubricGateTests"
+  ]
+ }
 }
