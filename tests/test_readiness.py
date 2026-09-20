@@ -593,6 +593,12 @@ class GeneratedEvidenceFreshnessTests(unittest.TestCase):
         argv = {tuple(gate.argv) for gate in ci_gate.GATES}
         self.assertIn(("python3", "tools/journey_record.py", "--check"), argv)
 
+    def test_the_journey_chain_is_a_release_gate(self):
+        # The chain record reports what the runtime returned when every answer cited a committed
+        # document. Only a gate that rebuilds it and compares keeps that report true.
+        argv = {tuple(gate.argv) for gate in ci_gate.GATES}
+        self.assertIn(("python3", "tools/journey_chain.py", "--check"), argv)
+
     def test_the_what_checks_freshness_is_a_release_gate(self):
         # Each skill's and template's "What checks this" text restates declarations kept
         # elsewhere. Only a gate that regenerates and compares keeps the
