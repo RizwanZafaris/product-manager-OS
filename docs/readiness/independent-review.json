@@ -4,36 +4,40 @@
   "reviewer_kind": "independent-agent",
   "independent_implementation": true,
   "identity_assurance": "unauthenticated-local-claim",
-  "reviewed_at": "2026-09-20T20:34:40Z",
-  "reviewed_tree_sha256": "c92cfb87e86cbec8c943cb213f9f2b4e0e8a22eb783f213dc051e3dbecb17d57",
+  "reviewed_at": "2026-09-20T22:23:56Z",
+  "reviewed_tree_sha256": "3bdcaccb5e8df343b12e44eaadc495988a1f1eaa6c893df6a0e1dc1fe1003293",
   "scope": [
-    "Change set d598e4d..8122ca9: the 0.8.0 release evidence record in docs/readiness/EXT-RELEASE-checklist.md, filled from the tag that now exists, and the dangling digest promise in docs/release/RELEASE-NOTES-0.8.0.md",
-    "Packet: the full diff, every recorded value alongside the command that measured it, the published release and its two assets, and the round-1 findings. Accepted with ten named checks over two rounds"
+    "Change set 1aa32d9..82b617e: the README paragraph that said nothing had been released, three wrong gate counts and the check that now measures them, what the deletable-harness job is claimed to prove, and the Python 3.11 floor that was documented nowhere near the commands needing it",
+    "Packet: the full diff, the measured release facts with the command that produced each, the workflow job being described, and the proof that the new check fails on a wrong figure. Two independent rounds on the same tree, both accepted, six and five named checks, no issues raised in either"
   ],
   "evidence": [
     {
-      "command": "python3 lint.py --os at 8122ca9",
+      "command": "python3 lint.py --os at 82b617e",
       "result": "ok, 11 checks (OS tree mode)"
     },
     {
-      "command": "python3.11 tools/ci_gate.py at 3d32005",
-      "result": "24 of 25 gates pass; the one red gate is readiness-local, and inside it the one red hard gate is local_review_record_complete, awaiting this record"
+      "command": "python3.11 tools/docs_contract.py --strict at 82b617e",
+      "result": "0 errors, 0 warnings"
     },
     {
-      "command": "git rev-list -n1 v0.8.0 and git rev-parse origin/main",
-      "result": "both d598e4ddd087b0457709c9bbd27cb3db84047ef2, so the tag is on the merge of pull request #45"
+      "command": "python3.11 tools/ci_gate.py at 42dd215",
+      "result": "23 of 25; root-tests failed because docs/readiness/test-classes.json is a closed inventory and the new class was not in it, which the gate named in its own failure message"
     },
     {
-      "command": "verify_provenance from an untouched clone of the tag",
-      "result": "VerificationResult(ok=True, errors=()); from a tree already built in it reports the wheel and three .pyc files as unrecorded, which is why provenance is generated before the build"
+      "command": "python3.11 tools/ci_gate.py at 82b617e",
+      "result": "24 of 25; the one red gate is readiness-local, failing only CI-6, awaiting this record"
     },
     {
-      "command": "shasum -a 256 on the wheel and on the manifest downloaded back from the release",
-      "result": "0da525dd... and f5727cb9..., matching the values recorded in both files"
+      "command": "python3.11 -m unittest test_tools_gates",
+      "result": "Ran 62 tests, OK; 58 before this change and 4 added, including one that adds a gate to ci_gate.py and asserts both documents then fail"
     },
     {
-      "command": "gh release view v0.8.0",
-      "result": "published, not a draft, carrying the wheel at 214034 bytes and provenance.json at 136773 bytes"
+      "command": "a scratch copy with the README regressed to 24 gates",
+      "result": "README.md:183: error gate-count: this says '24 gates' and tools/ci_gate.py defines 25, so the new check is not vacuous"
+    },
+    {
+      "command": "importing pmos_build_backend on the macOS default python3, version 3.9.6",
+      "result": "before, ModuleNotFoundError naming tomllib; after, a message naming the version and the fix. On 3.11 it still imports and build_wheel is present"
     }
   ],
   "findings": [
@@ -41,22 +45,8 @@
       "id": "R1",
       "severity": "P3",
       "status": "accepted",
-      "summary": "The tag is left at d598e4d rather than moved a third time to carry the corrected release notes",
-      "evidence": "Reviewer's A5 judgement in round record-2: a third move would rewrite the reference the published artifacts hang from, and the release body already carries the corrected text"
-    },
-    {
-      "id": "R2",
-      "severity": "P3",
-      "status": "resolved",
-      "summary": "Round 1 found that calling deletable-harness a matrix job claimed a shape the run does not have",
-      "evidence": "Fixed in 8122ca9, which names gate (3.11), gate (3.13) and deletable-harness; the reviewer verified the fix in round record-2"
-    },
-    {
-      "id": "R3",
-      "severity": "P2",
-      "status": "resolved",
-      "summary": "The wheel size stated in the notes was checked against the published asset",
-      "evidence": "The reviewer compared 214,034 bytes in the digest table with the gh release view output and reported no defect"
+      "summary": "Both review rounds returned in under ten seconds with about a hundred completion tokens each on a 37,000 character packet, which is thin scrutiny for a change to the front page",
+      "evidence": "Recorded rather than dropped: the two rounds were run independently and named eleven concrete checks between them with no issues, and consistency across rounds is the only cross-check available here"
     }
   ],
   "verdict": "accepted"

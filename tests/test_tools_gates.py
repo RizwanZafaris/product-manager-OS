@@ -47,7 +47,8 @@ import pm_working_set  # noqa: E402
 import readiness  # noqa: E402
 import readiness_probe  # noqa: E402
 import template_rubric  # noqa: E402
-from tools.docs_contract import check as check_docs, check_inventory  # noqa: E402
+from tools.docs_contract import (check as check_docs, check_gate_count,  # noqa: E402
+                                 check_inventory)
 from tools.graph import check_unique_ids, node_id  # noqa: E402
 
 
@@ -87,6 +88,63 @@ def mutation_table():
                     return ast.literal_eval(statement.value)
     raise AssertionError("probe_mutation_checks no longer assigns a literal "
                          "mutations list, so its anchors cannot be read")
+
+
+class GateCountGateTests(unittest.TestCase):
+    """The other count nothing measured, for the same reason as the first.
+
+    Three documents carried three numbers for one object and none was the
+    object's: the README said 24 gates and 22 gates, the FAQ said twenty-one,
+    and tools/ci_gate.py defined 25. Every one of them had been true once,
+    which is how they survived: adding a gate is the moment they all go stale,
+    and nothing re-read them. These tests fail if the check stops reading
+    either the file or the documents.
+    """
+
+    def findings(self, root):
+        return [(item.path, item.line, item.message) for item in check_gate_count(root)]
+
+    def test_the_tree_as_it_stands_agrees_with_its_own_gate_file(self):
+        self.assertEqual([], self.findings(REPO))
+
+    def test_a_document_naming_the_wrong_count_beside_ci_gate_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            readme = root / "README.md"
+            text = readme.read_text(encoding="utf-8")
+            self.assertIn("25 gates as of this tree", text)
+            readme.write_text(text.replace("25 gates as of this tree",
+                                           "24 gates as of this tree", 1),
+                              encoding="utf-8")
+            messages = [message for _path, _line, message in self.findings(root)]
+            self.assertIn("this says '24 gates' and tools/ci_gate.py defines 25",
+                          messages)
+
+    def test_adding_a_gate_makes_every_document_that_states_the_old_count_fail(self):
+        """The direction the defect actually travels: the file grows, and the
+        documents that were right yesterday are the ones that go wrong."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            gate_file = root / "tools" / "ci_gate.py"
+            text = gate_file.read_text(encoding="utf-8")
+            marker = '    Gate("readiness-local", ("python3", "tools/readiness.py", "--local"),\n'
+            self.assertIn(marker, text)
+            gate_file.write_text(
+                text.replace(marker, '    Gate("invented", ("python3", "-c", "pass")),\n' + marker, 1),
+                encoding="utf-8")
+            paths = {path for path, _line, _message in self.findings(root)}
+            self.assertIn("README.md", paths)
+            self.assertIn("docs/FAQ.md", paths)
+
+    def test_a_tree_without_the_gate_file_makes_no_claim(self):
+        """A fixture root is not a defect. The check reports nothing rather
+        than holding documents to a number it could not measure."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "bare"
+            (root / "docs").mkdir(parents=True)
+            (root / "README.md").write_text(
+                "See `tools/ci_gate.py`, which runs 99 gates.\n", encoding="utf-8")
+            self.assertEqual([], self.findings(root))
 
 
 class TemplateInventoryGateTests(unittest.TestCase):

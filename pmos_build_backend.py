@@ -13,6 +13,17 @@ import csv
 import hashlib
 import io
 import json
+import sys
+
+if sys.version_info < (3, 11):  # pragma: no cover - the interpreter under test is newer
+    # tomllib is 3.11+, and pip imports this backend before it reports the
+    # requires-python floor, so a 3.9 or 3.10 run dies on ModuleNotFoundError
+    # naming the module rather than the cause. macOS ships 3.9 as python3.
+    raise SystemExit(
+        "Product Manager OS needs Python 3.11 or newer to build; this is %d.%d. "
+        "Create the environment with an explicit version, for example "
+        "`python3.11 -m venv .venv`." % sys.version_info[:2])
+
 import tomllib
 import zipfile
 from pathlib import Path
