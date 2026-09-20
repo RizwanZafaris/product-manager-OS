@@ -64,9 +64,10 @@ and its own `owner_action` says to create the authorized tag only after the
 applicable gates are verified. Nobody else can authorize it, and no automation
 in this repository should.
 
-**There is no rollback artifact, and this is the first release.** The gate asks
-for one because a release that cannot be undone is not a release. Today this
-repository has published none, so there is no earlier artifact to roll back to,
+**There is no rollback artifact.** The gate asks for one because a release that
+cannot be undone is not a release. The repository carries the tags v0.3.0 and
+v0.4.0, but neither was published as a release and neither carries an artifact,
+so there is no earlier artifact to roll back to,
 and the honest rollback for 0.8.0 is to stop using it and pin the previous
 commit. Say that in the release notes rather than leaving the field blank, and
 the second release will have a real answer.
@@ -95,7 +96,7 @@ Fill this in when the release is tagged, and leave it filled.
 | Wheel filename | `product_manager_os-0.8.0-py3-none-any.whl` |
 | Wheel SHA-256 | `0da525ddc9325002cd70dfb2b759d9ac8ae2c84f5904ff90d42c43fa6fbf171d` |
 | Provenance manifest SHA-256 | generate from the tagged commit; it changes with any tracked file |
-| Rollback artifact | none: first release, the rollback is to pin the previous commit |
+| Rollback artifact | none: the tags v0.3.0 and v0.4.0 published no release and no artifact, so the rollback is to pin the previous commit |
 | Authorized by | <name> on <date> |
 
 The wheel digest above was measured twice on `2f31ef3` and again on this

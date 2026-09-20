@@ -55,6 +55,8 @@ reproducible rather than asserted.
 
 ## Rolling back
 
-There is no earlier published artifact to roll back to: this is the first
-release. The rollback is to stop using the wheel and pin the previous commit.
-The next release will have a real answer here.
+There is no earlier published artifact to roll back to. The repository carries
+the tags v0.3.0 and v0.4.0, but neither was ever published as a release and
+neither carries an artifact, so this is the first release to ship a wheel. The
+rollback is to stop using it and pin the previous commit. The next release will
+have a real answer here.
