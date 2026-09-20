@@ -4,52 +4,44 @@
   "reviewer_kind": "independent-agent",
   "independent_implementation": true,
   "identity_assurance": "unauthenticated-local-claim",
-  "reviewed_at": "2026-09-20T22:45:56Z",
-  "reviewed_tree_sha256": "9f5b55d5e862b66f2ee40c33e4ccfcd67884779a3efaf2e8767d4a6ce8d29c6c",
+  "reviewed_at": "2026-09-20T23:14:00Z",
+  "reviewed_tree_sha256": "81266fe8a5a962b86acee5a1e1d60d14d05ccbeb25fc7e96799e2b20d6a11f48",
   "scope": [
-    "Change set 263f287..98553c8: pmos/handoff.py, where a handoff section counted any link to a file carrying an artifact block, and tests/test_pmos_handoff.py, whose fixture stamped every section artifact with the literal gate None and wired no manifest, so the permissive behaviour was pinned as correct",
-    "Packet: the full diff, the reproduction output before and after the fix, the three fixture tests that failed the moment the fix landed, and six acceptance questions including whether the fix trades a false positive for a false negative. Two independent rounds on the same tree, both accepted, thirteen named checks, no issues"
+    "Change set 63818ee..6de7a57: four findings on the route an outside product manager takes, being the quickstart's answer contract, the broken-link recovery message the EXT-USER script tests, the default path's missing five of six Gate 1 documents and the unnamed gate-attempt file, and the generated paragraph that told a no-runtime reader to run runtime commands"
   ],
   "evidence": [
     {
-      "command": "the reproduction, before the fix",
-      "result": "on tools/journey_chain.py's own workspace with section 8 citing only a stamped gate-4 template: development_ready True, missing [], and still True with stale_banks [] after that artifact was rewritten"
+      "command": "python3 lint.py --os at 6de7a57",
+      "result": "ok, 11 checks (OS tree mode)"
     },
     {
-      "command": "the reproduction, after the fix",
-      "result": "development_ready False, missing names the file and that it declares gate 4 and is bound by no gate 1-3 approval"
+      "command": "python3.11 tools/what_checks.py --check",
+      "result": "every skill's and template's What-checks text matches its declarations after regenerating into 108 templates"
     },
     {
-      "command": "tests/test_pmos_handoff before the fixture was rebuilt",
-      "result": "3 of 17 failed, which is the pinning itself: they asserted readiness over nine artifacts stamped gate None on a Conductor with no manifest wiring"
+      "command": "tests/test_pmos_conductor",
+      "result": "Ran 62 tests, OK; one assertion updated because the refusal now names the class's whole field list"
     },
     {
-      "command": "tests/test_pmos_handoff after the rebuild",
-      "result": "Ran 19 tests, OK; 17 rebuilt on a manifest-wired Conductor with sections at gates 1, 2 and 3, and 2 added"
+      "command": "the new WorkspaceModeTests case",
+      "result": "asserts the doubled sentence is gone and that the hint names the path that resolves, run against the real tools/init_product.py"
     },
     {
-      "command": "python3.11 tools/journey_chain.py --check",
-      "result": "journey chain matches a fresh run, so the example the repository ships is unaffected"
-    },
-    {
-      "command": "python3.11 tools/ci_gate.py at 98553c8",
+      "command": "python3.11 tools/ci_gate.py at 6de7a57",
       "result": "24 of 25; the one red gate is readiness-local, failing only CI-6, awaiting this record"
+    },
+    {
+      "command": "the packet the reviewer read",
+      "result": "257,975 characters and 64,152 prompt tokens, so the whole diff was in front of it rather than a summary, and it answered all seven acceptance items with eleven named checks"
     }
   ],
   "findings": [
     {
       "id": "R1",
-      "severity": "P2",
-      "status": "open",
-      "summary": "Neither review round engaged with the false-negative question the packet asked directly: a PM citing a backlog or status report, both gate 4, from a Gate-3 handoff now gets unapproved and not ready",
-      "evidence": "Acceptance item A2 named the case and asked which way to ship it; both rounds accepted without addressing it, so the trade remains an unreviewed judgement of the author's and should be revisited if a real user hits it"
-    },
-    {
-      "id": "R2",
       "severity": "P3",
-      "status": "accepted",
-      "summary": "Both rounds answered in about five seconds with around 140 completion tokens on a 17,700 character packet",
-      "evidence": "Recorded rather than dropped, as in the previous change: the two rounds were independent and named thirteen concrete checks between them with no issues, and consistency across rounds is the only cross-check available here"
+      "status": "open",
+      "summary": "The audit's FABLE-4 said the quickstart cannot be followed as written, and that is true only for some substitutions",
+      "evidence": "Free text in the source field with the documented observed_behavior class is accepted; a path-shaped source that does not exist, or the interview_claim class the onboarding output names, is refused. Nothing told a reader which substitution they were making, which is what this change fixes, but the finding as written overstates it"
     }
   ],
   "verdict": "accepted"
