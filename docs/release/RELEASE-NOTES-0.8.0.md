@@ -11,9 +11,14 @@ Skill: none. These are release notes for a reader, not a procedure for a runtime
 ## What this release is
 
 A product-management operating system you can run with Python and a text
-editor: 667 documents, 29 skills, 108 templates, a six-gate stage loop, and a
-dependency-free `pmos` runtime that records answers, evidence and gate
-approvals and refuses to call a product ready when they do not hold.
+editor: 670 markdown documents, of which 29 are prose skills and 108 are
+templates under `templates/`, plus the regulated AI PRD template, a six-gate
+stage loop, and a dependency-free `pmos` runtime that records answers, evidence
+and gate approvals and refuses to call a product ready when they do not hold.
+
+Those counts are of documents. The provenance manifest counts files by
+category, so its numbers differ on purpose: it reports 97 files under `skills/`
+because it counts each skill's sidecar and the conductor's question banks too.
 
 Highlights of this version:
 
