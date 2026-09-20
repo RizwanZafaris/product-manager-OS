@@ -221,6 +221,70 @@ class HandoffTests(unittest.TestCase):
         self.assertEqual(section["status"], "not_applicable")
         self.assertTrue(result["development_ready"])
 
+    def test_link_to_a_file_without_an_artifact_block_is_not_ready(self) -> None:
+        self._write("notes.txt", "TODO")
+        self._write(
+            "development-handoff.md",
+            BLOCK_TEMPLATE.format(
+                artifact_id="demo/development-handoff",
+                phase="ALL STAGES",
+                gate="null",
+                status="approved",
+                depends_on="[]",
+                template="templates/architecture/development-handoff.md",
+                body=self._section_body(("4. Scope and exclusions", "[notes](notes.txt)")),
+            ),
+        )
+        self._approve()
+        result = self._result()
+        section = next(item for item in result["sections"] if item["title"] == "4. Scope and exclusions")
+        self.assertEqual(section["status"], "unbound")
+        self.assertFalse(result["development_ready"])
+        self.assertTrue(any("4. Scope and exclusions" in item for item in result["missing"]))
+
+    def test_not_applicable_without_a_reason_is_not_ready(self) -> None:
+        self._write(
+            "development-handoff.md",
+            BLOCK_TEMPLATE.format(
+                artifact_id="demo/development-handoff",
+                phase="ALL STAGES",
+                gate="null",
+                status="approved",
+                depends_on="[]",
+                template="templates/architecture/development-handoff.md",
+                body=self._section_body(("4. Scope and exclusions", "- N/A because")),
+            ),
+        )
+        self._approve()
+        result = self._result()
+        section = next(item for item in result["sections"] if item["title"] == "4. Scope and exclusions")
+        self.assertEqual(section["status"], "empty")
+        self.assertFalse(result["development_ready"])
+        self.assertTrue(any("4. Scope and exclusions" in item for item in result["missing"]))
+
+    def test_an_unbound_link_beats_a_reasoned_exemption(self) -> None:
+        # Linking a file claims the section applies, so a reason cannot exempt a section that
+        # also points at a file carrying no artifact block.
+        self._write("notes.txt", "TODO")
+        self._write(
+            "development-handoff.md",
+            BLOCK_TEMPLATE.format(
+                artifact_id="demo/development-handoff",
+                phase="ALL STAGES",
+                gate="null",
+                status="approved",
+                depends_on="[]",
+                template="templates/architecture/development-handoff.md",
+                body=self._section_body(
+                    ("4. Scope and exclusions", "[notes](notes.txt)\n- N/A because it does not apply")),
+            ),
+        )
+        self._approve()
+        result = self._result()
+        section = next(item for item in result["sections"] if item["title"] == "4. Scope and exclusions")
+        self.assertEqual(section["status"], "unbound")
+        self.assertFalse(result["development_ready"])
+
     def test_design_gate_not_approved(self) -> None:
         self._approve(("discover", "define"))
         result = self._result()
@@ -341,7 +405,7 @@ class HandoffTests(unittest.TestCase):
                 status="approved",
                 depends_on="[]",
                 template="templates/architecture/development-handoff.md",
-                body=self._section_body(("4. Scope and exclusions", "[gate proof](sections/../gate-1.md)")),
+                body=self._section_body(("4. Scope and exclusions", "[section one](sections/../sections/1.md)")),
             ),
         )
         self._approve()
@@ -354,6 +418,28 @@ class HandoffTests(unittest.TestCase):
         self.assertEqual(dotdot_section["status"], "linked")
         self.assertTrue(dotdot_section["links"][0]["exists"])
         self.assertTrue(result["development_ready"])
+
+    def test_dotdot_link_to_a_file_without_an_artifact_block_resolves_but_is_unbound(self) -> None:
+        # gate-1.md is an ordinary file: the path resolves inside the root, so it is not broken,
+        # but nothing records a revision for it, so it cannot carry a section.
+        self._write(
+            "development-handoff.md",
+            BLOCK_TEMPLATE.format(
+                artifact_id="demo/development-handoff",
+                phase="ALL STAGES",
+                gate="null",
+                status="approved",
+                depends_on="[]",
+                template="templates/architecture/development-handoff.md",
+                body=self._section_body(("4. Scope and exclusions", "[gate proof](sections/../gate-1.md)")),
+            ),
+        )
+        self._approve()
+        result = self._result()
+        section = next(item for item in result["sections"] if item["title"] == "4. Scope and exclusions")
+        self.assertTrue(section["links"][0]["exists"])
+        self.assertEqual(section["status"], "unbound")
+        self.assertFalse(result["development_ready"])
 
     def test_dotdot_link_escaping_root_is_broken(self) -> None:
         self._write(

@@ -666,6 +666,10 @@ and rejected again on one P1 and three P2s, every one of them in code written th
 
 - Local checks do not verify hosted CI on the exact commit, a live provider, vendor sandboxes, a non-maintainer journey, independent human team review, organization-specific regulatory approval, or a published release artifact. No tag or published release is claimed here.
 
+### Fixed
+
+- Two ways a development handoff could report `development_ready: true` on content that was not there. A section counted any link whose target existed, including an ordinary file carrying no artifact block; since the runtime records a revision only for artifacts, nine sections could point at one scratch file and editing it afterwards staled nothing. A section now needs at least one link to a file carrying an artifact block, and reports the new status `unbound` otherwise. Separately, a section whose only content was the words `N/A because`, with no reason after them, counted as a deliberate exemption; an exemption now needs its reason, and a section without one is empty. An unbound link also beats a reasoned exemption, because linking a file claims the section applies. Both were reproducible through `pmos handoff` and both passed the suite before this change: `test_relative_and_dotdot_links_inside_root_are_linked` asserted readiness on a link to a file with no artifact block, and now covers the path-resolution case it was written for.
+
 ## 0.7.1, 2026-09-03
 
 An external audit reproduced six release-blocking defects in the executable
