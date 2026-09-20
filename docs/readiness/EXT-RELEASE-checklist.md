@@ -87,8 +87,26 @@ the second release will have a real answer.
 1. `python3 tools/ci_gate.py` passes on the candidate commit, all gates.
 2. `python3 tools/readiness.py --local` reports 100 of 100, which means the
    CI-6 record covers the exact tree being tagged.
-3. The CHANGELOG's `Unreleased` heading becomes a dated version heading, and
-   the stability promise in it still describes what ships.
+3. The CHANGELOG's `Unreleased` heading becomes a dated version heading, on the
+   day the tag is created and not before. Nothing in this repository should
+   assert a release date while no tag carries it. Replace the heading and its
+   opening paragraph with exactly this, putting the tag's own date in:
+
+   ```markdown
+   ## 0.8.0, <YYYY-MM-DD of the tag>
+
+   This release adds executable local engineering capability: a dependency-free
+   `pmos` runtime, the stage-gate loop it drives, and the checks that keep the
+   documents honest. It is a source tag and a pure-Python wheel built from that
+   tag. It is not a provider certification, not a release attestation, and not
+   evidence that anyone outside this repository has adopted or reviewed it:
+   those requirements stay open in `docs/readiness/external-gates.json`, and
+   `docs/readiness/EXT-RELEASE-checklist.md` records which of them this release
+   carries evidence for and which it does not.
+   ```
+
+   Make those two paths markdown links when you paste it: they resolve from the
+   repository root, where the CHANGELOG sits, and would not resolve from here.
 4. Hosted CI has run on that exact commit and every matrix job succeeded.
 5. The wheel is built from that commit and its digest is recorded below.
 6. The provenance manifest is generated from that commit and published with it.
