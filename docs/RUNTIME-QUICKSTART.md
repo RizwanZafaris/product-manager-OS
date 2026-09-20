@@ -303,6 +303,16 @@ to show real output), `pmos handoff --json` returned:
 {"context": "handoff/CONTEXT.md", "development_ready": false, "index": "handoff/context-index.json", "missing": ["development-handoff.md artifact is missing", "Gate 1 is not approved", "Gate 2 is not approved", "Gate 3 is not approved", "Section 1. Problem is missing", "Section 2. Vision and strategy is missing", "Section 3. Outcomes and success measures is missing", "Section 4. Scope and exclusions is missing", "Section 5. Requirements and acceptance criteria is missing", "Section 6. Evidence and decisions is missing", "Section 7. Dependencies is missing", "Section 8. Interface and data contracts is missing", "Section 9. Unresolved risks and constraints is missing"], "ok": false, "product_id": "demo"}
 ```
 
+## Adopting revised question banks
+
+A product keeps the question banks it started with, so a repository update never strands it mid-interview. To adopt the shipped contract later, preview the change first:
+
+```bash
+python3 -m pmos.cli repin --path . --product-id <product> --dry-run
+```
+
+The preview names each bank whose questions changed, which questions were added, removed or reworded, and which gates will have to be proved again. It writes nothing. Running it without `--dry-run` adopts the contract: every stored answer is kept, questions that are new or reworded are asked again, and each changed bank's gate goes stale until it is proved against the current questions. Gates whose questions did not change are untouched.
+
 As with every gate approval, `development_ready` reflects local attestation,
 never authenticated team approval: the package records who ran each gate and
 when, and that the attestation is `local`, but it does not and cannot confirm
