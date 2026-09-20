@@ -4,49 +4,52 @@
   "reviewer_kind": "independent-agent",
   "independent_implementation": true,
   "identity_assurance": "unauthenticated-local-claim",
-  "reviewed_at": "2026-09-20T22:23:56Z",
-  "reviewed_tree_sha256": "3bdcaccb5e8df343b12e44eaadc495988a1f1eaa6c893df6a0e1dc1fe1003293",
+  "reviewed_at": "2026-09-20T22:45:56Z",
+  "reviewed_tree_sha256": "9f5b55d5e862b66f2ee40c33e4ccfcd67884779a3efaf2e8767d4a6ce8d29c6c",
   "scope": [
-    "Change set 1aa32d9..82b617e: the README paragraph that said nothing had been released, three wrong gate counts and the check that now measures them, what the deletable-harness job is claimed to prove, and the Python 3.11 floor that was documented nowhere near the commands needing it",
-    "Packet: the full diff, the measured release facts with the command that produced each, the workflow job being described, and the proof that the new check fails on a wrong figure. Two independent rounds on the same tree, both accepted, six and five named checks, no issues raised in either"
+    "Change set 263f287..98553c8: pmos/handoff.py, where a handoff section counted any link to a file carrying an artifact block, and tests/test_pmos_handoff.py, whose fixture stamped every section artifact with the literal gate None and wired no manifest, so the permissive behaviour was pinned as correct",
+    "Packet: the full diff, the reproduction output before and after the fix, the three fixture tests that failed the moment the fix landed, and six acceptance questions including whether the fix trades a false positive for a false negative. Two independent rounds on the same tree, both accepted, thirteen named checks, no issues"
   ],
   "evidence": [
     {
-      "command": "python3 lint.py --os at 82b617e",
-      "result": "ok, 11 checks (OS tree mode)"
+      "command": "the reproduction, before the fix",
+      "result": "on tools/journey_chain.py's own workspace with section 8 citing only a stamped gate-4 template: development_ready True, missing [], and still True with stale_banks [] after that artifact was rewritten"
     },
     {
-      "command": "python3.11 tools/docs_contract.py --strict at 82b617e",
-      "result": "0 errors, 0 warnings"
+      "command": "the reproduction, after the fix",
+      "result": "development_ready False, missing names the file and that it declares gate 4 and is bound by no gate 1-3 approval"
     },
     {
-      "command": "python3.11 tools/ci_gate.py at 42dd215",
-      "result": "23 of 25; root-tests failed because docs/readiness/test-classes.json is a closed inventory and the new class was not in it, which the gate named in its own failure message"
+      "command": "tests/test_pmos_handoff before the fixture was rebuilt",
+      "result": "3 of 17 failed, which is the pinning itself: they asserted readiness over nine artifacts stamped gate None on a Conductor with no manifest wiring"
     },
     {
-      "command": "python3.11 tools/ci_gate.py at 82b617e",
+      "command": "tests/test_pmos_handoff after the rebuild",
+      "result": "Ran 19 tests, OK; 17 rebuilt on a manifest-wired Conductor with sections at gates 1, 2 and 3, and 2 added"
+    },
+    {
+      "command": "python3.11 tools/journey_chain.py --check",
+      "result": "journey chain matches a fresh run, so the example the repository ships is unaffected"
+    },
+    {
+      "command": "python3.11 tools/ci_gate.py at 98553c8",
       "result": "24 of 25; the one red gate is readiness-local, failing only CI-6, awaiting this record"
-    },
-    {
-      "command": "python3.11 -m unittest test_tools_gates",
-      "result": "Ran 62 tests, OK; 58 before this change and 4 added, including one that adds a gate to ci_gate.py and asserts both documents then fail"
-    },
-    {
-      "command": "a scratch copy with the README regressed to 24 gates",
-      "result": "README.md:183: error gate-count: this says '24 gates' and tools/ci_gate.py defines 25, so the new check is not vacuous"
-    },
-    {
-      "command": "importing pmos_build_backend on the macOS default python3, version 3.9.6",
-      "result": "before, ModuleNotFoundError naming tomllib; after, a message naming the version and the fix. On 3.11 it still imports and build_wheel is present"
     }
   ],
   "findings": [
     {
       "id": "R1",
+      "severity": "P2",
+      "status": "open",
+      "summary": "Neither review round engaged with the false-negative question the packet asked directly: a PM citing a backlog or status report, both gate 4, from a Gate-3 handoff now gets unapproved and not ready",
+      "evidence": "Acceptance item A2 named the case and asked which way to ship it; both rounds accepted without addressing it, so the trade remains an unreviewed judgement of the author's and should be revisited if a real user hits it"
+    },
+    {
+      "id": "R2",
       "severity": "P3",
       "status": "accepted",
-      "summary": "Both review rounds returned in under ten seconds with about a hundred completion tokens each on a 37,000 character packet, which is thin scrutiny for a change to the front page",
-      "evidence": "Recorded rather than dropped: the two rounds were run independently and named eleven concrete checks between them with no issues, and consistency across rounds is the only cross-check available here"
+      "summary": "Both rounds answered in about five seconds with around 140 completion tokens on a 17,700 character packet",
+      "evidence": "Recorded rather than dropped, as in the previous change: the two rounds were independent and named thirteen concrete checks between them with no issues, and consistency across rounds is the only cross-check available here"
     }
   ],
   "verdict": "accepted"
