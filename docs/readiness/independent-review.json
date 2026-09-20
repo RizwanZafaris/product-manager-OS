@@ -4,28 +4,28 @@
   "reviewer_kind": "independent-agent",
   "independent_implementation": true,
   "identity_assurance": "unauthenticated-local-claim",
-  "reviewed_at": "2026-09-20T16:06:52Z",
-  "reviewed_tree_sha256": "4ca33693d9a072111fe750343f223209f42d1d8942b6c118f2aa004575de6262",
+  "reviewed_at": "2026-09-20T16:55:03Z",
+  "reviewed_tree_sha256": "6cb4a9f5f00f102586658223a0bd4e1339d5b3e62aecf865b28b7a65dc269729",
   "scope": [
-    "Change set 9f2e443..01c2391: tools/journey_chain.py and examples/journey-chain.md; pmos repin and the question-bank fingerprint recorded with a gate approval; the human summary for pmos status; their tests, the journey-chain release gate, CHANGELOG and RUNTIME-QUICKSTART",
-    "Packet: the full diff, the repin command, the fingerprint and the Conductor state invariant it must satisfy, and the generated chain record; the reviewer had no tools and could not open files. A first attempt returned no content after spending its whole completion budget reasoning and was discarded unread; this verdict is from the retry with reasoning disabled"
+    "Change set 2f31ef3..dc6c163: docs/readiness/EXT-RELEASE-checklist.md and its CHANGELOG entry. Documentation only; no source, no gate policy and no tooling changed",
+    "Packet: the full diff, the EXT-CI and EXT-RELEASE entries of external-gates.json, the readiness code that reports external gates as unverified, and the measured facts the file quotes; the reviewer had no tools and could not open files"
   ],
   "evidence": [
     {
-      "command": "python3 -m unittest discover -s tests at 01c2391",
-      "result": "Ran 958 tests, OK"
+      "command": "python3 lint.py --os at dc6c163",
+      "result": "ok, 11 checks"
     },
     {
-      "command": "python3 tools/ci_gate.py at 01c2391",
+      "command": "python3 tools/ci_gate.py at dc6c163",
       "result": "release gates 24/25 passed; the one red gate is readiness-local, failing only CI-6, awaiting this record"
     },
     {
-      "command": "python3 tools/journey_chain.py --check and python3 tools/journey_record.py --check at 01c2391",
-      "result": "both report the committed record matches a fresh run"
+      "command": "two wheel builds from 2f31ef3",
+      "result": "product_manager_os-0.8.0-py3-none-any.whl, 214034 bytes, sha256 0da525ddc9325002cd70dfb2b759d9ac8ae2c84f5904ff90d42c43fa6fbf171d both times"
     },
     {
-      "command": "the recorded chain run",
-      "result": "26 of 26 answers cite a workspace file, three gates advanced, handoff development-ready with nine linked sections, then not ready with Gates 1 and 2 stale after one cited document changed"
+      "command": "hosted run 35522785674 on 2f31ef3",
+      "result": "gate (3.11), gate (3.13) and deletable-harness all successful"
     }
   ],
   "findings": [],
