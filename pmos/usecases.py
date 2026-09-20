@@ -222,7 +222,13 @@ _CASE_EVIDENCE: Mapping[str, Mapping[str, _EvidenceExpectation]] = {
         "cli_initialized": _EvidenceExpectation(_true, "successful CLI initialization"),
         "cli_completed": _EvidenceExpectation(_true, "a proved CLI gate"),
         "store_verified": _EvidenceExpectation(_true, "a verified Store reopen"),
-        "conductor_completed": _EvidenceExpectation(_true, "a durable conductor position after the gate"),
+        # Was conductor_completed, recorded as the literal True: it could not distinguish a
+        # working runtime from a broken one, and it was also wrong, since this case answers
+        # one bank and the observed position after the gate is a question in the next one.
+        "conductor_position": _EvidenceExpectation(
+            _one_of("completed", "question"), "a durable conductor position after the gate"),
+        "conductor_moved_past_gated_bank": _EvidenceExpectation(
+            _true, "a conductor that advanced beyond the bank it just gated, or completed"),
         "domain_reopened": _EvidenceExpectation(_true, "a durable domain reopen"),
         "hook_action": _EvidenceExpectation(_equals("allow"), "an allowed transition hook"),
         "skill_contract_count": _EvidenceExpectation(_at_least(1), "at least one verified skill"),
@@ -718,6 +724,8 @@ def new_user() -> UseCaseResult:
             moved_on = position.status == "question" and position.bank_id != gated_bank_id
             if position.status != "completed" and not moved_on:
                 raise AssertionError("CLI conductor state did not survive Store reopen")
+            conductor_position = position.status
+            conductor_moved_past_gated_bank = position.status == "completed" or moved_on
 
             domain = PMOSDomain.open(store, storage_id="golden-domain")
             _organization, product, owner, _membership = domain.bootstrap_workspace(
@@ -757,7 +765,8 @@ def new_user() -> UseCaseResult:
             store_verified = reopened_store.verify().ok
     return _observed("new_user", cli_initialized=initialized["ok"] is True,
                      cli_completed=gated["outcome"]["status"] in ("advanced", "completed"),
-                     store_verified=store_verified, conductor_completed=True,
+                     store_verified=store_verified, conductor_position=conductor_position,
+                     conductor_moved_past_gated_bank=conductor_moved_past_gated_bank,
                      domain_reopened=domain_reopened, hook_action=hook.action,
                      skill_contract_count=len(contracts), operations_status=acknowledged.status.value)
 
