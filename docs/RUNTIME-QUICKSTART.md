@@ -4,8 +4,12 @@ Product Manager OS is usable as a document tree, and its optional local
 runtime is standard-library Python.  It does not require an API key, a hosted
 service, or a model.
 
+**It requires Python 3.11 or newer.**  The build backend reads `pyproject.toml`
+with `tomllib`, which arrived in 3.11, and `tools/ci_gate.py` refuses anything
+older.  The default `python3` on macOS is 3.9, so name the version:
+
 ```bash
-python3 -m venv .venv
+python3.11 -m venv .venv
 . .venv/bin/activate
 python -m pip install --no-index .
 pmos init --path ./products/my-product --product-id checkout

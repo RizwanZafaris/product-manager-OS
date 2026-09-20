@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import re
 import sys
@@ -61,6 +62,15 @@ INVENTORY = re.compile(r"\ball\s+(\d+)\s+(?:templates?|blanks?)\b", re.I)
 # in this set: it records what was true on the day of an entry, so its older
 # figures are correct history and would fail a check against today's tree.
 INVENTORY_DOCS = ("README.md", "docs/ARCHITECTURE.md")
+
+# The gate count, measured from tools/ci_gate.py rather than trusted. A
+# document naming a number of gates on the same line as ci_gate.py is making a
+# claim about this tree, so it is read; a number on any other line is not,
+# which is the same stated limit the inventory check carries. CHANGELOG.md is
+# excluded for the reason given above: its older figures are correct history.
+GATE_COUNT = re.compile(r"\b(\d+)\s+(?:release\s+)?gates\b", re.I)
+GATE_COUNT_DOCS = ("README.md", "docs/FAQ.md")
+CI_GATE = "tools/ci_gate.py"
 
 
 @dataclass(frozen=True)
@@ -222,6 +232,62 @@ def check_inventory(root: Path) -> list[Issue]:
     return issues
 
 
+def _gate_total(root: Path):
+    """How many gates tools/ci_gate.py defines, read from its GATES tuple.
+
+    Parsed, not imported: importing runs the module, and this file is run
+    against fixture roots that need not carry a working runtime. A tree with
+    no ci_gate.py, or one whose GATES is not a literal tuple, returns None and
+    makes no claim, rather than guessing a number the documents are then held
+    to.
+    """
+    source = root / CI_GATE
+    if not source.is_file():
+        return None
+    try:
+        tree = ast.parse(source.read_text(encoding="utf-8"))
+    except SyntaxError:
+        return None
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign):
+            continue
+        for target in node.targets:
+            if (isinstance(target, ast.Name) and target.id == "GATES"
+                    and isinstance(node.value, (ast.Tuple, ast.List))):
+                return len(node.value.elts)
+    return None
+
+
+def check_gate_count(root: Path) -> list[Issue]:
+    """Gate counts stated beside ci_gate.py, against what that file defines.
+
+    This exists because three documents carried three different numbers for
+    one object, none of them the number the file held: the README said 24 and
+    22, the FAQ said twenty-one, and tools/ci_gate.py defined 25. A figure a
+    reader cannot check is a figure nothing re-measures when gates are added.
+
+    Spelled-out numbers are not read, the same limit the inventory check
+    states. A document that wants to be checked writes the digit.
+    """
+    issues: list[Issue] = []
+    total = _gate_total(root)
+    if total is None:
+        return issues
+    for name in GATE_COUNT_DOCS:
+        path = root / name
+        if not path.is_file():
+            continue
+        for number, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if CI_GATE not in raw:
+                continue
+            for match in GATE_COUNT.finditer(raw):
+                if int(match.group(1)) != total:
+                    issues.append(Issue("error", "gate-count", name, number,
+                                        "this says %r and %s defines %d"
+                                        % (match.group(0), CI_GATE, total)))
+    return issues
+
+
 def check(root: Path) -> list[Issue]:
     root = root.resolve()
     issues: list[Issue] = []
@@ -276,6 +342,7 @@ def check(root: Path) -> list[Issue]:
         issues.append(Issue("warning", "readme-boundary", "README.md", 1,
                             "add: 'Local evidence is not external evidence.'"))
     issues.extend(check_inventory(root))
+    issues.extend(check_gate_count(root))
     return sorted(issues, key=lambda item: (item.severity, item.path, item.line,
                                              item.code, item.message))
 
