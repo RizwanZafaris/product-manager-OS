@@ -50,11 +50,21 @@ Built twice from `2f31ef3`, that wheel is byte-identical both times:
 tracked file with its digest and records no file contents and no secrets:
 
 ```bash
-python3 -m pmos.cli provenance --path . --output docs/release/provenance.json
-python3 -m pmos.cli verify --path . --provenance docs/release/provenance.json
+PYTHONDONTWRITEBYTECODE=1 python3 -m pmos.cli provenance --path . --output /tmp/provenance.json
+python3 -c "from pmos.release import verify_provenance; print(verify_provenance('.', '/tmp/provenance.json'))"
 ```
 
-On `2f31ef3` it covers 772 artifacts, 97 skills and 25 configuration files.
+Both details matter. Python writes `__pycache__` on import, before the manifest
+walks the tree, so a manifest generated without `PYTHONDONTWRITEBYTECODE=1`
+inventories build caches and will not reproduce: measured on the same commit,
+a plain run counted 716 artifacts and a run with bytecode off counted 702, the
+difference being fourteen `.pyc` files. And `pmos verify` is not the way to
+check a manifest: it checks a runtime and refuses before reading one, so it
+needs a workspace that has been through `pmos init`. `verify_provenance` takes
+a tree and a manifest and needs no runtime.
+
+Generated that way from a pristine clone it covers 702 artifacts, 97 skills and
+25 configuration files.
 Generate it from the tagged commit, not from a working tree, and publish it
 beside the wheel rather than committing it: a manifest committed into the tree
 it describes is stale the moment anything changes.
@@ -64,9 +74,10 @@ and its own `owner_action` says to create the authorized tag only after the
 applicable gates are verified. Nobody else can authorize it, and no automation
 in this repository should.
 
-**There is no rollback artifact, and this is the first release.** The gate asks
-for one because a release that cannot be undone is not a release. Today this
-repository has published none, so there is no earlier artifact to roll back to,
+**There is no rollback artifact.** The gate asks for one because a release that
+cannot be undone is not a release. The repository carries the tags v0.3.0 and
+v0.4.0, but neither was published as a release and neither carries an artifact,
+so there is no earlier artifact to roll back to,
 and the honest rollback for 0.8.0 is to stop using it and pin the previous
 commit. Say that in the release notes rather than leaving the field blank, and
 the second release will have a real answer.
@@ -76,8 +87,26 @@ the second release will have a real answer.
 1. `python3 tools/ci_gate.py` passes on the candidate commit, all gates.
 2. `python3 tools/readiness.py --local` reports 100 of 100, which means the
    CI-6 record covers the exact tree being tagged.
-3. The CHANGELOG's `Unreleased` heading becomes a dated version heading, and
-   the stability promise in it still describes what ships.
+3. The CHANGELOG's `Unreleased` heading becomes a dated version heading, on the
+   day the tag is created and not before. Nothing in this repository should
+   assert a release date while no tag carries it. Replace the heading and its
+   opening paragraph with exactly this, putting the tag's own date in:
+
+   ```markdown
+   ## 0.8.0, <YYYY-MM-DD of the tag>
+
+   This release adds executable local engineering capability: a dependency-free
+   `pmos` runtime, the stage-gate loop it drives, and the checks that keep the
+   documents honest. It is a source tag and a pure-Python wheel built from that
+   tag. It is not a provider certification, not a release attestation, and not
+   evidence that anyone outside this repository has adopted or reviewed it:
+   those requirements stay open in `docs/readiness/external-gates.json`, and
+   `docs/readiness/EXT-RELEASE-checklist.md` records which of them this release
+   carries evidence for and which it does not.
+   ```
+
+   Make those two paths markdown links when you paste it: they resolve from the
+   repository root, where the CHANGELOG sits, and would not resolve from here.
 4. Hosted CI has run on that exact commit and every matrix job succeeded.
 5. The wheel is built from that commit and its digest is recorded below.
 6. The provenance manifest is generated from that commit and published with it.
@@ -88,12 +117,19 @@ Fill this in when the release is tagged, and leave it filled.
 
 | Field | Value |
 |---|---|
-| Release version | <version> |
-| Tagged commit SHA | <full sha> |
+| Release version | 0.8.0 |
+| Tagged commit SHA | <full sha of the commit the tag points at> |
 | Tag protection or signature | <protected ruleset, or signing key id> |
 | Hosted CI run for that SHA | <url> |
-| Wheel filename | <name> |
-| Wheel SHA-256 | <digest> |
-| Provenance manifest SHA-256 | <digest> |
-| Rollback artifact | <previous release artifact, or "none: first release"> |
+| Wheel filename | `product_manager_os-0.8.0-py3-none-any.whl` |
+| Wheel SHA-256 | `0da525ddc9325002cd70dfb2b759d9ac8ae2c84f5904ff90d42c43fa6fbf171d` |
+| Provenance manifest SHA-256 | generate from a pristine clone of the tagged commit with `PYTHONDONTWRITEBYTECODE=1`; it changes with any tracked file, and with any `.pyc` left in the tree |
+| Rollback artifact | none: the tags v0.3.0 and v0.4.0 published no release and no artifact, so the rollback is to pin the previous commit |
 | Authorized by | <name> on <date> |
+
+The wheel digest above was measured twice on `2f31ef3` and again on this
+release candidate, unchanged both times, because documentation does not enter
+the wheel. Re-measure it if anything under `pmos/` or the packaging metadata
+changes before the tag. The provenance digest is deliberately not recorded
+here: it covers every tracked file, so only the manifest generated from the
+tagged commit is the right one to publish.

@@ -4,30 +4,38 @@
   "reviewer_kind": "independent-agent",
   "independent_implementation": true,
   "identity_assurance": "unauthenticated-local-claim",
-  "reviewed_at": "2026-09-20T16:55:03Z",
-  "reviewed_tree_sha256": "6cb4a9f5f00f102586658223a0bd4e1339d5b3e62aecf865b28b7a65dc269729",
+  "reviewed_at": "2026-09-20T19:39:05Z",
+  "reviewed_tree_sha256": "53ad1c80a9323092550349a04a7aec7cfd4babf12723a3647a44c1c2f4ea8e4e",
   "scope": [
-    "Change set 2f31ef3..dc6c163: docs/readiness/EXT-RELEASE-checklist.md and its CHANGELOG entry. Documentation only; no source, no gate policy and no tooling changed",
-    "Packet: the full diff, the EXT-CI and EXT-RELEASE entries of external-gates.json, the readiness code that reports external gates as unverified, and the measured facts the file quotes; the reviewer had no tools and could not open files"
+    "Change set 1086a20..ba564fa: docs/release/RELEASE-NOTES-0.8.0.md, the filled record and pre-tag list in docs/readiness/EXT-RELEASE-checklist.md, and the CHANGELOG. Documentation only; nothing tags, publishes or marks an external gate verified",
+    "Four rounds. Round 1 raised a P1 reading 24 of 25 passing gates as only 24 gates existing, which the gate count refutes. Round 2 rejected because 29 prose skills could not be reconciled with the manifest's 97 files under skills/; they measure different things and the notes now say so, and the document count was genuinely wrong and went from 667 to 670. Round 3 rejected on the dated CHANGELOG heading, which is now removed. Round 4 accepted with eight named checks and no findings"
   ],
   "evidence": [
     {
-      "command": "python3 lint.py --os at dc6c163",
+      "command": "python3 lint.py --os at ba564fa",
       "result": "ok, 11 checks"
     },
     {
-      "command": "python3 tools/ci_gate.py at dc6c163",
-      "result": "release gates 24/25 passed; the one red gate is readiness-local, failing only CI-6, awaiting this record"
+      "command": "python3 tools/ci_gate.py at ba564fa",
+      "result": "24 of the 25 defined gates pass; the one red gate is readiness-local, failing only CI-6, awaiting this record"
     },
     {
-      "command": "two wheel builds from 2f31ef3",
-      "result": "product_manager_os-0.8.0-py3-none-any.whl, 214034 bytes, sha256 0da525ddc9325002cd70dfb2b759d9ac8ae2c84f5904ff90d42c43fa6fbf171d both times"
+      "command": "counts measured on this tree",
+      "result": "670 markdown documents outside .git, 29 files matching skills/*/SKILL.md, 108 markdown templates plus one regulated template"
     },
     {
-      "command": "hosted run 35522785674 on 2f31ef3",
-      "result": "gate (3.11), gate (3.13) and deletable-harness all successful"
+      "command": "provenance measured in a pristine clone",
+      "result": "702 artifacts with PYTHONDONTWRITEBYTECODE=1 and 716 without, the difference being fourteen .pyc files; verify_provenance returns ok with no runtime where pmos verify refuses"
     }
   ],
-  "findings": [],
+  "findings": [
+    {
+      "id": "R1",
+      "severity": "P3",
+      "status": "open",
+      "summary": "The release notes carry the repository's Stage, Knowledge and Skill header, and a stage line arguably says nothing useful for release notes",
+      "evidence": "round 3 issue 2; kept because every document in this tree carries that header and an exception would be the odd one out"
+    }
+  ],
   "verdict": "accepted"
 }
