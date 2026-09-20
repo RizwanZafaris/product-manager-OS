@@ -88,12 +88,19 @@ Fill this in when the release is tagged, and leave it filled.
 
 | Field | Value |
 |---|---|
-| Release version | <version> |
-| Tagged commit SHA | <full sha> |
+| Release version | 0.8.0 |
+| Tagged commit SHA | <full sha of the commit the tag points at> |
 | Tag protection or signature | <protected ruleset, or signing key id> |
 | Hosted CI run for that SHA | <url> |
-| Wheel filename | <name> |
-| Wheel SHA-256 | <digest> |
-| Provenance manifest SHA-256 | <digest> |
-| Rollback artifact | <previous release artifact, or "none: first release"> |
+| Wheel filename | `product_manager_os-0.8.0-py3-none-any.whl` |
+| Wheel SHA-256 | `0da525ddc9325002cd70dfb2b759d9ac8ae2c84f5904ff90d42c43fa6fbf171d` |
+| Provenance manifest SHA-256 | generate from the tagged commit; it changes with any tracked file |
+| Rollback artifact | none: first release, the rollback is to pin the previous commit |
 | Authorized by | <name> on <date> |
+
+The wheel digest above was measured twice on `2f31ef3` and again on this
+release candidate, unchanged both times, because documentation does not enter
+the wheel. Re-measure it if anything under `pmos/` or the packaging metadata
+changes before the tag. The provenance digest is deliberately not recorded
+here: it covers every tracked file, so only the manifest generated from the
+tagged commit is the right one to publish.
