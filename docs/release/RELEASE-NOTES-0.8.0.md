@@ -46,8 +46,12 @@ local run proves the executable local contract and nothing beyond it.
 
 ```bash
 python3 -c "import hashlib,pathlib; print(hashlib.sha256(pathlib.Path('product_manager_os-0.8.0-py3-none-any.whl').read_bytes()).hexdigest())"
-python3 -m pmos.cli verify --path . --provenance provenance.json
+python3 -c "from pmos.release import verify_provenance; print(verify_provenance('.', 'provenance.json'))"
 ```
+
+Run the second one from a checkout of the tagged source. `pmos verify` is not
+the command for this: it checks a runtime and refuses before it reads a
+manifest, so it needs a workspace you have run `pmos init` in.
 
 The wheel is built by the repository's own standard-library backend and is
 byte-identical on repeated builds from the same commit, so the digest below is

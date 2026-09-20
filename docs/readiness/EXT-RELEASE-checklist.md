@@ -50,11 +50,21 @@ Built twice from `2f31ef3`, that wheel is byte-identical both times:
 tracked file with its digest and records no file contents and no secrets:
 
 ```bash
-python3 -m pmos.cli provenance --path . --output docs/release/provenance.json
-python3 -m pmos.cli verify --path . --provenance docs/release/provenance.json
+PYTHONDONTWRITEBYTECODE=1 python3 -m pmos.cli provenance --path . --output /tmp/provenance.json
+python3 -c "from pmos.release import verify_provenance; print(verify_provenance('.', '/tmp/provenance.json'))"
 ```
 
-On `2f31ef3` it covers 772 artifacts, 97 skills and 25 configuration files.
+Both details matter. Python writes `__pycache__` on import, before the manifest
+walks the tree, so a manifest generated without `PYTHONDONTWRITEBYTECODE=1`
+inventories build caches and will not reproduce: measured on the same commit,
+a plain run counted 716 artifacts and a run with bytecode off counted 702, the
+difference being fourteen `.pyc` files. And `pmos verify` is not the way to
+check a manifest: it checks a runtime and refuses before reading one, so it
+needs a workspace that has been through `pmos init`. `verify_provenance` takes
+a tree and a manifest and needs no runtime.
+
+Generated that way from a pristine clone it covers 702 artifacts, 97 skills and
+25 configuration files.
 Generate it from the tagged commit, not from a working tree, and publish it
 beside the wheel rather than committing it: a manifest committed into the tree
 it describes is stale the moment anything changes.
@@ -95,7 +105,7 @@ Fill this in when the release is tagged, and leave it filled.
 | Hosted CI run for that SHA | <url> |
 | Wheel filename | `product_manager_os-0.8.0-py3-none-any.whl` |
 | Wheel SHA-256 | `0da525ddc9325002cd70dfb2b759d9ac8ae2c84f5904ff90d42c43fa6fbf171d` |
-| Provenance manifest SHA-256 | generate from the tagged commit; it changes with any tracked file |
+| Provenance manifest SHA-256 | generate from a pristine clone of the tagged commit with `PYTHONDONTWRITEBYTECODE=1`; it changes with any tracked file, and with any `.pyc` left in the tree |
 | Rollback artifact | none: the tags v0.3.0 and v0.4.0 published no release and no artifact, so the rollback is to pin the previous commit |
 | Authorized by | <name> on <date> |
 
