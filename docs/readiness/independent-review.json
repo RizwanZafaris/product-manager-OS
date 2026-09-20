@@ -4,30 +4,34 @@
   "reviewer_kind": "independent-agent",
   "independent_implementation": true,
   "identity_assurance": "unauthenticated-local-claim",
-  "reviewed_at": "2026-09-20T16:55:03Z",
-  "reviewed_tree_sha256": "6cb4a9f5f00f102586658223a0bd4e1339d5b3e62aecf865b28b7a65dc269729",
+  "reviewed_at": "2026-09-20T19:15:08Z",
+  "reviewed_tree_sha256": "bd6195986c04ea81f56413eb85b662555a34063c7ea34d13ca77a46925d3b420",
   "scope": [
-    "Change set 2f31ef3..dc6c163: docs/readiness/EXT-RELEASE-checklist.md and its CHANGELOG entry. Documentation only; no source, no gate policy and no tooling changed",
-    "Packet: the full diff, the EXT-CI and EXT-RELEASE entries of external-gates.json, the readiness code that reports external gates as unverified, and the measured facts the file quotes; the reviewer had no tools and could not open files"
+    "Change set 1086a20..6e97adc: the CHANGELOG 0.8.0 heading and its opening paragraph, docs/release/RELEASE-NOTES-0.8.0.md, and the filled record in docs/readiness/EXT-RELEASE-checklist.md. Documentation only; nothing tags, publishes or marks an external gate verified",
+    "Packet: the full diff, the release notes in full, the filled record, and the measured wheel and provenance facts; the reviewer had no tools and could not open files"
   ],
   "evidence": [
     {
-      "command": "python3 lint.py --os at dc6c163",
+      "command": "python3 lint.py --os at 6e97adc",
       "result": "ok, 11 checks"
     },
     {
-      "command": "python3 tools/ci_gate.py at dc6c163",
+      "command": "python3 tools/ci_gate.py at 6e97adc",
       "result": "release gates 24/25 passed; the one red gate is readiness-local, failing only CI-6, awaiting this record"
     },
     {
-      "command": "two wheel builds from 2f31ef3",
-      "result": "product_manager_os-0.8.0-py3-none-any.whl, 214034 bytes, sha256 0da525ddc9325002cd70dfb2b759d9ac8ae2c84f5904ff90d42c43fa6fbf171d both times"
-    },
-    {
-      "command": "hosted run 35522785674 on 2f31ef3",
-      "result": "gate (3.11), gate (3.13) and deletable-harness all successful"
+      "command": "three wheel builds, two on 2f31ef3 and one on this candidate",
+      "result": "product_manager_os-0.8.0-py3-none-any.whl, 214034 bytes, sha256 0da525ddc9325002cd70dfb2b759d9ac8ae2c84f5904ff90d42c43fa6fbf171d every time"
     }
   ],
-  "findings": [],
+  "findings": [
+    {
+      "id": "R1",
+      "severity": "P3",
+      "status": "open",
+      "summary": "The 0.8.0 heading is dated 2026-09-20 before the tag exists, so the date is wrong if the tag lands on another day",
+      "evidence": "round 1 issue 1; the fix is one line in CHANGELOG.md immediately before tagging, and the checklist's pre-tag list already carries that step"
+    }
+  ],
   "verdict": "accepted"
 }
