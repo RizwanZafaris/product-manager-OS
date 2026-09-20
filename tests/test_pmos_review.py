@@ -120,6 +120,47 @@ class IndependentReviewGateTests(unittest.TestCase):
             self.assertEqual(clean, dirty)
             self.assertNotIn("dist/untracked.json", {row["path"] for row in rows})
 
+    def test_a_local_product_workspace_does_not_move_the_recorded_tree(self):
+        """products/ is where this repository tells every user to work, and it
+        is gitignored, so a reviewer with one digested a tree no clean checkout
+        has. The record then passed on that machine and failed in CI, naming
+        only "1 criteria failing". That happened on 2026-09-21."""
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            run = git_repo(root)
+            (root / "app.py").write_text("SAFE = True\n", encoding="utf-8")
+            run("add", "app.py")
+            run("commit", "-qm", "init")
+            clean, _rows = tree_digest(root)
+            workspace = root / "products" / "acme" / "discovery"
+            workspace.mkdir(parents=True)
+            (workspace / "problem-framing.md").write_text("# Problem\n", encoding="utf-8")
+            dirty, rows = tree_digest(root)
+            self.assertEqual(clean, dirty)
+            self.assertNotIn("products/acme/discovery/problem-framing.md",
+                             {row["path"] for row in rows})
+
+    def test_a_tracked_file_under_products_is_still_hashed(self):
+        """The skip is by name only while git carries nothing beneath it, the
+        same guard every other root-skip directory gets: a force-added file
+        there must still move the digest it is pinned to."""
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            run = git_repo(root)
+            (root / "app.py").write_text("SAFE = True\n", encoding="utf-8")
+            (root / ".gitignore").write_text("/products/\n", encoding="utf-8")
+            tracked = root / "products" / "policy.json"
+            tracked.parent.mkdir()
+            tracked.write_text('{"approved": false}\n', encoding="utf-8")
+            run("add", "app.py", ".gitignore")
+            run("add", "-f", "products/policy.json")
+            run("commit", "-qm", "init")
+            first, first_rows = tree_digest(root)
+            self.assertIn("products/policy.json", {row["path"] for row in first_rows})
+            tracked.write_text('{"approved": true}\n', encoding="utf-8")
+            second, _second_rows = tree_digest(root)
+            self.assertNotEqual(first, second)
+
     def test_parent_swap_uses_pinned_review_tree_descriptor(self):
         with TemporaryDirectory() as directory:
             root = Path(directory)
