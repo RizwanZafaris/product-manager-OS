@@ -152,11 +152,13 @@ def _links(lines: list[str], handoff_folder: Path, root: Path,
                 "exists": bool(exists),
                 "artifact_id": info["artifact_id"] if info else None,
                 "revision": info["revision"] if info else None,
+                "gate": info.get("gate") if info else None,
             })
     return found
 
 
-def _section_status(lines: list[str], links: list[dict[str, Any]]) -> str:
+def _section_status(lines: list[str], links: list[dict[str, Any]],
+                    bound_ids: "set[str]") -> str:
     for raw in lines:
         text = raw.lstrip()
         if text.startswith("- "):
@@ -165,11 +167,17 @@ def _section_status(lines: list[str], links: list[dict[str, Any]]) -> str:
             return "gap"
     if any(not item["exists"] for item in links):
         return "broken"
-    # Only a link to a file carrying an artifact block counts as content. The runtime records a
-    # revision for those and for nothing else, so a link to an ordinary file would let a handoff
-    # report ready on a scratch file, and editing that file afterwards could not stale anything.
-    if any(item["artifact_id"] is not None for item in links):
+    # Only a link to an artifact one of the required approvals actually bound counts as content.
+    # Carrying an artifact block is not enough: build_manifest collects the artifacts whose declared
+    # gate equals the gate being approved, so a block naming gate 4 is recorded in no gate 1-3
+    # manifest, nothing stales when it is rewritten, and a handoff over it would report ready on
+    # evidence that has since changed. That was reachable until this check existed.
+    if any(item["artifact_id"] in bound_ids for item in links):
         return "linked"
+    # A block without a binding is its own answer, distinct from a scratch file: the file is a real
+    # artifact and the section cites it, but no approval this handoff requires covers it.
+    if any(item["artifact_id"] is not None for item in links):
+        return "unapproved"
     # An unbound link beats a reasoned exemption: linking a file claims the section applies, so a
     # section cannot be exempt and linked to a scratch file at the same time.
     if links:
@@ -190,7 +198,8 @@ def build_handoff(conductor, contract: dict[str, Any] | None, root) -> dict[str,
     source_revision = conductor.store.head(conductor.product_id).token
 
     by_path = {
-        record["path"]: {"artifact_id": artifact_id, "revision": record["revision"]}
+        record["path"]: {"artifact_id": artifact_id, "revision": record["revision"],
+                         "gate": record.get("gate")}
         for artifact_id, record in scanned.items()
     }
 
@@ -225,6 +234,21 @@ def build_handoff(conductor, contract: dict[str, Any] | None, root) -> dict[str,
         folder = os.path.dirname(handoff["path"])
         handoff_folder = (root_path / folder).resolve() if folder else root_path
 
+    gates = state.get("gates", {})
+    # Every artifact id the approvals this handoff requires actually recorded. Read before the
+    # sections, because whether a citation counts depends on whether an approval bound it.
+    bound_ids: set[str] = set()
+    for bank in conductor.banks:
+        if bank_gates.get(bank.id) not in (1, 2, 3):
+            continue
+        record = gates.get(bank.id, {})
+        manifest = record.get("manifest") if isinstance(record, dict) else None
+        if not isinstance(manifest, dict):
+            continue
+        for item in manifest.get("artifacts", ()):
+            if isinstance(item, dict) and item.get("id"):
+                bound_ids.add(item["id"])
+
     rows, present = _collect_sections(handoff_text)
     sections = []
     for title in SECTIONS:
@@ -232,7 +256,7 @@ def build_handoff(conductor, contract: dict[str, Any] | None, root) -> dict[str,
         is_present = handoff is not None and title in present
         links = _links(lines, handoff_folder, root_path, by_path) if is_present else []
         gaps, not_applicable = _gap_and_na(lines)
-        status = "missing" if not is_present else _section_status(lines, links)
+        status = "missing" if not is_present else _section_status(lines, links, bound_ids)
         sections.append({
             "title": title,
             "status": status,
@@ -241,7 +265,6 @@ def build_handoff(conductor, contract: dict[str, Any] | None, root) -> dict[str,
             "not_applicable": not_applicable,
         })
 
-    gates = state.get("gates", {})
     approvals = []
     for bank in conductor.banks:
         gate = bank_gates.get(bank.id)
@@ -307,6 +330,14 @@ def build_handoff(conductor, contract: dict[str, Any] | None, root) -> dict[str,
         elif section["status"] == "unbound":
             missing.append("Section %s links only to files with no artifact block"
                            % section["title"])
+        elif section["status"] == "unapproved":
+            cited = next((link for link in section["links"]
+                          if link["artifact_id"] is not None), None)
+            declared = cited.get("gate") if cited else None
+            missing.append(
+                "Section %s cites %s, which declares gate %s and is bound by no gate 1-3 approval"
+                % (section["title"], cited["path"] if cited else "an artifact",
+                   declared if declared is not None else "nothing"))
         else:
             missing.append("Section %s is %s" % (section["title"], section["status"]))
 
