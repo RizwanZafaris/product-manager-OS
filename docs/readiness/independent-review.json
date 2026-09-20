@@ -4,37 +4,48 @@
   "reviewer_kind": "independent-agent",
   "independent_implementation": true,
   "identity_assurance": "unauthenticated-local-claim",
-  "reviewed_at": "2026-09-20T19:39:05Z",
-  "reviewed_tree_sha256": "53ad1c80a9323092550349a04a7aec7cfd4babf12723a3647a44c1c2f4ea8e4e",
+  "reviewed_at": "2026-09-20T20:06:14Z",
+  "reviewed_tree_sha256": "e794898594d522fbda86301b2083c1018d3c711a3d08fe7b4988d6d2af51bcf0",
   "scope": [
-    "Change set 1086a20..ba564fa: docs/release/RELEASE-NOTES-0.8.0.md, the filled record and pre-tag list in docs/readiness/EXT-RELEASE-checklist.md, and the CHANGELOG. Documentation only; nothing tags, publishes or marks an external gate verified",
-    "Four rounds. Round 1 raised a P1 reading 24 of 25 passing gates as only 24 gates existing, which the gate count refutes. Round 2 rejected because 29 prose skills could not be reconciled with the manifest's 97 files under skills/; they measure different things and the notes now say so, and the document count was genuinely wrong and went from 667 to 670. Round 3 rejected on the dated CHANGELOG heading, which is now removed. Round 4 accepted with eight named checks and no findings"
+    "Change set c1d57fb..dabe282, open as pull request #45: the CHANGELOG's dated 0.8.0 heading, moved from 2026-09-20 to 2026-09-21 because the tag was not created on the 20th",
+    "Packet: the full diff, the prior CI-6 record and the condition it set, the checklist step the heading comes from, and the git facts about the v0.8.0 tag that exists at the wrong commit. Accepted with five named checks and two non-blocking issues"
   ],
   "evidence": [
     {
-      "command": "python3 lint.py --os at ba564fa",
-      "result": "ok, 11 checks"
+      "command": "python3 lint.py --os at dabe282",
+      "result": "ok, 11 checks (OS tree mode)"
     },
     {
-      "command": "python3 tools/ci_gate.py at ba564fa",
+      "command": "python3 tools/ci_gate.py at dabe282",
       "result": "24 of the 25 defined gates pass; the one red gate is readiness-local, failing only CI-6, awaiting this record"
     },
     {
-      "command": "counts measured on this tree",
-      "result": "670 markdown documents outside .git, 29 files matching skills/*/SKILL.md, 108 markdown templates plus one regulated template"
+      "command": "git ls-remote --tags origin",
+      "result": "refs/tags/v0.8.0 resolves to 1086a204, the merge of pull request #43, two merged pull requests behind main at c1d57fb; that tag is to be deleted and recreated on the commit that merges this"
     },
     {
-      "command": "provenance measured in a pristine clone",
-      "result": "702 artifacts with PYTHONDONTWRITEBYTECODE=1 and 716 without, the difference being fourteen .pyc files; verify_provenance returns ok with no runtime where pmos verify refuses"
+      "command": "gh release view v0.8.0",
+      "result": "release not found, so nothing has been published and the tag is a git ref only"
+    },
+    {
+      "command": "the date this applies",
+      "result": "2026-09-21, the day the tag is now to be created; the prior record set the condition that this be redated if the day slipped, and it slipped"
     }
   ],
   "findings": [
     {
       "id": "R1",
-      "severity": "P3",
+      "severity": "P2",
       "status": "open",
-      "summary": "The release notes carry the repository's Stage, Knowledge and Skill header, and a stage line arguably says nothing useful for release notes",
-      "evidence": "round 3 issue 2; kept because every document in this tree carries that header and an exception would be the odd one out"
+      "summary": "The dated heading is correct only if the merge and the tag both happen on 2026-09-21, and nothing in the repository enforces that",
+      "evidence": "Reviewer issue list, round redate-1; the same slip already happened once, between the review of e58bf18 on 2026-09-20 and this commit"
+    },
+    {
+      "id": "R2",
+      "severity": "P3",
+      "status": "accepted",
+      "summary": "Recreating an already-pushed tag at a different commit can surprise anyone who fetched the old ref, and no communication is prescribed",
+      "evidence": "gh release view v0.8.0 reports no release, and the tag was pushed at 2026-09-20T23:56+04 with nothing referencing it"
     }
   ],
   "verdict": "accepted"
