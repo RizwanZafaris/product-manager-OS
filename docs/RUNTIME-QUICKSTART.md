@@ -37,8 +37,54 @@ question ID come from `init`/`status`, and `status` also prints a `next` line
 with the one command to run next: the answer, the reopen command for a parked
 question, or the gate command for a bank ready for approval or whose approval
 went stale. A bank is ready for its gate once every question in it is
-answered, and `pmos status` names the next question each time. The evidence
-fields are checked by the conductor:
+answered, and `pmos status` names the next question each time.
+
+## What the conductor will accept, before you type an answer
+
+Two rules refuse a newcomer's first answer, and both used to live only in
+`pmos/conductor.py`.
+
+**Each evidence class has required fields, and they differ.** Supply the class
+the question asks for, or a stronger one; the fields checked are those of the
+class you supply.
+
+| Evidence class | Required fields | Strength |
+|---|---|---|
+| `observed_behavior` | `source`, `date`, `location` | strongest |
+| `artifact` | `source`, `location` | |
+| `named_commitment` | `person`, `source` | |
+| `interview_claim` | `person`, `source`, `date` | |
+| `team_belief` | `source` | weakest |
+
+`DISCOVER-1` asks for `interview_claim`, so an answer carrying only `source`,
+`date` and `location` is refused for a missing `person`. The refusal names the
+class's whole field list, not only what is absent.
+
+**A source that looks like a file path has to be a file that exists**, below
+the workspace root. Free text, an interview identifier, or a URL is not checked
+and is recorded as supplied and unverified. A path that looks local and is not
+there refuses the answer, and the refusal says so: "evidence source could not
+be resolved: 'discovery/interviews/asha.md' looks like a path and is not a file
+inside the workspace."
+
+That second rule is why `pmos init` alone is not enough to finish the first
+question: it creates `.pmos/runtime.sqlite` and nothing else, so there is no
+document for a path-shaped source to point at, while `pmos status` is already
+naming `discovery/problem-framing.md` as the document to open. Create the
+documents first, from the repository root:
+
+```bash
+python3 tools/init_product.py my-product --add templates/discovery/problem-framing.md
+```
+
+That writes `products/my-product/discovery/problem-framing.md` as a stamped
+copy of the template, which is both the document to fill and a source an
+answer can cite. `pmos init` and `tools/init_product.py` are two halves of the
+same setup: the runtime store, and the documents the runtime talks about.
+
+Three refused submissions park a question, so it is worth getting these two
+right before the first `pmos answer`. The evidence fields are checked by the
+conductor:
 
 ```bash
 pmos answer --path ./products/my-product --product-id checkout \

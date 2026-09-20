@@ -24,6 +24,14 @@ ATTESTATION = Path("docs/readiness/independent-review.json")
 ROOT_SKIP_DIRS = frozenset({
     ".git", ".readiness", "__pycache__", ".pytest_cache", ".mypy_cache",
     ".tox", ".venv", "venv", "build", "dist",
+    # products/ is where this repository tells every user to put their own
+    # workspaces, and .gitignore keeps it out of the tree. It was not in this
+    # set, so a reviewer with any local product digested a tree no clean
+    # checkout has: the record then passed on that machine and failed in CI,
+    # with nothing in the failure naming the cause. Found by exactly that,
+    # on 2026-09-21. The tracked-file guard below still applies, so a
+    # force-added file under products/ keeps it in the digest.
+    "products",
 })
 NESTED_CACHE_DIRS = frozenset({"__pycache__", ".pytest_cache", ".mypy_cache"})
 SKIP_NAMES = frozenset({".DS_Store"})

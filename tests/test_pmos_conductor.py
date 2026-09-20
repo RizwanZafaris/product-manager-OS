@@ -107,7 +107,13 @@ class ConductorTest(unittest.TestCase):
         del undated["date"]
         refused = conductor.submit_answer("discover.cost", "Support exported 41 failed payouts.", undated,
                                           expected_revision=offered.revision, turn_id="cost-undated")
-        self.assertEqual((refused.status, refused.message), ("challenge", "missing evidence fields: date"))
+        # The refusal names the class's whole field list, not only what is absent: that list
+        # lives in pmos/conductor.py and in no document the quickstart reaches, so a reader
+        # who saw one field name had to open the source to learn what it sat beside.
+        self.assertEqual(
+            (refused.status, refused.message),
+            ("challenge",
+             "missing evidence fields: date (observed_behavior evidence needs source, date, location)"))
         store.close()
 
     def test_an_unknown_or_missing_evidence_class_is_refused(self) -> None:

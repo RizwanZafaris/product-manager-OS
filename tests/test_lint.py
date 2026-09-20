@@ -1368,6 +1368,28 @@ class WorkspaceModeTests(unittest.TestCase):
             self.assertEqual(0, done.returncode, done.stderr)
         return slug, folder
 
+    def test_check_names_the_one_cause_of_an_unresolved_workspace_link(self):
+        """The recovery docs/readiness/EXT-USER-session-script.md asks an unaided
+        participant to perform, from the tool's own output alone.
+
+        The message used to wrap an already-formatted sentence, printing "link
+        relative link X does not resolve. does not resolve.", and never said that
+        a workspace copy sits one level deeper than the template it came from,
+        which is the cause of nearly every one of these.
+        """
+        slug, folder = self._scratch_slug()
+        for args in ((slug,), (slug, "--add", "templates/discovery/personas.md")):
+            self.assertEqual(0, self._init_product(*args).returncode)
+        copy = folder / "discovery" / "personas.md"
+        copy.write_text(copy.read_text(encoding="utf-8")
+                        + "\n[a template](../../templates/discovery/personas.md)\n",
+                        encoding="utf-8")
+        done = self._init_product(slug, "--check")
+        self.assertEqual(1, done.returncode, done.stdout)
+        self.assertNotIn("does not resolve. does not resolve.", done.stdout)
+        self.assertIn("hint: ../../../templates/discovery/personas.md resolves", done.stdout)
+        self.assertIn("short by one ../", done.stdout)
+
     def test_init_product_stamps_the_copy_it_adds(self):
         ws = self._workspace()
         slug, folder = self._new_workspace_with_strategy()
