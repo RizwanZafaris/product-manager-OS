@@ -135,7 +135,7 @@ Fill this in when the release is tagged, and leave it filled.
 | Release version | 0.8.0 |
 | Tagged commit SHA | `d598e4ddd087b0457709c9bbd27cb3db84047ef2` |
 | Tag protection or signature | none: annotated, unsigned, and not covered by ruleset 22968065, which targets the `main` branch |
-| Hosted CI run for that SHA | https://github.com/RizwanZafaris/product-manager-OS/actions/runs/35534938768, all three matrix jobs successful |
+| Hosted CI run for that SHA | https://github.com/RizwanZafaris/product-manager-OS/actions/runs/35534938768, with `gate (3.11)`, `gate (3.13)` and `deletable-harness` all successful |
 | Wheel filename | `product_manager_os-0.8.0-py3-none-any.whl` |
 | Wheel SHA-256 | `0da525ddc9325002cd70dfb2b759d9ac8ae2c84f5904ff90d42c43fa6fbf171d` |
 | Provenance manifest SHA-256 | `f5727cb95d14f3083e3df92c5169f54a0df22194f390cc3ba24c35d30590ff4d`, the file published with the release |
