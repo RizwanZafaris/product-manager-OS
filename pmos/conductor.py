@@ -923,7 +923,12 @@ class Conductor:
         }
         missing = [field for field in required[supplied] if not _truthy_text(normal.get(field))]
         if missing:
-            return False, "missing evidence fields: " + ", ".join(missing), normal, ""
+            # Naming the class's whole field list, not only what is absent: the list is
+            # in this file and in no document a reader reaches from the quickstart, so a
+            # refusal that named one field sent a newcomer to the source for the rest.
+            return False, ("missing evidence fields: " + ", ".join(missing)
+                           + " (" + supplied.value + " evidence needs "
+                           + ", ".join(required[supplied]) + ")"), normal, ""
         # A supplied date must parse whatever the evidence class: a malformed
         # date kept beside accepted evidence would read as a real one.
         if _truthy_text(normal.get("date")) and not _valid_evidence_date(normal["date"]):
@@ -945,7 +950,14 @@ class Conductor:
             except Exception:
                 found = False
             if found is not None and found is not True:
-                return False, "evidence source could not be resolved", normal, ""
+                # The resolver answers False only for something it recognised as a local
+                # path and could not find, so the refusal can say which of the two rules
+                # was broken. It used to name neither, and a newcomer reading it had no
+                # way to tell a missing file from an unsupported kind of source.
+                return False, ("evidence source could not be resolved: %r looks like a path "
+                               "and is not a file inside the workspace. Cite a document that "
+                               "exists, or give free text such as an interview name, which is "
+                               "recorded as supplied and unverified." % source), normal, ""
             if found is True:
                 verification = "source_verified"
         return True, "", normal, verification

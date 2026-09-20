@@ -128,9 +128,12 @@ watch what they do next. That moment is the most informative part of the task.
 | Time to recovery, or gave up at | |
 | Exact words on reading the error (quote) | |
 
-Known cosmetic defect they may notice: the `--check` message currently reads
-"link relative link X does not resolve. does not resolve." If they comment on
-it, record it; it is already filed and does not need rediscovering.
+The message they will see now names the cause and the fix: the unresolved link,
+then a hint saying a workspace copy sits one level deeper than the template it
+came from, giving the path that does resolve and telling them to run `--relink`
+after fixing it. It used to read "link relative link X does not resolve. does
+not resolve.", which named neither. If they still cannot recover from it, that
+is the finding below and it is a real one, not the old cosmetic defect.
 
 A participant who cannot recover from a broken link using only the tool's own
 output has found a P1: the system detects the problem and does not explain it.

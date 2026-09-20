@@ -41,6 +41,7 @@ which of the two a link points at. Both resolve; only one is your own work.
 
 import argparse
 import posixpath
+import re
 import sys
 from pathlib import Path
 
@@ -298,6 +299,32 @@ def add_every_template(slug, force=False):
     return installed
 
 
+def _deeper_link_hint(path, message):
+    """The same link one level further up, when that is the file that exists.
+
+    A workspace copy sits one level deeper than the template it was copied from,
+    so a relative link carried over unchanged is short by exactly one ``../``.
+    That is the cause of nearly every unresolved link this check reports, and the
+    check used to report the failure without naming it: the EXT-USER session
+    script asks a participant to recover from exactly this using the tool's own
+    output, and calls it a P1 when they cannot.
+    """
+    match = re.search(r"((?:\.\./)+[^\s)]+\.md)", message)
+    if not match:
+        return ""
+    target = match.group(1)
+    candidate = (Path(path).parent / ("../" + target)).resolve()
+    if not candidate.is_file():
+        return ""
+    try:
+        shown = candidate.relative_to(REPO.resolve()).as_posix()
+    except ValueError:
+        shown = candidate.as_posix()
+    return ("    hint: ../%s resolves, to %s. A workspace copy sits one level deeper "
+            "than the template it came from, so a link copied from a template is short "
+            "by one ../ . Fix the link and run --relink." % (target, shown))
+
+
 def check_workspace(slug):
     """Re-resolve every link in an existing workspace. Returns a count."""
     workspace = PRODUCTS_DIR / slug
@@ -316,7 +343,12 @@ def check_workspace(slug):
         rel = path.relative_to(REPO).as_posix()
         if failures:
             for number, raw in failures:
-                say("%s:%d: link %s does not resolve." % (rel, number, raw))
+                # raw is already a full sentence from the link parser. Wrapping it printed
+                # "does not resolve. does not resolve.", which reads as tool breakage.
+                say("%s:%d: %s" % (rel, number, raw))
+                hint = _deeper_link_hint(path, raw)
+                if hint:
+                    say(hint)
             total += len(failures)
         else:
             say("%s: ok" % rel)

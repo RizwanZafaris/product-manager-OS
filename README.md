@@ -15,27 +15,55 @@ One default path, because choosing infrastructure should never be the first thin
 ```bash
 git clone https://github.com/RizwanZafaris/product-manager-OS.git
 cd product-manager-OS
+python3 tools/init_product.py ledgerline
 python3 tools/init_product.py ledgerline --add templates/discovery/problem-framing.md
+python3 tools/init_product.py ledgerline --add templates/discovery/user-research-plan.md
+python3 tools/init_product.py ledgerline --add templates/discovery/interview-notes.md
+python3 tools/init_product.py ledgerline --add templates/discovery/personas.md
+python3 tools/init_product.py ledgerline --add templates/discovery/journey-map.md
+python3 tools/init_product.py ledgerline --add templates/discovery/discovery-document.md
 python3 tools/init_product.py ledgerline --check
 ```
 
-The first command copies the problem-framing template into `products/ledgerline/discovery/problem-framing.md` and rewrites its links for that destination. Run today against this tree, it printed:
+That is one command per document Gate 1 asks for, and it is the same sequence [os/PRODUCT-WORKSPACE.md](os/PRODUCT-WORKSPACE.md) documents. The first command with no `--add` makes the workspace, seeds `STATE.md` and prints the next step. Run today against this tree, it printed:
+
+```
+workspace: products/ledgerline/ (created)
+   planning/
+   discovery/
+   definition/
+   ...
+   gates/
+copied: templates/execution/state.md -> products/ledgerline/STATE.md
+next: write products/ledgerline/README.md, one paragraph plus the stage and gate table in os/PRODUCT-WORKSPACE.md, then add the templates this product needs with --add.
+```
+
+Each `--add` copies one template into the workspace and rewrites its links for that destination:
 
 ```
 copied: templates/discovery/problem-framing.md -> products/ledgerline/discovery/problem-framing.md
-   2 link(s) rewritten, 2 relative link(s) re-resolved from the destination and found
+   3 link(s) rewritten, 3 relative link(s) re-resolved from the destination and found
      ../../knowledge/INDEX.md -> ../../../knowledge/INDEX.md
      ../../skills/persona-builder/SKILL.md -> ../../../skills/persona-builder/SKILL.md
+     ../../os/STAGE-GATES.md -> ../../../os/STAGE-GATES.md
 ```
 
-The second command re-resolves every link in the workspace and copies nothing. It printed:
+The last command re-resolves every link in the workspace and copies nothing. It printed:
 
 ```
+products/ledgerline/STATE.md: ok
+products/ledgerline/discovery/discovery-document.md: ok
+products/ledgerline/discovery/interview-notes.md: ok
+products/ledgerline/discovery/journey-map.md: ok
+products/ledgerline/discovery/personas.md: ok
 products/ledgerline/discovery/problem-framing.md: ok
-products/ledgerline/: 1 file(s), 0 broken link(s).
+products/ledgerline/discovery/user-research-plan.md: ok
+products/ledgerline/: 7 file(s), 0 broken link(s).
 ```
 
-**Outcome.** A problem-framing document in your own product workspace, its links pointing at the two knowledge cards it names, ready to fill with an editor. **Next action.** Fill in every square-bracket field, then take it, along with the rest of the DISCOVER inputs [os/STAGE-GATES.md](os/STAGE-GATES.md) names, to Gate 1. `cat os/WHICH-DOCUMENT.md` first if you are unsure how much document this decision deserves.
+**Outcome.** The six DISCOVER documents [os/STAGE-GATES.md](os/STAGE-GATES.md) names for Gate 1, in your own product workspace, links resolving, ready to fill with an editor.
+
+**Next action.** Fill in every square-bracket field. Then make the gate attempt itself: copy Gate 1's section out of [os/STAGE-GATES.md](os/STAGE-GATES.md) into `products/ledgerline/gates/gate-1-attempt-1.md`, complete it, tick only what is honestly true, and collect the signatures. That file is the gate attempt; nothing generates it for you. `cat os/WHICH-DOCUMENT.md` first if you are unsure how much document a decision deserves.
 
 **To see the runtime enforce all six gates**, read [examples/journey-run.md](examples/journey-run.md): the `pmos` command line answering 54 questions and proving every gate on a fictional product, then refusing to call it complete once a gate's proof changes. `python3 tools/journey_record.py --check` re-runs it and compares, and CI does the same on every commit.
 
