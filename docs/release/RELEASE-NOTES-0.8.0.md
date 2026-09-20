@@ -4,9 +4,10 @@ Stage: ALL STAGES, published with the 0.8.0 tag
 Knowledge: [the changelog entry this summarises](../../CHANGELOG.md)
 Skill: none. These are release notes for a reader, not a procedure for a runtime
 
-<!-- Draft. The tag, its protection and the authorizing name are filled by
-     whoever authorizes the release; everything else here is measured. Keep the
-     "what this release is not" section: it is the part a reader needs most. -->
+<!-- Published 2026-09-21 as the v0.8.0 release. Everything here is measured.
+     Keep the "what this release is not" section: it is the part a reader needs
+     most. The release body published on GitHub carries this text with absolute
+     links, since the relative ones above only resolve inside the repository. -->
 
 ## What this release is
 
@@ -59,8 +60,21 @@ the command for this: it checks a runtime and refuses before it reads a
 manifest, so it needs a workspace you have run `pmos init` in.
 
 The wheel is built by the repository's own standard-library backend and is
-byte-identical on repeated builds from the same commit, so the digest below is
+byte-identical on repeated builds from the same commit, so the digests below are
 reproducible rather than asserted.
+
+| What | Value |
+|---|---|
+| Tagged commit | `d598e4ddd087b0457709c9bbd27cb3db84047ef2` |
+| Wheel | `product_manager_os-0.8.0-py3-none-any.whl`, 214,034 bytes |
+| Wheel SHA-256 | `0da525ddc9325002cd70dfb2b759d9ac8ae2c84f5904ff90d42c43fa6fbf171d` |
+| Provenance manifest SHA-256 | `f5727cb95d14f3083e3df92c5169f54a0df22194f390cc3ba24c35d30590ff4d` |
+| Provenance tree SHA-256 | `2e46f7fa42f85698d327e6b3c8fd0fd6a4f5909a2ea556e461adf1110f138be2` |
+
+Generate provenance before building anything. A build writes `__pycache__` and
+`dist/` into the tree, and the manifest is of the source as tagged, so a
+verification run against a tree you have already built in reports those files as
+unrecorded.
 
 ## Rolling back
 

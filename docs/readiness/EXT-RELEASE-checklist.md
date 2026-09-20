@@ -9,8 +9,8 @@ Skill: none. This is a checklist for a person, not a procedure for a runtime
      successful; that evidence exists today and is recorded below. EXT-RELEASE
      requires a signed or protected tag, an artifact digest, a provenance
      manifest, and a rollback artifact; two of those four can be produced from
-     a commit by anyone, and two cannot. This file says which is which and
-     leaves the record to be filled by whoever authorizes the tag.
+     a commit by anyone, and two cannot. This file says which is which, and
+     the record at the end is filled: 0.8.0 was tagged and published.
      Neither gate is marked verified anywhere: tools/readiness.py reports every
      external gate as verified false by construction, because a repository
      cannot award itself release evidence. -->
@@ -19,13 +19,14 @@ Skill: none. This is a checklist for a person, not a procedure for a runtime
 
 | Evidence required | Status |
 |---|---|
-| Immutable commit SHA | `2f31ef3`, the merge of #42 into main |
-| Hosted workflow run URL | https://github.com/RizwanZafaris/product-manager-OS/actions/runs/35522785674 |
+| Immutable commit SHA | `d598e4ddd087b0457709c9bbd27cb3db84047ef2`, the merge of #45 into main, which is the commit `v0.8.0` tags |
+| Hosted workflow run URL | https://github.com/RizwanZafaris/product-manager-OS/actions/runs/35534938768 |
 | All matrix jobs successful | `gate (3.11)`, `gate (3.13)` and `deletable-harness`, all three successful |
 
-That is the whole of what EXT-CI asks for, on a commit that is already on main.
-Re-record it against whatever commit is finally tagged, because the gate is
-about the exact commit and not about main in general.
+That is the whole of what EXT-CI asks for, and it is now recorded against the
+tagged commit itself rather than against a candidate. It previously named
+`2f31ef3`, the merge of #42. Re-record it again for the next tag, because the
+gate is about the exact commit and not about main in general.
 
 ## EXT-RELEASE: tag, artifact, provenance, rollback
 
@@ -38,7 +39,8 @@ python3 -c "import pmos_build_backend as b; print(b.build_wheel('dist'))"
 python3 -c "import hashlib,pathlib; print(hashlib.sha256(pathlib.Path('dist/product_manager_os-0.8.0-py3-none-any.whl').read_bytes()).hexdigest())"
 ```
 
-Built twice from `2f31ef3`, that wheel is byte-identical both times:
+Built twice from `2f31ef3` and again from the tagged commit `d598e4d`, that
+wheel is byte-identical every time:
 
 | Artifact | Value |
 |---|---|
@@ -63,16 +65,26 @@ check a manifest: it checks a runtime and refuses before reading one, so it
 needs a workspace that has been through `pmos init`. `verify_provenance` takes
 a tree and a manifest and needs no runtime.
 
-Generated that way from a pristine clone it covers 702 artifacts, 97 skills and
-25 configuration files.
+Generated that way from a pristine clone of `d598e4d` it covers 703 artifacts,
+97 skills and 25 configuration files, and `verify_provenance` returns
+`VerificationResult(ok=True, errors=())` against that clone. It covered 702
+before `docs/release/RELEASE-NOTES-0.8.0.md` was added, which is the whole of
+the difference: the manifest changes with any tracked file.
 Generate it from the tagged commit, not from a working tree, and publish it
 beside the wheel rather than committing it: a manifest committed into the tree
 it describes is stale the moment anything changes.
 
-**The tag needs the owner.** EXT-RELEASE asks for a signed or protected tag,
-and its own `owner_action` says to create the authorized tag only after the
-applicable gates are verified. Nobody else can authorize it, and no automation
-in this repository should.
+**The tag needed the owner, and the owner created it.** EXT-RELEASE asks for a
+signed or protected tag, and its own `owner_action` says to create the
+authorized tag only after the applicable gates are verified. Nobody else can
+authorize it, and no automation in this repository should.
+
+Half of that requirement is unmet, and the record below says so rather than
+reporting a protection that does not exist. The tag is annotated but unsigned,
+and ruleset 22968065 covers the `main` branch, not tags, so `v0.8.0` can be
+moved by anyone with push access. It was moved twice on the day it was created,
+each time because it had been placed on a commit behind main, and nothing in
+this repository or in GitHub stopped it. A tag ruleset would.
 
 **There is no rollback artifact.** The gate asks for one because a release that
 cannot be undone is not a release. The repository carries the tags v0.3.0 and
@@ -107,6 +119,9 @@ the second release will have a real answer.
 
    Make those two paths markdown links when you paste it: they resolve from the
    repository root, where the CHANGELOG sits, and would not resolve from here.
+   If the day this names passes before the change lands, redate it before
+   merging rather than merging a date no tag will carry. That happened to
+   0.8.0: the heading was written on 2026-09-20 and merged on 2026-09-21.
 4. Hosted CI has run on that exact commit and every matrix job succeeded.
 5. The wheel is built from that commit and its digest is recorded below.
 6. The provenance manifest is generated from that commit and published with it.
@@ -118,18 +133,21 @@ Fill this in when the release is tagged, and leave it filled.
 | Field | Value |
 |---|---|
 | Release version | 0.8.0 |
-| Tagged commit SHA | <full sha of the commit the tag points at> |
-| Tag protection or signature | <protected ruleset, or signing key id> |
-| Hosted CI run for that SHA | <url> |
+| Tagged commit SHA | `d598e4ddd087b0457709c9bbd27cb3db84047ef2` |
+| Tag protection or signature | none: annotated, unsigned, and not covered by ruleset 22968065, which targets the `main` branch |
+| Hosted CI run for that SHA | https://github.com/RizwanZafaris/product-manager-OS/actions/runs/35534938768, all three matrix jobs successful |
 | Wheel filename | `product_manager_os-0.8.0-py3-none-any.whl` |
 | Wheel SHA-256 | `0da525ddc9325002cd70dfb2b759d9ac8ae2c84f5904ff90d42c43fa6fbf171d` |
-| Provenance manifest SHA-256 | generate from a pristine clone of the tagged commit with `PYTHONDONTWRITEBYTECODE=1`; it changes with any tracked file, and with any `.pyc` left in the tree |
+| Provenance manifest SHA-256 | `f5727cb95d14f3083e3df92c5169f54a0df22194f390cc3ba24c35d30590ff4d`, the file published with the release |
+| Provenance tree SHA-256 | `2e46f7fa42f85698d327e6b3c8fd0fd6a4f5909a2ea556e461adf1110f138be2`, recorded inside that manifest |
+| Published release | https://github.com/RizwanZafaris/product-manager-OS/releases/tag/v0.8.0, carrying the wheel and the manifest |
 | Rollback artifact | none: the tags v0.3.0 and v0.4.0 published no release and no artifact, so the rollback is to pin the previous commit |
-| Authorized by | <name> on <date> |
+| Authorized by | Rizwan Zafar, 2026-09-21 in +04, which GitHub records as 2026-09-20T20:23:53Z |
 
-The wheel digest above was measured twice on `2f31ef3` and again on this
-release candidate, unchanged both times, because documentation does not enter
-the wheel. Re-measure it if anything under `pmos/` or the packaging metadata
-changes before the tag. The provenance digest is deliberately not recorded
-here: it covers every tracked file, so only the manifest generated from the
-tagged commit is the right one to publish.
+The wheel digest above was measured on `2f31ef3`, on the release candidate, and
+again on the tagged commit, unchanged every time, because documentation does not
+enter the wheel. Re-measure it if anything under `pmos/` or the packaging
+metadata changes before a tag. The provenance digest was blank here until a tag
+existed, because only the manifest generated from the tagged commit is the right
+one to publish; that manifest now exists and is attached to the release, so its
+digest is recorded above and a reader can tell they have the right one.
