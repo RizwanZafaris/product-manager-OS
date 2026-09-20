@@ -4,28 +4,28 @@
   "reviewer_kind": "independent-agent",
   "independent_implementation": true,
   "identity_assurance": "unauthenticated-local-claim",
-  "reviewed_at": "2026-09-19T14:57:23Z",
-  "reviewed_tree_sha256": "c84a3bf03d6d9051b40591fee1c89e6fa84c87255988acc9766b6902d27b90f0",
+  "reviewed_at": "2026-09-20T13:33:39Z",
+  "reviewed_tree_sha256": "6df41d8cbf1a875df8aa1195a9e56a6a9312b1ad83916c791b33a34463e364cd",
   "scope": [
-    "PR #40, 05c5561..72235e0: tools/journey_record.py and examples/journey-run.md; tools/what_checks.py and the generated What checks this text in 29 skills and 108 templates; the journey-record and what-checks-freshness gates and their tests; README, os/STAGE-GATES.md, CHANGELOG, examples/README.md and system/BOOT-PROMPT.md edits",
-    "Packet: the full 148-file diff with source excerpts (pmos/conductor.py gate proof, the STAGE-GATES strength paragraph and sign-off tables, question bank gate lines, tools/workspace.py stamp_artifact, the six-gate CLI test) and the gate results; the reviewer had no tools and could not open files. Named checks cover acceptance items A1 to A4; A5 (README, STAGE-GATES and CHANGELOG claim strength) was in the packet but not among the named checks"
+    "Change set 72dcf54..0f222db: pmos/handoff.py section status and exemption rules, tests/test_pmos_handoff.py, the status table in templates/architecture/development-handoff.md, and the CHANGELOG entry",
+    "Packet: the full diff with the changed logic, the readiness assembly, the STAGE-GATES statement of what the runtime binds, and the independent auditor's reproduction before and after; the reviewer had no tools and could not open files. Round 1 raised one P2, that a reasoned exemption could still carry a section whose only link was to a file with no artifact block; round 2 reviewed the code fix for it and its regression test"
   ],
   "evidence": [
     {
-      "command": "python3 tools/ci_gate.py at 72235e0",
-      "result": "release gates 23/24 passed; the one red gate is readiness-local, awaiting this record"
+      "command": "python3 -m unittest test_pmos_handoff at 0f222db",
+      "result": "Ran 17 tests, OK"
     },
     {
-      "command": "python3 tools/journey_record.py --check at 72235e0",
-      "result": "journey record matches a fresh run"
+      "command": "python3 tools/ci_gate.py at 0f222db",
+      "result": "release gates 23/24 passed; the one red gate is readiness-local, failing only CI-6, awaiting this record"
     },
     {
-      "command": "python3 tools/what_checks.py --check at 72235e0",
-      "result": "matches its declarations; a second write rewrites 0 files"
+      "command": "python3 tools/readiness.py --local at 0f222db",
+      "result": "99 of 100; the only failing criterion is CI-6; no use-case or process-fault criterion failed"
     },
     {
-      "command": "hosted CI runs 35447989597 and 35448059739 on 72235e0",
-      "result": "gate (3.11) and gate (3.13) 23/24 each, only readiness-local on CI-6; deletable-harness success"
+      "command": "the auditor's reproduce.py re-run at 0f222db",
+      "result": "development_ready false for all three reported cases, each missing entry naming its section"
     }
   ],
   "findings": [],
