@@ -4,48 +4,59 @@
   "reviewer_kind": "independent-agent",
   "independent_implementation": true,
   "identity_assurance": "unauthenticated-local-claim",
-  "reviewed_at": "2026-09-20T20:06:14Z",
-  "reviewed_tree_sha256": "e794898594d522fbda86301b2083c1018d3c711a3d08fe7b4988d6d2af51bcf0",
+  "reviewed_at": "2026-09-20T20:34:40Z",
+  "reviewed_tree_sha256": "c92cfb87e86cbec8c943cb213f9f2b4e0e8a22eb783f213dc051e3dbecb17d57",
   "scope": [
-    "Change set c1d57fb..dabe282, open as pull request #45: the CHANGELOG's dated 0.8.0 heading, moved from 2026-09-20 to 2026-09-21 because the tag was not created on the 20th",
-    "Packet: the full diff, the prior CI-6 record and the condition it set, the checklist step the heading comes from, and the git facts about the v0.8.0 tag that exists at the wrong commit. Accepted with five named checks and two non-blocking issues"
+    "Change set d598e4d..8122ca9: the 0.8.0 release evidence record in docs/readiness/EXT-RELEASE-checklist.md, filled from the tag that now exists, and the dangling digest promise in docs/release/RELEASE-NOTES-0.8.0.md",
+    "Packet: the full diff, every recorded value alongside the command that measured it, the published release and its two assets, and the round-1 findings. Accepted with ten named checks over two rounds"
   ],
   "evidence": [
     {
-      "command": "python3 lint.py --os at dabe282",
+      "command": "python3 lint.py --os at 8122ca9",
       "result": "ok, 11 checks (OS tree mode)"
     },
     {
-      "command": "python3 tools/ci_gate.py at dabe282",
-      "result": "24 of the 25 defined gates pass; the one red gate is readiness-local, failing only CI-6, awaiting this record"
+      "command": "python3.11 tools/ci_gate.py at 3d32005",
+      "result": "24 of 25 gates pass; the one red gate is readiness-local, and inside it the one red hard gate is local_review_record_complete, awaiting this record"
     },
     {
-      "command": "git ls-remote --tags origin",
-      "result": "refs/tags/v0.8.0 resolves to 1086a204, the merge of pull request #43, two merged pull requests behind main at c1d57fb; that tag is to be deleted and recreated on the commit that merges this"
+      "command": "git rev-list -n1 v0.8.0 and git rev-parse origin/main",
+      "result": "both d598e4ddd087b0457709c9bbd27cb3db84047ef2, so the tag is on the merge of pull request #45"
+    },
+    {
+      "command": "verify_provenance from an untouched clone of the tag",
+      "result": "VerificationResult(ok=True, errors=()); from a tree already built in it reports the wheel and three .pyc files as unrecorded, which is why provenance is generated before the build"
+    },
+    {
+      "command": "shasum -a 256 on the wheel and on the manifest downloaded back from the release",
+      "result": "0da525dd... and f5727cb9..., matching the values recorded in both files"
     },
     {
       "command": "gh release view v0.8.0",
-      "result": "release not found, so nothing has been published and the tag is a git ref only"
-    },
-    {
-      "command": "the date this applies",
-      "result": "2026-09-21, the day the tag is now to be created; the prior record set the condition that this be redated if the day slipped, and it slipped"
+      "result": "published, not a draft, carrying the wheel at 214034 bytes and provenance.json at 136773 bytes"
     }
   ],
   "findings": [
     {
       "id": "R1",
-      "severity": "P2",
-      "status": "open",
-      "summary": "The dated heading is correct only if the merge and the tag both happen on 2026-09-21, and nothing in the repository enforces that",
-      "evidence": "Reviewer issue list, round redate-1; the same slip already happened once, between the review of e58bf18 on 2026-09-20 and this commit"
+      "severity": "P3",
+      "status": "accepted",
+      "summary": "The tag is left at d598e4d rather than moved a third time to carry the corrected release notes",
+      "evidence": "Reviewer's A5 judgement in round record-2: a third move would rewrite the reference the published artifacts hang from, and the release body already carries the corrected text"
     },
     {
       "id": "R2",
       "severity": "P3",
-      "status": "accepted",
-      "summary": "Recreating an already-pushed tag at a different commit can surprise anyone who fetched the old ref, and no communication is prescribed",
-      "evidence": "gh release view v0.8.0 reports no release, and the tag was pushed at 2026-09-20T23:56+04 with nothing referencing it"
+      "status": "resolved",
+      "summary": "Round 1 found that calling deletable-harness a matrix job claimed a shape the run does not have",
+      "evidence": "Fixed in 8122ca9, which names gate (3.11), gate (3.13) and deletable-harness; the reviewer verified the fix in round record-2"
+    },
+    {
+      "id": "R3",
+      "severity": "P2",
+      "status": "resolved",
+      "summary": "The wheel size stated in the notes was checked against the published asset",
+      "evidence": "The reviewer compared 214,034 bytes in the digest table with the gh release view output and reported no defect"
     }
   ],
   "verdict": "accepted"
