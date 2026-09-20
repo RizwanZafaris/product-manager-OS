@@ -10,7 +10,7 @@ What a version number means here, since this is a document system and not a libr
 
 The stability promise is stated in [README.md](README.md) and repeated here so it survives a fork: within a major version, template field names and file paths do not change under you. That is the whole promise, and the paragraph above says what it deliberately leaves out.
 
-## 0.8.0, 2026-09-20
+## 0.8.0, 2026-09-21
 
 This release adds executable local engineering capability: a dependency-free `pmos` runtime, the stage-gate loop it drives, and the checks that keep the documents honest. It is a source tag and a pure-Python wheel built from that tag. It is not a provider certification, not a release attestation, and not evidence that anyone outside this repository has adopted or reviewed it: those requirements stay open in [docs/readiness/external-gates.json](docs/readiness/external-gates.json), and [docs/readiness/EXT-RELEASE-checklist.md](docs/readiness/EXT-RELEASE-checklist.md) records which of them this release carries evidence for and which it does not.
 
