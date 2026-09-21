@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from .banks import CONTRACT_PATH, LEGACY_ONBOARDING, parse_contract, shipped_banks
-from .conductor import STATE_PATH, TurnOutcome
+from .conductor import STATE_PATH, TurnOutcome, evidence_counts
 from .export import build_export, render_export_markdown
 from .handoff import build_handoff
 from .migrations import migrate_workspace, recover_workspace, rollback_workspace
@@ -515,21 +515,14 @@ def _interview_status(store: Store, root: Path, product_id: str, token: str) -> 
         return " ".join(["pmos", name, "--path", shlex.quote(str(root)), "--product-id", shlex.quote(product_id),
                          *parts, "--expected-revision", shlex.quote(token), "--turn-id", "'<new turn id>'"])
 
-    parked, verified, unverified = [], 0, 0
+    parked = []
     for bank in banks:
         bank_state = state["banks"].get(bank.id, {})
         for question_id in bank_state.get("parked", []):
             parked.append({"bank_id": bank.id, "question_id": question_id,
                            "reopen": command("reopen", "--question-id", shlex.quote(question_id),
                                              "--reason", "'<why you are reopening it>'")})
-        for record in bank_state.get("answers", {}).values():
-            if record.get("parked"):
-                continue
-            # An answer stored before evidence verification carries no label: it was never checked.
-            if record.get("verification") == "source_verified":
-                verified += 1
-            else:
-                unverified += 1
+    counts = evidence_counts(state, banks)
     stale_banks: list[dict[str, Any]] = []
     if position.status == "stale":
         stale_gates = conductor.stale_gates()
@@ -625,7 +618,12 @@ def _interview_status(store: Store, root: Path, product_id: str, token: str) -> 
     result = {"interview": position.status, "interview_message": position.message,
               "current_bank_id": position.bank_id, "question": question,
               "parked": parked, "stale_banks": stale_banks,
-              "source_verified": verified, "supplied_unverified": unverified,
+              # Three figures, never two: a checked quotation is a stronger claim
+              # than a resolved path, so folding it into source_verified would let
+              # "n source_verified" be read as "n quotations checked".
+              "source_verified": counts["source_verified"],
+              "quote_verified": counts["quote_verified"],
+              "supplied_unverified": counts["supplied_unverified"],
               "next": next_command,
               "approvals": approvals,
               "rejections": rejections,
@@ -742,6 +740,11 @@ def _context_markdown(package: dict[str, Any], root: Path) -> str:
         lines.extend("- %s" % reason for reason in package["missing"])
     else:
         lines.append("- (none)")
+    evidence = package["evidence"]
+    lines.extend(["", "## Evidence", "",
+                  "- quote_verified: %d (a quotation found in the cited document)" % evidence["quote_verified"],
+                  "- source_verified: %d (the cited file exists; no quotation checked)" % evidence["source_verified"],
+                  "- supplied_unverified: %d (recorded as supplied)" % evidence["supplied_unverified"]])
     lines.extend(["", "## Sections", ""])
     for section in package["sections"]:
         targets = [_relative_to_handoff_folder(root, link["path"]) for link in section["links"]]
@@ -797,6 +800,7 @@ def _handoff(args: argparse.Namespace) -> dict[str, Any]:
     context_path.write_text(_context_markdown(package, root), encoding="utf-8")
     return {"ok": package["development_ready"], "product_id": args.product_id,
             "development_ready": package["development_ready"], "missing": list(package["missing"]),
+            "evidence": dict(package["evidence"]),
             "index": "handoff/context-index.json", "context": "handoff/CONTEXT.md"}
 
 

@@ -35,6 +35,20 @@ _ID = re.compile(r"^[A-Za-z][A-Za-z0-9_.:-]{0,127}$")
 _BANNED_OPENERS = ("everyone", "obviously", "we believe", "users want", "growing fast")
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 _UTC = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+# The words that mark an evidence field as claiming to hold a source's own
+# words. A field is an excerpt field when its key, lower-cased and with the
+# separators _ . : - removed, contains one of them, so `Quote`, `QUOTE`,
+# `quote_text`, `verbatimQuote` and `ex-cerpt` are checked exactly like `quote`.
+# Evidence keys are ASCII by _ID, so no look-alike letter can spell one of these
+# words. A key that contains none of them (`said`, `words`) is not an excerpt
+# field: it is stored as supplied and nothing checks it. Adding a word here
+# refuses more, never less.
+EXCERPT_STEMS = ("quote", "quotation", "excerpt", "verbatim")
+# The shortest excerpt checked: a one-word "quote" occurs in almost any document,
+# and a two-word one often does, so recording either quote_verified would say
+# more than the check established. Three words is a floor, not a proof.
+MIN_EXCERPT_WORDS = 3
+_KEY_SEPARATORS = re.compile(r"[_.:-]")
 
 
 def bank_fingerprint(bank: "QuestionBank") -> str:
@@ -165,6 +179,7 @@ class Conductor:
     def __init__(self, store: Store, product_id: str, banks: Sequence[QuestionBank], *,
                  gate_source_verifier: Optional[Callable[[str, str], bool]] = None,
                  source_resolver: Optional[Callable[[str], Optional[bool]]] = None,
+                 document_reader: Optional[Callable[[str], Optional[str]]] = None,
                  gate_manifest: Optional[Callable[[str], Any]] = None,
                  manifest_verifier: Optional[Callable[[Any], Any]] = None) -> None:
         if not isinstance(store, Store):
@@ -186,6 +201,13 @@ class Conductor:
         if source_resolver is not None and not callable(source_resolver):
             raise ValidationError("source_resolver must be callable")
         self._source_resolver = source_resolver
+        if document_reader is not None and not callable(document_reader):
+            raise ValidationError("document_reader must be callable")
+        # Separate from source_resolver, which answers True/False/None and can
+        # hand back no text. This module opens no file itself: keeping every
+        # filesystem call on the caller's side is what lets the interview
+        # protocol be tested and reasoned about without a workspace.
+        self._document_reader = document_reader
         if gate_manifest is not None and not callable(gate_manifest):
             raise ValidationError("gate_manifest must be callable")
         self._gate_manifest = gate_manifest
@@ -455,6 +477,13 @@ class Conductor:
             return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
                 "blocked", snapshot.head.token, bank_id=bank_id,
                 message="gate source could not be verified"))
+        # A gate proof is the higher-stakes record, so an excerpt in it is held to
+        # the same rule as one in an answer: the source is already verified by
+        # hash above, so an excerpt that is not in it is a fabrication.
+        excerpt_problem = self._excerpt_problem(supplied["source"], True, _excerpts(supplied))
+        if excerpt_problem:
+            return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
+                "blocked", snapshot.head.token, bank_id=bank_id, message=excerpt_problem))
         if "signed_by" in supplied and supplied["signed_by"] != actor_id:
             return self._record(snapshot, state, turn_id, request_hash, TurnOutcome(
                 "blocked", snapshot.head.token, bank_id=bank_id,
@@ -960,7 +989,83 @@ class Conductor:
                                "recorded as supplied and unverified." % source), normal, ""
             if found is True:
                 verification = "source_verified"
+        # A quotation claims more than a citation does: that these exact words
+        # are in that document. It is checked or the answer is refused, never
+        # stored unchecked beside a verification label that covers only the
+        # path. An answer that supplies no excerpt is untouched by this.
+        excerpts = _excerpts(normal)
+        if excerpts:
+            problem = self._excerpt_problem(source, verification == "source_verified", excerpts)
+            if problem:
+                return False, problem, normal, ""
+            verification = "quote_verified"
         return True, "", normal, verification
+
+    def _excerpt_problem(self, source: str, citable: bool,
+                         excerpts: Sequence[tuple[str, str]]) -> str:
+        """The refusal reason for these supplied excerpts, or "" when all check out.
+
+        ``citable`` says the source resolved to a document inside the workspace.
+        Anything else - free text, an interview id, a web address, a path the
+        resolver could not place - is refused rather than recorded: a quotation
+        against a source nothing can open is exactly the record this check
+        exists to keep out of the ledger.
+        """
+        if not excerpts:
+            return ""
+        if self._document_reader is None:
+            return ("no document reader configured, so a supplied %s cannot be checked against "
+                    "its source; drop the field or build the conductor with a document reader"
+                    % excerpts[0][0])
+        if not citable:
+            return ("a quotation can only be recorded against a citable document: %r is not a "
+                    "document inside this workspace. Cite the file the words are in, or drop "
+                    "the %s field and record the claim without quoting it."
+                    % (source, excerpts[0][0]))
+        try:
+            text = self._document_reader(source)
+        except Exception:
+            text = None
+        if not isinstance(text, str):
+            return "evidence source %r could not be read to check the quotation" % source
+        document = _collapse_whitespace(text)
+        for name, excerpt in excerpts:
+            if len(excerpt.split()) < MIN_EXCERPT_WORDS:
+                return ("%s is too short to check: %r. A quotation must be at least %d words, "
+                        "because a word or two can turn up in a document that never said the "
+                        "thing being quoted." % (name, excerpt, MIN_EXCERPT_WORDS))
+            if _collapse_whitespace(excerpt) not in document:
+                return ("%s does not occur in %s: %r. A quotation is recorded verbatim, so it is "
+                        "compared with the document's own words; only line wrapping and runs of "
+                        "whitespace are ignored." % (name, source, excerpt))
+        return ""
+
+
+# The verification labels an accepted answer can carry, strongest first. They
+# partition the accepted answers: each answer is counted once, under the
+# strongest label it earned, so a reader can never take the source_verified
+# figure for a count of checked quotations. An answer stored before evidence
+# verification carries no label at all and counts as supplied_unverified,
+# because it was never checked.
+VERIFICATION_LABELS = ("quote_verified", "source_verified", "supplied_unverified")
+
+
+def evidence_counts(state: Mapping[str, Any], banks: Sequence[QuestionBank]) -> dict[str, int]:
+    """How many accepted answers carry each label in VERIFICATION_LABELS.
+
+    One definition for every report, so `pmos status` and `pmos handoff` cannot
+    disagree about how much of a product's evidence was actually checked.
+    Parked answers are not counted: they are filed as offered, not accepted.
+    """
+    counts = {label: 0 for label in VERIFICATION_LABELS}
+    for bank in banks:
+        bank_state = state.get("banks", {}).get(bank.id, {})
+        for record in bank_state.get("answers", {}).values():
+            if record.get("parked"):
+                continue
+            label = record.get("verification")
+            counts[label if label in counts else "supplied_unverified"] += 1
+    return counts
 
 
 def _ensure_reopen_fields(bank_state: dict[str, Any]) -> None:
@@ -998,6 +1103,28 @@ def _parked_answer_text(value: Any) -> str:
 
 def _truthy_text(value: Any) -> bool:
     return isinstance(value, str) and bool(value.strip())
+
+
+def _is_excerpt_key(name: str) -> bool:
+    """Does this evidence key claim to hold a source's own words? See EXCERPT_STEMS."""
+    folded = _KEY_SEPARATORS.sub("", name.lower())
+    return any(stem in folded for stem in EXCERPT_STEMS)
+
+
+def _excerpts(normal: Mapping[str, str]) -> list[tuple[str, str]]:
+    """The supplied non-blank excerpt fields, sorted by key, as (name, text)."""
+    return [(name, normal[name]) for name in sorted(normal)
+            if _is_excerpt_key(name) and _truthy_text(normal[name])]
+
+
+def _collapse_whitespace(value: str) -> str:
+    """Every run of whitespace as one space, so a quote re-wrapped on its way
+    into the evidence still matches the document it came from.
+
+    Case and punctuation are left alone on purpose: normalizing those would let
+    a paraphrase pass as a quotation, which is the thing this check refuses.
+    """
+    return " ".join(value.split())
 
 
 def _valid_evidence_date(value: str) -> bool:

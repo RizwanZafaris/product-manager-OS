@@ -141,9 +141,14 @@ def phase_report(conductor: Conductor, contract: dict | None, root: Path) -> lis
             question_id for question_id in answer_order
             if isinstance(answers.get(question_id), dict) and not answers.get(question_id).get("parked")
         ]
+        # The same partition as conductor.VERIFICATION_LABELS: a quote_verified
+        # answer is counted there alone, and never falls into the unverified
+        # remainder, which would understate what was checked.
+        complete_with_quote = sum(1 for question_id in accepted
+                                  if answers[question_id].get("verification") == "quote_verified")
         complete_with_source = sum(1 for question_id in accepted
                                    if answers[question_id].get("verification") == "source_verified")
-        complete_without_source = len(accepted) - complete_with_source
+        complete_without_source = len(accepted) - complete_with_source - complete_with_quote
 
         def _answer_for(question_id: str):
             owner = owner_of.get(question_id)
@@ -283,6 +288,7 @@ def phase_report(conductor: Conductor, contract: dict | None, root: Path) -> lis
             "completed": {
                 "questions": accepted,
                 "source_verified": complete_with_source,
+                "quote_verified": complete_with_quote,
                 "supplied_unverified": complete_without_source,
             },
             "missing": missing,

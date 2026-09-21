@@ -195,6 +195,7 @@ class PhaseReportTests(unittest.TestCase):
         self.assertEqual(discover["completed"], {
             "questions": [],
             "source_verified": 0,
+            "quote_verified": 0,
             "supplied_unverified": 0,
         })
 
@@ -338,6 +339,7 @@ class PhaseReportTests(unittest.TestCase):
         self.assertEqual(discover["completed"], {
             "questions": ["discover.person", "discover.cost"],
             "source_verified": 2,
+            "quote_verified": 0,
             "supplied_unverified": 0,
         })
         self.assertEqual(define["state"], "not_started")

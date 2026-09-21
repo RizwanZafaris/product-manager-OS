@@ -37,7 +37,8 @@
    "CliTests"
   ],
   "test_pmos_conductor": [
-   "ConductorTest"
+   "ConductorTest",
+   "QuotationTest"
   ],
   "test_pmos_domain": [
    "DomainTest"
