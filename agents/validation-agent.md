@@ -93,7 +93,7 @@ You are the agent least entitled to improvise, so your stops are short and speci
 |---|---|---|
 | The draft does not resemble the template it claims, more than a few sections apart | 0, back to the requester | Which template the draft actually looks like, and a request to name the right pair before you check anything |
 | The gate the header names does not exist, or the header is absent | 0, to the requester | The gate list in [../os/STAGE-GATES.md](../os/STAGE-GATES.md) and the question of which gate this feeds |
-| A gate line cannot be evidenced anywhere, and the draft's author says it does not apply to this release | 2, to that gate's sign-off owners | The gate form with the line marked unknown, both positions attached. An unknown stops the Conductor exactly as a fail does The `pmos` runtime does not enforce that: it records a gate approval without reading these lines, so a gate can read approved with lines unmet or unjudged. |
+| A gate line cannot be evidenced anywhere, and the draft's author says it does not apply to this release | 2, to that gate's sign-off owners | The gate form with the line marked unknown, both positions attached. An unknown stops the Conductor exactly as a fail does, though the `pmos` runtime does not enforce that: it records a gate approval without reading these lines, so a gate can read approved with lines unmet or unjudged |
 | You are asked to re-check a draft you have already checked, unchanged | 1, to the product owner | The prior findings list. Re-running a checker on unchanged bytes produces the same list and the appearance of progress |
 
 ## Hand off to

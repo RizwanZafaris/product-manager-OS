@@ -36,7 +36,7 @@ Optional fields, used where they earn their place:
 Each bank opens with a header block: the stage, the gate it feeds, the working skills and agents the Conductor hands off to, and the overlays that can attach. Each bank closes with two sections:
 
 1. **Forced pair.** The two highest-stakes questions for the escape hatch in [../../../os/CONDUCTOR.md](../../../os/CONDUCTOR.md). When a user says "advance anyway", these are forced first, in the order listed.
-2. **Gate rendering.** A table mapping every checklist line of the stage's gate in [../../../os/STAGE-GATES.md](../../../os/STAGE-GATES.md) to the bank IDs whose accepted answers evidence it. This is the exit-gate test: a gate line with no accepted, landed answer behind it is marked unknown, and an unknown stops the Conductor exactly as a fail does The `pmos` runtime does not enforce that: it records a gate approval without reading these lines, so a gate can read approved with lines unmet or unjudged..
+2. **Gate rendering.** A table mapping every checklist line of the stage's gate in [../../../os/STAGE-GATES.md](../../../os/STAGE-GATES.md) to the bank IDs whose accepted answers evidence it. This is the exit-gate test: a gate line with no accepted, landed answer behind it is marked unknown, and an unknown stops the Conductor exactly as a fail does, though the `pmos` runtime does not enforce that: it records a gate approval without reading these lines, so a gate can read approved with lines unmet or unjudged.
 
 ## The evidence ladder
 

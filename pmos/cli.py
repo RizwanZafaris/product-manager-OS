@@ -128,6 +128,12 @@ def _status_lines(payload: dict[str, Any]) -> list[str]:
             if rest:
                 lines.append("This gate also expects: %s" % ", ".join(d.get("path") or "" for d in rest))
 
+    def _and_list(names: list[str]) -> str:
+        """"build", "build and define", "build, define and deliver"."""
+        if len(names) < 2:
+            return names[0] if names else ""
+        return ", ".join(names[:-1]) + " and " + names[-1]
+
     table_lines: list[tuple[Any, Any, str, str]] = []
     for phase in phases:
         gate = phase.get("gate")
@@ -166,7 +172,7 @@ def _status_lines(payload: dict[str, Any]) -> list[str]:
         for outcome in carried:
             checklist_lines.append("%s: \"%s\" is satisfied by an answer carried from %s, not by "
                                    "one recorded in this stage"
-                                   % (phase_name, outcome["line"], ", ".join(outcome["carried"])))
+                                   % (phase_name, outcome["line"], _and_list(outcome["carried"])))
 
     if table_lines:
         if lines:
