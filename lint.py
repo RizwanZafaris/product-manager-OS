@@ -1339,10 +1339,15 @@ def os_check(root, pins=None):
                     fail(rp, 1, "GRAPH", 'stage "%s" is not one of %s.'
                          % (stage, ", ".join(STAGE_VOCABULARY)))
                 gate = block.get("gate", "").strip().strip("'\"")
-                if "gate" in block and not (gate.isdigit()
+                # null is a declaration, not a missing value: it says this file
+                # answers to no single gate. pmos/artifacts.py has always parsed
+                # it that way and nothing shipped used it, because derive_gate
+                # floored a cross-cutting file to 1 instead. A floor is fine for
+                # reading and wrong for binding, and this field binds.
+                if "gate" in block and gate != "null" and not (gate.isdigit()
                                             and int(gate) in gate_numbers):
                     fail(rp, 1, "GRAPH", 'gate "%s" is not one of the gates '
-                         "os/STAGE-GATES.md defines (%s)."
+                         "os/STAGE-GATES.md defines (%s), and is not null."
                          % (gate, ", ".join(str(n)
                                             for n in sorted(gate_numbers))))
                 # The declaration against the file's own three-line header,

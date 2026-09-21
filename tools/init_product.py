@@ -133,7 +133,16 @@ def add_template(slug, template, force=False, quiet=False):
     rewritten, rewrites, skipped = rewrite_links(text, source_dir, dest_dir,
                                                  slug)
     previous = read_text(dest) if dest.exists() else None
-    rewritten = stamp_artifact(rewritten, template_rel, slug, previous=previous)
+    inside = posixpath.relpath(dest_rel, "products/" + slug)
+    if not_an_artifact(inside):
+        # pmos/artifacts.py never scans this destination, so stamping it would write an
+        # artifact_id, a phase and a gate that the runtime will not read and no approval
+        # can bind. templates/execution/status-report.md landed here: the copy claimed
+        # gate 4 and the following --stamp reported nothing at all about it.
+        say("not stamped: %s is a record of the work rather than an artifact of it, so "
+            "the runtime does not scan it and no gate binds it." % dest_rel)
+    else:
+        rewritten = stamp_artifact(rewritten, template_rel, slug, previous=previous)
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(rewritten, encoding="utf-8")
 
@@ -192,7 +201,7 @@ def stamp_workspace(slug, quiet=False):
                         "python3 tools/init_product.py %s" % (slug, slug))
     workspace_rel = "products/%s" % slug
     sidecars = SidecarFilter(workspace)
-    stamped = already = unidentified = 0
+    stamped = already = unidentified = unscanned = 0
     # Built once; the first template to land on a path claims it.
     template_for = {}
     for template in every_shipped_template():
@@ -203,6 +212,11 @@ def stamp_workspace(slug, quiet=False):
                        if p.is_file() and not sidecars.excused(p)):
         rel = path.relative_to(REPO).as_posix()
         if not_an_artifact(posixpath.relpath(rel, workspace_rel)):
+            # Counted rather than passed over in silence: a reader who wondered why their
+            # status report has no block could not tell a deliberate skip from a miss.
+            unscanned += 1
+            if not quiet:
+                say("  not an artifact, so not scanned:", rel)
             continue
         text = read_text(path)
         if parse_artifact(text):
@@ -219,8 +233,9 @@ def stamp_workspace(slug, quiet=False):
         stamped += 1
         if not quiet:
             say("  stamped:", rel, "<-", match)
-    say("stamp: %d stamped, %d already stamped, %d unidentified file(s)."
-        % (stamped, already, unidentified))
+    say("stamp: %d stamped, %d already stamped, %d unidentified, %d not scanned "
+        "(records of the work rather than artifacts of it)."
+        % (stamped, already, unidentified, unscanned))
     return stamped
 
 

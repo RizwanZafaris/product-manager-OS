@@ -1,6 +1,6 @@
 layer: skills
 stage: ALL STAGES
-gate: 1
+gate: null
 feeds: ["skills/conductor/questions/discover.md", "skills/conductor/questions/define.md", "skills/conductor/questions/design.md"]
 method: ""
 aliases: ["The Conductor"]
