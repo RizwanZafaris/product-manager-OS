@@ -57,12 +57,59 @@ def generate_record_text():
         run_main(["init", "--path", str(folder), "--product-id", "checkout"])
 
         bank_ids = ["discover", "define", "design", "build", "deliver", "operate"]
+
+        # Four refusals, attempted before anything is answered, so the section below
+        # reports what the runtime did rather than what the generator was told to say.
+        # Deleting the branch that enforces any one of these now changes this file and
+        # fails `tools/journey_record.py --check`, which is what that gate is for.
+        refusals = {}
+        probe_proof = b"probe"
+        (folder / "gate-probe.txt").write_bytes(probe_proof)
+        full_proof = {"source": "gate-probe.txt",
+                      "source_sha256": hashlib.sha256(probe_proof).hexdigest(),
+                      "actor_id": "local-reviewer", "requester_id": "local-operator",
+                      "decision": "approved", "approved_at": "2026-09-04T00:00:00Z"}
+
+        def attempt(name, bank_id, evidence, turn_id):
+            token = status(folder)["revision_token"]
+            _rc, out = run_main(["gate", "--path", str(folder), "--product-id", "checkout",
+                                 "--bank-id", bank_id, "--evidence", json.dumps(evidence),
+                                 "--expected-revision", token, "--turn-id", turn_id, "--json"])
+            payload = json.loads(out)
+            outcome = payload.get("outcome") or {}
+            state = outcome.get("status", payload.get("error", "no outcome"))
+            if state not in ("blocked", "refused"):
+                # A probe that is allowed through has both destroyed the rest of this run
+                # and disproved the line it exists to evidence. Say which, rather than
+                # letting the next gate call fail on a missing key several steps later.
+                raise SystemExit(
+                    "the runtime allowed the %r gate probe, which this record states is "
+                    "refused: outcome %r, message %r. Either an enforcement branch is gone "
+                    "or this probe is aimed at the wrong rule."
+                    % (name, state, outcome.get("message", "")))
+            refusals[name] = {"status": state, "message": outcome.get("message", "")}
+
+        # Only the first of these can be attempted before anything is answered: the
+        # unanswered-questions check fires first and would mask the other three, which
+        # is how a row can look like a demonstration and be one of something else.
+        attempt("unanswered", "discover", full_proof, "probe-unanswered")
+
         gate_outcomes = []
         questions_per_bank = []
         accepted_per_bank = []
 
         for idx, bank_id in enumerate(bank_ids, 1):
             st, q_count, a_count = process_bank(folder, bank_id)
+            if idx == 1:
+                # discover is answered and not yet gated, so each of these three reaches
+                # the rule it is named for instead of stopping at the one before it.
+                attempt("skipped", "define", full_proof, "probe-skipped")
+                attempt("incomplete", "discover",
+                        {k: v for k, v in full_proof.items() if k != "actor_id"},
+                        "probe-incomplete")
+                attempt("unauthorized", "discover",
+                        dict(full_proof, actor_id="someone-else"), "probe-unauthorized")
+                st = status(folder)
             proof_name = f"gate-{bank_id}.txt"
             proof_bytes = bank_id.encode()
             (folder / proof_name).write_bytes(proof_bytes)
@@ -120,11 +167,20 @@ def generate_record_text():
         lines.append("")
         lines.append("## What the runtime enforced")
         lines.append("")
-        lines.append("- a gate proof is refused unless every question in its bank has been accepted;")
-        lines.append("- only the current bank can be gated, so gates cannot be skipped;")
-        lines.append("- the proof must name source, source_sha256, actor_id, requester_id, decision and approved_at;")
-        lines.append("- the approving actor must be one of the bank's pinned approvers;")
-        lines.append("- when a proof's source file changes after approval the gate goes stale and nothing later completes until it is proved again.")
+        lines.append("Each line below was attempted against this run and refused. The status and the")
+        lines.append("runtime's own message are reproduced, so deleting the code that enforces any one of")
+        lines.append("them changes this file and fails `python3 tools/journey_record.py --check`.")
+        lines.append("")
+        lines.append("| Attempted | Outcome | What the runtime said |")
+        lines.append("|---|---|---|")
+        for label, key in (("gate a bank with unanswered questions", "unanswered"),
+                           ("gate a later bank, skipping the current one", "skipped"),
+                           ("prove a gate with no actor_id in the proof", "incomplete"),
+                           ("approve as an actor outside the bank's pinned approvers", "unauthorized")):
+            got = refusals[key]
+            lines.append(f"| {label} | {got['status']} | {got['message']} |")
+        lines.append("")
+        lines.append("- when a proof's source file changes after approval the gate goes stale and nothing later completes until it is proved again, which the Staleness table below shows happening.")
         lines.append("")
         lines.append("## Gates")
         lines.append("")

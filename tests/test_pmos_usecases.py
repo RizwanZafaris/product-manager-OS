@@ -84,8 +84,13 @@ class UseCaseMatrixTests(unittest.TestCase):
             "disaster_recovery": dict(revision=1, verified=True),
             "security": dict(secret_action="deny", outside_action="deny",
                              external_action="ask"),
+            # conductor_position is the value new_user actually observes: it answers one
+            # bank, proves one gate, and the conductor is then asking the next bank's first
+            # question. The field this replaced recorded the literal True under the name
+            # conductor_completed, which no run of this case has ever been true of.
             "new_user": dict(cli_initialized=True, cli_completed=True,
-                             store_verified=True, conductor_completed=True,
+                             store_verified=True, conductor_position="question",
+                             conductor_moved_past_gated_bank=True,
                              domain_reopened=True, hook_action="allow",
                              skill_contract_count=1,
                              operations_status="acknowledged"),
