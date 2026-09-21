@@ -4,47 +4,40 @@
   "reviewer_kind": "independent-agent",
   "independent_implementation": true,
   "identity_assurance": "unauthenticated-local-claim",
-  "reviewed_at": "2026-09-21T00:41:08Z",
-  "reviewed_tree_sha256": "9f11a30ac7c18a71d5fb388efaa06048eabcfa89c8e9871f276b22638de95ce4",
+  "reviewed_at": "2026-09-21T01:25:37Z",
+  "reviewed_tree_sha256": "353cb72337cf530912310a8537bc868fe698cb82fafd76aac3976da8d95ab126",
   "scope": [
-    "Change set 39a0dc6..2bf6847: the derivation floor that gave a cross-cutting file gate 1, the nine templates and eight skills whose declarations came from it, the generated prose that turned those declarations into operating instructions, and the destination --add stamped that the runtime never scans"
+    "Change set e18200b..8135461: the last seven documentation findings from the Fable 5.1 audit, being an undefined Method vocabulary used in eight files, two fictional products sharing one name, two Gate 2 lines asking for fields the templates lacked, 1,226 words of preamble before Gate 1, and four drifted counts and pointers"
   ],
   "evidence": [
     {
-      "command": "OPUS-2 before and after",
-      "result": "a stamped planning/okrs.md carried gate 1 and one appended line moved pmos status from question to stale; it now stamps gate null, and build_manifest for gate 1 on a workspace holding both returns only the discovery artifact"
+      "command": "os/STAGE-GATES.md before Gate 1",
+      "result": "1,226 words over 18 paragraphs with a 291-word paragraph, now 253 words with a longest of 96; the moved sections have no inbound anchor links, while the gate anchors that are linked did not move"
     },
     {
-      "command": "the authored prose above the generated marker",
-      "result": "roadmap-builder, strategy-critic and write-vision-strategy each name Gate 2; decision-memo, pm-hiring, escalation and conductor name no gate at all; product-review names Gate 5 and work between Gate 2 and Gate 5"
+      "command": "the counts, each read from the tree",
+      "result": "4 learn path files against three claimed, 3 cross-stage tracks against two, 7 loop rules against six, 6 splitting patterns against four"
     },
     {
-      "command": "the new corroboration check",
-      "result": "exit 1 on a copy of this tree with roadmap-builder put back to gate 1 and its prose untouched, saying it declares gate 1 and its own prose names Gate 2; exit 0 on this tree"
+      "command": "the two Gate 2 fields",
+      "result": "templates/planning/vision.md had no field naming a Gate 1 problem and roadmap.md's Now and Next tables had no success measure, so both lines could only be ticked on trust"
     },
     {
-      "command": "OPUS-9 before and after",
-      "result": "--add wrote artifact_id, phase BUILD and gate 4 into a status report the runtime never scans, and --stamp reported nothing; --add now declines and says why, --stamp counts it, and planning/vision.md still stamps with gate 2"
+      "command": "python3.11 tools/ci_gate.py at 8135461",
+      "result": "24 of 25; the one red gate is readiness-local, failing only CI-6. An earlier run of this same change was 22 of 25, the roadmap tables ragged and the committed skill rubric stale, both caught by the suite rather than by review"
     },
     {
-      "command": "python3.11 tools/ci_gate.py at 2bf6847",
-      "result": "24 of 25; the one red gate is readiness-local, failing only CI-6, awaiting this record. An earlier run was 23 of 25 because three assertions still named the old stamp summary"
+      "command": "python3.11 -m unittest harness.test_runner",
+      "result": "Ran 218 tests, OK"
     }
   ],
   "findings": [
     {
       "id": "R1",
-      "severity": "P2",
-      "status": "open",
-      "summary": "The corroboration check can be satisfied by a coincidental mention: a skill whose authored prose quotes a stage table listing gate numbers would pass even where the declaration disagrees with its substantive claim",
-      "evidence": "Raised by the reviewer against this change. The check is a floor rather than a proof, and it closes the case that actually shipped, which was a declaration no authored sentence named at all"
-    },
-    {
-      "id": "R2",
       "severity": "P3",
       "status": "accepted",
-      "summary": "A user who wants a report to be a gate-bound artifact has no override: the path suffix decides, and the system now says so rather than stamping a block the runtime ignores",
-      "evidence": "The exclusion predates this change and this change only stops it being silent. Narrowing it would mean renaming what harness/runner.py writes, which is a wider change than this one"
+      "summary": "docs/CONDUCTOR-DESIGN.md still says there are four usage methods, which the audit listed as part of this finding",
+      "evidence": "It is the v0.2.0 blueprint and four was the count at v0.1.0, so it is correct history, the same reasoning that left the CHANGELOG's older gate count alone"
     }
   ],
   "verdict": "accepted"

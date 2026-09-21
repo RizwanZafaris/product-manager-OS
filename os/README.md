@@ -23,7 +23,7 @@ Gates are documents, not ceremonies. A gate passes when its checklist is filled 
 
 | File | What it holds |
 |---|---|
-| [OPERATING-LOOP.md](OPERATING-LOOP.md) | The six stages, with entry, work, and exit for each; the three overlays (planning, AI, regulated); the six rules of the loop |
+| [OPERATING-LOOP.md](OPERATING-LOOP.md) | The six stages, with entry, work, and exit for each; the three overlays (planning, AI, regulated); the seven rules of the loop |
 | [STAGE-GATES.md](STAGE-GATES.md) | The six gate checklists as fill-in forms, each with sign-off lines and a stated skip risk |
 | [WHICH-DOCUMENT.md](WHICH-DOCUMENT.md) | Three questions (stakes, audience, reversibility) that pick one of five artifact weights, plus a table for the documents that attach to a trigger rather than to a weight |
 | [PRODUCT-WORKSPACE.md](PRODUCT-WORKSPACE.md) | The `products/<name>/` folder convention: where filled artifacts accumulate as the product's memory, and where STATE.md sits in the layout |

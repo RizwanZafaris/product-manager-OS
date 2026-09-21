@@ -85,10 +85,10 @@ template: templates/planning/product-strategy.md
 
 ## A filled workspace, month nine
 
-The layout above is the shape. This is what it contains once one product has been through all six gates, taken from the Ledgerline walkthrough in [HOW-TO-RUN-A-PRODUCT.md](HOW-TO-RUN-A-PRODUCT.md). Nothing here is aspirational: every file is one the walkthrough names, and the absences are as instructive as the contents.
+The layout above is the shape. This is what it contains once one product has been through all six gates, taken from the Brightbook walkthrough in [HOW-TO-RUN-A-PRODUCT.md](HOW-TO-RUN-A-PRODUCT.md). Nothing here is aspirational: every file is one the walkthrough names, and the absences are as instructive as the contents.
 
 ```
-products/ledgerline/
+products/brightbook/
 ├── README.md                                    updated at each gate, 6 edits
 ├── STATE.md                                     append-only, 61 accepted-answer rows
 ├── planning/
@@ -196,7 +196,7 @@ One paragraph on what the product is, then a short table: current stage, last ga
 Filled, it is this short:
 
 ```markdown
-# Ledgerline forecast
+# Brightbook Forecast
 
 A two-week cash-flow forecast for small-business owners inside the
 invoicing product, with a plain-language explanation attached to each

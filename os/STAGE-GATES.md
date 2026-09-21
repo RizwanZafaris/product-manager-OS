@@ -10,41 +10,13 @@ aliases: ["Stage Gates", "STAGE-GATES"]
 
 Six gates, one per stage of the loop in [OPERATING-LOOP.md](OPERATING-LOOP.md). Each gate is a fill-in form: copy the gate's section into your product workspace as `products/<name>/gates/gate-<n>-attempt-<k>.md`, complete every field, tick only the boxes that are honestly true, and collect the signatures. Nothing generates that file; the copy is the attempt, and a second attempt at the same gate is `-attempt-2`. A gate passes when the form is complete and signed, not when the meeting ends.
 
-**What a gate is, stated at its real strength.** A gate is prose plus a human signature, and that is the whole mechanism. No hash binds a signature to the bytes of the artifact it approved, so editing an approved PRD does not stale its approval. No identity check stands behind a typed name, so nothing here distinguishes a signature from a name someone else typed. Nothing prevents the author of a document from signing it off. The value on offer is narrower and still worth having: a document that nobody reviewed is visibly unreviewed, a line nobody could evidence stays marked unknown in a file that outlives the meeting, and an advance over an open objection leaves a waiver with a name on it. This is a discipline, not a control. It will not stop a person who is willing to lie to it, and a team that treats it as though it will has swapped one unexamined trust for another. The local runtime (Method 4, `pmos`) is narrower and stronger: its gate proof records the SHA-256 of the approval source, refuses self-approval and actors outside the bank's pinned approvers, and records the revision of every workspace artifact whose block names that gate, with the artifacts they depend on; when the source or any of those artifacts changes or disappears, the approval goes stale and `pmos status` names what changed and what needs reconciling, and a rejected decision is kept as history and never advances. It binds only files in the product workspace that carry the artifact block, and every approval is a local attestation: actor ids are typed, not authenticated. [examples/journey-run.md](../examples/journey-run.md) records the runtime doing this across all six gates, including an approval going stale and being proved again.
+**What a gate is, stated at its real strength.** A gate is prose plus a human signature, not a machine-enforced barrier: the document checks are structural, and no hash binds a signature to the bytes of the artifact it approved, so editing an approved PRD does not stale its approval. The local runtime is stronger on the parts it covers and is described where that matters. The full statement of what each layer does and does not guarantee is in [What a gate is worth](#what-a-gate-is-worth) below, with the marks, the waiver route and the regulated overlay.
 
 <!-- Conventions for every gate below:
      - Angle-bracket fields <like this> are the blanks you fill.
      - Boxes are ticked by the humans named on the sign-off lines, never by an agent.
      - "Evidence" always means a document or artifact you can point at, not a recollection.
      - A failed gate is a normal outcome. Record the misses, assign owners, re-run.       -->
-
-## How to mark a line
-
-Three marks, not two. **Pass** means the evidence exists and someone at the gate has seen it. **Fail** means the evidence contradicts the line. **Unknown** means nobody can produce the evidence right now, and it blocks exactly as a fail does, because the two are indistinguishable from the outside: a line nobody can evidence and a line that is false produce the same launch review. Teams that allow only pass and fail generate silent passes, and the tell is a gate form where every line is ticked and at least one has no evidence written beside it.
-
-Write the evidence next to the mark as a path and a section, never as a name. "Marcus confirmed" is a recollection and will not survive the quarter; `definition/nfr.md` section 4, row NFR-04 will. This is the same discipline the Conductor's landing protocol enforces in [CONDUCTOR.md](CONDUCTOR.md), and it applies whether or not anyone is running the Conductor.
-
-Each gate below closes with two things beyond its checklist: the skip warning, which is what the field has learned about skipping that gate, and **failure precedents**, which are the specific ways this gate gets failed or falsely passed, each with the tell that reveals it on the page. Read the precedents before you chair the gate, not after.
-
-## Advancing on a waiver
-
-Sometimes a team advances past a gate that did not pass. That happens in real work and pretending otherwise just moves the decision somewhere nobody writes it down. So there is a route, it is loud, and it costs a document.
-
-To advance past a fail or an unknown, write a waiver into the gate attempt file with all seven fields: **who insisted** (name, role, and their standing to accept this risk, typed by that person), **the date**, **the gate number and attempt number**, **each unmet line quoted verbatim from that attempt with its mark**, **why the evidence is missing and what would close it**, **what it risks** (the gate's own skip warning, quoted, plus the version of it specific to this product), and **who objected** and what they argued, or the words "no objection was raised". Mirror it to the risk register. Do not tick the waived line: it stays fail or unknown, and the waiver sits beside it.
-
-The objection field is the one that makes the waiver worth writing. A record of a decision reads, a year later, as though the room agreed. A record naming an unmet line and a person who argued against it is a document a postmortem can use. The same honesty applies here as to the signatures above: nobody verifies the name, and nothing stops a chair from leaving out the objection they did not want. A waiver makes a skipped gate legible. It does not make it hard.
-
-The Conductor's runtime version of this route, including the two forced questions it asks first, is in [CONDUCTOR.md](CONDUCTOR.md).
-
-## The regulated overlay, and what it does not cover
-
-Two gate lines below hook in `../modules/regulated/`. That module covers exactly two instruments: the CBUAE Guidance Note on consumer protection and AI/ML adoption by licensed financial institutions, and EU AI Act Annex IV technical documentation fields. Both are about AI and machine learning.
-
-So the overlay lines are written to fire narrowly: **the product uses AI or machine learning and a financial or data regulator applies to it**. The four-case applicability truth table this condition encodes (AI and regulated; AI and unregulated; non-AI and regulated; neither) is authored once, in [modules/regulated/README.md](../modules/regulated/README.md#when-this-overlay-activates); this file states the same condition and keeps no second copy of the table. A conventional payments, lending, or KYC product with no model in it does not fire them, and that is deliberate. Attaching an AI-specific overlay to a non-AI regulated product produces the worst outcome available: a ticked line, a filled section 0, and no coverage at all of the licensing conditions, scheme rules, and conduct obligations that product actually lives under. A blank is a question. A wrongly ticked box is an answer nobody will re-open.
-
-**Known gap, stated rather than papered over.** This repository does not ship a jurisdiction pack for non-AI regulated products. If your product is regulated and has no model in it, these two gate lines are not your compliance coverage: bring your own licence conditions, scheme rules, and regulatory calendar to Gate 2, name the regulatory owner on the sign-off line, and record in STATE.md, or in this gate attempt file where the product keeps no STATE.md, that the shipped overlay did not apply and what you used instead. [OPEN: a non-AI jurisdiction pack, owner is the repository maintainer.]
-
----
 
 ## Gate 1: Problem worth solving
 
@@ -298,3 +270,35 @@ Closes OPERATE. Loops back to DISCOVER.
 7. **Three sentences nobody will find.** The lesson is written into the gate attempt only, which no future team reads. Tell: nothing in the product README or the decision log points at it. File it where a new owner lands, per [PRODUCT-WORKSPACE.md](PRODUCT-WORKSPACE.md).
 
 **Most common false pass:** an honest, well-instrumented review of a product whose review window was chosen after the numbers were visible. Every line passes and the window was selected to flatter the result. Choose the window at Gate 5, before the data exists, and write it into the readiness doc.
+
+## What a gate is worth
+
+**What a gate is, stated at its real strength.** A gate is prose plus a human signature, and that is the whole mechanism. No hash binds a signature to the bytes of the artifact it approved, so editing an approved PRD does not stale its approval. No identity check stands behind a typed name, so nothing here distinguishes a signature from a name someone else typed. Nothing prevents the author of a document from signing it off. The value on offer is narrower and still worth having: a document that nobody reviewed is visibly unreviewed, a line nobody could evidence stays marked unknown in a file that outlives the meeting, and an advance over an open objection leaves a waiver with a name on it. This is a discipline, not a control. It will not stop a person who is willing to lie to it, and a team that treats it as though it will has swapped one unexamined trust for another. The local runtime (Method 4, `pmos`) is narrower and stronger: its gate proof records the SHA-256 of the approval source, refuses self-approval and actors outside the bank's pinned approvers, and records the revision of every workspace artifact whose block names that gate, with the artifacts they depend on; when the source or any of those artifacts changes or disappears, the approval goes stale and `pmos status` names what changed and what needs reconciling, and a rejected decision is kept as history and never advances. It binds only files in the product workspace that carry the artifact block, and every approval is a local attestation: actor ids are typed, not authenticated. [examples/journey-run.md](../examples/journey-run.md) records the runtime doing this across all six gates, including an approval going stale and being proved again.
+
+## How to mark a line
+
+Three marks, not two. **Pass** means the evidence exists and someone at the gate has seen it. **Fail** means the evidence contradicts the line. **Unknown** means nobody can produce the evidence right now, and it blocks exactly as a fail does, because the two are indistinguishable from the outside: a line nobody can evidence and a line that is false produce the same launch review. Teams that allow only pass and fail generate silent passes, and the tell is a gate form where every line is ticked and at least one has no evidence written beside it.
+
+Write the evidence next to the mark as a path and a section, never as a name. "Marcus confirmed" is a recollection and will not survive the quarter; `definition/nfr.md` section 4, row NFR-04 will. This is the same discipline the Conductor's landing protocol enforces in [CONDUCTOR.md](CONDUCTOR.md), and it applies whether or not anyone is running the Conductor.
+
+Each gate below closes with two things beyond its checklist: the skip warning, which is what the field has learned about skipping that gate, and **failure precedents**, which are the specific ways this gate gets failed or falsely passed, each with the tell that reveals it on the page. Read the precedents before you chair the gate, not after.
+
+## Advancing on a waiver
+
+Sometimes a team advances past a gate that did not pass. That happens in real work and pretending otherwise just moves the decision somewhere nobody writes it down. So there is a route, it is loud, and it costs a document.
+
+To advance past a fail or an unknown, write a waiver into the gate attempt file with all seven fields: **who insisted** (name, role, and their standing to accept this risk, typed by that person), **the date**, **the gate number and attempt number**, **each unmet line quoted verbatim from that attempt with its mark**, **why the evidence is missing and what would close it**, **what it risks** (the gate's own skip warning, quoted, plus the version of it specific to this product), and **who objected** and what they argued, or the words "no objection was raised". Mirror it to the risk register. Do not tick the waived line: it stays fail or unknown, and the waiver sits beside it.
+
+The objection field is the one that makes the waiver worth writing. A record of a decision reads, a year later, as though the room agreed. A record naming an unmet line and a person who argued against it is a document a postmortem can use. The same honesty applies here as to the signatures above: nobody verifies the name, and nothing stops a chair from leaving out the objection they did not want. A waiver makes a skipped gate legible. It does not make it hard.
+
+The Conductor's runtime version of this route, including the two forced questions it asks first, is in [CONDUCTOR.md](CONDUCTOR.md).
+
+## The regulated overlay, and what it does not cover
+
+Two gate lines below hook in `../modules/regulated/`. That module covers exactly two instruments: the CBUAE Guidance Note on consumer protection and AI/ML adoption by licensed financial institutions, and EU AI Act Annex IV technical documentation fields. Both are about AI and machine learning.
+
+So the overlay lines are written to fire narrowly: **the product uses AI or machine learning and a financial or data regulator applies to it**. The four-case applicability truth table this condition encodes (AI and regulated; AI and unregulated; non-AI and regulated; neither) is authored once, in [modules/regulated/README.md](../modules/regulated/README.md#when-this-overlay-activates); this file states the same condition and keeps no second copy of the table. A conventional payments, lending, or KYC product with no model in it does not fire them, and that is deliberate. Attaching an AI-specific overlay to a non-AI regulated product produces the worst outcome available: a ticked line, a filled section 0, and no coverage at all of the licensing conditions, scheme rules, and conduct obligations that product actually lives under. A blank is a question. A wrongly ticked box is an answer nobody will re-open.
+
+**Known gap, stated rather than papered over.** This repository does not ship a jurisdiction pack for non-AI regulated products. If your product is regulated and has no model in it, these two gate lines are not your compliance coverage: bring your own licence conditions, scheme rules, and regulatory calendar to Gate 2, name the regulatory owner on the sign-off line, and record in STATE.md, or in this gate attempt file where the product keeps no STATE.md, that the shipped overlay did not apply and what you used instead. [OPEN: a non-AI jurisdiction pack, owner is the repository maintainer.]
+
+---

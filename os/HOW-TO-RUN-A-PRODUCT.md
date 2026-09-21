@@ -8,18 +8,18 @@ aliases: ["How to Run a Product", "HOW-TO-RUN-A-PRODUCT"]
 ---
 # How to Run a Product
 
-One fictional product taken through all six gates, naming every template used at each step. The product is **Ledgerline**, a cash-flow forecast feature inside a small-business bookkeeping app, with a model-generated plain-language explanation attached to each forecast. Fictional company, fictional people, invented numbers throughout. The point is the moves, not the story.
+One fictional product taken through all six gates, naming every template used at each step. The product is **Brightbook Forecast**, a cash-flow forecast feature inside a small-business bookkeeping app, with a model-generated plain-language explanation attached to each forecast. Fictional company, fictional people, invented numbers throughout. The point is the moves, not the story.
 
 Read [OPERATING-LOOP.md](OPERATING-LOOP.md) for the stage definitions and [STAGE-GATES.md](STAGE-GATES.md) for the forms this walkthrough keeps arriving at.
 
-**The product, in one paragraph.** Ledgerline is a business-to-business invoicing and bookkeeping product used by roughly 12,000 small companies, most of them under ten employees, most of them with no finance staff. Owners send invoices from it, reconcile a bank feed in it, and see a balance. What they do not see is what the balance will be in two weeks. The forecast feature is the subject of this walkthrough; the explanation attached to each forecast is the reason the AI overlay applies.
+**The product, in one paragraph.** Brightbook is a business-to-business invoicing and bookkeeping product used by roughly 12,000 small companies, most of them under ten employees, most of them with no finance staff. Owners send invoices from it, reconcile a bank feed in it, and see a balance. What they do not see is what the balance will be in two weeks. The forecast feature is the subject of this walkthrough; the explanation attached to each forecast is the reason the AI overlay applies.
 
 **The cast**, because every gate below needs a name on a signature line and a walkthrough without names teaches the wrong habit.
 
 | Person | Role | What they can stop |
 |---|---|---|
 | Dana | Product owner | Nothing alone; owns every gate form |
-| Priya | Business sponsor, VP of product | The funding, at Gate 2 |
+| Nadia Haddad | Business sponsor, VP of product | The funding, at Gate 2 |
 | Marcus | Engineering lead | Gate 2, Gate 4 |
 | Ines | Architect | Gate 3 |
 | Sam | Security reviewer | Gate 3, and any data-model change |
@@ -31,11 +31,11 @@ Read [OPERATING-LOOP.md](OPERATING-LOOP.md) for the stage definitions and [STAGE
 
 ## Before stage 1: planning decides this enters the loop
 
-Ledgerline does not start because someone had an idea in a meeting. The quarterly plan in `../templates/planning/roadmap.md` carries a theme, "owners stop being surprised by cash", with a confidence level and a target period. The company OKRs in `../templates/planning/okrs.md` carry a key result about second-month retention, with a baseline and a target. The roadmap slot plus the retention KR is the mandate. That is a portfolio decision: planning says Ledgerline enters the loop and why, and Ledgerline's own vision, strategy, and roadmap come later, inside DEFINE. The PM, Dana, opens the loop.
+Brightbook does not start because someone had an idea in a meeting. The quarterly plan in `../templates/planning/roadmap.md` carries a theme, "owners stop being surprised by cash", with a confidence level and a target period. The company OKRs in `../templates/planning/okrs.md` carry a key result about second-month retention, with a baseline and a target. The roadmap slot plus the retention KR is the mandate. That is a portfolio decision: planning says Brightbook enters the loop and why, and Brightbook's own vision, strategy, and roadmap come later, inside DEFINE. The PM, Dana, opens the loop.
 
 The mandate is doing more work than it looks like it is doing. The roadmap row names a theme rather than a feature, so DISCOVER is allowed to come back with "alerts, not forecasts" and still be on plan. Had the row read "ship cash-flow forecasting in Q3", discovery would have had one honest outcome available to it, and Gate 1's no-go argument would have been theater. If your roadmap rows name solutions, your Gate 1s will pass unanimously and mean nothing.
 
-Because the explanation component is model-generated, Dana notes on day one that the AI overlay will apply from DEFINE onward. Ledgerline's company is not a licensed financial institution and the feature makes no decisions about anyone's access to money, so the regulated overlay does not activate; Dana records that determination and the reasoning in the decision log rather than leaving it as an assumption. Had the answer been yes, `../modules/regulated/` would have attached at Gate 2 and Gate 5, via `../skills/reg-gap-check/SKILL.md`.
+Because the explanation component is model-generated, Dana notes on day one that the AI overlay will apply from DEFINE onward. Brightbook's company is not a licensed financial institution and the feature makes no decisions about anyone's access to money, so the regulated overlay does not activate; Dana records that determination and the reasoning in the decision log rather than leaving it as an assumption. Had the answer been yes, `../modules/regulated/` would have attached at Gate 2 and Gate 5, via `../skills/reg-gap-check/SKILL.md`.
 
 Recording the negative determination costs one decision-log row and buys two things. A year later, when someone proposes adding a lending referral to the forecast screen, the row is the first thing that turns up in search, and the reasoning it contains ("makes no decisions about access to money") is exactly the sentence the new proposal breaks. Second, when a prospective enterprise customer's due-diligence questionnaire asks whether the feature is subject to financial regulation, the answer has a date and an owner instead of being reconstructed under time pressure.
 
@@ -63,7 +63,7 @@ The no-go argument is worth reproducing because a checklist line reading "at lea
 
 ## DEFINE, ending at Gate 2
 
-Before the business case, Dana writes Ledgerline's vision, strategy, and roadmap with phased outcomes, each approved by the named role: the vision (`../templates/planning/vision.md`) states who it serves, which Gate 1 problem it answers, and the change it aims for, approved by Priya as business sponsor; the strategy (`../templates/planning/product-strategy.md`) names where to play, how to win, and what the product will not do, tracing to the vision, approved by Dana as product owner and Priya as business sponsor; and the roadmap (`../templates/planning/roadmap.md`) orders phases, each with an outcome, a success measure, and its dependencies, tracing to the strategy, approved by Dana as product owner and Marcus as engineering lead.
+Before the business case, Dana writes Brightbook's vision, strategy, and roadmap with phased outcomes, each approved by the named role: the vision (`../templates/planning/vision.md`) states who it serves, which Gate 1 problem it answers, and the change it aims for, approved by Nadia as business sponsor; the strategy (`../templates/planning/product-strategy.md`) names where to play, how to win, and what the product will not do, tracing to the vision, approved by Dana as product owner and Nadia as business sponsor; and the roadmap (`../templates/planning/roadmap.md`) orders phases, each with an outcome, a success measure, and its dependencies, tracing to the strategy, approved by Dana as product owner and Marcus as engineering lead.
 
 Business case first: `../templates/definition/brd.md` names objectives, scope, stakeholders, constraints, the ROI logic, and the sponsor who will sign it.
 
@@ -87,7 +87,7 @@ The assumption above is the one that later earns its row. "Owners check the app 
 
 **Gate 2.** Attempt 1 is RETURNED: two acceptance criteria are prose ("forecast feels trustworthy") and one NFR has neither a number nor an owner. A week later, attempt 2 passes with the criteria rewritten as eval rows and the NFR owned. The sponsor signs the BRD itself, then the gate.
 
-The attempt is filed at `products/ledgerline/gates/gate-2-attempt-1.md`, and it is worth reading in full because the misses are ordinary. Three checklist lines did not pass:
+The attempt is filed at `products/brightbook/gates/gate-2-attempt-1.md`, and it is worth reading in full because the misses are ordinary. Three checklist lines did not pass:
 
 | Checklist line | Marked | Evidence |
 |---|---|---|
@@ -95,7 +95,7 @@ The attempt is filed at `products/ledgerline/gates/gate-2-attempt-1.md`, and it 
 | Every NFR target is a number, or names an owner and a date | FAIL | NFR-04, forecast freshness, reads "based on recent bank data" |
 | AI overlay: model criteria are eval sets with thresholds | UNKNOWN | The eval spec exists and is thorough, but AC-07 and AC-11 were never routed into it, so two model behaviors are governed by prose |
 
-What the room did not do is instructive. Nobody argued that trustworthiness is unmeasurable, and nobody proposed a survey question to rescue AC-07. Priya asked the question that resolved it: what would we see in the product if the forecast were untrustworthy? Answer: an explanation citing a number that is not in the data, or a forecast that contradicts the balance shown one screen away. Both are testable. AC-07 became two eval rows and one integration test. AC-11 was harder and ended honestly: readability was not a launch-blocking property, so it was demoted from an acceptance criterion to a UAT observation with no threshold, and the demotion is recorded. A criterion that cannot fail is either rewritten until it can or removed. It is never kept as decoration.
+What the room did not do is instructive. Nobody argued that trustworthiness is unmeasurable, and nobody proposed a survey question to rescue AC-07. Nadia asked the question that resolved it: what would we see in the product if the forecast were untrustworthy? Answer: an explanation citing a number that is not in the data, or a forecast that contradicts the balance shown one screen away. Both are testable. AC-07 became two eval rows and one integration test. AC-11 was harder and ended honestly: readability was not a launch-blocking property, so it was demoted from an acceptance criterion to a UAT observation with no threshold, and the demotion is recorded. A criterion that cannot fail is either rewritten until it can or removed. It is never kept as decoration.
 
 NFR-04 became the freshness rule quoted in [OPERATING-LOOP.md](OPERATING-LOOP.md): recompute within 90 minutes of a bank-feed sync, staleness banner past 36 hours, owner named, measured from the feed timestamp. Marcus owns it. That single rewrite is what makes the Gate 4 test possible and, later, what makes the DELIVER-stage empty-explanation bug visible instead of invisible.
 
@@ -124,7 +124,7 @@ In parallel the execution set opens: `../templates/execution/stakeholder-map.md`
 
 The stakeholder map is scored on `../frameworks/execution/stakeholder-power-interest.md` and produces one non-obvious result: Tomas, the support lead, sits high on interest and low on assigned power, and that quadrant is the one the map exists to catch. He is added as a required Gate 5 signature. This is the single change that would have prevented the Gate 5 no-go described below, and it was made at Gate 3 and then not honored, which is a more useful thing to show than a walkthrough where the map is filled and everything works.
 
-Before the gate, the team runs `../skills/program-premortem/SKILL.md`: "it is six months from now and Ledgerline failed, why?" The top answer, stale bank-feed data producing confident wrong forecasts, becomes a risk-register row with an owner and drives a new guardrail: the explanation must state data freshness.
+Before the gate, the team runs `../skills/program-premortem/SKILL.md`: "it is six months from now and Brightbook failed, why?" The top answer, stale bank-feed data producing confident wrong forecasts, becomes a risk-register row with an owner and drives a new guardrail: the explanation must state data freshness.
 
 The session fills the sheet at `../frameworks/execution/premortem-worksheet.md` and produces eight causes; the top one scores highest on both likelihood and unrecoverability, which is the signature of a cause worth a design change rather than a monitoring row. Note what happened to it: it did not become "monitor the bank feed". It became a guardrail on what the explanation is allowed to say, which is a smaller intervention with a larger blast radius, because it holds even when the monitoring fails. The second-ranked cause, support drowning in "why is my forecast wrong" tickets, became a runbook commitment for DELIVER, and it is the cause the Gate 5 no-go later proves was real.
 
@@ -134,7 +134,7 @@ The session fills the sheet at `../frameworks/execution/premortem-worksheet.md` 
 
 The testing strategy in `../templates/delivery/testing-strategy.md` sets levels, coverage targets, environments, and entry and exit criteria. The boundary work happens in `../templates/delivery/edge-cases.md`, no row may say "to be decided": what does the forecast show for a nine-day-old business, a negative balance, a currency the feed cannot classify? Blast-radius thinking goes into `../templates/delivery/failure-scenarios.md`: feed outage, detection, recovery, data-loss risk.
 
-The strategy's exit criteria are the part that decides whether Gate 4 is meaningful, and they are written before the first sprint so nobody can tune them to what the suite happens to produce. Ledgerline's: every acceptance criterion has a linked automated test or a named manual procedure with an owner; every edge-case row has a test; every failure scenario has been exercised once in a pre-production environment; the eval suite passes against the pinned model version with the version recorded in the report. Notice that none of them is a coverage percentage. Coverage is in the strategy as a target, and it is deliberately not an exit criterion, because a number that can be raised by testing getters is a number that will be.
+The strategy's exit criteria are the part that decides whether Gate 4 is meaningful, and they are written before the first sprint so nobody can tune them to what the suite happens to produce. Brightbook's: every acceptance criterion has a linked automated test or a named manual procedure with an owner; every edge-case row has a test; every failure scenario has been exercised once in a pre-production environment; the eval suite passes against the pinned model version with the version recorded in the report. Notice that none of them is a coverage percentage. Coverage is in the strategy as a target, and it is deliberately not an exit criterion, because a number that can be raised by testing getters is a number that will be.
 
 Two of those edge rows changed the product, which is the argument for filling the table before the sprint rather than during it. The nine-day-old business has no history to forecast from, and the honest answer is not a forecast with wide error bars; it is an abstain state with a message naming what is missing and when the forecast will become available. That is a design, a string, and an eval row, and it was cheaper to decide in a table than in a code review. The unclassifiable-currency row resolved the opposite way: excluded from scope, stated in the PRD's out-of-scope section, with the account count it affects written next to it so nobody reopens it from memory.
 
@@ -156,7 +156,7 @@ The two carried misses: the email digest's unsubscribe copy was not localized fo
 
 UAT runs against `../templates/delivery/uat-plan.md`: nine real business owners, entry and exit criteria, defect severities agreed before testing starts, sign-off form at the bottom. The go/no-go evidence accumulates in `../templates/delivery/release-readiness.md`: feature checklist, test summary, known issues (two, each with a workaround), rollback plan, comms drafts, one signature line per function.
 
-Severities agreed before testing is the sentence doing the work. Agreed after, every defect the team wants to ship past becomes a severity 3, and the exit criterion "all severity-1 defects closed" becomes self-certifying. Ledgerline's definition, written before the first session: severity 1 is a wrong number shown to a user or a state a user cannot exit. During UAT one defect qualifies, and it qualifies because of the definition rather than because of a negotiation: on accounts with a single dominant customer, the forecast rendered a shortfall warning that the explanation described as a surplus, since the two read different aggregation windows. Nobody could have argued that into severity 3 with the definition already on the page.
+Severities agreed before testing is the sentence doing the work. Agreed after, every defect the team wants to ship past becomes a severity 3, and the exit criterion "all severity-1 defects closed" becomes self-certifying. Brightbook's definition, written before the first session: severity 1 is a wrong number shown to a user or a state a user cannot exit. During UAT one defect qualifies, and it qualifies because of the definition rather than because of a negotiation: on accounts with a single dominant customer, the forecast rendered a shortfall warning that the explanation described as a surplus, since the two read different aggregation windows. Nobody could have argued that into severity 3 with the definition already on the page.
 
 The rollback is not a paragraph; it is performed in staging and timed. The kill switch for the explanation component is flipped, verified, and flipped back.
 
@@ -172,7 +172,7 @@ He had not seen the feature. And the premortem's second-ranked cause, support dr
 
 | Checklist line | Marked | Evidence |
 |---|---|---|
-| On-call knows this release is coming, and the runbook for it exists | FAIL | No runbook in `products/ledgerline/delivery/`; on-call rotation not briefed |
+| On-call knows this release is coming, and the runbook for it exists | FAIL | No runbook in `products/brightbook/delivery/`; on-call rotation not briefed |
 | Comms are drafted and approved: support, sales or field, customers | FAIL | Customer comms drafted and approved; support comms drafted, never reviewed by support |
 | Every function signed its own line | FAIL | Operations line unsigned, by the person the gate exists to protect |
 
@@ -212,7 +212,7 @@ The walkthrough above is the whole loop. This section zooms in on the stretch pe
 | 8 | The same set | `../agents/red-team-agent.md` | Attacks on the draft, written into the risk register and, for model features, `../templates/ai/red-team-review.md` |
 | 9 | Signed Gate 2 | The PRD's own story table and `../templates/definition/frd.md` | Epics and stories, each carrying its acceptance criteria ID into whatever tracker you use |
 
-Where the chain earned its place in Ledgerline: hop 1 turned nineteen interview transcripts, four months of overdraft-tagged tickets, and a sales-call folder into eleven weighted themes in a morning, with the source counts that later made the six-versus-two persona split visible. Hop 7 is the one that caught AC-07 and AC-11 before the gate did, and the team ignored it, which is the honest version of the story: the validation agent reported both prose criteria a week before Gate 2 attempt 1 returned them, and the miss list was read as pedantic. An automated reviewer that is right and unheeded costs the same week as no reviewer at all.
+Where the chain earned its place in Brightbook: hop 1 turned nineteen interview transcripts, four months of overdraft-tagged tickets, and a sales-call folder into eleven weighted themes in a morning, with the source counts that later made the six-versus-two persona split visible. Hop 7 is the one that caught AC-07 and AC-11 before the gate did, and the team ignored it, which is the honest version of the story: the validation agent reported both prose criteria a week before Gate 2 attempt 1 returned them, and the miss list was read as pedantic. An automated reviewer that is right and unheeded costs the same week as no reviewer at all.
 
 Four things this chain does not do, on purpose.
 
@@ -225,7 +225,7 @@ Running the chain with no AI at all is the same nine hops with a person at each 
 
 ## Where all of this lives
 
-Every artifact named in this walkthrough is a filled copy, and the copies belong together. The convention is one folder per product with a subfolder per stage, defined in [PRODUCT-WORKSPACE.md](PRODUCT-WORKSPACE.md). Dana's Ledgerline files live at `products/ledgerline/`, its gate attempts including the two that failed live in `products/ledgerline/gates/`, and the decision log that carried the regulated-overlay determination from week one is still the first file a new owner opens a year later. That accumulated folder is the product's memory. There is no other memory, and no software is needed to keep it.
+Every artifact named in this walkthrough is a filled copy, and the copies belong together. The convention is one folder per product with a subfolder per stage, defined in [PRODUCT-WORKSPACE.md](PRODUCT-WORKSPACE.md). Dana's Brightbook files live at `products/brightbook/`, its gate attempts including the two that failed live in `products/brightbook/gates/`, and the decision log that carried the regulated-overlay determination from week one is still the first file a new owner opens a year later. That accumulated folder is the product's memory. There is no other memory, and no software is needed to keep it.
 
 ## One requirement, traced across nine documents
 

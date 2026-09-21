@@ -8,7 +8,7 @@ aliases: ["Templates"]
 ---
 # Templates: the full catalog
 
-Stage: every stage of the loop, plus the two tracks that run across it
+Stage: every stage of the loop, plus the three tracks that run across it
 Knowledge: [knowledge index](../knowledge/README.md)
 Skill: [the Conductor](../skills/conductor/SKILL.md) fills these by interview; individual templates name their own driver
 

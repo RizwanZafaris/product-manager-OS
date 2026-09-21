@@ -39,7 +39,7 @@ Under each step, list the stories that make it work, best version at the top, fa
 
 ### 3. Check INVEST and split what fails
 
-Score each story against INVEST: independent, negotiable, valuable, estimable, small, testable. A story that fails small or estimable splits by one of four rules, in this order of preference: by workflow step (submit now, approve later), by business rule (domestic receipts first, foreign currency second), by data variation (one file type, then the rest), by happy path and then the unhappy paths. Never split by layer: "build the API" is a task, and no user can accept it. A story that fails valuable merges into the story it serves.
+Score each story against INVEST: independent, negotiable, valuable, estimable, small, testable. A story that fails small or estimable splits by one of the six patterns in section 5 of [../../templates/definition/user-stories.md](../../templates/definition/user-stories.md), which is the one list; prefer them in this order: by workflow step (submit now, approve later), by business rule (domestic receipts first, foreign currency second), by data variation (one file type, then the rest), by happy path and then the unhappy paths. Never split by layer: "build the API" is a task, and no user can accept it. A story that fails valuable merges into the story it serves.
 
 ### 4. Write the criteria
 

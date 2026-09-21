@@ -95,9 +95,9 @@ Related: [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md) for the beliefs behind these m
 ## L
 
 - **Ladder rung.** One step on the eight-rung product ladder from Associate PM to CPO, each with what it owns, decides, and how it fails. Rung names are marked directional, because titles are software's least standardized vocabulary. See [knowledge/roles/ladder.md](knowledge/roles/ladder.md).
-- **Learn path.** One stepped curriculum over fictional products, ending at a real gate checklist as a capstone. Three exist: foundations, transitioning, senior. Practice work never lands in `products/`. See [learn/README.md](learn/README.md).
+- **Learn path.** One stepped curriculum over fictional products, ending at a real gate checklist as a capstone. Four exist: foundations, transitioning, senior, design fundamentals. Practice work never lands in `products/`. See [learn/README.md](learn/README.md).
 - **Lint gate, tree mode.** `python3 lint.py --os`, the eleven-check whole-tree gate: characters, banned metrics, placeholders, links, template headers, skill frontmatter, pinned-file integrity, system-prompt paths, secrets, graph declarations, wikilinks. Green means consistent, not true.
-- **Loop, the operating loop.** Six stages, DISCOVER through OPERATE, each closing at a gate, with Gate 6 feeding DISCOVER again. Two tracks run across it: planning, and the AI overlay. See [os/OPERATING-LOOP.md](os/OPERATING-LOOP.md).
+- **Loop, the operating loop.** Six stages, DISCOVER through OPERATE, each closing at a gate, with Gate 6 feeding DISCOVER again. Three tracks run across it: planning, the AI overlay, and the regulated overlay. See [os/OPERATING-LOOP.md](os/OPERATING-LOOP.md).
 
 ## M
 
@@ -116,7 +116,8 @@ Related: [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md) for the beliefs behind these m
 ## P
 
 - **Parked answer.** A weak answer that survived two pushes and went to the assumptions register with an owner and a validate-by date, visible in STATE.md under open challenges; the local PMOS runtime always takes this path on the third invalid submission, since it has no call that accepts an answer as offered. Parking is the alternative to silent acceptance.
-- **Pencil path.** Running the whole system with no model at all: copy a template, fill it in any editor, work the gate checklist by hand. Method one of the five in [README.md](README.md).
+- **Method, one to five.** How the Conductor is being run, defined in [os/CONDUCTOR.md](os/CONDUCTOR.md#per-method-notes): 1 pencil, no Conductor at all; 2 chat with no file access; 3 an agent runtime with file access; 4 the local `pmos` runtime; 5 routed tiers. This is a different axis from the six supported paths in [README.md](README.md#supported-paths), which say what a caller can do rather than how the interview runs, and the two do not map one to one.
+- **Pencil path.** Running the whole system with no model at all: copy a template, fill it in any editor, work the gate checklist by hand. Method one of the five in [os/CONDUCTOR.md](os/CONDUCTOR.md#per-method-notes).
 - **Postmortem, blameless.** The per-incident review written in systems language with no names: facts, timeline, quantified impact, corrective actions with owners and verification. See [templates/operate/incident-postmortem.md](templates/operate/incident-postmortem.md).
 - **Premortem.** The exercise of assuming the launch already failed and writing the causes, run before Gate 3, because a team that has named nine failure modes in advance recognizes the first one in week two. See [frameworks/execution/premortem-worksheet.md](frameworks/execution/premortem-worksheet.md).
 - **Product workspace.** `products/<name>/`, the folder where filled artifacts, gate attempts, and STATE.md accumulate as a product's memory. Gitignored, never shipped here, so your work cannot collide with an update. See [os/PRODUCT-WORKSPACE.md](os/PRODUCT-WORKSPACE.md).

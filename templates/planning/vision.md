@@ -42,6 +42,7 @@ aliases: ["Product Vision", "vision"]
 | Field | Answer |
 |---|---|
 | Primary customer | [who, precisely, not "SMBs"] |
+| The Gate 1 problem this answers | [link the discovery document or problem framing this vision answers, and name the problem in one line; Gate 2 asks for this by name] |
 | The progress they are trying to make | [in their words, evidence-linked if discovery exists] |
 | Who this is explicitly NOT for yet | [named segments deferred] |
 
