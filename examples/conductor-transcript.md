@@ -48,7 +48,7 @@ The product: Renewal Radar, a weekly digest that flags accounts at renewal risk,
 | Gate 6 success signal named now | unknown | DISCOVER-7 not yet asked |
 | Go or no-go recorded with rationale | unknown | gate not yet run |
 
-Refused: two lines fail and three are unknown, and an unknown blocks exactly as a fail does. This render is filed as `gates/gate-1-attempt-1.md`, because a refused attempt is a record, not an embarrassment. Your options:
+Refused: two lines fail and three are unknown, and an unknown stops the Conductor exactly as a fail does. The runtime would have recorded an approval here; the refusal is the Conductor's. This render is filed as `gates/gate-1-attempt-1.md`, because a refused attempt is a record, not an embarrassment. Your options:
 
 - a) Schedule two more interviews this week and re-render after. Implies: Friday slips, and the gate gets what it actually asks for.
 - b) Mark both personas as assumptions and answer DISCOVER-6 and DISCOVER-7 now. Implies: three lines move today; the five-conversation line still fails until the interviews exist, so the gate still cannot pass this week.

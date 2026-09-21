@@ -277,7 +277,7 @@ Closes OPERATE. Loops back to DISCOVER.
 
 ## How to mark a line
 
-Three marks, not two. **Pass** means the evidence exists and someone at the gate has seen it. **Fail** means the evidence contradicts the line. **Unknown** means nobody can produce the evidence right now, and it blocks exactly as a fail does, because the two are indistinguishable from the outside: a line nobody can evidence and a line that is false produce the same launch review. Teams that allow only pass and fail generate silent passes, and the tell is a gate form where every line is ticked and at least one has no evidence written beside it.
+Three marks, not two. **Pass** means the evidence exists and someone at the gate has seen it. **Fail** means the evidence contradicts the line. **Unknown** means nobody can produce the evidence right now, and it stops the Conductor exactly as a fail does, though the `pmos` runtime does not enforce that: it records a gate approval without reading these lines, so a gate can read approved with lines unmet or unjudged, because the two are indistinguishable from the outside: a line nobody can evidence and a line that is false produce the same launch review. Teams that allow only pass and fail generate silent passes, and the tell is a gate form where every line is ticked and at least one has no evidence written beside it.
 
 Write the evidence next to the mark as a path and a section, never as a name. "Marcus confirmed" is a recollection and will not survive the quarter; `definition/nfr.md` section 4, row NFR-04 will. This is the same discipline the Conductor's landing protocol enforces in [CONDUCTOR.md](CONDUCTOR.md), and it applies whether or not anyone is running the Conductor.
 

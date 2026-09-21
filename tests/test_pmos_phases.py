@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from tempfile import TemporaryDirectory
+import copy
 import unittest
 
 from pmos.artifacts import artifact_revision, build_manifest, check_manifest
@@ -179,12 +180,16 @@ class PhaseReportTests(unittest.TestCase):
                 "evidenced_by": "discover.person",
                 "questions": ["discover.person"],
                 "met": False,
+                "answered_in": {"discover.person": "discover"},
+                "carried": [],
             },
             {
                 "line": "The cost is exported",
                 "evidenced_by": "discover.cost",
                 "questions": ["discover.cost"],
                 "met": False,
+                "answered_in": {"discover.cost": "discover"},
+                "carried": [],
             },
         ])
         self.assertEqual(discover["completed"], {
@@ -200,6 +205,115 @@ class PhaseReportTests(unittest.TestCase):
             "attestation": "local",
             "signoff_roles": ["Sponsor"],
         })
+        store.close()
+
+    def cross_bank_contract(self) -> dict:
+        """The shipped contract's shape: a later bank's gate line citing an earlier
+        bank's question. One real row does this, the DELIVER line "AI overlay:
+        guardrails live, kill switch tested", which cites BUILD-5 and BUILD-6."""
+        contract = copy.deepcopy(self.CONTRACT)
+        for bank in contract["banks"]:
+            if bank["id"] == "define":
+                bank["gate_rendering"].append({
+                    "line": "The person survived into DEFINE",
+                    "evidenced_by": "discover.person, re-read at Gate 2",
+                    "questions": ["define.sponsor", "discover.person"],
+                })
+        return contract
+
+    def test_a_line_citing_an_earlier_banks_question_is_met_and_says_where_from(self) -> None:
+        """The defect: the id was looked up in the citing bank's own answers, where it
+        never appears, so the row read unmet forever while the gate read approved."""
+        store, conductor = self.opening()
+        first = conductor.next_turn()
+        second = conductor.submit_answer("discover.person", "Mina exported the failures.", observed(),
+                                         expected_revision=first.revision, turn_id="person")
+        third = conductor.submit_answer("discover.cost", "The export runs every Friday.", artifact(),
+                                        expected_revision=second.revision, turn_id="cost")
+        fourth = conductor.prove_gate("discover", gate_proof(), expected_revision=third.revision,
+                                      turn_id="gate-1")
+        fifth = conductor.submit_answer("define.sponsor", "Dana signed the brief.", observed(),
+                                        expected_revision=fourth.revision, turn_id="sponsor")
+        self.assertEqual(fifth.status, "accepted")
+
+        report = phase_report(conductor, self.cross_bank_contract(), self.path)
+        define = [phase for phase in report if phase["bank_id"] == "define"][0]
+        carried = [row for row in define["outcomes"]
+                   if row["line"] == "The person survived into DEFINE"][0]
+        self.assertTrue(carried["met"])
+        self.assertEqual(carried["answered_in"],
+                         {"define.sponsor": "define", "discover.person": "discover"})
+        # The marker is the whole point: the runtime knows discover.person was answered
+        # once, at Gate 1. It holds no fact that anyone re-read it at Gate 2, which is what
+        # this row's own evidence text asks for. Reporting met=true silently would turn a
+        # visible false negative into an invisible false positive.
+        self.assertEqual(carried["carried"], ["discover"])
+        self.assertNotIn("The person survived into DEFINE", define["missing"]["gate_lines"])
+        # A row satisfied inside its own bank carries no marker, so the marker cannot be
+        # something every row gets.
+        own = [row for row in define["outcomes"] if row["line"] == "The sponsor is named"][0]
+        self.assertEqual(own["carried"], [])
+        store.close()
+
+    def test_a_carried_line_is_unmet_while_the_earlier_answer_is_parked(self) -> None:
+        """Foreign ids are evaluated, not waved through: the lookup has to find the
+        answer AND find it unparked."""
+        store, conductor = self.opening()
+        # A refusal that writes a record advances the store, so the revision the refusal
+        # itself returns is already stale; retrying with it is a conflict, not a challenge.
+        # Read the current revision back each time, the way `pmos status` does.
+        for index in range(3):
+            refused = conductor.submit_answer(
+                "discover.person", "Mina exported the failures.",
+                {"class": "observed_behavior", "source": "a source this fixture cannot resolve",
+                 "date": "2026-09-04", "location": "customer-call"},
+                expected_revision=conductor.next_turn().revision, turn_id="park-%d" % index)
+        self.assertEqual(refused.status, "parked")
+
+        report = phase_report(conductor, self.cross_bank_contract(), self.path)
+        define = [phase for phase in report if phase["bank_id"] == "define"][0]
+        carried = [row for row in define["outcomes"]
+                   if row["line"] == "The person survived into DEFINE"][0]
+        self.assertFalse(carried["met"])
+        self.assertIn("The person survived into DEFINE", define["missing"]["gate_lines"])
+        store.close()
+
+    def test_a_line_citing_an_id_no_bank_defines_stays_unmet(self) -> None:
+        store, conductor = self.opening()
+        contract = copy.deepcopy(self.CONTRACT)
+        for bank in contract["banks"]:
+            if bank["id"] == "define":
+                bank["gate_rendering"].append({
+                    "line": "A line with a typo behind it",
+                    "evidenced_by": "define.spnosor",
+                    "questions": ["define.spnosor"],
+                })
+        report = phase_report(conductor, contract, self.path)
+        define = [phase for phase in report if phase["bank_id"] == "define"][0]
+        typo = [row for row in define["outcomes"]
+                if row["line"] == "A line with a typo behind it"][0]
+        self.assertFalse(typo["met"])
+        self.assertEqual(typo["answered_in"], {})
+        store.close()
+
+    def test_a_line_with_no_question_behind_it_is_unknown_and_not_unmet(self) -> None:
+        """Four shipped rows are human signatures with no question behind them. They
+        were in neither list, so the report named them nowhere at all."""
+        store, conductor = self.opening()
+        contract = copy.deepcopy(self.CONTRACT)
+        for bank in contract["banks"]:
+            if bank["id"] == "discover":
+                bank["gate_rendering"].append({
+                    "line": "Go or no-go recorded with rationale",
+                    "evidenced_by": "a human signature",
+                    "questions": [],
+                })
+        report = phase_report(conductor, contract, self.path)
+        discover = [phase for phase in report if phase["bank_id"] == "discover"][0]
+        self.assertEqual(discover["missing"]["unknown_gate_lines"],
+                         ["Go or no-go recorded with rationale"])
+        self.assertNotIn("Go or no-go recorded with rationale",
+                         discover["missing"]["gate_lines"])
         store.close()
 
     def test_fully_answered_bank_is_awaiting_approval(self) -> None:
@@ -218,8 +332,8 @@ class PhaseReportTests(unittest.TestCase):
         self.assertEqual(discover["next_action"], {"action": "gate", "bank_id": "discover", "question_id": None})
         self.assertEqual(discover["blocking_reason"], "waits for Gate 1 approval")
         self.assertEqual(discover["outcomes"], [
-            {"line": "The person is named", "evidenced_by": "discover.person", "questions": ["discover.person"], "met": True},
-            {"line": "The cost is exported", "evidenced_by": "discover.cost", "questions": ["discover.cost"], "met": True},
+            {"line": "The person is named", "evidenced_by": "discover.person", "questions": ["discover.person"], "met": True, "answered_in": {"discover.person": "discover"}, "carried": []},
+            {"line": "The cost is exported", "evidenced_by": "discover.cost", "questions": ["discover.cost"], "met": True, "answered_in": {"discover.cost": "discover"}, "carried": []},
         ])
         self.assertEqual(discover["completed"], {
             "questions": ["discover.person", "discover.cost"],
@@ -348,6 +462,8 @@ class PhaseReportTests(unittest.TestCase):
                 "evidenced_by": "define.sponsor",
                 "questions": ["define.sponsor"],
                 "met": False,
+                "answered_in": {"define.sponsor": "define"},
+                "carried": [],
             }
         ])
         store.close()

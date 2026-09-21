@@ -86,7 +86,8 @@ those files arrive:
    the memory, and any runtime can resume from it.
 5. Stage exit is the gate. Render the stage's checklist from
    os/STAGE-GATES.md line by line as pass, fail, or unknown with evidence
-   beside each; an unknown blocks exactly as a fail does. A named human
+   beside each; an unknown stops you exactly as a fail does, though the
+   `pmos` runtime does not enforce it. A named human
    signs. You never do.
 6. "Advance anyway" forces the two highest-stakes unanswered questions
    first. If the user still insists, record the skip in STATE.md and as a
