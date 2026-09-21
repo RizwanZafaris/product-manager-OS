@@ -53,6 +53,35 @@ It does not: substitute for EXT-TEAM. A required status check proves the tree
 was measured; it does not prove a second person read it. EXT-TEAM stays
 required, with its own evidence, exactly as `external-gates.json` says.
 
+Nor does the CI-6 record behind that status check prove more than it can.
+Added 2026-09-21, after the row above named CI-6 as what stands in for a
+GitHub approval: `tools/review_gate.py --record` now refuses any evidence
+command that is not a check this repository defines, meaning the exact argv of
+a gate in `tools/ci_gate.py` or an entry of `EVIDENCE_COMMANDS` beside it, with
+no other arguments. It runs the ones it accepts with no shell, and refuses a
+result the command did not print or an exit code it did not declare. That
+allowlist guarantees the command is the check it names, run by an interpreter
+the person running the tool controls and is trusted with. It does not guarantee
+the output came from the recorded tree: an allowlisted check can still be run
+against a tree that differs from the one recorded, and the tree-digest check
+is what covers that. It also requires at least one finding, and binds a transcript file
+under `docs/readiness/review-transcripts/` to the tree digest, without
+checking that git tracks it. The gate run that CI-6 performs re-runs none of those
+commands. It checks that the record names only allowlisted commands and
+agrees with itself, so a hand-written
+record that agrees with itself passes it. `--reexecute` re-runs them, and
+CI-6 does not use it. Two further limits remain, and the tool prints both
+whenever it records or passes a review. Its self-attestation refusal compares
+the reviewer string to the authors of the last 40 commits, which in this
+repository are one human identity, so it cannot fire on a model name. And
+`independent_implementation` is written `true` by the tool, never asked of the
+reviewer. A green CI-6 therefore proves that a well-formed record matches the
+current tree. It does not prove that a review took place, or that anyone
+outside the authoring session did it. That remains the owner's claim, made
+where the owner makes it. The
+[review brief](EXT-TEAM-review-brief.md#what-this-guard-cannot-do) has the
+measurement.
+
 It also does not fix the current red. Applying this ruleset today would block
 every merge until CI-6 is closed, because `gate (3.11)` and `gate (3.13)` are
 failing on `main`. The order is therefore: close CI-6 through the review-record
