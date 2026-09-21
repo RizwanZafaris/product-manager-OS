@@ -18,7 +18,7 @@ Those six are not the whole executable surface of the tree, and this file used t
 
 ## The agent-CLI path: a committed hook that runs on session events
 
-Method 3 in [README.md](README.md) is an agent CLI reading [CLAUDE.md](CLAUDE.md) or [AGENTS.md](AGENTS.md). Two tracked files make that path different from the manual one, and they are the only part of this tree that runs without being asked.
+Method 3 in [os/CONDUCTOR.md](os/CONDUCTOR.md#per-method-notes) is an agent CLI reading [CLAUDE.md](CLAUDE.md) or [AGENTS.md](AGENTS.md). Two tracked files make that path different from the manual one, and they are the only part of this tree that runs without being asked.
 
 `.claude/settings.json` registers `.claude/hooks/pmos_hook.py` on seven Claude Code events: session start, prompt submit, before and after every `Bash`, `PowerShell`, `Write`, `Edit`, `NotebookEdit`, and `mcp__*` tool call, and on stop, subagent stop, and task completion. Claude Code reads that settings file when it opens the repository, so cloning the tree and starting a session is enough to arm the layer. Delete `.claude/` and it is gone; nothing else in the tree depends on it.
 

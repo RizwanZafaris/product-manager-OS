@@ -52,10 +52,10 @@ aliases: ["Roadmap"]
 
 <!-- Confidence below 70% does not belong in Now. The italic row shows a completed entry. -->
 
-| Theme | Initiative | Outcome it serves (objective ref) | Target period | Confidence | Dependencies | Status |
-|---|---|---|---|---|---|---|
-| | | | [month or sprint] | [%] | | Not started / In progress / Done |
-| *reduce manual entry (ILLUSTRATIVE)* | *receipt auto-extraction v1* | *O1: submission time cut in half* | *[month]* | *85%* | *storage service upgrade* | *In progress* |
+| Theme | Initiative | Outcome it serves (objective ref) | Success measure | Target period | Confidence | Dependencies | Status |
+|---|---|---|---|---|---|---|---|
+| | | | [the number that moves, and to what] | [month or sprint] | [%] | | Not started / In progress / Done |
+| *reduce manual entry (ILLUSTRATIVE)* | *receipt auto-extraction v1* | *O1: submission time cut in half* | *median submission time 14 min to 7 min* | *[month]* | *85%* | *storage service upgrade* | *In progress* |
 
 ## Next (planned, shaped, not yet committed)
 
@@ -65,9 +65,9 @@ aliases: ["Roadmap"]
      decision that belongs in the change log. -->
 
 
-| Theme | Initiative | Outcome it serves | Target period | Confidence | Dependencies | Status |
-|---|---|---|---|---|---|---|
-| | | | [quarter] | [%] | | Shaping / Shaped |
+| Theme | Initiative | Outcome it serves | Success measure | Target period | Confidence | Dependencies | Status |
+|---|---|---|---|---|---|---|---|
+| | | | [the number that moves, and to what] | [quarter] | [%] | | Shaping / Shaped |
 
 ## Later (directional themes only)
 

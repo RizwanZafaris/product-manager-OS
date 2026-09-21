@@ -149,5 +149,5 @@ Citations in the regulated overlay carry verification dates, and an as-of date p
 | 5. Smallest sufficient document | [os/WHICH-DOCUMENT.md](../os/WHICH-DOCUMENT.md), the delete-unused-sections rule |
 | 6. Published off switches | The Skip it when line in every [knowledge](../knowledge/README.md) card and [framework](../frameworks/README.md) worksheet |
 | 7. Attribution as a check | Named originator and year in every card and worksheet |
-| 8. Survives its own AI | Method one in [README.md](../README.md), downward-only dependencies |
+| 8. Survives its own AI | Method one in [os/CONDUCTOR.md](../os/CONDUCTOR.md#per-method-notes), downward-only dependencies |
 | 9. Visible rot | Staleness failure in [lint.py](../lint.py), known gaps in [CHANGELOG.md](../CHANGELOG.md) |
