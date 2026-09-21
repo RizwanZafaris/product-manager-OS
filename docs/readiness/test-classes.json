@@ -163,6 +163,7 @@
   ],
   "test_tools_gates": [
    "CiGateVerdictTests",
+   "ExamplesInventoryGateTests",
    "FrontmatterInitGateTests",
    "GateCountGateTests",
    "GraphFreshnessGateTests",
