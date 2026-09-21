@@ -4,40 +4,52 @@
   "reviewer_kind": "independent-agent",
   "independent_implementation": true,
   "identity_assurance": "unauthenticated-local-claim",
-  "reviewed_at": "2026-09-21T01:25:37Z",
-  "reviewed_tree_sha256": "353cb72337cf530912310a8537bc868fe698cb82fafd76aac3976da8d95ab126",
+  "reviewed_at": "2026-09-21T03:54:08Z",
+  "reviewed_tree_sha256": "365046282394af2860fede6f647852e6a3ef4d9edd937a02891dc3356d4efc85",
   "scope": [
-    "Change set e18200b..8135461: the last seven documentation findings from the Fable 5.1 audit, being an undefined Method vocabulary used in eight files, two fictional products sharing one name, two Gate 2 lines asking for fields the templates lacked, 1,226 words of preamble before Gate 1, and four drifted counts and pointers"
+    "Change set da43165..b680998, task R1: a gate checklist line is judged in the bank that owns its questions, with the provenance named so the fix does not convert a visible false negative into an invisible false positive; the four rows no question stands behind are surfaced; the contract compiler refuses a dangling or forward citation; and nine documents stop claiming the runtime blocks on these lines",
+    "Two rounds. Round r1-1 REJECTED it: a real P1, because replacing a phrase mid-sentence produced four garbled sentences, and a P2 on list prose. Both fixed. Its P0 is refuted rather than fixed: it named a full_id field that does not exist anywhere in the tree. Round r1-2 accepted with six named checks, one per acceptance item"
   ],
   "evidence": [
     {
-      "command": "os/STAGE-GATES.md before Gate 1",
-      "result": "1,226 words over 18 paragraphs with a 291-word paragraph, now 253 words with a longest of 96; the moved sections have no inbound anchor links, while the gate anchors that are linked did not move"
+      "command": "driving all six banks to approval, before",
+      "result": "DELIVER state approved beside missing.gate_lines ['AI overlay: guardrails live, kill switch tested'], that row met False with all three cited questions answered, two of them owned by the build bank"
     },
     {
-      "command": "the counts, each read from the tree",
-      "result": "4 learn path files against three claimed, 3 cross-stage tracks against two, 7 loop rules against six, 6 splitting patterns against four"
+      "command": "the same drive, after",
+      "result": "missing.gate_lines empty, the row met True with answered_in naming each id's owning bank and carried ['build'], and the human view saying the line is satisfied by an answer carried from build rather than one recorded in this stage"
     },
     {
-      "command": "the two Gate 2 fields",
-      "result": "templates/planning/vision.md had no field naming a Gate 1 problem and roadmap.md's Now and Next tables had no success measure, so both lines could only be ticked on trust"
+      "command": "the four rows no question stands behind",
+      "result": "now in unknown_gate_lines, one each in DISCOVER, DEFINE, DELIVER and OPERATE, where before they were in no list at all and the human table named neither them nor the unmet line"
     },
     {
-      "command": "python3.11 tools/ci_gate.py at 8135461",
-      "result": "24 of 25; the one red gate is readiness-local, failing only CI-6. An earlier run of this same change was 22 of 25, the roadmap tables ragged and the committed skill rubric stale, both caught by the suite rather than by review"
+      "command": "python3.11 tools/question_banks.py --check and git diff pmos/question_banks.json",
+      "result": "ok and zero lines, so both new compiler refusals are inert on the shipped contract and no pinned product sees a repin"
     },
     {
-      "command": "python3.11 -m unittest harness.test_runner",
-      "result": "Ran 218 tests, OK"
+      "command": "grep -rn 'blocks exactly as a fail does' --include=*.md .",
+      "result": "zero, from nine before. The task spec named three documents; there were nine"
+    },
+    {
+      "command": "python3.11 tools/ci_gate.py at 9fa707d",
+      "result": "24 of 25, the one red gate being readiness-local failing only CI-6. An earlier run was 23 of 25 because the committed skill rubric had gone stale after conductor/SKILL.md changed"
     }
   ],
   "findings": [
     {
       "id": "R1",
-      "severity": "P3",
-      "status": "accepted",
-      "summary": "docs/CONDUCTOR-DESIGN.md still says there are four usage methods, which the audit listed as part of this finding",
-      "evidence": "It is the v0.2.0 blueprint and four was the count at v0.1.0, so it is correct history, the same reasoning that left the CHANGELOG's older gate count alone"
+      "severity": "P0",
+      "status": "resolved",
+      "summary": "Round r1-1 claimed the compiler's owner map could miss a question whose parsed full_id differs from its id",
+      "evidence": "Refuted by measurement rather than fixed: grep finds no full_id in tools/question_banks.py, and a parsed question carries accept_when, ask, cross_examine, evidence, evidence_class, evidence_rung, handle, id, lands_in, options and wrong_costs"
+    },
+    {
+      "id": "R2",
+      "severity": "P1",
+      "status": "resolved",
+      "summary": "My own replacement produced four garbled sentences, reading 'does The pmos runtime does not enforce that' with a doubled full stop",
+      "evidence": "Found by round r1-1, fixed by making the clause subordinate, and the repair is the reason this change took two rounds"
     }
   ],
   "verdict": "accepted"
