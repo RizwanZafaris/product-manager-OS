@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import os
 import hashlib
+import stat
+import threading
 import json
 import subprocess
 import sys
@@ -13,7 +15,10 @@ from unittest.mock import patch
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from pmos.conductor import STATE_PATH, Conductor, EvidenceClass, Question, QuestionBank, TurnOutcome, canonical_json
+from pmos.conductor import (EXCERPT_STEMS, MIN_EXCERPT_WORDS, STATE_PATH, Conductor, EvidenceClass, Question,
+                            QuestionBank, TurnOutcome, canonical_json, evidence_counts)
+import pmos.product as product_module
+from pmos.product import document_reader, local_gate_verifier, product_conductor, source_resolver
 from pmos.store import Store, ValidationError
 from pmos.banks import LEGACY_ONBOARDING, banks_from_contract, load_contract, shipped_banks
 
@@ -1248,6 +1253,523 @@ class ConductorTest(unittest.TestCase):
         saved = conductor.state()["banks"]["discover"]["answers"]["discover.person"]
         self.assertEqual(saved["verification"], "failed_validation")
         store.close()
+
+
+# The interview notes a quotation is checked against. The sentence is wrapped
+# across two lines with a doubled space, the way a pasted transcript arrives.
+INTERVIEW = ("# Interview with Asha, 3 September\n\n"
+             "Asha said: \"We re-key every failed payout batch by hand,\n"
+             "  and it takes the  whole of Monday morning.\"\n")
+GENUINE = "We re-key every failed payout batch by hand, and it takes the whole of Monday morning."
+FABRICATED = "THIS SENTENCE IS NOWHERE IN THE FILE"
+
+
+class QuotationTest(unittest.TestCase):
+    """A supplied quotation is checked against its document, or the answer is refused."""
+
+    def setUp(self) -> None:
+        self.temp = TemporaryDirectory()
+        self.root = Path(self.temp.name, "workspace")
+        (self.root / "notes").mkdir(parents=True)
+        (self.root / "notes" / "interview.md").write_text(INTERVIEW, encoding="utf-8")
+        self.stores: list[Store] = []
+
+    def tearDown(self) -> None:
+        for store in self.stores:
+            store.close()
+        self.temp.cleanup()
+
+    def store(self, name: str) -> Store:
+        store = Store(Path(self.temp.name) / (name + ".sqlite"))
+        self.stores.append(store)
+        return store
+
+    def conductor(self, name: str = "runtime", *, reader: bool = True,
+                  banks=BANKS) -> Conductor:
+        return Conductor(self.store(name), "payments", banks,
+                         gate_source_verifier=local_gate_verifier(self.root),
+                         source_resolver=source_resolver(self.root),
+                         document_reader=document_reader(self.root) if reader else None)
+
+    def submit(self, conductor: Conductor, evidence: dict, turn_id: str) -> TurnOutcome:
+        turn = conductor.next_turn()
+        return conductor.submit_answer("discover.person", "Mina exported the failures.", evidence,
+                                       expected_revision=turn.revision, turn_id=turn_id)
+
+    def quoted(self, value: str, *, field: str = "quote", source: str = "notes/interview.md") -> dict:
+        return dict(observed(), source=source, **{field: value})
+
+    def saved(self, conductor: Conductor) -> dict:
+        return conductor.state()["banks"]["discover"]["answers"]["discover.person"]
+
+    def test_a_quote_found_in_the_cited_file_is_accepted_and_recorded_quote_verified(self) -> None:
+        conductor = self.conductor()
+        result = self.submit(conductor, self.quoted(GENUINE), "genuine")
+        self.assertEqual(result.status, "accepted")
+        self.assertEqual(self.saved(conductor)["verification"], "quote_verified")
+        self.assertEqual(self.saved(conductor)["evidence"]["quote"], GENUINE)
+
+    def test_a_quote_absent_from_the_cited_file_is_refused_naming_the_file_and_the_quote(self) -> None:
+        conductor = self.conductor()
+        result = self.submit(conductor, self.quoted(FABRICATED), "fabricated")
+        self.assertEqual(result.status, "challenge")
+        self.assertIn("notes/interview.md", result.message)
+        self.assertIn(FABRICATED, result.message)
+        self.assertNotIn("discover.person", conductor.state()["banks"]["discover"]["answers"])
+
+    def test_a_one_character_edit_to_a_passing_quote_is_refused(self) -> None:
+        # The seeded defect: the passing quote with "Monday" misspelt. A check
+        # that only looked for overlap, or compared case-insensitively on a
+        # prefix, would let this through.
+        edited = GENUINE.replace("Monday", "Munday")
+        self.assertNotEqual(edited, GENUINE)
+        conductor = self.conductor()
+        result = self.submit(conductor, self.quoted(edited), "one-char")
+        self.assertEqual(result.status, "challenge")
+        self.assertIn("Munday", result.message)
+
+    def test_excerpt_and_quotation_are_checked_exactly_like_quote(self) -> None:
+        self.assertEqual(EXCERPT_STEMS, ("quote", "quotation", "excerpt", "verbatim"))
+        for field in ("quote", "excerpt", "quotation"):
+            with self.subTest(field=field):
+                refused = self.submit(self.conductor("bad-" + field), self.quoted(FABRICATED, field=field),
+                                      "bad-" + field)
+                self.assertEqual(refused.status, "challenge")
+                self.assertIn(field + " does not occur in notes/interview.md", refused.message)
+                good = self.conductor("good-" + field)
+                accepted = self.submit(good, self.quoted(GENUINE, field=field), "good-" + field)
+                self.assertEqual(accepted.status, "accepted")
+                self.assertEqual(self.saved(good)["verification"], "quote_verified")
+
+    def test_a_differently_spelled_excerpt_key_is_checked_like_quote(self) -> None:
+        # The bypass a literal field list left open: `Quote` or `quote_text`
+        # carrying an invented sentence was stored beside source_verified.
+        spellings = ("Quote", "QUOTE", "quote_text", "QuotedText", "sourceQuote", "Excerpt-1",
+                     "verbatim", "verbatimQuote", "Quotation", "q.u.o.t.e", "ex-cerpt", "ex:cerpt")
+        for index, field in enumerate(spellings):
+            with self.subTest(field=field):
+                refused = self.submit(self.conductor("spelt-bad-%d" % index),
+                                      self.quoted(FABRICATED, field=field), "spelt-bad-%d" % index)
+                self.assertEqual(refused.status, "challenge")
+                self.assertIn(field + " does not occur in notes/interview.md", refused.message)
+                good = self.conductor("spelt-good-%d" % index)
+                accepted = self.submit(good, self.quoted(GENUINE, field=field), "spelt-good-%d" % index)
+                self.assertEqual(accepted.status, "accepted")
+                self.assertEqual(self.saved(good)["verification"], "quote_verified")
+
+    def test_a_key_that_names_no_excerpt_is_not_checked(self) -> None:
+        # The stated edge of the rule, pinned so the prose cannot drift past it:
+        # a key without one of the EXCERPT_STEMS words is stored as supplied and
+        # the answer keeps the label its source earned. `quota` is not `quote`.
+        for index, field in enumerate(("said", "quota", "note")):
+            with self.subTest(field=field):
+                conductor = self.conductor("unchecked-%d" % index)
+                result = self.submit(conductor, self.quoted(FABRICATED, field=field), "unchecked-%d" % index)
+                self.assertEqual(result.status, "accepted")
+                self.assertEqual(self.saved(conductor)["verification"], "source_verified")
+
+    def test_a_blank_excerpt_field_is_not_a_quotation(self) -> None:
+        # Evidence values are stripped, so `"quote": "  "` quotes nothing: it is
+        # not checked and not refused, and the answer keeps its source's label.
+        conductor = self.conductor()
+        result = self.submit(conductor, self.quoted("   "), "blank")
+        self.assertEqual(result.status, "accepted", result.message)
+        self.assertEqual(self.saved(conductor)["verification"], "source_verified")
+
+    def test_a_quotation_shorter_than_the_minimum_is_refused(self) -> None:
+        # "e" occurs in the interview notes, and in nearly every document; it
+        # must not earn quote_verified. The minimum counts words after the
+        # whitespace collapse, and a quotation at the minimum is checked normally.
+        self.assertEqual(MIN_EXCERPT_WORDS, 3)
+        for index, (quote, expected) in enumerate((("e", "challenge"), ("payout batch", "challenge"),
+                                                   ("every failed\n  payout", "accepted"))):
+            with self.subTest(quote=quote):
+                self.assertIn(" ".join(quote.split()), " ".join(INTERVIEW.split()))
+                conductor = self.conductor("short-%d" % index)
+                result = self.submit(conductor, self.quoted(quote), "short-%d" % index)
+                self.assertEqual(result.status, expected)
+                if expected == "challenge":
+                    self.assertIn("quote is too short to check", result.message)
+                else:
+                    self.assertEqual(self.saved(conductor)["verification"], "quote_verified")
+
+    def test_a_reader_that_raises_or_returns_no_text_refuses_the_quote(self) -> None:
+        # A reader failure is a refusal, never a pass: a reader that raises, or
+        # hands back something that is not text, leaves the quote unchecked.
+        def raises(source: str) -> str:
+            raise OSError("disk went away")
+        readers = {"raises": raises, "none": lambda source: None,
+                   "bytes": lambda source: INTERVIEW.encode("utf-8")}
+        for name, reader in readers.items():
+            with self.subTest(reader=name):
+                conductor = Conductor(self.store("reader-" + name), "payments", BANKS,
+                                      source_resolver=source_resolver(self.root), document_reader=reader)
+                result = self.submit(conductor, self.quoted(GENUINE), "reader-" + name)
+                self.assertEqual(result.status, "challenge")
+                self.assertIn("could not be read to check the quotation", result.message)
+
+    def test_a_document_reader_that_is_not_callable_is_refused_at_construction(self) -> None:
+        with self.assertRaisesRegex(ValidationError, "document_reader must be callable"):
+            Conductor(self.store("not-callable"), "payments", BANKS, document_reader="notes/interview.md")
+
+    def test_the_document_reader_refuses_everything_outside_a_plain_workspace_file(self) -> None:
+        # Each bound of the shared walk, pinned on the reader and on the gate
+        # verifier, which read through the same helper.
+        # Resolved, so no symlinked system directory (/var on macOS) on the way
+        # refuses it for another reason and hides a missing absolute-path check.
+        outside = Path(self.temp.name).resolve() / "outside.md"
+        outside.write_text(INTERVIEW, encoding="utf-8")
+        (self.root / ".pmos").mkdir()
+        (self.root / ".pmos" / "notes.md").write_text(INTERVIEW, encoding="utf-8")
+        (self.root / "back\\slash.md").write_text(INTERVIEW, encoding="utf-8")
+        (self.root / "linked-dir").symlink_to(self.root / "notes", target_is_directory=True)
+        (self.root / "notes" / "linked.md").symlink_to(self.root / "notes" / "interview.md")
+        digest = hashlib.sha256(INTERVIEW.encode("utf-8")).hexdigest()
+        read, verify = document_reader(self.root), local_gate_verifier(self.root)
+        self.assertEqual(read("notes/interview.md"), INTERVIEW)
+        self.assertTrue(verify("notes/interview.md", digest))
+        refused = {
+            "absolute": str(outside),
+            "parent": "../outside.md",
+            "pmos": ".pmos/notes.md",
+            "backslash": "back\\slash.md",
+            "symlinked directory": "linked-dir/interview.md",
+            "symlinked file": "notes/linked.md",
+            "directory": "notes",
+            "empty": "",
+        }
+        for name, source in refused.items():
+            with self.subTest(case=name):
+                self.assertIsNone(read(source))
+                self.assertFalse(verify(source, digest))
+        self.assertIsNone(read(123))
+
+    def test_the_gate_verifier_treats_an_unusable_expected_hash_as_a_mismatch(self) -> None:
+        # compare_digest raises TypeError on a non-str hash or a non-ASCII str;
+        # a direct library call must get False, not the exception.
+        verify = local_gate_verifier(self.root)
+        digest = hashlib.sha256(INTERVIEW.encode("utf-8")).hexdigest()
+        self.assertTrue(verify("notes/interview.md", digest))
+        for name, expected in {"none": None, "int": 7, "bytes": digest.encode("ascii"),
+                               "non-ascii": "\u00e9" * 64}.items():
+            with self.subTest(expected=name):
+                self.assertIs(verify("notes/interview.md", expected), False)
+
+    def test_a_file_that_is_not_regular_is_refused(self) -> None:
+        # The regular-file check, pinned by a file that reports itself as a
+        # character device: everything else about it would read normally.
+        digest = hashlib.sha256(INTERVIEW.encode("utf-8")).hexdigest()
+        read, verify = document_reader(self.root), local_gate_verifier(self.root)
+        real_fstat = os.fstat
+
+        def device(descriptor: int) -> os.stat_result:
+            fields = list(real_fstat(descriptor))[:10]
+            fields[0] = stat.S_IFCHR | 0o644
+            return os.stat_result(fields)
+        with patch.object(product_module.os, "fstat", device):
+            self.assertIsNone(read("notes/interview.md"))
+            self.assertFalse(verify("notes/interview.md", digest))
+
+    def test_a_named_pipe_at_the_cited_path_is_refused_without_blocking(self) -> None:
+        # Opening a FIFO for reading blocks until a writer appears; a planted
+        # pipe must not hang `pmos answer` or `pmos gate`.
+        if not hasattr(os, "mkfifo"):
+            self.skipTest("no named pipes on this platform")
+        pipe = self.root / "notes" / "pipe.md"
+        os.mkfifo(pipe)
+        results: dict[str, object] = {}
+
+        def attempt() -> None:
+            results["read"] = document_reader(self.root)("notes/pipe.md")
+            results["verify"] = local_gate_verifier(self.root)("notes/pipe.md", "0" * 64)
+        worker = threading.Thread(target=attempt, daemon=True)
+        worker.start()
+        worker.join(5)
+        if worker.is_alive():
+            for _ in range(2):  # release each blocked open before failing
+                try:
+                    os.close(os.open(pipe, os.O_WRONLY | os.O_NONBLOCK))
+                except OSError:
+                    pass
+                worker.join(1)
+            self.fail("opening a named pipe blocked")
+        self.assertEqual(results, {"read": None, "verify": False})
+
+    def test_the_size_ceiling_holds_on_open_and_during_the_read(self) -> None:
+        # The ceiling is checked twice: on the size the file reports when it is
+        # opened, and again on the bytes actually read, for a file that grows
+        # after it was opened. Both are pinned for the reader and the verifier.
+        digest = hashlib.sha256(INTERVIEW.encode("utf-8")).hexdigest()
+        size = len(INTERVIEW.encode("utf-8"))
+        read, verify = document_reader(self.root), local_gate_verifier(self.root)
+        self.assertEqual(product_module.MAX_WORKSPACE_FILE_BYTES, 16 * 1024 * 1024)
+        with patch.object(product_module, "MAX_WORKSPACE_FILE_BYTES", size):
+            self.assertEqual(read("notes/interview.md"), INTERVIEW)
+            self.assertTrue(verify("notes/interview.md", digest))
+        with patch.object(product_module, "MAX_WORKSPACE_FILE_BYTES", size - 1):
+            self.assertIsNone(read("notes/interview.md"))
+            self.assertFalse(verify("notes/interview.md", digest))
+            real_fstat = os.fstat
+
+            def understated(descriptor: int) -> os.stat_result:
+                fields = list(real_fstat(descriptor))[:10]
+                fields[6] = 1
+                return os.stat_result(fields)
+            # Refused on the reported size alone, before a single byte is read.
+            reads: list[int] = []
+            real_read = os.read
+
+            def counting(descriptor: int, length: int) -> bytes:
+                reads.append(length)
+                return real_read(descriptor, length)
+            with patch.object(product_module.os, "read", counting):
+                self.assertIsNone(read("notes/interview.md"))
+                self.assertFalse(verify("notes/interview.md", digest))
+            self.assertEqual(reads, [])
+            # The file claims one byte on open, so only the read-time count can stop it.
+            with patch.object(product_module.os, "fstat", understated):
+                self.assertIsNone(read("notes/interview.md"))
+                self.assertFalse(verify("notes/interview.md", digest))
+
+    def test_a_legacy_product_gets_the_document_reader_too(self) -> None:
+        # product_conductor has two branches; a product made before the pin runs
+        # the legacy bank, and without the reader there every quote is refused.
+        store = self.store("legacy")
+        store.create_product("legacy")
+        conductor = product_conductor(store, self.root, "legacy")
+        turn = conductor.next_turn()
+        self.assertEqual(turn.status, "question")
+        result = conductor.submit_answer(turn.question.id, "Mina exported the failures.", self.quoted(GENUINE),
+                                         expected_revision=turn.revision, turn_id="legacy-quote")
+        self.assertEqual(result.status, "accepted", result.message)
+        bank = conductor.state()["banks"][turn.bank_id]
+        self.assertEqual(bank["answers"][turn.question.id]["verification"], "quote_verified")
+
+    def test_evidence_counts_partitions_accepted_answers_and_skips_parked_ones(self) -> None:
+        state = {"banks": {
+            "discover": {"answers": {
+                "a": {"verification": "quote_verified"},
+                "b": {"verification": "source_verified"},
+                "c": {"verification": "supplied_unverified"},
+                "d": {},
+                "e": {"verification": "failed_validation", "parked": True},
+                "f": {"verification": "quote_verified", "parked": True},
+            }},
+            "define": {"answers": {"g": {"verification": "quote_verified"}}},
+        }}
+        self.assertEqual(evidence_counts(state, BANKS),
+                         {"quote_verified": 2, "source_verified": 1, "supplied_unverified": 2})
+
+    def test_every_excerpt_field_supplied_must_check_out(self) -> None:
+        # One genuine field cannot carry a fabricated one past the check.
+        conductor = self.conductor()
+        evidence = dict(self.quoted(GENUINE), excerpt=FABRICATED)
+        result = self.submit(conductor, evidence, "mixed")
+        self.assertEqual(result.status, "challenge")
+        self.assertIn("excerpt does not occur", result.message)
+
+    def test_an_excerpt_against_a_source_that_is_not_a_document_is_refused(self) -> None:
+        for index, source in enumerate(("Asha interview transcript round two", "INT-0042",
+                                        "https://example.com/transcripts/asha")):
+            with self.subTest(source=source):
+                self.assertIsNone(source_resolver(self.root)(source))
+                conductor = self.conductor("uncitable-%d" % index)
+                result = self.submit(conductor, self.quoted(GENUINE, source=source), "uncitable-%d" % index)
+                self.assertEqual(result.status, "challenge")
+                self.assertIn("a quotation can only be recorded against a citable document", result.message)
+                self.assertIn(repr(source), result.message)
+
+    def test_whitespace_and_line_wrap_are_ignored_but_case_and_punctuation_are_not(self) -> None:
+        # The stated normalization: every run of whitespace, line breaks
+        # included, compares as one space on both sides. Nothing else is folded.
+        cases = {
+            GENUINE: "accepted",
+            "  We re-key every failed payout batch\nby hand,\tand it takes the whole of Monday morning.  ":
+                "accepted",
+            GENUINE.lower(): "challenge",
+            GENUINE.replace("hand,", "hand"): "challenge",
+            GENUINE.replace("re-key", "rekey"): "challenge",
+        }
+        for index, (quote, expected) in enumerate(cases.items()):
+            with self.subTest(quote=quote):
+                result = self.submit(self.conductor("ws-%d" % index), self.quoted(quote), "ws-%d" % index)
+                self.assertEqual(result.status, expected)
+
+    def test_a_document_the_reader_cannot_open_refuses_the_quote(self) -> None:
+        # A path the resolver finds but the reader refuses (a symlink inside the
+        # workspace, or bytes that are not UTF-8) is not a pass by default.
+        (self.root / "notes" / "linked.md").symlink_to(self.root / "notes" / "interview.md")
+        (self.root / "notes" / "binary.md").write_bytes(b"\xff\xfe not text")
+        for index, source in enumerate(("notes/linked.md", "notes/binary.md")):
+            with self.subTest(source=source):
+                self.assertIs(source_resolver(self.root)(source), True)
+                self.assertIsNone(document_reader(self.root)(source))
+                result = self.submit(self.conductor("unreadable-%d" % index),
+                                     self.quoted(GENUINE, source=source), "unreadable-%d" % index)
+                self.assertEqual(result.status, "challenge")
+                self.assertIn("could not be read to check the quotation", result.message)
+
+    def test_a_conductor_without_a_document_reader_refuses_excerpt_bearing_evidence(self) -> None:
+        for index, source in enumerate(("notes/interview.md", "Asha interview transcript round two")):
+            with self.subTest(source=source):
+                conductor = self.conductor("no-reader-%d" % index, reader=False)
+                result = self.submit(conductor, self.quoted(GENUINE, source=source), "no-reader-%d" % index)
+                self.assertEqual(result.status, "challenge")
+                self.assertIn("no document reader configured", result.message)
+
+    def test_an_answer_without_an_excerpt_is_byte_identical_with_or_without_the_reader(self) -> None:
+        # Without the reader is how every Conductor was built before quotations
+        # were checked, so equal bytes here is "unchanged from today".
+        expected = {"notes/interview.md": "source_verified",
+                    "Asha interview transcript round two": "supplied_unverified"}
+        for index, (source, label) in enumerate(expected.items()):
+            with self.subTest(source=source):
+                states, outcomes = [], []
+                for reader in (False, True):
+                    conductor = self.conductor("plain-%d-%s" % (index, reader), reader=reader)
+                    outcome = self.submit(conductor, dict(observed(), source=source), "plain")
+                    outcomes.append((outcome.status, outcome.message, outcome.revision))
+                    states.append(conductor.store.read_snapshot("payments").files[STATE_PATH])
+                self.assertEqual(outcomes[0], outcomes[1])
+                self.assertEqual(states[0], states[1])
+                self.assertEqual(json.loads(states[1])["banks"]["discover"]["answers"]["discover.person"], {
+                    "answer": "Mina exported the failures.",
+                    "evidence": dict(observed(), source=source),
+                    "evidence_class": "observed_behavior",
+                    "verification": label,
+                })
+
+    def test_the_conductor_module_has_no_filesystem_access(self) -> None:
+        # The layering the document reader exists for: nothing else enforces it,
+        # and importing pathlib here to read the file directly would look like
+        # a working shortcut.
+        import ast
+        import pmos.conductor as module
+        tree = ast.parse(Path(module.__file__).read_text(encoding="utf-8"))
+        banned = {"pathlib", "os", "io", "shutil", "tempfile", "glob"}
+        found = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                found += [alias.name for alias in node.names if alias.name.split(".")[0] in banned]
+            elif isinstance(node, ast.ImportFrom) and node.module and node.module.split(".")[0] in banned:
+                found.append(node.module)
+            elif isinstance(node, ast.Call):
+                name = node.func.id if isinstance(node.func, ast.Name) else getattr(node.func, "attr", None)
+                if name in {"open", "read_text", "read_bytes"}:
+                    found.append(name + "()")
+        self.assertEqual(found, [])
+
+    # ---- what each new refusal does to the store and to the challenge budget ----
+    # Pinned per refusal because docs/RUNTIME-QUICKSTART.md states which refusals
+    # advance the revision; the table built on that claim needs a test per row.
+
+    def assert_challenge_recorded(self, conductor: Conductor, evidence: dict, turn_id: str) -> TurnOutcome:
+        before = conductor.next_turn().revision
+        result = self.submit(conductor, evidence, turn_id)
+        state = conductor.state()
+        self.assertEqual((result.status, result.challenge_count), ("challenge", 1))
+        self.assertNotEqual(result.revision, before)
+        self.assertEqual(conductor.next_turn().revision, result.revision)
+        self.assertIn(turn_id, state["turn_results"])
+        self.assertEqual(state["banks"]["discover"]["challenges"], {"discover.person": 1})
+        (event,) = state["banks"]["discover"]["rejected"]["discover.person"]
+        self.assertEqual((event["event"], event["reason"]), ("challenged", result.message))
+        self.assertEqual(state["banks"]["discover"]["cursor"], 0)
+        return result
+
+    def test_refusal_quote_mismatch_writes_a_turn_and_spends_a_challenge(self) -> None:
+        self.assert_challenge_recorded(self.conductor(), self.quoted(FABRICATED), "mismatch")
+
+    def test_refusal_uncitable_source_writes_a_turn_and_spends_a_challenge(self) -> None:
+        self.assert_challenge_recorded(self.conductor(), self.quoted(GENUINE, source="INT-0042"), "uncitable")
+
+    def test_refusal_no_document_reader_writes_a_turn_and_spends_a_challenge(self) -> None:
+        self.assert_challenge_recorded(self.conductor(reader=False), self.quoted(GENUINE), "no-reader")
+
+    def test_refusal_unreadable_document_writes_a_turn_and_spends_a_challenge(self) -> None:
+        (self.root / "notes" / "binary.md").write_bytes(b"\xff\xfe")
+        self.assert_challenge_recorded(self.conductor(), self.quoted(GENUINE, source="notes/binary.md"),
+                                       "unreadable")
+
+    def test_refusal_too_short_writes_a_turn_and_spends_a_challenge(self) -> None:
+        self.assert_challenge_recorded(self.conductor(), self.quoted("payout batch"), "too-short")
+
+    def test_a_third_refusal_of_each_new_kind_parks_the_question(self) -> None:
+        (self.root / "notes" / "binary.md").write_bytes(b"\xff\xfe")
+        kinds = {
+            "mismatch": (True, lambda n: self.quoted("%s %d" % (FABRICATED, n))),
+            "uncitable": (True, lambda n: self.quoted(GENUINE, source="INT-%04d" % n)),
+            "unreadable": (True, lambda n: self.quoted(GENUINE + " %d" % n, source="notes/binary.md")),
+            "too short": (True, lambda n: self.quoted("batch %d" % n)),
+            "no reader": (False, lambda n: self.quoted(GENUINE + " %d" % n)),
+        }
+        for index, (kind, (reader, evidence)) in enumerate(kinds.items()):
+            with self.subTest(kind=kind):
+                conductor = self.conductor("park-%d" % index, reader=reader)
+                statuses = [self.submit(conductor, evidence(attempt), "park-%d" % attempt)
+                            for attempt in range(3)]
+                self.assertEqual([(item.status, item.challenge_count) for item in statuses],
+                                 [("challenge", 1), ("challenge", 2), ("parked", 2)])
+                state = conductor.state()
+                bank = state["banks"]["discover"]
+                self.assertEqual((bank["parked"], bank["cursor"]), (["discover.person"], 1))
+                self.assertEqual(bank["answers"]["discover.person"]["verification"], "failed_validation")
+                # A parked answer is filed as offered, not accepted, so no report counts it.
+                self.assertEqual(evidence_counts(state, BANKS),
+                                 {"quote_verified": 0, "source_verified": 0, "supplied_unverified": 0})
+
+    # ---- gate proofs ----
+    QUOTING_BANKS = (
+        QuestionBank("discover", "v1", (
+            Question("discover.person", "Who did the behavior?", EvidenceClass.OBSERVED_BEHAVIOR),
+        ), gate_prerequisites=("signed_by", "quote"), gate_approvers=("asha",)),
+    )
+
+    def gated(self, name: str) -> tuple[Conductor, str]:
+        conductor = self.conductor(name, banks=self.QUOTING_BANKS)
+        accepted = self.submit(conductor, observed(), "person")
+        self.assertEqual(accepted.status, "accepted")
+        (self.root / "gate-1.md").write_text(INTERVIEW, encoding="utf-8")
+        return conductor, accepted.revision
+
+    def gate_evidence(self, quote: str) -> dict:
+        return dict(gate_proof(source="gate-1.md",
+                               source_hash=hashlib.sha256(INTERVIEW.encode("utf-8")).hexdigest()),
+                    quote=quote)
+
+    def test_a_gate_proof_whose_excerpt_is_not_in_the_gate_source_is_refused(self) -> None:
+        conductor, revision = self.gated("gate-bad")
+        before = conductor.state()
+        result = conductor.prove_gate("discover", self.gate_evidence(FABRICATED),
+                                      expected_revision=revision, turn_id="gate-bad")
+        self.assertEqual(result.status, "blocked")
+        self.assertIn("quote does not occur in gate-1.md", result.message)
+        self.assertIn(FABRICATED, result.message)
+        after = conductor.state()
+        # A blocked gate writes its turn and advances the revision, records no
+        # approval, moves no bank, and has no challenge budget to spend.
+        self.assertNotEqual(result.revision, revision)
+        self.assertIn("gate-bad", after["turn_results"])
+        self.assertEqual((after["gates"], after["current_bank"]), ({}, before["current_bank"]))
+        self.assertEqual(after["banks"]["discover"]["challenges"], {})
+
+    def test_a_gate_proof_whose_excerpt_is_in_the_gate_source_is_recorded(self) -> None:
+        conductor, revision = self.gated("gate-good")
+        result = conductor.prove_gate("discover", self.gate_evidence(GENUINE),
+                                      expected_revision=revision, turn_id="gate-good")
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(conductor.state()["gates"]["discover"]["proof"]["quote"], GENUINE)
+
+    def test_a_gate_proof_excerpt_needs_a_document_reader(self) -> None:
+        conductor = Conductor(self.store("gate-no-reader"), "payments", self.QUOTING_BANKS,
+                              gate_source_verifier=local_gate_verifier(self.root),
+                              source_resolver=source_resolver(self.root))
+        accepted = self.submit(conductor, observed(), "person")
+        (self.root / "gate-1.md").write_text(INTERVIEW, encoding="utf-8")
+        result = conductor.prove_gate("discover", self.gate_evidence(GENUINE),
+                                      expected_revision=accepted.revision, turn_id="gate-no-reader")
+        self.assertEqual(result.status, "blocked")
+        self.assertIn("no document reader configured", result.message)
 
 
 if __name__ == "__main__":

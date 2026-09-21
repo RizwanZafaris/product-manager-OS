@@ -280,6 +280,86 @@ class CliTests(unittest.TestCase):
             self.assertIn("pmos gate", status["next"])
             self.assertIn("--bank-id discover", status["next"])
 
+    def test_quote_verified_is_its_own_figure_in_status_handoff_and_context(self):
+        # 29 answers whose cited file exists and none that quote it: the two
+        # figures must render as 29 and 0, so "29 source_verified" is never read
+        # as 29 quotations checked. Then one quoted answer moves only its own figure.
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            Path(folder, "notes").mkdir()
+            Path(folder, "notes", "call.md").write_text(
+                "Mina said the payout batch fails\nevery Monday.\n", encoding="utf-8")
+            cited = {"class": "observed_behavior", "source": "notes/call.md",
+                     "date": "2026-09-04", "location": "customer-call"}
+            answered = 0
+            for bank_id in ("discover", "define", "design", "build"):
+                while answered < 29:
+                    status = self.status(folder)
+                    if status["interview"] != "question":
+                        break
+                    result = self.answer(folder, cited, status["revision_token"],
+                                         "cited-%d" % answered, question_id=status["question"]["id"])
+                    self.assertEqual(result["outcome"]["status"], "accepted")
+                    answered += 1
+                if answered == 29:
+                    break
+                rc, gated = self.gate(folder, status["revision_token"], "gate-" + bank_id, "approved",
+                                      bank_id=bank_id)
+                self.assertEqual((rc, gated["outcome"]["status"]), (0, "advanced"), gated)
+            status = self.status(folder)
+            self.assertEqual((status["source_verified"], status["quote_verified"], status["supplied_unverified"]),
+                             (29, 0, 0))
+            self.assertEqual(self.phase_evidence(status), (29, 0, 0))
+            _, handoff = self.handoff(folder)
+            self.assertEqual(handoff["evidence"],
+                             {"source_verified": 29, "quote_verified": 0, "supplied_unverified": 0})
+            index = json.loads(Path(folder, "handoff/context-index.json").read_text(encoding="utf-8"))
+            self.assertEqual(index["evidence"], handoff["evidence"])
+            context = Path(folder, "handoff/CONTEXT.md").read_text(encoding="utf-8")
+            self.assertIn("- quote_verified: 0 ", context)
+            self.assertIn("- source_verified: 29 ", context)
+
+            quoted = dict(cited, quote="the payout batch fails every Monday.")
+            result = self.answer(folder, quoted, status["revision_token"], "quoted",
+                                 question_id=status["question"]["id"])
+            self.assertEqual(result["outcome"]["status"], "accepted")
+            # One quoted answer moves quote_verified alone: source_verified stays
+            # 29 and supplied_unverified stays 0, at the top level, in the phase
+            # blocks, in the handoff and in CONTEXT.md.
+            status = self.status(folder)
+            self.assertEqual((status["source_verified"], status["quote_verified"], status["supplied_unverified"]),
+                             (29, 1, 0))
+            self.assertEqual(self.phase_evidence(status), (29, 1, 0))
+            _, handoff = self.handoff(folder)
+            self.assertEqual(handoff["evidence"],
+                             {"source_verified": 29, "quote_verified": 1, "supplied_unverified": 0})
+            index = json.loads(Path(folder, "handoff/context-index.json").read_text(encoding="utf-8"))
+            self.assertEqual(index["evidence"], handoff["evidence"])
+            context = Path(folder, "handoff/CONTEXT.md").read_text(encoding="utf-8")
+            self.assertIn("- quote_verified: 1 ", context)
+            self.assertIn("- source_verified: 29 ", context)
+            self.assertIn("- supplied_unverified: 0 ", context)
+            self.assertIn("\n## Evidence\n\n- quote_verified: 1 ", context)
+
+    @staticmethod
+    def phase_evidence(status):
+        """(source_verified, quote_verified, supplied_unverified) summed over the phase blocks."""
+        return tuple(sum(phase["completed"][label] for phase in status["phases"])
+                     for label in ("source_verified", "quote_verified", "supplied_unverified"))
+
+    def test_answer_with_a_fabricated_quote_is_refused_through_the_cli(self):
+        # The end-to-end shape of the record this refuses: before, the shipped
+        # CLI accepted it and stored the invented sentence beside source_verified.
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            Path(folder, "notes.md").write_text("A real sentence that is in the file.\n", encoding="utf-8")
+            evidence = {"class": "interview_claim", "person": "Asha", "source": "notes.md",
+                        "date": "2026-09-03", "quote": "THIS SENTENCE IS NOWHERE IN THE FILE"}
+            result = self.answer(folder, evidence, self.status(folder)["revision_token"], "fabricated")
+            self.assertEqual(result["outcome"]["status"], "challenge")
+            self.assertIn("quote does not occur in notes.md", result["outcome"]["message"])
+            self.assertNotIn("DISCOVER-1", self.conductor_state(folder)["banks"]["discover"]["answers"])
+
     def test_status_reports_a_stale_gate_with_the_command_that_proves_it_again(self):
         with TemporaryDirectory() as folder:
             self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)

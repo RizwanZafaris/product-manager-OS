@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from .artifacts import scan
+from .conductor import evidence_counts
 
 SECTIONS = (
     "1. Problem",
@@ -344,6 +345,10 @@ def build_handoff(conductor, contract: dict[str, Any] | None, root) -> dict[str,
     return {
         "product_id": conductor.product_id,
         "source_revision": source_revision,
+        # What the interview's evidence was checked against, carried so a
+        # development team reads the strength of the record and not only its
+        # completeness. Reported, not gated: development_ready is unchanged.
+        "evidence": evidence_counts(state, conductor.banks),
         "handoff": handoff,
         "sections": sections,
         "approvals": approvals,
