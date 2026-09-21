@@ -1422,12 +1422,12 @@ class WorkspaceModeTests(unittest.TestCase):
             "# Report\n", encoding="utf-8")
         done = self._init_product(slug, "--stamp")
         self.assertEqual(0, done.returncode, done.stderr)
-        self.assertIn("stamp: 1 stamped, 0 already stamped, 0 unidentified file(s).",
+        self.assertIn("stamp: 1 stamped, 0 already stamped, 0 unidentified, 5 not scanned",
                       done.stdout)
         # The same block comes back, and the body is untouched.
         self.assertEqual(copy.read_text(encoding="utf-8"), stamped)
         done = self._init_product(slug, "--stamp")
-        self.assertIn("stamp: 0 stamped, 1 already stamped, 0 unidentified file(s).",
+        self.assertIn("stamp: 0 stamped, 1 already stamped, 0 unidentified, 5 not scanned",
                       done.stdout)
         notes = folder / "planning" / "hand-written-notes.md"
         notes.write_text("# Notes\n\nNo template makes this file.\n", encoding="utf-8")
@@ -1435,7 +1435,7 @@ class WorkspaceModeTests(unittest.TestCase):
         self.assertEqual(0, done.returncode, done.stderr)
         self.assertIn("no identifiable template: products/%s/planning/"
                       "hand-written-notes.md" % slug, done.stdout)
-        self.assertIn("stamp: 0 stamped, 1 already stamped, 1 unidentified file(s).",
+        self.assertIn("stamp: 0 stamped, 1 already stamped, 1 unidentified, 5 not scanned",
                       done.stdout)
         self.assertEqual(notes.read_text(encoding="utf-8"),
                          "# Notes\n\nNo template makes this file.\n")

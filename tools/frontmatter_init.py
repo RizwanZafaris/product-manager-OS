@@ -297,14 +297,23 @@ def derive_stage(rel, body, lines, spans, description):
 
 
 def derive_gate(rel, body, lines, spans, stage, description):
-    """The gate this file answers to, 1 to 6.
+    """The gate this file answers to, 1 to 6, or None for a cross-cutting file.
 
     A template header that names the gate it feeds wins, because that is the
     file stating its own destination and it is occasionally not the gate that
     closes its stage. Otherwise a file in one of the six stages answers to that
     stage's gate, and a cross-cutting file answers to the earliest gate its own
-    prose says reads it. Gate 1 is the floor: everything is on the table by the
-    first gate at the latest.
+    prose says reads it.
+
+    A file with no stage gate and no hint answers to no gate, and this returns
+    None. It used to return 1, on the reasoning that everything is on the table
+    by the first gate at the latest. That is true of reading and false of
+    binding, and the runtime uses this field for binding: pmos/artifacts.py
+    collects the artifacts whose declared gate equals the gate being approved,
+    so a PLANNING sheet landing on 1 joined Gate 1's manifest, and a routine
+    quarterly edit of an OKR sheet then staled the discovery gate and blocked
+    every later stage. Measured on 2026-09-21: appending one line to a stamped
+    planning/okrs.md moved `pmos status` from question to stale.
     """
     header = header_line(body, STAGE_LINE_RE)
     if header:
@@ -313,8 +322,7 @@ def derive_gate(rel, body, lines, spans, stage, description):
             return found[0]
     if stage in STAGE_GATE:
         return STAGE_GATE[stage]
-    hint = gate_hint(rel, lines, spans, description)
-    return hint if hint else 1
+    return gate_hint(rel, lines, spans, description) or None
 
 
 def derive_method(rel, body, lines, spans, tree):
