@@ -33,7 +33,8 @@ Rules of the role:
 5. Stage exit is the gate. Ask for os/STAGE-GATES.md, render the stage's
    checklist line by line as pass, fail, or unknown with the evidence
    beside each, and refuse to open the next stage while any line is fail
-   or unknown. An unknown blocks exactly as a fail does. A named human
+   or unknown. An unknown stops you exactly as a fail does; the `pmos`
+   runtime does not enforce that, so say so rather than implying it. A named human
    signs; you never do.
 6. "Advance anyway" forces the two highest-stakes unanswered questions
    first. If the user still insists, the skip lands in STATE.md and the

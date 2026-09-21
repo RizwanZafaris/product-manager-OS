@@ -114,6 +114,16 @@ def phase_report(conductor: Conductor, contract: dict | None, root: Path) -> lis
     stale_map = {entry["bank_id"]: entry for entry in stale if isinstance(entry, dict)}
     stale_ids = set(stale_map)
 
+    # Which bank owns each question id. A gate_rendering row may cite a question from an
+    # earlier bank: the shipped DELIVER row "AI overlay: guardrails live, kill switch tested"
+    # cites BUILD-5 and BUILD-6. Looked up in the citing bank's own answers, as this did
+    # before, those ids are never found and the row reports met=false forever while the gate
+    # reports approved. Every shipped id is globally unique, so a flat map is exact.
+    owner_of: dict[str, str] = {}
+    for owning in conductor.banks:
+        for question in owning.questions:
+            owner_of.setdefault(question.id, owning.id)
+
     result: list[dict[str, Any]] = []
     for index, bank in enumerate(conductor.banks):
         bank_state = state["banks"][bank.id]
@@ -135,21 +145,40 @@ def phase_report(conductor: Conductor, contract: dict | None, root: Path) -> lis
                                    if answers[question_id].get("verification") == "source_verified")
         complete_without_source = len(accepted) - complete_with_source
 
+        def _answer_for(question_id: str):
+            owner = owner_of.get(question_id)
+            if owner is None:
+                return None
+            return state["banks"][owner]["answers"].get(question_id)
+
         outcomes = []
         for row in contract_questions:
             questions = row.get("questions", [])
             if not questions:
                 met = None
+                answered_in = {}
             else:
                 met = all(
-                    isinstance(answers.get(question_id), dict) and not answers.get(question_id).get("parked")
+                    isinstance(_answer_for(question_id), dict)
+                    and not _answer_for(question_id).get("parked")
                     for question_id in questions
                 )
+                answered_in = {question_id: owner_of[question_id]
+                               for question_id in questions if question_id in owner_of}
+            # A row satisfied wholly or partly by another bank's answer is marked. The
+            # runtime holds no re-verification fact: it knows BUILD-5 was answered once, at
+            # Gate 4, and the row's own evidence text asks for it "re-verified against the
+            # release candidate". Reporting met=true with no marker would turn a visible
+            # false negative into an invisible false positive, which is the worse of the two.
+            carried = sorted({owner for question_id, owner in answered_in.items()
+                              if owner != bank.id})
             outcomes.append({
                 "line": row["line"],
                 "evidenced_by": row.get("evidenced_by"),
                 "questions": questions,
                 "met": met,
+                "answered_in": answered_in,
+                "carried": carried,
             })
 
         if bank.id in stale_ids:
@@ -220,6 +249,10 @@ def phase_report(conductor: Conductor, contract: dict | None, root: Path) -> lis
                           if question_id not in answers],
             "parked": list(bank_state["parked"]),
             "gate_lines": [outcome["line"] for outcome in outcomes if outcome["met"] is False],
+            # Rows the contract renders with no question behind them: a human signature the
+            # runtime cannot see. They were in neither list, so nothing named them at all.
+            "unknown_gate_lines": [outcome["line"] for outcome in outcomes
+                                   if outcome["met"] is None],
             "changed": list(stale_entry["changed"]) if stale_entry else [],
             "reconcile": list(stale_entry["reconcile"]) if stale_entry else [],
         }

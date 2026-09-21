@@ -282,6 +282,33 @@ def compile_contract() -> dict:
         bank.update(source="skills/conductor/questions/%s.md" % stage,
                     source_sha256=_sha256_hex(raw), version=version)
         banks.append(bank)
+
+    # Every question id a gate_rendering row cites, against the ids the contract defines.
+    # Checked here rather than in parse_bank because only compile_contract sees all six
+    # banks: a row may legitimately cite an earlier stage's question, and one shipped row
+    # does. Two ways for that to be wrong, and neither was caught before. A citation no
+    # bank defines renders a row that can never be met, sits in the report forever and
+    # fails no gate. A citation owned by a LATER bank asks a stage to prove itself with an
+    # answer that does not exist yet. Keyed on the contract's own id map rather than on the
+    # shape of an id, so a dotted id such as discover.person is checked the same way.
+    owner_of = {}
+    for position, bank in enumerate(banks):
+        for question in bank.get("questions", []):
+            owner_of[question["id"]] = (bank["id"], position)
+    for position, bank in enumerate(banks):
+        for row in bank.get("gate_rendering", []):
+            for question_id in row.get("questions", []):
+                owner = owner_of.get(question_id)
+                if owner is None:
+                    raise BankError(
+                        "%s: the gate line %r cites %s, which no bank in this contract "
+                        "defines" % (bank["id"].upper(), row.get("line"), question_id))
+                if owner[1] > position:
+                    raise BankError(
+                        "%s: the gate line %r cites %s, which belongs to %s, a later stage; "
+                        "a gate cannot be proved by an answer that does not exist yet"
+                        % (bank["id"].upper(), row.get("line"), question_id, owner[0].upper()))
+
     return {"schema": 1, "generated_by": "tools/question_banks.py",
             "banks": banks, "signoffs": signoffs}
 

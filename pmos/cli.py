@@ -144,6 +144,30 @@ def _status_lines(payload: dict[str, Any]) -> list[str]:
             info = "%d of %d answered" % (answered, total)
         table_lines.append((gate, phase_name, state, info))
 
+    # The table is assembled from state, the answered counts and the blocking reason alone,
+    # so a checklist line the runtime marked unmet, and one it cannot see at all, both
+    # rendered as nothing. A reader of the human view could not tell an approved gate with a
+    # failing line from a clean one. Named here, under separate labels, because "the runtime
+    # says this line failed" and "no question stands behind this line" are different facts.
+    checklist_lines: list[str] = []
+    for phase in phases:
+        phase_name = phase.get("phase")
+        missing = phase.get("missing") or {}
+        unmet = missing.get("gate_lines") or []
+        unknown = missing.get("unknown_gate_lines") or []
+        if unmet:
+            checklist_lines.append("%s: %d checklist line(s) the runtime reports unmet: %s"
+                                   % (phase_name, len(unmet), "; ".join(unmet)))
+        if unknown:
+            checklist_lines.append("%s: %d checklist line(s) no question stands behind, so the "
+                                   "runtime cannot judge them: %s"
+                                   % (phase_name, len(unknown), "; ".join(unknown)))
+        carried = [outcome for outcome in (phase.get("outcomes") or []) if outcome.get("carried")]
+        for outcome in carried:
+            checklist_lines.append("%s: \"%s\" is satisfied by an answer carried from %s, not by "
+                                   "one recorded in this stage"
+                                   % (phase_name, outcome["line"], ", ".join(outcome["carried"])))
+
     if table_lines:
         if lines:
             lines.append("")
@@ -153,6 +177,10 @@ def _status_lines(payload: dict[str, Any]) -> list[str]:
         for gate, phase_name, state, info in table_lines:
             row = "Gate %-*s  %-*s  %-*s  %s" % (gate_w, gate, phase_w, phase_name, state_w, state, info)
             lines.append(row)
+
+    if checklist_lines:
+        lines.append("")
+        lines.extend(checklist_lines)
 
     return lines
 
