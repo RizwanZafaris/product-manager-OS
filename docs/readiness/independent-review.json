@@ -4,32 +4,32 @@
   "reviewer_kind": "independent-agent",
   "independent_implementation": true,
   "identity_assurance": "unauthenticated-local-claim",
-  "reviewed_at": "2026-09-21T07:28:55Z",
-  "reviewed_tree_sha256": "be2c1b9e85471bb7bf4d4723acf6f5a0d2e8094e1a706e98f675d4e4d2155c96",
+  "reviewed_at": "2026-09-22T08:33:39Z",
+  "reviewed_tree_sha256": "313f179a64aa7f19753d7bcded6f3adcc24d51a6e994e53677bc135703f3c721",
+  "reviewer_transcript": "docs/readiness/review-transcripts/2026-09-22-r8-evidence-allowlist.md",
+  "reviewer_transcript_sha256": "5a0950aa40a179c43e1138f2cc054ffa482b4aa05c05eb17164b3e657ba39cb3",
   "scope": [
-    "Change set ab4b1eb..917b22d, task R3: a quotation in answer or gate evidence is checked against the file it cites, through an injected document reader, with five new refusals on the normal challenge path",
-    "Built by one agent and broken by another in three successive rounds before this version. The fixes those rounds forced are listed in the commit. This review accepted with ten named checks and no issues"
+    "Change set 4688642..eedecdd, task R8: a review record's evidence must be a check this repository defines (an exact gate argv or an EVIDENCE_COMMANDS entry), is re-run at --record, and must print the recorded result; a finding and an in-tree reviewer transcript are required; --reexecute re-runs a committed record",
+    "Built by one agent and broken by another in four rounds; the last breaker reverted all 15 listed guards and each turned its named test red. Reviewed in three rounds: r8-1 accepted on A1-A4, r8-2-deep returned no text, r8-3-deep accepted on A1 and A5-A8 with one P3. The transcript holds each reply verbatim"
   ],
   "evidence": [
     {
-      "command": "a fabricated quote against a real workspace file, before",
-      "result": "accepted, and stored beside verification source_verified, because source_verified meant only that the file exists"
+      "command": "python3 lint.py --os",
+      "result": "ok (OS tree mode, 11 checks)",
+      "output": ".: ok (OS tree mode, 11 checks)\n",
+      "exit_code": 0
     },
     {
-      "command": "the same answer, after",
-      "result": "challenge naming the file and the quote; a genuine quote records quote_verified; twelve spellings including Quote, quote_text and verbatimQuote are each refused when fabricated"
+      "command": "python3 tools/docs_contract.py --strict",
+      "result": "docs contract: 0 error(s), 0 warning(s)",
+      "output": "docs contract: 0 error(s), 0 warning(s)\n",
+      "exit_code": 0
     },
     {
-      "command": "the third breaker's revert pass",
-      "result": "all 49 listed guards reverted in a throwaway copy, and each turned its named test red"
-    },
-    {
-      "command": "the whole root suite on the patched tree",
-      "result": "Ran 1006 tests, OK"
-    },
-    {
-      "command": "python3.11 tools/ci_gate.py at 917b22d",
-      "result": "24 of 25; the one red gate is readiness-local, failing only CI-6, awaiting this record"
+      "command": "python3 tools/ci_gate.py",
+      "result": "release gates: 24/25 passed",
+      "output": "[PASS] compile                1.10s\n[PASS] root-tests             118.69s\n[PASS] harness-tests          4.04s\n[PASS] regulated-tests        0.22s\n[PASS] claude-adapter         0.09s\n[PASS] desktop-adapter        0.49s\n[PASS] workspace-lifecycle    2.06s\n[PASS] workspace-links        2.22s\n[PASS] workspace-contract     0.16s\n[PASS] journey-record         2.08s\n[PASS] journey-chain          1.45s\n[PASS] what-checks-freshness  0.14s\n[PASS] regulated-template     0.10s\n[PASS] regulated-example      0.10s\n[PASS] os-tree                9.09s\n[PASS] json-syntax            0.24s\n[PASS] graph-freshness        1.84s\n[PASS] skill-rubric-freshness 0.29s\n[PASS] phase-index-freshness  0.51s\n[PASS] manifest-contract      0.10s\n[PASS] frontmatter            1.32s\n[PASS] security-policy        3.56s\n[PASS] docs-contract          0.10s\n[PASS] skill-rubric           0.07s\n[FAIL] readiness-local        252.70s\n       exit 1\nevidence : 48 criteria\n  failing          : 1 criteria\n  not built        : 0 criteria\n  external blockers: EXT-AI, EXT-CI, EXT-INTEGRATIONS, EXT-REGULATORY, EXT-RELEASE, EXT-TEAM, EXT-USER\n  hard gate rubric_integrity_green                   GREEN\n  hard gate task_ledger_buildable                    GREEN\n  hard gate all_tasks_green                          GREEN\n  hard gate every_verifiable_criterion_passes        NOT GREEN\n  hard gate no_unbuilt_criteria                      GREEN\n  hard gate tree_clean_and_stable                    NOT GREEN\n  hard gate thirteen_use_cases_green                 GREEN\n  hard gate routes_executable                        GREEN\n  hard gate ci_parity_green                          GREEN\n  hard gate process_fault_suite_green                GREEN\n  hard gate links_green                              GREEN\n  hard gate security_green                           GREEN\n  hard gate local_review_record_complete             NOT GREEN\n  hard gate operator_docs_contract_green             GREEN\n\nCOMPLETE PM OS READINESS: NOT 100/100 \u2014 WORK REMAINS\n  measured on eedecdd9133f with Python 3.11.15\n  external evidence remains required; local tests cannot self-attest it\nrelease gates: 24/25 passed\n",
+      "exit_code": 1
     }
   ],
   "findings": [
@@ -37,8 +37,8 @@
       "id": "R1",
       "severity": "P3",
       "status": "accepted",
-      "summary": "An evidence key naming no excerpt word, such as said, is stored as supplied and not checked",
-      "evidence": "A deliberate, stated and tested edge: the alternative is guessing which free-form keys hold a quotation, which no rule can do without refusing honest evidence"
+      "summary": "An evidence value of a command, a pipe and exit=0 with no result parses with exit=0 taken as the result, so the refusal names a missing result rather than a malformed value",
+      "evidence": "Reproduced with parse_evidence on the lint command followed by exit=0: it returns the command, 0 and the string exit=0. It fails closed, since the command runs and is refused because exit=0 is not in its output. Message quality only; a follow-up can reject it at parse time"
     }
   ],
   "verdict": "accepted"

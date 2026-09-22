@@ -5,6 +5,14 @@ Reviewer identity and organizational independence require an external trust
 domain and remain an external readiness gate.  This local check proves only
 record shape, content binding, and finding disposition; it must never be
 described as cryptographic or human-identity attestation.
+
+A record that passes is well-formed and current. It is not evidence that a
+review took place: a model can run --record over its own work, and the one
+mechanical guard against that cannot fire here (see GUARD_LIMITS). Nor does
+a plain gate run prove the recorded commands were ever run: it re-checks the
+record against itself, and a record written by hand rather than by --record
+can be self-consistent. ``--reexecute`` re-runs every recorded command and is
+the only mode that tests the record against the tree.
 """
 
 from __future__ import annotations
@@ -53,6 +61,69 @@ NO_COMMITS_YET = re.compile(rb"does not have any commits yet", re.IGNORECASE)
 MAX_TREE_ENTRIES = 16384
 MAX_TREE_DEPTH = 64
 MAX_TREE_BYTES = 256 * 1024 * 1024
+# A recorded evidence command is re-run at record time, and the longest one
+# this repository records is a full ci_gate.py sweep, which takes about four
+# minutes. The ceiling is the same one readiness_registry.py gives its
+# slowest probe, so a reviewer cannot hit a limit here that the repository's
+# own verifiers do not hit.
+EVIDENCE_TIMEOUT_SECONDS = 1800
+# How much of a command's output the record keeps. A gate sweep prints tens of
+# kilobytes; storing all of it would bury the review in the artefact meant to
+# carry it. The window is centred on the matched text, so what is kept still
+# shows the claim being met.
+EVIDENCE_OUTPUT_LIMIT = 4096
+# How much of a mismatching output a refusal prints. The head and the tail are
+# both shown: a gate sweep prints its verdict ("release gates: N/M passed") on
+# its last line, and a refusal cut from the front would hide exactly that.
+REFUSAL_HEAD = 300
+REFUSAL_TAIL = 500
+# Where a reviewer transcript must live. Any path in the tree used to be
+# accepted, so README.md or the change's own source could be named as "the
+# reviewer's output" and hash correctly. A dedicated directory does not prove
+# who wrote the file; it does make the claim "this is the transcript" one that
+# a file was put there to make, rather than one any file already satisfies.
+# Nothing here asks git whether the file is committed: the digest walks the
+# filesystem, so an untracked file is accepted locally. A clean checkout that
+# lacks it digests differently, so such a record is stale there.
+TRANSCRIPT_DIR = "docs/readiness/review-transcripts/"
+# Evidence is an ALLOWLIST: a recorded command must be one this repository
+# itself defines as a check -- the argv of a gate in tools/ci_gate.py's GATES,
+# or an exact entry in ci_gate.EVIDENCE_COMMANDS beside it -- split with shlex
+# and compared as a whole, so an extra or different argument is refused. It
+# replaced a denylist of shells and command runners. That list could not be
+# finished: ``sh -c 'python3 lint.py --os; echo 26/26 passed'`` was refused,
+# and the same chain came back behind ``find -exec`` and a git ``!`` alias.
+# Re-running such a command proves it reproduces its output, never that it is
+# the check it names, because the echo really does print the result.
+#
+# What the allowlist guarantees, and no more: the recorded command is one of
+# those checks, written as the repository writes it, and it is run the way
+# ci_gate.py runs it (its cwd, ci_gate's environment, ``python3`` replaced by
+# the interpreter running this tool). It does not guarantee the output came
+# from the recorded tree. A check can be run against a tree that differs from
+# the one recorded -- a hand-written record can carry output from anywhere --
+# and the tree-digest comparison is what covers that; --reexecute re-runs the
+# check on the tree as it is now. The checks are themselves files in the
+# tree, so a change that edits a check changes what that check proves; the
+# digest covers that edit, and nothing here judges it. The interpreter running
+# this tool, and the machine, are trusted: whoever runs the tool controls both.
+# Printed by --record and by the gate itself. Both facts were true before and
+# stated nowhere, which is the same defect this repository scores P0 in its own
+# documents: a claim the code does not support. The phrase "identity not
+# authenticated" reads narrower than it is, so what the guard cannot do is
+# printed next to it rather than left for a reader to infer from the source.
+# The author count is measured on every run rather than written in here: this
+# repository's older history does carry a model as a commit author, outside the
+# window recent_authors() reads, so a fixed sentence saying the window holds
+# only the owner would be one history rewrite away from false.
+GUARD_LIMITS = (
+    "the self-attestation refusal compares the reviewer string to the %s",
+    "git reports for this tree's last 40 commits. Any other name passes it",
+    "unconditionally, so unless a model's name is among those it cannot fire",
+    "on a model name in this repository.",
+    "independent_implementation is set true by this tool. It is not elicited",
+    "from the reviewer, and nothing here verifies it.",
+)
 
 
 def _as_bytes(value):
@@ -586,16 +657,328 @@ def _write_attestation(path, contents, root):
         os.close(parent_fd)
 
 
+def _ci_gate():
+    """tools/ci_gate.py, the module beside this one that defines the checks."""
+    tools = str(Path(__file__).resolve().parent)
+    if tools not in sys.path:
+        sys.path.insert(0, tools)
+    import ci_gate
+    return ci_gate
+
+
+def evidence_allowlist():
+    """Every command evidence may name: {argv tuple: (cwd, timeout)}.
+
+    Read from the tools/ci_gate.py beside this file: each gate's argv with
+    that gate's cwd and timeout, then each exact entry of EVIDENCE_COMMANDS.
+    """
+    ci_gate = _ci_gate()
+    forms = {}
+    for gate in ci_gate.GATES:
+        forms.setdefault(tuple(gate.argv), (gate.cwd, gate.timeout))
+    for argv in ci_gate.EVIDENCE_COMMANDS:
+        forms.setdefault(tuple(argv), (".", EVIDENCE_TIMEOUT_SECONDS))
+    return forms
+
+
+def evidence_form(command):
+    """``(argv, cwd, timeout)`` for an evidence command, or raise OSError.
+
+    Refuses a command that does not parse, and one whose argv is not exactly
+    an entry of evidence_allowlist(). Shared by the record, the re-execution
+    and the validator, so a plain gate run rejects a stored command that
+    --record would have refused to run.
+    """
+    import shlex
+    try:
+        argv = shlex.split(command)
+    except ValueError as error:
+        raise OSError("it could not be parsed: %s" % (error,))
+    form = evidence_allowlist().get(tuple(argv))
+    if form is None:
+        raise OSError(
+            "it is not a check this repository defines. Evidence may name "
+            "only the argv of a gate in tools/ci_gate.py GATES (python3 "
+            "tools/ci_gate.py --manifest lists them) or an entry of "
+            "ci_gate.EVIDENCE_COMMANDS, exactly as written there, with no "
+            "other arguments")
+    return argv, form[0], form[1]
+
+
+def run_evidence(command, root):
+    """Run one recorded evidence command in the reviewed tree.
+
+    Returns its combined output and exit code; raises OSError when the
+    command was refused by evidence_form, or could not be run to completion.
+
+    The command must be on the allowlist (evidence_form; the comment
+    beside TRANSCRIPT_DIR says what that does and does not guarantee). It is
+    split with shlex and run as ONE
+    program, never through a shell, the way ci_gate.py runs a gate: in that
+    gate's cwd, with ci_gate's environment and PYTHONPATH pointing at the
+    reviewed tree's tests/, and with ``python3`` replaced by the interpreter
+    running this tool.
+
+    What remains true, and is stated rather than hidden: the output is what
+    the check printed on the tree it ran in. Whether that tree is the one the
+    record pins is the digest comparison's job, not this function's.
+
+    stderr is folded into stdout because that is what the reviewer read. A
+    command whose telling line goes to stderr (git's fatals, unittest's
+    summary) would otherwise be unquotable as evidence.
+    """
+    import subprocess
+    argv, cwd, timeout = evidence_form(command)
+    if argv[0] == "python3":
+        argv = [sys.executable] + argv[1:]
+    env = _ci_gate().environment()
+    env["PYTHONPATH"] = str(Path(root) / "tests")
+    try:
+        done = subprocess.run(argv, cwd=str(Path(root) / cwd), shell=False,
+                              env=env, stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        raise OSError("it did not finish within %d seconds" % timeout)
+    except (OSError, subprocess.SubprocessError) as error:
+        raise OSError("%s" % (error,))
+    return _as_bytes(done.stdout).decode("utf-8", "replace"), done.returncode
+
+
+def evidence_excerpt(output, result, limit=EVIDENCE_OUTPUT_LIMIT):
+    """``output``, shortened around ``result`` and with the cut named in place.
+
+    The whole output is kept when it is small, which is the ordinary case. A
+    longer one is kept as a window that contains the matched text
+    contiguously, so the validator's later substring re-check reads the
+    excerpt exactly as it read the full output -- an excerpt that could break
+    the match would turn a true record into a gate failure nobody could
+    explain. The elision is written into the text rather than left implicit,
+    because a reader must not mistake a window for everything the command
+    said.
+    """
+    limit = max(limit, len(result))
+    if len(output) <= limit:
+        return output
+    index = max(output.find(result), 0)
+    end = min(len(output), max(0, index - (limit - len(result)) // 2) + limit)
+    start = max(0, end - limit)
+    excerpt = output[start:end]
+    if start:
+        excerpt = "[... %d characters elided ...]\n" % start + excerpt
+    if end < len(output):
+        excerpt += "\n[... %d characters elided ...]" % (len(output) - end)
+    return excerpt
+
+
+def refusal_display(output, head=REFUSAL_HEAD, tail=REFUSAL_TAIL):
+    """What a refusal prints of a command's output: its head and its tail."""
+    output = output.strip()
+    if not output:
+        return "(nothing)"
+    if len(output) <= head + tail:
+        return output
+    return "%s\n[... %d characters elided ...]\n%s" % (
+        output[:head], len(output) - head - tail, output[-tail:])
+
+
+def parse_evidence(raw):
+    """Split one --evidence value into (command, expected exit, result).
+
+    ``COMMAND|RESULT`` expects the command to exit 0. ``COMMAND|exit=N|RESULT``
+    records a command expected to exit N, which is how a red run a reviewer
+    deliberately quotes (a gate sweep with CI-6 still red, a refusal) is
+    recorded honestly. The exit code used to be stored and never compared, so
+    ``ci_gate.py|passed`` was accepted on a red tree because "24/25 passed"
+    contains "passed". Returns None when the value is malformed.
+    """
+    command, separator, rest = raw.partition("|")
+    command, rest = command.strip(), rest.strip()
+    expected = 0
+    match = re.match(r"exit=(-?\d+)\|", rest)
+    if match:
+        expected = int(match.group(1))
+        rest = rest[match.end():].strip()
+    if not separator or not command or not rest:
+        return None
+    return command, expected, rest
+
+
+def transcript_path_error(path):
+    """Why ``path`` cannot name a reviewer transcript, or None."""
+    # A ".." segment needs no check of its own: membership is decided
+    # against the digest's rows, which hold normalised paths only, so
+    # "review-transcripts/../README.md" is never found there.
+    if not path.startswith(TRANSCRIPT_DIR):
+        return ("reviewer transcript %s is not under %s: a transcript is a "
+                "file put there to be one, not any file already in the tree"
+                % (path, TRANSCRIPT_DIR))
+    return None
+
+
+def print_guard_limits(authors, indent="  "):
+    """Say, in the tool's own output, what the tool does not prove."""
+    if authors is None:
+        counted = "author names and emails (unreadable just now)"
+    else:
+        counted = "%d author name(s) and email(s)" % len(authors)
+    print(indent + "limits   : " + GUARD_LIMITS[0] % counted)
+    for line in GUARD_LIMITS[1:]:
+        print(indent + "           " + line)
+
+
+def _transcript_errors(document, rows):
+    """Check the reviewer's own output is in the tree the record binds to.
+
+    The digest proves what was read. It said nothing about what the reviewer
+    then wrote, so the record's verdict and findings were the only trace of
+    the review itself and both were typed by whoever ran the tool. Requiring
+    a transcript inside the tree puts the reviewer's output inside the
+    digest: the file cannot be swapped after the fact without staling the
+    record, and the record names which file it was. Whether git tracks it is
+    not checked; see TRANSCRIPT_DIR.
+
+    Membership is decided against the inventory ``tree_digest`` already
+    built, not against git or the filesystem. That is the stronger test and
+    the cheaper one: a path in those rows is by construction part of the
+    reviewed tree and already carries the hash to compare, so a transcript
+    that validates here is one whose bytes the digest covers.
+    """
+    path = document.get("reviewer_transcript")
+    recorded = document.get("reviewer_transcript_sha256")
+    if not isinstance(path, str) or not path.strip():
+        return ["reviewer transcript path is missing"]
+    if not isinstance(recorded, str) or not HEX64.match(recorded):
+        return ["reviewer transcript digest is malformed"]
+    misplaced = transcript_path_error(path)
+    if misplaced:
+        return [misplaced]
+    row = next((r for r in rows
+                if r["path"] == path and r["kind"] == "file"), None)
+    if row is None:
+        return ["reviewer transcript %s is not a file in the reviewed tree"
+                % path]
+    if row["sha256"] != recorded:
+        return ["reviewer transcript %s does not hash to the value the record "
+                "carries" % path]
+    return []
+
+
+def _evidence_errors(evidence):
+    """Check each evidence item against the output recorded beside it.
+
+    Evidence used to be free text of any shape: the writer took whatever was
+    typed and the gate checked only that the list was non-empty, so a command
+    nobody ran and a result nobody saw passed identically to a real one. The
+    writer now re-runs each command and stores what it printed, which leaves
+    this function two things to re-check on every later run of the gate --
+    that each command is one --record would run (evidence_form), and that
+    the result the record claims still appears in the output the record
+    carries.
+
+    Be precise about what that proves: internal consistency, and nothing
+    more. It catches an edit to one half of an item -- a result changed
+    without its output. It does NOT catch an edit to both halves, and it
+    cannot tell a record --record wrote from one typed by hand: a
+    hand-written item whose result appears in its own invented output passes
+    here. It does not re-execute anything. ``reexecution_errors`` does, and
+    is what tests the record against the tree; it runs only under
+    ``--reexecute`` because a recorded gate sweep takes minutes.
+    """
+    if not isinstance(evidence, list):
+        return []
+    fields = {"command", "result", "output", "exit_code"}
+    errors = []
+    for index, item in enumerate(evidence, 1):
+        if not isinstance(item, dict) or set(item) != fields:
+            errors.append("review evidence item %d does not use the closed "
+                          "evidence schema (command, result, output, "
+                          "exit_code)" % index)
+            continue
+        command, result, output = (item.get("command"), item.get("result"),
+                                   item.get("output"))
+        label = "review evidence %d (%s)" % (
+            index, command if isinstance(command, str) and command.strip()
+            else "unnamed command")
+        if not isinstance(command, str) or not command.strip():
+            errors.append("%s: command is missing" % label)
+        if not isinstance(result, str) or not result.strip():
+            errors.append("%s: recorded result is empty" % label)
+        if not isinstance(output, str):
+            errors.append("%s: recorded output is missing" % label)
+        if isinstance(item.get("exit_code"), bool) or not isinstance(
+                item.get("exit_code"), int):
+            errors.append("%s: recorded exit code is not an integer" % label)
+        if isinstance(command, str) and command.strip():
+            try:
+                evidence_form(command)
+            except OSError as error:
+                errors.append("%s: --record would refuse to run it: %s"
+                              % (label, error))
+        if (isinstance(result, str) and result.strip() and
+                isinstance(output, str) and result not in output):
+            errors.append("%s: the recorded result does not appear in the "
+                          "output recorded for that command" % label)
+    return errors
+
+
+def reexecution_errors(document, root=REPO):
+    """Re-run every recorded evidence command and compare it to the record.
+
+    This is the check a hand-written record cannot pass by being consistent
+    with itself: the command must still run in this tree, exit with the code
+    the record stores, and print the recorded result. It is opt-in
+    (``--reexecute``) and ci_gate.py does not use it, because a recorded
+    ci_gate.py sweep re-run from inside ci_gate.py would take minutes on
+    every gate run. A plain gate run therefore does not re-execute anything.
+    """
+    errors = []
+    evidence = document.get("evidence") if isinstance(document, dict) else None
+    for index, item in enumerate(evidence or [], 1):
+        if not isinstance(item, dict) or not isinstance(
+                item.get("command"), str):
+            continue
+        label = "review evidence %d (%s)" % (index, item["command"])
+        try:
+            output, exit_code = run_evidence(item["command"], root)
+        except OSError as error:
+            errors.append("%s: re-run failed: %s" % (label, error))
+            continue
+        if exit_code != item.get("exit_code"):
+            errors.append("%s: re-run exited %d, the record says %r"
+                          % (label, exit_code, item.get("exit_code")))
+        result = item.get("result")
+        if isinstance(result, str) and result not in output:
+            errors.append("%s: re-run output does not contain the recorded "
+                          "result" % label)
+    return errors
+
+
 def validate_attestation(document, root=REPO):
     errors = []
     fields = {
         "schema", "reviewer_id", "reviewer_kind",
         "independent_implementation", "identity_assurance", "reviewed_at",
-        "reviewed_tree_sha256", "scope", "evidence", "findings",
+        "reviewed_tree_sha256", "reviewer_transcript",
+        "reviewer_transcript_sha256", "scope", "evidence", "findings",
         "verdict",
     }
-    if not isinstance(document, dict) or set(document) != fields:
+    if not isinstance(document, dict):
         return ["review attestation does not use the closed schema"]
+    if set(document) != fields:
+        # Naming the difference, rather than only the fact of it, is what
+        # makes a record written against an older schema legible. The two
+        # transcript fields were added after records already existed; a bare
+        # "does not use the closed schema" on such a record reads as
+        # corruption and sends a reader to the source to find out otherwise.
+        detail = []
+        missing = sorted(fields - set(document))
+        unexpected = sorted(set(document) - fields)
+        if missing:
+            detail.append("missing " + ", ".join(missing))
+        if unexpected:
+            detail.append("unexpected " + ", ".join(unexpected))
+        return ["review attestation does not use the closed schema (%s)"
+                % "; ".join(detail)]
     if document.get("schema") != 1:
         errors.append("review schema must be 1")
     reviewer = document.get("reviewer_id")
@@ -612,11 +995,12 @@ def validate_attestation(document, root=REPO):
             document.get("reviewed_at", "")):
         errors.append("reviewed_at must be an explicit UTC timestamp")
     claimed = document.get("reviewed_tree_sha256")
-    actual, _rows = tree_digest(root)
+    actual, rows = tree_digest(root)
     if not isinstance(claimed, str) or not HEX64.match(claimed):
         errors.append("reviewed tree digest is malformed")
     elif claimed != actual:
         errors.append("review is stale: repository tree digest changed")
+    errors.extend(_transcript_errors(document, rows))
     for field in ("scope", "evidence", "findings"):
         if not isinstance(document.get(field), list):
             errors.append("review %s must be a list" % field)
@@ -624,6 +1008,15 @@ def validate_attestation(document, root=REPO):
         errors.append("review scope cannot be empty")
     if not document.get("evidence"):
         errors.append("review evidence cannot be empty")
+    if not document.get("findings"):
+        # A review that found nothing is a legitimate outcome, but it is a
+        # claim somebody makes, not a field nobody filled. Recording it as an
+        # explicit P3 accepted finding is the difference between the two, and
+        # the record printed "findings : 0" for both until this fired.
+        errors.append("review findings cannot be empty: a review that found "
+                      "nothing records that as an explicit P3 accepted "
+                      "finding")
+    errors.extend(_evidence_errors(document.get("evidence")))
     finding_fields = {"id", "severity", "status", "summary", "evidence"}
     finding_ids = set()
     for finding in document.get("findings", []):
@@ -707,11 +1100,24 @@ def record_review(args, root=REPO):
     It records; it does not vouch. identity_assurance stays
     unauthenticated-local-claim, because nothing here authenticates anyone,
     and the tool refuses outright when the reviewer name matches an author of
-    the recent history. That refusal is the one integrity property worth
-    having: the person who wrote the code must not be able to close the gate
-    on it by running a command.
+    the recent history. That refusal is weaker than it sounds and
+    print_guard_limits() says so in the tool's own output: it matches names,
+    and nothing makes a model's name one of the commit authors it reads.
+
+    What this can enforce at record time, it does. Every --evidence command
+    must be a check the repository defines (evidence_allowlist: a gate's
+    argv or an EVIDENCE_COMMANDS entry, exactly), and is run here, as one
+    program with no shell, and refused unless it exits with the expected
+    code and prints the recorded result; the output and exit code are
+    stored. That holds for records this function writes. The gate cannot
+    tell such a record from one typed by hand, so a plain gate run proves
+    only that the record is consistent with itself and names allowlisted
+    commands; ``--reexecute`` is what re-runs the commands against the tree.
+    --finding is required, so "found nothing" is a claim somebody made; and
+    --transcript must already be a file under TRANSCRIPT_DIR inside the tree,
+    so that file is bound to the digest as the reviewer's output. Nothing
+    here checks that git tracks it, or who wrote it.
     """
-    digest, rows = tree_digest(root)
     reviewer = (args.reviewer or "").strip()
     if not reviewer or reviewer.lower() == "root":
         print("record: --reviewer must name the person who did the review")
@@ -743,9 +1149,36 @@ def record_review(args, root=REPO):
         print("record: --evidence is required. Name at least one command you "
               "ran. A review that ran nothing is a reading.")
         return 2
+    if not args.finding:
+        print("record: --finding is required. A review that found nothing "
+              "says so on the record:")
+        print("        --finding \"P3|accepted|no defect found|<what you "
+              "read to conclude that>\"")
+        print("        An empty findings list is indistinguishable from a "
+              "field nobody filled.")
+        return 2
+    transcript = (args.transcript or "").strip()
+    if not transcript:
+        print("record: --transcript is required. Put the reviewer's own "
+              "output under %s in this tree and name it here, relative to "
+              "the repository root." % TRANSCRIPT_DIR)
+        print("        The digest binds the record to what was read; this "
+              "binds it to what the reviewer said about it.")
+        return 2
+    misplaced = transcript_path_error(transcript)
+    if misplaced:
+        print("record: REFUSED. " + misplaced)
+        return 2
+    # An early answer for a mistyped path, before any evidence command runs,
+    # so a typo cannot cost a gate sweep. The row lookup after the digest is
+    # what decides membership.
+    if not (root / transcript).is_file():
+        print("record: REFUSED. --transcript %r does not exist under %s."
+              % (transcript, root))
+        return 2
 
     findings = []
-    for index, raw in enumerate(args.finding or [], 1):
+    for index, raw in enumerate(args.finding, 1):
         parts = raw.split("|")
         if len(parts) != 4:
             print("record: --finding must be "
@@ -757,6 +1190,66 @@ def record_review(args, root=REPO):
             "summary": summary, "evidence": evidence,
         })
 
+    # Parse every evidence string before running any of them. A typo in the
+    # last one should not cost the four minutes the first one takes.
+    requested = []
+    for raw in args.evidence:
+        parsed = parse_evidence(raw)
+        if parsed is None:
+            print("record: --evidence must be COMMAND|RESULT or "
+                  "COMMAND|exit=N|RESULT with both sides filled, got %r" % raw)
+            print("        The command is re-run here and RESULT must appear "
+                  "in its output, so an empty RESULT asserts nothing.")
+            print("        A shell pipeline cannot be recorded: the first "
+                  "'|' separates the command from the result.")
+            return 2
+        requested.append(parsed)
+
+    executed = []
+    for command, expected, result in requested:
+        print("record: re-running %s" % command)
+        try:
+            output, exit_code = run_evidence(command, root)
+        except OSError as error:
+            print("record: REFUSED. evidence command %r could not be run: %s"
+                  % (command, error))
+            return 2
+        if result not in output:
+            print("record: REFUSED. evidence command %r ran and exited %d, "
+                  "but the result you recorded is not in its output."
+                  % (command, exit_code))
+            print("        you recorded : %s" % result)
+            print("        it printed   : %s" % refusal_display(output))
+            return 2
+        if exit_code != expected:
+            print("record: REFUSED. evidence command %r exited %d; the "
+                  "evidence expects %d." % (command, exit_code, expected))
+            print("        A result that appears in a failing run's output "
+                  "is not evidence the run passed.")
+            print("        To quote a run you know fails, write "
+                  "COMMAND|exit=%d|RESULT." % exit_code)
+            print("        it printed   : %s" % refusal_display(output))
+            return 2
+        executed.append({
+            "command": command, "result": result,
+            "output": evidence_excerpt(output, result), "exit_code": exit_code,
+        })
+
+    # Digest the tree only now. An evidence command can touch the tree it
+    # runs in, and a digest taken before it ran would pin the record to a
+    # tree that no longer exists by the time the record is written -- stale
+    # the moment it lands, for a reason nothing in its own output names.
+    digest, rows = tree_digest(root)
+    transcript_row = next((r for r in rows if r["path"] == transcript and
+                           r["kind"] == "file"), None)
+    if transcript_row is None:
+        print("record: REFUSED. --transcript %r is not a file in the "
+              "reviewed tree." % transcript)
+        print("        Give a path relative to the repository root: a "
+              "transcript outside the tree is not bound to the digest this "
+              "record pins.")
+        return 2
+
     document = {
         "schema": 1,
         "reviewer_id": reviewer,
@@ -766,10 +1259,10 @@ def record_review(args, root=REPO):
         "reviewed_at": _dt.datetime.now(_dt.timezone.utc).strftime(
             "%Y-%m-%dT%H:%M:%SZ"),
         "reviewed_tree_sha256": digest,
+        "reviewer_transcript": transcript,
+        "reviewer_transcript_sha256": transcript_row["sha256"],
         "scope": list(args.scope),
-        "evidence": [{"command": c, "result": r} for c, r in
-                     (e.split("|", 1) + [""] if "|" not in e else e.split("|", 1)
-                      for e in args.evidence)],
+        "evidence": executed,
         "findings": findings,
         "verdict": args.verdict,
     }
@@ -792,9 +1285,15 @@ def record_review(args, root=REPO):
     print("recorded review of %d files at %s" % (len(rows), digest[:12]))
     print("  reviewer : %s (%s, identity not authenticated)"
           % (reviewer, args.reviewer_kind))
+    print("  transcript: %s (%s)"
+          % (transcript, transcript_row["sha256"][:12]))
+    print("  evidence : %d command(s) run here; a plain gate run re-checks "
+          "the record against itself, --reexecute re-runs them"
+          % len(executed))
     print("  verdict  : %s" % args.verdict)
     print("  findings : %d" % len(findings))
     print("  written  : %s" % path)
+    print_guard_limits(authors)
     return 0
 
 
@@ -812,11 +1311,29 @@ def main(argv=None):
     parser.add_argument("--scope", action="append", metavar="WHAT",
                         help="what was reviewed. Repeatable, at least one")
     parser.add_argument("--evidence", action="append", metavar="COMMAND|RESULT",
-                        help="a command you ran and what it returned. "
-                             "Repeatable, at least one")
+                        help="a check you ran and text from its output. "
+                             "Repeatable, at least one. COMMAND must be the "
+                             "argv of a gate in tools/ci_gate.py (see its "
+                             "--manifest) or an entry of its EVIDENCE_COMMANDS, "
+                             "exactly; anything else is refused. It is re-run "
+                             "in this tree as ci_gate.py runs it, with no "
+                             "shell, and refused unless it exits 0 (or N, "
+                             "written COMMAND|exit=N|RESULT) and RESULT "
+                             "appears in what it prints")
     parser.add_argument("--finding", action="append",
                         metavar="SEVERITY|STATUS|SUMMARY|EVIDENCE",
-                        help="a finding. Repeatable. Omit if none")
+                        help="a finding. Repeatable, at least one. A review "
+                             "that found nothing records P3|accepted|...")
+    parser.add_argument("--transcript", metavar="PATH",
+                        help="the reviewer's own output, a file under "
+                             + TRANSCRIPT_DIR + " in this tree, as a path "
+                             "relative to the repository root. Commit it with "
+                             "the record: a clean checkout without it "
+                             "digests differently. Required")
+    parser.add_argument("--reexecute", action="store_true",
+                        help="also re-run every recorded evidence command and "
+                             "fail unless each exits as recorded and prints "
+                             "its recorded result. A plain run does not")
     # The validator accepts exactly one verdict, so the CLI offers exactly one
     # rather than letting a reviewer type "rejected", write nothing, and learn
     # why at the end. A rejection is recorded by not recording: the gate stays
@@ -842,12 +1359,20 @@ def main(argv=None):
         print("independent review unavailable: %s" % error)
         return 1
     errors = validate_attestation(document, REPO)
+    if args.reexecute and not errors:
+        errors = reexecution_errors(document, REPO)
     for error in errors:
         print("review gate: " + error)
     if errors:
         return 1
     print("local review record: exact tree accepted; no unresolved P0/P1; "
           "reviewer identity is not authenticated and remains an external gate")
+    if args.reexecute:
+        print("  evidence : every recorded command re-run here and matched")
+    else:
+        print("  evidence : checked against the record itself, not re-run; "
+              "--reexecute re-runs it")
+    print_guard_limits(recent_authors(REPO))
     return 0
 
 

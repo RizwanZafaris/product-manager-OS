@@ -185,29 +185,67 @@ fixed in the release candidate.
      red, red became its normal state, and three pull requests were merged with
      it failing. A gate nobody can close is a gate everybody learns to ignore. -->
 
-One command, run from the repository root after you have actually reviewed:
+Put your own review output (the transcript) in a file under
+`docs/readiness/review-transcripts/` first, then run one command from the
+repository root:
 
 ```bash
-python3 tools/review_gate.py --record \
+python3.11 tools/review_gate.py --record \
   --reviewer "Your Name" \
   --scope "what you actually read" \
-  --evidence "python3 tools/ci_gate.py|21/22 passed; the one red is CI-6" \
-  --finding "P2|accepted|one-line summary|where you saw it"
+  --evidence "python3 lint.py --os|ok (OS tree mode, 11 checks)" \
+  --evidence "python3 tools/ci_gate.py|exit=1|release gates: 24/25 passed" \
+  --finding "P2|accepted|one-line summary|where you saw it" \
+  --transcript docs/readiness/review-transcripts/your-review.md
 ```
 
-`--scope`, `--evidence` and `--finding` repeat. Omit `--finding` if you found
-nothing, which is a legitimate outcome and is recorded as such.
+`--scope`, `--evidence` and `--finding` repeat. The command in each
+`--evidence` must be a check this repository defines: the argv of a gate in
+`tools/ci_gate.py` (`python3.11 tools/ci_gate.py --manifest` lists them), or
+an entry of `EVIDENCE_COMMANDS` beside it, which today is the full sweep
+`python3 tools/ci_gate.py` and the sweep narrowed to one gate,
+`python3 tools/ci_gate.py --gate <id>`. It must be written exactly as there,
+program `python3` included, with no other arguments; anything else is
+refused before it runs, with a message naming that list. It is run the way
+`ci_gate.py` runs a gate: in the gate's directory, with `ci_gate.py`'s
+environment, with `python3` replaced by the interpreter running
+`review_gate.py`, and with no shell. It is refused unless it exits 0 and the
+text after the `|` appears in what it prints. Quote the command's output
+rather than summarising it. A command you know exits non-zero is recorded by
+declaring it, `COMMAND|exit=N|RESULT`, as the `ci_gate.py` line above does:
+at record time the old record is stale, so CI-6 is red and a full sweep
+cannot report every gate passed.
 
-Three things it will refuse, on purpose:
+What it will refuse, on purpose:
 
 - **A review that ran nothing.** `--evidence` is required. A review with no
   command behind it is a reading, and this gate is not for readings.
+- **Evidence the command does not print, or a run that failed.** The command
+  is run. A result that is not in its output, an exit code other than the one
+  declared (0 by default), or a command that cannot be parsed or started is
+  refused. The refusal shows what you recorded, and the start and end of what
+  the command printed, where a gate sweep's verdict line sits. Before this,
+  the result was free text nothing compared to anything: a record claiming
+  `26/26 passed` on a tree that was not 26/26 was accepted. That holds only
+  for records `--record` writes. See the next paragraphs for what the gate
+  can and cannot check afterwards.
+- **A review with no findings.** If you found nothing, record that:
+  `--finding "P3|accepted|no defect found|what you read to conclude it"`. An
+  empty list is indistinguishable from a field nobody filled.
+- **A transcript outside the transcript directory.** `--transcript` must
+  name a file already in the reviewed tree under
+  `docs/readiness/review-transcripts/`. Its hash goes into the record, so the
+  file is bound to the same digest as the code. The directory rule stops
+  README.md, or the change's own source, from standing in as "the
+  transcript". Nothing checks who wrote the file, or that git tracks it: the
+  digest reads the filesystem, so an untracked file is accepted locally.
+  Commit it with the record. A clean checkout without it digests
+  differently, so the record is stale there.
 - **A review with no stated scope.** A later reader has to know what the
   acceptance covered.
-- **A self-attestation.** If the name you give matches an author in the
-  repository's recent history, it refuses and writes nothing. That is the one
-  property this gate exists for: the person who wrote the change must not be
-  able to close the check on it by running a command.
+- **A self-attestation, as far as it can tell.** If the name you give matches
+  an author in the repository's recent history, it refuses and writes
+  nothing. Read the next section before relying on that.
 
 It records a claim and never dresses it as proof. The record it writes says
 `identity_assurance: unauthenticated-local-claim`, because nothing here
@@ -216,6 +254,61 @@ by leaving the gate red and saying so where the change is being discussed.
 
 The record binds to the exact tree you reviewed. Any later change makes it
 stale again, which is correct: your acceptance covered what you read.
+
+A plain run of the gate, which is what `ci_gate.py` does, checks the record
+against itself. Each recorded command must be on the allowlist, each recorded
+result must appear in the output recorded beside it, and the transcript must hash to the value in the record. That
+catches an edit to one half of an evidence item. It does not catch an edit
+to both halves. It also cannot tell a record `--record` wrote from one typed
+by hand, so a hand-written record whose results and outputs agree passes.
+It re-runs nothing.
+
+`python3.11 tools/review_gate.py --reexecute` is the check that tests the
+record against the tree. It re-runs every recorded command and fails unless
+each one exits with the recorded code and prints the recorded result. It is
+opt-in and `ci_gate.py` does not call it, because a recorded gate sweep takes
+minutes. Run it before trusting a record you did not watch being written.
+
+### What this guard cannot do
+
+Two limits. Both are printed by the tool itself, beside "identity not
+authenticated":
+
+- **The self-attestation refusal cannot fire on a model name here.** It
+  compares the reviewer string to the author names and emails git reports
+  for the last 40 commits (`git log -40 --format='%an%n%ae'`). Measured on
+  2026-09-21 at `ab4b1eb`, `git log -40 --format='%an <%ae>' | sort -u`
+  returned one entry, the human owner, although 30 of those 40 commits carry a
+  `Co-Authored-By: Claude` trailer. A trailer is not an author, so a model's
+  name, the authoring model's included, never matches and always passes. The
+  whole history does list `Claude <noreply@anthropic.com>` as an author, but
+  only on commits older than that window. The refusal does not read them, so
+  "Claude" passes it today like any other model name.
+- **`independent_implementation` is not elicited.** The tool writes it as
+  `true` on every record, and the validator rejects any record where it is not
+  `true`. The one field saying the reviewer implemented none of the tree is
+  therefore generated by the tool, never asked of the reviewer, and never
+  checked against anything.
+
+A third limit is about the evidence itself. The allowlist guarantees one
+thing: every recorded command is a check this repository defines, exactly as
+it defines it, so no wrapper written into the command (`sh -c`, `find -exec`,
+a git `!` alias, `echo`, `python3 -c`) can put a result beside a real tool
+that the tool never printed. The interpreter that runs `review_gate.py`, and
+the machine it runs on, are trusted: whoever runs the tool controls both. Earlier rounds used a denylist of shells and command runners, and
+an unlisted runner restored that chain every time. The allowlist does not
+guarantee the output came from the tree the record pins. An allowlisted
+check can still be run against a tree that differs from the one recorded,
+and a hand-written record can carry output from anywhere; the tree-digest
+comparison is what covers the first (the record goes stale when the tree
+changes), and `--reexecute`, which re-runs each check on the tree as it is
+now, is what covers the second. The checks are themselves files in the tree,
+so a change that edits a check changes what that check proves. The digest
+covers that edit; nothing here judges it. Read the diff to the checks.
+
+So a record that passes is well-formed and current. It is not proof that a
+review happened. Whether a party outside the authoring session read the
+change, and who that party was, is the owner's attestation, not the tool's.
 
 ## The record
 

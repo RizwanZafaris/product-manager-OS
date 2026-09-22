@@ -117,6 +117,13 @@ GATES = (
          timeout=3600),
 )
 
+# The only commands a review record may cite as evidence besides each gate's
+# own argv above: tools/review_gate.py refuses any other command, and any
+# other argument. The full sweep, and the sweep narrowed to one gate. Each is
+# an exact argv; a new form is added here, not typed into a record.
+EVIDENCE_COMMANDS = (("python3", "tools/ci_gate.py"),) + tuple(
+    ("python3", "tools/ci_gate.py", "--gate", gate.gate_id) for gate in GATES)
+
 
 def environment():
     allowed = ("PATH", "LANG", "LC_ALL", "LC_CTYPE", "TMPDIR", "TEMP",

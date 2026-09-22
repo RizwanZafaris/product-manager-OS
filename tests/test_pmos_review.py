@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
+import shlex
 import sys
 import unittest
 from unittest.mock import patch
@@ -34,7 +36,61 @@ def git_repo(root, ignore="._*\n"):
     return run
 
 
+# The production transcript directory sits under docs/readiness/, and many
+# classes here replace docs/ or docs/readiness/ with a symlink to prove the
+# record and the gate refuse to follow it. A transcript under docs/ would then
+# be refused first, and those tests would pass for the wrong reason. So the
+# module runs with the directory moved to the tree's top level; the one test
+# that needs the production value reads PRODUCTION_TRANSCRIPT_DIR.
+PRODUCTION_TRANSCRIPT_DIR = review_gate.TRANSCRIPT_DIR
+TEST_TRANSCRIPT_DIR = "review-transcripts/"
+TRANSCRIPT = TEST_TRANSCRIPT_DIR + "reviewer-transcript.md"
+_transcript_dir_patch = patch.object(review_gate, "TRANSCRIPT_DIR",
+                                     TEST_TRANSCRIPT_DIR)
+
+
+# Evidence may name only a check tools/ci_gate.py defines, and none of those
+# can run in a temporary tree of three files. The classes here that test
+# every other guard (the exit code, the result match, the excerpt, the
+# transcript, the digest) therefore run with an allowlist that admits any
+# command, from the tree root, with the default ceiling. The allowlist itself
+# is tested by ReviewEvidenceAllowlistTests, which restores the real one.
+REAL_EVIDENCE_ALLOWLIST = review_gate.evidence_allowlist
+
+
+class _AnyFixtureCommand(dict):
+    def get(self, key, default=None):
+        return (".", review_gate.EVIDENCE_TIMEOUT_SECONDS)
+
+
+_allowlist_patch = patch.object(review_gate, "evidence_allowlist",
+                                lambda: _AnyFixtureCommand())
+
+
+def setUpModule():
+    _transcript_dir_patch.start()
+    _allowlist_patch.start()
+
+
+def tearDownModule():
+    _allowlist_patch.stop()
+    _transcript_dir_patch.stop()
+
+
+def write_transcript(root, name="a.md", text="reviewer said: fine\n"):
+    path = Path(root) / TEST_TRANSCRIPT_DIR / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    return TEST_TRANSCRIPT_DIR + name
+
+
 def attestation(root, **changes):
+    # The transcript is written before the digest is taken because the record
+    # requires it to be inside the tree it binds to; writing it afterwards
+    # would stale every fixture built on this.
+    transcript = Path(root) / TRANSCRIPT
+    transcript.parent.mkdir(parents=True, exist_ok=True)
+    transcript.write_text("reviewer output\n", encoding="utf-8")
     digest, _rows = tree_digest(root)
     document = {
         "schema": 1,
@@ -44,9 +100,16 @@ def attestation(root, **changes):
         "identity_assurance": "unauthenticated-local-claim",
         "reviewed_at": "2026-09-03T00:00:00Z",
         "reviewed_tree_sha256": digest,
+        "reviewer_transcript": TRANSCRIPT,
+        "reviewer_transcript_sha256": hashlib.sha256(
+            transcript.read_bytes()).hexdigest(),
         "scope": ["runtime", "tests", "gates"],
-        "evidence": [{"command": "tests", "result": "pass"}],
-        "findings": [],
+        "evidence": [{"command": "python3 -m unittest", "result": "OK",
+                      "output": "Ran 3 tests in 0.01s\n\nOK\n",
+                      "exit_code": 0}],
+        "findings": [{"id": "R1", "severity": "P3", "status": "accepted",
+                      "summary": "no defect found",
+                      "evidence": "read the whole tree"}],
         "verdict": "accepted",
     }
     document.update(changes)
@@ -281,7 +344,8 @@ class IndependentReviewGateTests(unittest.TestCase):
             malformed = attestation(root)
             malformed["trust_me"] = True
             self.assertEqual(validate_attestation(malformed, root),
-                             ["review attestation does not use the closed schema"])
+                             ["review attestation does not use the closed "
+                              "schema (unexpected trust_me)"])
 
     def test_local_record_cannot_claim_authenticated_reviewer_identity(self):
         with TemporaryDirectory() as directory:
@@ -1004,8 +1068,10 @@ class AttestationParentSymlinkTests(unittest.TestCase):
         fields = dict(
             record=True, attestation=str(attestation),
             reviewer="A. Reviewer", reviewer_kind="human",
-            scope=["templates/"], evidence=["python3 tools/ci_gate.py|17/18"],
-            finding=None, verdict="accepted", digest=False)
+            scope=["templates/"], evidence=["echo 17 of 18 passed|17 of 18"],
+            finding=["P3|accepted|no defect found|read templates/"],
+            transcript=write_transcript(root), verdict="accepted",
+            digest=False)
         fields.update(over)
         return argparse.Namespace(**fields)
 
@@ -1299,8 +1365,10 @@ class RecordReviewTests(unittest.TestCase):
         fields = dict(
             record=True, attestation=str(canonical),
             reviewer="A. Reviewer", reviewer_kind="human",
-            scope=["templates/"], evidence=["python3 tools/ci_gate.py|17/18"],
-            finding=None, verdict="accepted", digest=False)
+            scope=["templates/"], evidence=["echo 17 of 18 passed|17 of 18"],
+            finding=["P3|accepted|no defect found|read templates/"],
+            transcript=write_transcript(root), verdict="accepted",
+            digest=False)
         fields.update(over)
         return argparse.Namespace(**fields)
 
@@ -1421,6 +1489,662 @@ class RecordReviewTests(unittest.TestCase):
                 (root / review_gate.ATTESTATION).read_text(encoding="utf-8"))
             self.assertEqual("unauthenticated-local-claim",
                              document["identity_assurance"])
+
+
+
+PY = shlex.quote(sys.executable)
+
+
+class ReviewRecordCarriesEvidenceTests(unittest.TestCase):
+    """A record must carry what was run, not what was typed.
+
+    Every case here was accepted before. One command -- no model consulted,
+    an evidence command never run, zero findings -- wrote a record the gate
+    passed: `--evidence "python3 tools/ci_gate.py|26/26 passed"` on a tree
+    that was not 26/26, and "findings : 0". validate_attestation checked only
+    that evidence was a non-empty list, so an edited result, a result nobody
+    saw and a real one were indistinguishable, and the schema had no field
+    that could bind the reviewer's own output to the tree.
+
+    These prove the half that is checkable. The other half -- that a model
+    outside the authoring session actually read the change -- no command in
+    this repository can distinguish from a typed record, and the last case
+    here pins the tool to saying so.
+    """
+
+    def _args(self, root, **over):
+        import argparse
+        canonical = root / review_gate.ATTESTATION
+        canonical.parent.mkdir(parents=True, exist_ok=True)
+        (root / "a.md").write_text("content\n", encoding="utf-8")
+        transcript = write_transcript(root, "transcript.md")
+        fields = dict(
+            record=True, attestation=str(canonical),
+            reviewer="A. Reviewer", reviewer_kind="independent-agent",
+            scope=["a.md"],
+            evidence=["echo 24 of 25 passed|24 of 25",
+                      "echo lint clean|lint clean"],
+            finding=["P3|accepted|no defect found|read a.md"],
+            transcript=transcript, verdict="accepted", digest=False)
+        fields.update(over)
+        return argparse.Namespace(**fields)
+
+    def _record(self, root, **over):
+        import contextlib
+        import io
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = review_gate.record_review(self._args(root, **over), root)
+        return code, out.getvalue()
+
+    def _gate(self, root):
+        import contextlib
+        import io
+        out = io.StringIO()
+        with patch.object(review_gate, "REPO", root), \
+                contextlib.redirect_stdout(out):
+            code = review_gate.main([])
+        return code, out.getvalue()
+
+    def test_a_result_the_command_did_not_print_is_refused(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            code, out = self._record(
+                root, evidence=["echo 24 of 25 passed|26/26 passed"])
+            self.assertEqual(2, code, out)
+            self.assertIn("'echo 24 of 25 passed'", out)
+            self.assertIn("you recorded : 26/26 passed", out)
+            self.assertIn("it printed   : 24 of 25 passed", out)
+            self.assertFalse((root / review_gate.ATTESTATION).exists(),
+                             "a refused fabrication still wrote a record")
+
+    def test_a_record_with_no_findings_is_refused(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            code, out = self._record(root, finding=None)
+            self.assertEqual(2, code, out)
+            self.assertIn("--finding is required", out)
+            self.assertFalse((root / review_gate.ATTESTATION).exists())
+            # And the gate refuses one written by hand, since the tool is not
+            # the only way a record reaches the tree.
+            document = attestation(root, findings=[])
+            self.assertTrue(any("findings cannot be empty" in error for error
+                                in validate_attestation(document, root)))
+
+    def test_a_missing_or_mis_hashed_transcript_fails_the_gate(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            # A second committed file in the transcript directory, present
+            # before the digest, so repointing at it is a hash mismatch and
+            # not a staleness.
+            other = write_transcript(root, "other.md", "a different file\n")
+            self.assertEqual(0, self._record(root)[0])
+            record = root / review_gate.ATTESTATION
+            good = json.loads(record.read_text(encoding="utf-8"))
+            self.assertEqual([], validate_attestation(good, root))
+
+            # The record edited, the tree untouched. The attestation file is
+            # outside its own digest, so staleness cannot see either of these;
+            # only the transcript check does, which is why it exists.
+            repointed = dict(good, reviewer_transcript=other)
+            self.assertEqual(
+                ["reviewer transcript %s does not hash to the value the "
+                 "record carries" % other],
+                validate_attestation(repointed, root))
+            digit = good["reviewer_transcript_sha256"]
+            rehashed = dict(good, reviewer_transcript_sha256=(
+                "1" if digit[0] == "0" else "0") + digit[1:])
+            self.assertEqual(
+                ["reviewer transcript %stranscript.md does not hash to the "
+                 "value the record carries" % TEST_TRANSCRIPT_DIR],
+                validate_attestation(rehashed, root))
+
+            (root / TEST_TRANSCRIPT_DIR / "transcript.md").unlink()
+            errors = validate_attestation(good, root)
+            self.assertIn("reviewer transcript %stranscript.md is not a file "
+                          "in the reviewed tree" % TEST_TRANSCRIPT_DIR, errors)
+            code, out = self._gate(root)
+            self.assertEqual(1, code)
+            self.assertIn("transcript.md is not a file in the reviewed tree",
+                          out)
+
+    def test_a_one_character_edit_to_a_recorded_result_fails_naming_the_item(self):
+        """The mandatory seeded defect, through the gate's own entry point."""
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.assertEqual(0, self._record(root)[0])
+            self.assertEqual(0, self._gate(root)[0])
+            record = root / review_gate.ATTESTATION
+            document = json.loads(record.read_text(encoding="utf-8"))
+            self.assertEqual("lint clean", document["evidence"][1]["result"])
+            document["evidence"][1]["result"] = "lint clear"
+            record.write_text(json.dumps(document, indent=2) + "\n",
+                              encoding="utf-8")
+            code, out = self._gate(root)
+            self.assertEqual(1, code, out)
+            self.assertIn("review evidence 2 (echo lint clean): the recorded "
+                          "result does not appear in the output recorded for "
+                          "that command", out)
+            self.assertNotIn("review evidence 1", out)
+
+    def test_what_is_stored_is_what_the_command_printed_and_how_it_exited(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            code, out = self._record(root, evidence=[
+                "%s -c \"import sys; sys.stderr.write('to-stderr\\n'); "
+                "sys.exit(3)\"|exit=3|to-stderr" % PY])
+            self.assertEqual(0, code, out)
+            item = json.loads((root / review_gate.ATTESTATION).read_text(
+                encoding="utf-8"))["evidence"][0]
+            self.assertEqual("to-stderr\n", item["output"])
+            self.assertEqual(3, item["exit_code"])
+
+    def test_a_long_output_is_kept_as_a_window_that_still_holds_the_result(self):
+        output = "x" * 10000 + "MATCH" + "y" * 10000
+        excerpt = review_gate.evidence_excerpt(output, "MATCH", limit=100)
+        self.assertIn("MATCH", excerpt)
+        self.assertLess(len(excerpt), 200)
+        self.assertIn("characters elided", excerpt)
+        self.assertEqual("short", review_gate.evidence_excerpt("short", "sh"))
+
+    def test_the_tool_states_what_its_guard_cannot_prove(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            code, recorded = self._record(root)
+            self.assertEqual(0, code)
+            gate_code, gated = self._gate(root)
+            self.assertEqual(0, gate_code)
+            self.assertIn("identity not authenticated", recorded)
+            self.assertIn("identity is not authenticated", gated)
+            for out in (recorded, gated):
+                flat = " ".join(out.split())
+                self.assertIn("compares the reviewer string to the", flat)
+                self.assertIn("git reports for this tree's last 40 commits",
+                              flat)
+                self.assertIn("cannot fire on a model name in this repository",
+                              flat)
+                self.assertIn("independent_implementation is set true by this "
+                              "tool. It is not elicited from the reviewer",
+                              flat)
+
+
+class ReviewRecordBypassTests(unittest.TestCase):
+    """Each way the first hardening could still be sidestepped, closed.
+
+    An independent check of that hardening wrote records the gate accepted
+    anyway: an evidence command chained with ``; echo 26/26 passed``, a
+    command that exited 2 accepted because its output contained the result,
+    a hand-written record whose result and output agreed, and README.md named
+    as the reviewer transcript. It also found guards nothing pinned. Every
+    test here fails when the guard it names is reverted.
+
+    The fixture helpers are shared with ReviewRecordCarriesEvidenceTests
+    by reference rather than by inheritance, so that class's cases run once.
+    """
+
+    _args = ReviewRecordCarriesEvidenceTests._args
+    _record = ReviewRecordCarriesEvidenceTests._record
+    _gate = ReviewRecordCarriesEvidenceTests._gate
+
+    def test_a_command_cannot_chain_a_second_program_to_print_its_result(self):
+        # Guard: run_evidence splits with shlex and runs no shell.
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            code, out = self._record(root, evidence=[
+                "%s -c pass; echo 26/26 passed|26/26 passed" % PY])
+            self.assertEqual(2, code, out)
+            self.assertIn("the result you recorded is not in its output", out)
+            self.assertFalse((root / review_gate.ATTESTATION).exists())
+
+    def test_an_unparseable_command_is_refused_not_crashed_on(self):
+        # Guard: shlex's ValueError becomes a named refusal.
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            code, out = self._record(root, evidence=["echo 'unclosed|x"])
+            self.assertEqual(2, code, out)
+            self.assertIn("could not be parsed", out)
+
+    def test_a_failing_command_is_refused_even_when_its_output_matches(self):
+        # Guard: the exit code must be the expected one (0 unless declared).
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            failing = ("%s -c \"print('release gates: 24/25 passed'); "
+                       "raise SystemExit(1)\"" % PY)
+            code, out = self._record(root, evidence=[failing + "|passed"])
+            self.assertEqual(2, code, out)
+            self.assertIn("exited 1; the evidence expects 0", out)
+            self.assertFalse((root / review_gate.ATTESTATION).exists())
+            # Declared, the same red run is recordable, and says it was red.
+            code, out = self._record(root, evidence=[
+                failing + "|exit=1|release gates: 24/25 passed"])
+            self.assertEqual(0, code, out)
+            item = json.loads((root / review_gate.ATTESTATION).read_text(
+                encoding="utf-8"))["evidence"][0]
+            self.assertEqual(1, item["exit_code"])
+            self.assertEqual("release gates: 24/25 passed", item["result"])
+
+    def test_a_refusal_shows_the_end_of_a_long_output(self):
+        # Guard: refusal_display keeps the tail, where a sweep's verdict is.
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            code, out = self._record(root, evidence=[
+                "%s -c \"print('[PASS] x' * 400); "
+                "print('release gates: 24/25 passed')\"|26/26 passed" % PY])
+            self.assertEqual(2, code, out)
+            self.assertIn("release gates: 24/25 passed", out)
+            self.assertIn("characters elided", out)
+
+    def test_a_transcript_outside_the_transcript_directory_is_refused(self):
+        # Guard: transcript_path_error, on both the record and the gate.
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "README.md").write_text("readme\n", encoding="utf-8")
+            code, out = self._record(root, transcript="README.md")
+            self.assertEqual(2, code, out)
+            self.assertIn("is not under %s" % TEST_TRANSCRIPT_DIR, out)
+            dotted = TEST_TRANSCRIPT_DIR + "../README.md"
+            code, out = self._record(root, transcript=dotted)
+            self.assertEqual(2, code, out)
+
+            self.assertEqual(0, self._record(root)[0])
+            good = json.loads((root / review_gate.ATTESTATION).read_text(
+                encoding="utf-8"))
+            readme = hashlib.sha256(b"readme\n").hexdigest()
+            forged = dict(good, reviewer_transcript="README.md",
+                          reviewer_transcript_sha256=readme)
+            self.assertEqual(
+                ["reviewer transcript README.md is not under %s: a transcript "
+                 "is a file put there to be one, not any file already in the "
+                 "tree" % TEST_TRANSCRIPT_DIR],
+                validate_attestation(forged, root))
+
+    def test_the_production_transcript_directory_is_under_docs_readiness(self):
+        self.assertEqual("docs/readiness/review-transcripts/",
+                         PRODUCTION_TRANSCRIPT_DIR)
+
+    def test_a_missing_transcript_is_refused_before_any_command_runs(self):
+        # Guard: the early is_file() refusal in record_review.
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            marker = root / "ran.txt"
+            code, out = self._record(
+                root, transcript=TEST_TRANSCRIPT_DIR + "absent.md",
+                evidence=["%s -c \"open('ran.txt', 'w').write('x'); "
+                          "print('ran')\"|ran" % PY])
+            self.assertEqual(2, code, out)
+            self.assertIn("does not exist", out)
+            self.assertFalse(marker.exists(),
+                             "an evidence command ran before a missing "
+                             "transcript was refused")
+
+    def test_a_command_that_writes_into_the_tree_does_not_stale_the_record(self):
+        # Guard: record_review digests the tree after the evidence runs.
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            code, out = self._record(root, evidence=[
+                "%s -c \"open('made.txt', 'w').write('x'); print('made')\"|made"
+                % PY])
+            self.assertEqual(0, code, out)
+            self.assertTrue((root / "made.txt").exists())
+            document = json.loads((root / review_gate.ATTESTATION).read_text(
+                encoding="utf-8"))
+            self.assertEqual([], validate_attestation(document, root))
+
+    def test_record_refuses_each_missing_input(self):
+        # Guards: --transcript required, empty RESULT refused, a program that
+        # cannot be started refused.
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            code, out = self._record(root, transcript="  ")
+            self.assertEqual(2, code, out)
+            self.assertIn("--transcript is required", out)
+            code, out = self._record(root, evidence=["echo ok|  "])
+            self.assertEqual(2, code, out)
+            self.assertIn("with both sides filled", out)
+            code, out = self._record(root, evidence=["echo ok|exit=0|"])
+            self.assertEqual(2, code, out)
+            self.assertIn("with both sides filled", out)
+            code, out = self._record(
+                root, evidence=["no-such-program-r8 --x|anything"])
+            self.assertEqual(2, code, out)
+            self.assertIn("could not be run", out)
+            self.assertFalse((root / review_gate.ATTESTATION).exists())
+
+    def test_a_transcript_removed_by_an_evidence_command_is_refused(self):
+        # Guard: the row lookup after the digest, which is what decides.
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            gone = TEST_TRANSCRIPT_DIR + "transcript.md"
+            code, out = self._record(root, evidence=[
+                "%s -c \"import os; os.remove('%s'); print('gone')\"|gone"
+                % (PY, gone)])
+            self.assertEqual(2, code, out)
+            self.assertIn("is not a file in the reviewed tree", out)
+            self.assertFalse((root / review_gate.ATTESTATION).exists())
+
+    def test_the_validator_rejects_a_missing_or_malformed_transcript_field(self):
+        # Guards: the path and digest shape checks in _transcript_errors.
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.assertEqual(
+                ["reviewer transcript path is missing"],
+                validate_attestation(attestation(root, reviewer_transcript=""),
+                                     root))
+            self.assertEqual(
+                ["reviewer transcript digest is malformed"],
+                validate_attestation(
+                    attestation(root, reviewer_transcript_sha256="abc"), root))
+            unshaped = attestation(root)
+            del unshaped["reviewer_transcript"]
+            self.assertEqual(
+                ["review attestation does not use the closed schema "
+                 "(missing reviewer_transcript)"],
+                validate_attestation(unshaped, root))
+
+    def _item_errors(self, **changes):
+        item = {"command": "echo ok", "result": "ok", "output": "ok\n",
+                "exit_code": 0}
+        item.update(changes)
+        return review_gate._evidence_errors([item])
+
+    def test_the_validator_rejects_each_malformed_evidence_field(self):
+        # Guards: each field check in _evidence_errors.
+        self.assertEqual([], self._item_errors())
+        self.assertEqual(
+            ["review evidence 1 (unnamed command): command is missing"],
+            self._item_errors(command="   "))
+        self.assertEqual(
+            ["review evidence 1 (echo ok): recorded output is missing"],
+            self._item_errors(output=None))
+        self.assertEqual(
+            ["review evidence 1 (echo ok): recorded result is empty"],
+            self._item_errors(result=" "))
+        for bad in ("0", False, None):
+            self.assertEqual(
+                ["review evidence 1 (echo ok): recorded exit code is not an "
+                 "integer"], self._item_errors(exit_code=bad), repr(bad))
+        self.assertIn("does not use the closed evidence schema",
+                      review_gate._evidence_errors([{"command": "x"}])[0])
+
+    def test_reexecute_rejects_a_hand_written_self_consistent_record(self):
+        # Guard: reexecution_errors, reached through main(["--reexecute"]).
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.assertEqual(0, self._record(root)[0])
+            record = root / review_gate.ATTESTATION
+            document = json.loads(record.read_text(encoding="utf-8"))
+            self.assertEqual(0, self._gate_args(root, ["--reexecute"])[0])
+            # Never run, and consistent with itself: a plain gate run accepts
+            # it, which is the limit the docstrings now state.
+            document["evidence"][0] = {
+                "command": "%s -c \"print('release gates: 24/25 passed')\""
+                           % PY,
+                "result": "release gates: 26/26 passed",
+                "output": "release gates: 26/26 passed\n", "exit_code": 0}
+            record.write_text(json.dumps(document, indent=2) + "\n",
+                              encoding="utf-8")
+            code, out = self._gate(root)
+            self.assertEqual(0, code, out)
+            self.assertIn("not re-run; --reexecute re-runs it", out)
+            code, out = self._gate_args(root, ["--reexecute"])
+            self.assertEqual(1, code, out)
+            self.assertIn("review evidence 1 (", out)
+            self.assertIn("re-run output does not contain the recorded result",
+                          out)
+            # An exit code edited on its own is caught the same way.
+            document["evidence"][0] = dict(
+                json.loads(record.read_text(encoding="utf-8"))["evidence"][0],
+                command="echo 24 of 25 passed", result="24 of 25",
+                output="24 of 25 passed\n", exit_code=5)
+            record.write_text(json.dumps(document, indent=2) + "\n",
+                              encoding="utf-8")
+            code, out = self._gate_args(root, ["--reexecute"])
+            self.assertEqual(1, code, out)
+            self.assertIn("re-run exited 0, the record says 5", out)
+
+    def _gate_args(self, root, argv):
+        import contextlib
+        import io
+        out = io.StringIO()
+        with patch.object(review_gate, "REPO", root), \
+                contextlib.redirect_stdout(out):
+            code = review_gate.main(argv)
+        return code, out.getvalue()
+
+    def test_reexecute_reports_a_command_that_cannot_be_started(self):
+        # Guard: reexecution_errors' OSError catch. Without it a recorded
+        # program missing from this machine crashes --reexecute.
+        with TemporaryDirectory() as tmp:
+            document = {"evidence": [
+                {"command": "no-such-program-r8 --x", "result": "x",
+                 "output": "x\n", "exit_code": 0}]}
+            errors = review_gate.reexecution_errors(document, Path(tmp))
+            self.assertEqual(1, len(errors), errors)
+            self.assertTrue(errors[0].startswith(
+                "review evidence 1 (no-such-program-r8 --x): re-run failed: "),
+                errors[0])
+
+    def test_a_command_runs_the_way_ci_gate_runs_its_gate(self):
+        # Guards: run_evidence uses the form's cwd, ci_gate's environment
+        # with PYTHONPATH at the reviewed tree's tests/, and the running
+        # interpreter for "python3", as ci_gate.run_gate does.
+        probe = ("python3 -c \"import os, sys; print(sys.executable); "
+                 "print(os.getcwd()); print(os.environ.get('PYTHONPATH')); "
+                 "print(os.environ.get('R8_LEAK'))\"")
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "sub").mkdir()
+            form = {tuple(shlex.split(probe)): ("sub", 60)}
+            with patch.object(review_gate, "evidence_allowlist",
+                              lambda: form), \
+                    patch.dict(os.environ, {"R8_LEAK": "leaked"}):
+                output, code = review_gate.run_evidence(probe, root)
+            self.assertEqual(0, code, output)
+            executable, cwd, pythonpath, leak = output.splitlines()
+            self.assertEqual(os.path.realpath(sys.executable),
+                             os.path.realpath(executable))
+            self.assertEqual(os.path.realpath(root / "sub"),
+                             os.path.realpath(cwd))
+            self.assertEqual(str(root / "tests"), pythonpath)
+            self.assertEqual("None", leak)
+
+    def test_a_command_is_stopped_at_its_forms_timeout(self):
+        # Guard: run_evidence passes the form's timeout, not a fixed ceiling.
+        command = "python3 -c \"import time; time.sleep(4)\""
+        form = {tuple(shlex.split(command)): (".", 1)}
+        with TemporaryDirectory() as tmp, \
+                patch.object(review_gate, "evidence_allowlist", lambda: form):
+            with self.assertRaises(OSError) as caught:
+                review_gate.run_evidence(command, Path(tmp))
+        self.assertEqual("it did not finish within 1 seconds",
+                         str(caught.exception))
+
+    def test_record_stores_a_window_that_holds_a_late_result(self):
+        # Guard: record_review stores evidence_excerpt(output, result), not
+        # the raw output and not a head cut that drops the matched text.
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            code, out = self._record(root, evidence=[
+                "%s -c \"print('x' * 9000); print('LATE-RESULT')\"|LATE-RESULT"
+                % PY])
+            self.assertEqual(0, code, out)
+            item = json.loads((root / review_gate.ATTESTATION).read_text(
+                encoding="utf-8"))["evidence"][0]
+            self.assertIn("LATE-RESULT", item["output"])
+            self.assertTrue(item["output"].startswith("[... "),
+                            item["output"][:60])
+            self.assertLess(len(item["output"]),
+                            review_gate.EVIDENCE_OUTPUT_LIMIT + 100)
+            self.assertEqual([], validate_attestation(json.loads(
+                (root / review_gate.ATTESTATION).read_text(encoding="utf-8")),
+                root))
+
+    def test_each_elision_marker_names_its_own_cut(self):
+        # Guards: the leading and the trailing marker in evidence_excerpt,
+        # each present exactly when that side was cut.
+        output = "x" * 10000 + "MATCH" + "y" * 10000
+        excerpt = review_gate.evidence_excerpt(output, "MATCH", limit=100)
+        self.assertEqual("[... 9953 characters elided ...]\n"
+                         + output[9953:10053]
+                         + "\n[... 9952 characters elided ...]", excerpt)
+        head = review_gate.evidence_excerpt("MATCH" + "y" * 500, "MATCH",
+                                            limit=100)
+        self.assertEqual("MATCH" + "y" * 95
+                         + "\n[... 405 characters elided ...]", head)
+        tail = review_gate.evidence_excerpt("x" * 500 + "MATCH", "MATCH",
+                                            limit=100)
+        self.assertEqual("[... 405 characters elided ...]\n"
+                         + "x" * 95 + "MATCH", tail)
+
+
+class ReviewEvidenceAllowlistTests(unittest.TestCase):
+    """Evidence may name only a check this repository defines.
+
+    Three rounds tried a denylist of command runners, and each round an
+    unlisted one restored the chain: ``sh -c 'python3 lint.py --os; echo
+    26/26 passed'`` was accepted by --record, the plain gate and
+    --reexecute, and after sh was listed the same chain came back behind
+    ``find -exec`` and a git ``!`` alias. Re-running such a command cannot
+    expose it, because echo really prints the result. These tests run with
+    the real allowlist, read from tools/ci_gate.py, and each fails when that
+    allowlist is reverted.
+    """
+
+    _args = ReviewRecordCarriesEvidenceTests._args
+    _record = ReviewRecordCarriesEvidenceTests._record
+    _item_errors = ReviewRecordBypassTests._item_errors
+    _gate_args = ReviewRecordBypassTests._gate_args
+
+    PROBE = "sh -c 'python3 lint.py --os; echo 26/26 passed'"
+
+    def setUp(self):
+        real = patch.object(review_gate, "evidence_allowlist",
+                            REAL_EVIDENCE_ALLOWLIST)
+        real.start()
+        self.addCleanup(real.stop)
+
+    def test_the_probe_and_every_other_wrapper_are_refused_at_record(self):
+        # Guard: evidence_form's allowlist lookup, reached through
+        # run_evidence at record time. Nothing may run: the last command
+        # would write ran.txt if it did.
+        wrappers = (
+            self.PROBE,
+            "find . -maxdepth 0 -exec sh -c "
+            "'python3 lint.py --os; echo 26/26 passed' ;",
+            "git -c 'alias.x=!echo 26/26 passed' x",
+            "echo 26/26 passed",
+            "python3 -c \"open('ran.txt', 'w'); print('26/26 passed')\"",
+        )
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for command in wrappers:
+                code, out = self._record(
+                    root, evidence=[command + "|26/26 passed"])
+                self.assertEqual(2, code, out)
+                self.assertIn("it is not a check this repository defines", out)
+                self.assertIn("tools/ci_gate.py", out)
+                self.assertIn("EVIDENCE_COMMANDS", out)
+                self.assertFalse((root / review_gate.ATTESTATION).exists(),
+                                 command)
+            self.assertFalse((root / "ran.txt").exists())
+
+    def test_extra_or_changed_arguments_are_refused_unless_in_the_form(self):
+        # Guard: the lookup is on the whole argv, not on the program.
+        for command in ("python3 lint.py --os --verbose",
+                        "python3 lint.py",
+                        "python3.11 lint.py --os",
+                        "python3 lint.py --os; echo 26/26 passed",
+                        "python3 tools/ci_gate.py --gate os-tree --gate compile",
+                        "python3 tools/ci_gate.py --gate no-such-gate",
+                        "python3 tools/ci_gate.py --manifest"):
+            with self.assertRaises(OSError, msg=command) as caught:
+                review_gate.evidence_form(command)
+            self.assertIn("not a check this repository defines",
+                          str(caught.exception))
+        # Arguments that are part of an allowlisted form are accepted, and
+        # quoting or spacing that splits to the same argv is the same form.
+        self.assertEqual(["python3", "tools/ci_gate.py", "--gate", "os-tree"],
+                         review_gate.evidence_form(
+                             "python3 tools/ci_gate.py --gate os-tree")[0])
+        self.assertEqual(["python3", "lint.py", "--os"],
+                         review_gate.evidence_form("'python3' lint.py   --os")[0])
+
+    def test_every_gate_argv_is_accepted_with_that_gates_cwd_and_timeout(self):
+        # Guards: evidence_allowlist reads GATES, keeps each gate's cwd and
+        # timeout, and adds EVIDENCE_COMMANDS; and that list is exactly the
+        # full sweep plus the sweep narrowed to one gate, so an entry added
+        # there (an echo, a shell) turns this red.
+        import ci_gate
+        for gate in ci_gate.GATES:
+            self.assertEqual(
+                (list(gate.argv), gate.cwd, gate.timeout),
+                review_gate.evidence_form(shlex.join(gate.argv)), gate.gate_id)
+        self.assertEqual(
+            {("python3", "tools/ci_gate.py")} |
+            {("python3", "tools/ci_gate.py", "--gate", gate.gate_id)
+             for gate in ci_gate.GATES},
+            set(ci_gate.EVIDENCE_COMMANDS))
+        for argv in ci_gate.EVIDENCE_COMMANDS:
+            self.assertEqual(
+                (list(argv), ".", review_gate.EVIDENCE_TIMEOUT_SECONDS),
+                review_gate.evidence_form(shlex.join(argv)))
+        self.assertIn(("python3", "-m", "unittest", "test_lint", "-v"),
+                      {tuple(g.argv) for g in ci_gate.GATES
+                       if g.cwd == "modules/regulated"})
+
+    def test_a_real_gate_command_is_accepted_by_record_gate_and_reexecute(self):
+        # The positive case, end to end, on a copy of this repository: the
+        # json-syntax gate's own argv is recorded, the plain gate accepts
+        # the record, and --reexecute re-runs it and matches.
+        import shutil
+        repo = Path(review_gate.REPO)
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp) / "tree"
+            shutil.copytree(repo, root, symlinks=True,
+                            ignore=shutil.ignore_patterns(
+                                "__pycache__", "products", "._*", ".DS_Store"))
+            code, out = self._record(root, evidence=[
+                "python3 lint.py --json-syntax|every tracked .json file "
+                "parses"])
+            self.assertEqual(0, code, out)
+            item = json.loads((root / review_gate.ATTESTATION).read_text(
+                encoding="utf-8"))["evidence"][0]
+            self.assertEqual("python3 lint.py --json-syntax", item["command"])
+            self.assertEqual(0, item["exit_code"])
+            code, out = self._gate_args(root, [])
+            self.assertEqual(0, code, out)
+            self.assertIn("exact tree accepted", out)
+            code, out = self._gate_args(root, ["--reexecute"])
+            self.assertEqual(0, code, out)
+            self.assertIn("every recorded command re-run here and matched",
+                          out)
+
+    def test_the_plain_gate_rejects_a_stored_command_record_would_refuse(self):
+        # Guard: the evidence_form call in _evidence_errors. A hand-written
+        # record is the only way such a command reaches the tree.
+        errors = self._item_errors(command=self.PROBE)
+        self.assertEqual(1, len(errors), errors)
+        self.assertTrue(errors[0].startswith(
+            "review evidence 1 (%s): --record would refuse to run it: it is "
+            "not a check this repository defines" % self.PROBE), errors[0])
+        self.assertEqual([], self._item_errors(command="python3 lint.py --os"))
+        errors = self._item_errors(command="python3 lint.py --os 'x")
+        self.assertEqual(1, len(errors), errors)
+        self.assertIn("--record would refuse to run it: it could not be "
+                      "parsed", errors[0])
+
+    def test_reexecute_refuses_a_stored_command_that_is_not_allowlisted(self):
+        # Guard: reexecution_errors reaches evidence_form through
+        # run_evidence, so --reexecute never runs the probe.
+        with TemporaryDirectory() as tmp:
+            document = {"evidence": [
+                {"command": self.PROBE, "result": "26/26 passed",
+                 "output": "26/26 passed\n", "exit_code": 0}]}
+            errors = review_gate.reexecution_errors(document, Path(tmp))
+        self.assertEqual(1, len(errors), errors)
+        self.assertTrue(errors[0].startswith(
+            "review evidence 1 (%s): re-run failed: it is not a check this "
+            "repository defines" % self.PROBE), errors[0])
 
 
 if __name__ == "__main__":
