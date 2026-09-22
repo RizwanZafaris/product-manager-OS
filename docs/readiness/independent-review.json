@@ -4,13 +4,13 @@
   "reviewer_kind": "independent-agent",
   "independent_implementation": true,
   "identity_assurance": "unauthenticated-local-claim",
-  "reviewed_at": "2026-09-22T17:51:18Z",
-  "reviewed_tree_sha256": "683d9f1f5c3ffcd2574a78725ce7bcd9c004975147227c807e2bc782ab3d5819",
-  "reviewer_transcript": "docs/readiness/review-transcripts/2026-09-22-r2-define-planning-set.md",
-  "reviewer_transcript_sha256": "eb7a7d6d123c7efcfe362b8bfb6f05fe991668ee3312bad36065d6f14746b97b",
+  "reviewed_at": "2026-09-22T18:59:41Z",
+  "reviewed_tree_sha256": "af5179c2d41f1318a3359d9f403b9a7a7cdd64f35133d0fb8e705065b4c4c4e7",
+  "reviewer_transcript": "docs/readiness/review-transcripts/2026-09-22-r4-prose-ceiling.md",
+  "reviewer_transcript_sha256": "ce5a557c80499309c2b44d5b07233fac363614ed635254c7d6b3d7e20c6f9015",
   "scope": [
-    "Change set 4a1115e..57ffe16, task R2: DEFINE gains the three planning questions, the compiler refuses a checklist row citing an unknown or later question, pmos repin no longer strands a product with a reopened question and refuses a product past the changed bank's gate before writing, and examples/journey-chain.md answers cite the document each came from with the quote checked against the cited section",
-    "Built by one agent and broken by another over three rounds; the last checker verified the repin fix on products built by the unpatched runtime and reproduced the old stranding on the same products. Reviewed in two rounds: r2-1 returned reject while withdrawing every issue in its own text, r2-2 with the verdict rule stated accepted with three named checks. Both replies are in the transcript"
+    "Change set 722ef90..f471cb9, task R4: tools/prose_metrics.py reads what CommonMark renders instead of measuring (0, 0) for shapes it did not model, and fails closed on anything it does not read; tools/docs_contract.py matches the three readiness pins and the README mirror against what a reader sees, so an HTML comment no longer satisfies them; two contradiction patterns gained a test each",
+    "Built by one agent and broken by another over five rounds. Each named guard was proved by reverting it and running the test class holding its test. On the rebase onto R2 the new ceiling failed a 279-word repin paragraph R2 had just merged, which is now a lead plus two lists with every claim kept. Reviewed in one round, r4-1, which accepted with five named checks and no issues"
   ],
   "evidence": [
     {
@@ -26,15 +26,9 @@
       "exit_code": 0
     },
     {
-      "command": "python3 tools/journey_chain.py --check",
-      "result": "journey chain matches a fresh run",
-      "output": "journey chain matches a fresh run\n",
-      "exit_code": 0
-    },
-    {
       "command": "python3 tools/ci_gate.py",
       "result": "release gates: 24/25 passed",
-      "output": "[PASS] compile                0.29s\n[PASS] root-tests             96.13s\n[PASS] harness-tests          2.47s\n[PASS] regulated-tests        0.10s\n[PASS] claude-adapter         0.04s\n[PASS] desktop-adapter        0.26s\n[PASS] workspace-lifecycle    0.88s\n[PASS] workspace-links        1.09s\n[PASS] workspace-contract     0.09s\n[PASS] journey-record         1.09s\n[PASS] journey-chain          0.72s\n[PASS] what-checks-freshness  0.07s\n[PASS] regulated-template     0.04s\n[PASS] regulated-example      0.05s\n[PASS] os-tree                4.54s\n[PASS] json-syntax            0.13s\n[PASS] graph-freshness        0.16s\n[PASS] skill-rubric-freshness 0.04s\n[PASS] phase-index-freshness  0.20s\n[PASS] manifest-contract      0.04s\n[PASS] frontmatter            0.21s\n[PASS] security-policy        1.30s\n[PASS] docs-contract          0.08s\n[PASS] skill-rubric           0.04s\n[FAIL] readiness-local        166.72s\n       exit 1\nevidence : 48 criteria\n  failing          : 1 criteria\n  not built        : 0 criteria\n  external blockers: EXT-AI, EXT-CI, EXT-INTEGRATIONS, EXT-REGULATORY, EXT-RELEASE, EXT-TEAM, EXT-USER\n  hard gate rubric_integrity_green                   GREEN\n  hard gate task_ledger_buildable                    GREEN\n  hard gate all_tasks_green                          GREEN\n  hard gate every_verifiable_criterion_passes        NOT GREEN\n  hard gate no_unbuilt_criteria                      GREEN\n  hard gate tree_clean_and_stable                    NOT GREEN\n  hard gate thirteen_use_cases_green                 GREEN\n  hard gate routes_executable                        GREEN\n  hard gate ci_parity_green                          GREEN\n  hard gate process_fault_suite_green                GREEN\n  hard gate links_green                              GREEN\n  hard gate security_green                           GREEN\n  hard gate local_review_record_complete             NOT GREEN\n  hard gate operator_docs_contract_green             GREEN\n\nCOMPLETE PM OS READINESS: NOT 100/100 \u2014 WORK REMAINS\n  measured on 57ffe165578f with Python 3.11.15\n  external evidence remains required; local tests cannot self-attest it\nrelease gates: 24/25 passed\n",
+      "output": "[PASS] compile                0.32s\n[PASS] root-tests             134.20s\n[PASS] harness-tests          3.13s\n[PASS] regulated-tests        0.13s\n[PASS] claude-adapter         0.04s\n[PASS] desktop-adapter        0.31s\n[PASS] workspace-lifecycle    1.03s\n[PASS] workspace-links        1.31s\n[PASS] workspace-contract     0.09s\n[PASS] journey-record         1.28s\n[PASS] journey-chain          0.78s\n[PASS] what-checks-freshness  0.08s\n[PASS] regulated-template     0.05s\n[PASS] regulated-example      0.06s\n[PASS] os-tree                4.87s\n[PASS] json-syntax            0.15s\n[PASS] graph-freshness        0.18s\n[PASS] skill-rubric-freshness 0.04s\n[PASS] phase-index-freshness  0.22s\n[PASS] manifest-contract      0.04s\n[PASS] frontmatter            0.22s\n[PASS] security-policy        1.48s\n[PASS] docs-contract          0.09s\n[PASS] skill-rubric           0.05s\n[FAIL] readiness-local        208.23s\n       exit 1\nevidence : 48 criteria\n  failing          : 1 criteria\n  not built        : 0 criteria\n  external blockers: EXT-AI, EXT-CI, EXT-INTEGRATIONS, EXT-REGULATORY, EXT-RELEASE, EXT-TEAM, EXT-USER\n  hard gate rubric_integrity_green                   GREEN\n  hard gate task_ledger_buildable                    GREEN\n  hard gate all_tasks_green                          GREEN\n  hard gate every_verifiable_criterion_passes        NOT GREEN\n  hard gate no_unbuilt_criteria                      GREEN\n  hard gate tree_clean_and_stable                    NOT GREEN\n  hard gate thirteen_use_cases_green                 GREEN\n  hard gate routes_executable                        GREEN\n  hard gate ci_parity_green                          GREEN\n  hard gate process_fault_suite_green                GREEN\n  hard gate links_green                              GREEN\n  hard gate security_green                           GREEN\n  hard gate local_review_record_complete             NOT GREEN\n  hard gate operator_docs_contract_green             GREEN\n\nCOMPLETE PM OS READINESS: NOT 100/100 \u2014 WORK REMAINS\n  measured on f471cb967d45 with Python 3.11.15\n  external evidence remains required; local tests cannot self-attest it\nrelease gates: 24/25 passed\n",
       "exit_code": 1
     }
   ],
@@ -44,7 +38,7 @@
       "severity": "P3",
       "status": "accepted",
       "summary": "no defect found",
-      "evidence": "Round r2-2 traced the repin fix to test_repin_keeps_a_reopened_question_reopened_and_asks_it_next, the record's quotes and slices to test_no_answer_is_a_slice_of_the_document_it_cites_and_every_quote_is, and the CHANGELOG's claims to the tests that pin them, and raised no issue. Round r2-1's reject withdrew each of its own issues; its one substantive worry, that the cursor recompute skips a reopened question, is contradicted by the checker's live run where that question is asked next"
+      "evidence": "The reviewer traced the lazy-continuation and hidden-comment counterexamples to their tests, checked the fail-closed path against test_what_it_does_not_read_is_measured_whole, confirmed the docstring now calls its tests examples rather than proof, and checked the rewritten repin paragraph for dropped claims. No mutation sweep was run this round, which is why no claim is made that every guard in these two files is load-bearing"
     }
   ],
   "verdict": "accepted"
