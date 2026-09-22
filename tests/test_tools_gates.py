@@ -113,17 +113,18 @@ class GateCountGateTests(unittest.TestCase):
         self.assertEqual([], self.findings(REPO))
 
     def test_a_document_naming_the_wrong_count_beside_ci_gate_is_reported(self):
+        total = len(ci_gate.GATES)
+        stated = "%d gates as of this tree"
         with tempfile.TemporaryDirectory() as tmp:
             root = copy_tree(tmp)
             readme = root / "README.md"
             text = readme.read_text(encoding="utf-8")
-            self.assertIn("25 gates as of this tree", text)
-            readme.write_text(text.replace("25 gates as of this tree",
-                                           "24 gates as of this tree", 1),
+            self.assertIn(stated % total, text)
+            readme.write_text(text.replace(stated % total, stated % (total - 1), 1),
                               encoding="utf-8")
             messages = [message for _path, _line, message in self.findings(root)]
-            self.assertIn("this says '24 gates' and tools/ci_gate.py defines 25",
-                          messages)
+            self.assertIn("this says '%d gates' and tools/ci_gate.py defines %d"
+                          % (total - 1, total), messages)
 
     def test_adding_a_gate_makes_every_document_that_states_the_old_count_fail(self):
         """The direction the defect actually travels: the file grows, and the
@@ -138,8 +139,65 @@ class GateCountGateTests(unittest.TestCase):
                 text.replace(marker, '    Gate("invented", ("python3", "-c", "pass")),\n' + marker, 1),
                 encoding="utf-8")
             paths = {path for path, _line, _message in self.findings(root)}
-            self.assertIn("README.md", paths)
-            self.assertIn("docs/FAQ.md", paths)
+            self.assertEqual({"README.md", "docs/FAQ.md", "docs/ARCHITECTURE.md"},
+                             paths)
+
+    def test_restoring_twenty_two_on_either_architecture_line_is_reported(self):
+        """docs/ARCHITECTURE.md said "twenty-two named gates" on the tree
+        diagram's ci_gate.py line, which never names tools/, and "Its
+        twenty-two gates" in prose, both while the file defined 25, and this
+        check passed: it read digits only, and only in README.md and
+        docs/FAQ.md. Putting either phrase back has to fail, naming its line."""
+        total = len(ci_gate.GATES)
+        # The words after each count, which do not move when the count does.
+        for after, stated in ((" named gates in one pass", "twenty-two named gates"),
+                              (" gates are the four checks above", "twenty-two gates")):
+            with self.subTest(stated=stated), tempfile.TemporaryDirectory() as tmp:
+                root = copy_tree(tmp)
+                document = root / "docs" / "ARCHITECTURE.md"
+                lines = document.read_text(encoding="utf-8").split("\n")
+                hits = [number for number, line in enumerate(lines, 1)
+                        if after in line]
+                self.assertEqual(1, len(hits), after)
+                line = lines[hits[0] - 1]
+                end = line.index(after)
+                start = line.rindex(" ", 0, end) + 1
+                lines[hits[0] - 1] = line[:start] + "twenty-two" + line[end:]
+                document.write_text("\n".join(lines), encoding="utf-8")
+                self.assertEqual(
+                    [("docs/ARCHITECTURE.md", hits[0],
+                      "this says %r and tools/ci_gate.py defines %d"
+                      % (stated, total))],
+                    self.findings(root))
+
+    def test_a_count_in_words_is_read_at_its_value(self):
+        """"Twenty Six" is twenty-six, not six and not a miss, and "seventeen"
+        is not "seven". A misread count fails a document that is right, or
+        passes one that is wrong whenever the misreading happens to equal the
+        total. A count opening a sentence is read like any other, and a line
+        that names neither form of the file is not read."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "fixture"
+            (root / "tools").mkdir(parents=True)
+            (root / "tools" / "ci_gate.py").write_text(
+                "GATES = (%s)\n" % ", ".join(["None"] * 26), encoding="utf-8")
+            (root / "README.md").write_text(
+                "`ci_gate.py` runs Twenty Six gates.\n"
+                "`ci_gate.py` runs twenty-six named gates.\n"
+                "`ci_gate.py` runs seventeen gates.\n"
+                "`tools/ci_gate.py` runs 26 release gates.\n"
+                "`tools/ci_gate.py` runs sixteen gates.\n"
+                "The suite runs nine gates.\n"
+                "See `ci_gate.py`. Twenty-five gates run there.\n",
+                encoding="utf-8")
+            self.assertEqual(
+                [("README.md", 3, "this says 'seventeen gates' and "
+                                  "tools/ci_gate.py defines 26"),
+                 ("README.md", 5, "this says 'sixteen gates' and "
+                                  "tools/ci_gate.py defines 26"),
+                 ("README.md", 7, "this says 'Twenty-five gates' and "
+                                  "tools/ci_gate.py defines 26")],
+                self.findings(root))
 
     def test_a_tree_without_the_gate_file_makes_no_claim(self):
         """A fixture root is not a defect. The check reports nothing rather
@@ -2042,6 +2100,269 @@ class TemplateRubricGateTests(unittest.TestCase):
             with unittest.mock.patch.object(template_rubric, "REPO", root):
                 report = template_rubric.score_template(template)
         self.assertEqual(0.0, report["marks"]["worked_example"])
+
+
+class TemplateBackpointerGateTests(unittest.TestCase):
+    """tools/template_rubric.py --backpointers: the templates with no verified
+    filled-example link are exactly the committed exception list.
+
+    Four seeds, one for each weaker check this gate replaces. A floor on the
+    count passes a new template with no pointer, because the count it floors
+    does not move. A grep for "Filled example:" passes a line that links
+    nothing. A check that the link resolves passes a link to a real example of
+    another template. And with no gate at all, deleting a pointer fails
+    nothing.
+    """
+
+    EXCUSED = "templates/definition/assumptions-register.md"
+
+    def copy(self, tmp):
+        """templates/ and examples/, which is all this gate reads."""
+        root = Path(tmp).resolve() / "repo"
+        for name in ("templates", "examples"):
+            shutil.copytree(REPO / name, root / name,
+                            ignore=shutil.ignore_patterns("._*"))
+        return root
+
+    def gate(self, root, exceptions=None):
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(unittest.mock.patch.object(
+                template_rubric, "REPO", root))
+            stack.enter_context(unittest.mock.patch.object(
+                template_rubric, "TEMPLATES", root / "templates"))
+            if exceptions is not None:
+                stack.enter_context(unittest.mock.patch.object(
+                    template_rubric, "BACKPOINTER_EXCEPTIONS", exceptions))
+            return quietly(template_rubric.main, ["--backpointers"])
+
+    @staticmethod
+    def block(output, heading):
+        """The lines under the paragraph that opens with `heading`, up to the
+        next blank line."""
+        return output.split("\n" + heading, 1)[1].split("\n\n", 1)[0] \
+            .splitlines()[1:]
+
+    def unpointed(self, output):
+        """Each template the gate lists as having no verified back-pointer,
+        with what it says of it."""
+        found = {}
+        for line in self.block(output, "without a verified back-pointer."):
+            if line.startswith("  templates/"):
+                path, state = line[2:].split("  ", 1)
+                found[path] = state
+        return found
+
+    def unexcused(self, *paths):
+        """The listing expected when `paths` join the excused template."""
+        expected = {self.EXCUSED: "on the exception list"}
+        expected.update((path, "NOT ON THE EXCEPTION LIST") for path in paths)
+        return expected
+
+    @staticmethod
+    def pointed(output):
+        line = next(line for line in output.splitlines()
+                    if "with a verified back-pointer    :" in line)
+        return int(line.rsplit(":", 1)[1])
+
+    def drop_pointers(self, template, replacement=()):
+        lines = template.read_text(encoding="utf-8").split("\n")
+        pointers = [number for number, line in enumerate(lines)
+                    if line.startswith("Filled example:")]
+        self.assertTrue(pointers, template.name)
+        lines[pointers[0]:pointers[-1] + 1] = list(replacement)
+        template.write_text("\n".join(lines), encoding="utf-8")
+
+    def test_the_tree_as_it_stands_is_exactly_the_exception_list(self):
+        code, output = quietly(template_rubric.main, ["--backpointers"])
+        self.assertEqual(0, code, output)
+        self.assertEqual(self.unexcused(), self.unpointed(output))
+
+    def test_a_new_template_with_no_pointer_fails_naming_it(self):
+        """The seed a floor cannot catch: the number of templates with a
+        pointer is the same before and after, so a floor at today's figure
+        passes the tree this gate fails."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.copy(tmp)
+            _code, before = self.gate(root)
+            (root / "templates" / "definition" / "brand-new.md").write_text(
+                "# Brand New\n\n## One\n", encoding="utf-8")
+            code, after = self.gate(root)
+        self.assertEqual(1, code, after)
+        self.assertEqual(self.unexcused("templates/definition/brand-new.md"),
+                         self.unpointed(after))
+        self.assertEqual(self.pointed(before), self.pointed(after))
+
+    def test_a_bare_filled_example_line_earns_nothing(self):
+        """The seed a grep cannot catch: the words are on the page and no
+        link is, so `grep -rL "Filled example:"` would not list the file."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.copy(tmp)
+            vision = root / "templates" / "planning" / "vision.md"
+            self.drop_pointers(vision, ["Filled example: none yet"])
+            self.assertIn("\nFilled example: none yet\n",
+                          vision.read_text(encoding="utf-8"))
+            code, output = self.gate(root)
+        self.assertEqual(1, code, output)
+        self.assertEqual(self.unexcused("templates/planning/vision.md"),
+                         self.unpointed(output))
+
+    def test_a_link_to_an_example_that_does_not_name_it_back_fails(self):
+        """The seed worked_example_link() was written for: the link resolves
+        to a real file under examples/, which fills a different template and
+        so never names this one back."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.copy(tmp)
+            other = root / "examples" / "ledgerline-red-team-review.md"
+            opening = "\n".join(other.read_text(encoding="utf-8")
+                                .splitlines()[:5])
+            self.assertNotIn("templates/ai/guardrails.md", opening)
+            guardrails = root / "templates" / "ai" / "guardrails.md"
+            text = guardrails.read_text(encoding="utf-8")
+            old = "(../../examples/ledgerline-guardrails.md)"
+            self.assertIn(old, text)
+            guardrails.write_text(text.replace(
+                old, "(../../examples/ledgerline-red-team-review.md)"),
+                encoding="utf-8")
+            code, output = self.gate(root)
+        self.assertEqual(1, code, output)
+        self.assertEqual(self.unexcused("templates/ai/guardrails.md"),
+                         self.unpointed(output))
+
+    def test_deleting_one_of_the_added_pointers_fails_naming_its_template(self):
+        """templates/execution/state.md: the phase index skips it as a journal
+        rather than an artifact, so a pointer list built from the phase index
+        would not have given it one."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.copy(tmp)
+            self.drop_pointers(root / "templates" / "execution" / "state.md")
+            code, output = self.gate(root)
+        self.assertEqual(1, code, output)
+        self.assertEqual(self.unexcused("templates/execution/state.md"),
+                         self.unpointed(output))
+
+    def test_an_entry_for_a_template_that_has_a_pointer_fails(self):
+        exceptions = dict(template_rubric.BACKPOINTER_EXCEPTIONS)
+        exceptions["templates/planning/vision.md"] = "It has none."
+        code, output = self.gate(REPO, exceptions)
+        self.assertEqual(1, code, output)
+        self.assertIn("  templates/planning/vision.md has a verified "
+                      "back-pointer to examples/", output)
+
+    def test_an_entry_for_a_file_that_is_not_a_template_fails(self):
+        exceptions = dict(template_rubric.BACKPOINTER_EXCEPTIONS)
+        exceptions["templates/definition/no-such-template.md"] = "Nothing does."
+        code, output = self.gate(REPO, exceptions)
+        self.assertEqual(1, code, output)
+        self.assertIn("  templates/definition/no-such-template.md is not a "
+                      "template in this tree", output)
+
+    def test_an_entry_fails_once_an_example_names_its_template_back(self):
+        """The one reason an entry can give is that no example names its
+        template back in its first five lines, and that stops being true the
+        day one does, whether or not the template links it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.copy(tmp)
+            (root / "examples" / "assumptions-register-filled.md").write_text(
+                "# Assumptions Register: Filled\n\nFills [%s](../%s). "
+                "Invented.\n" % (self.EXCUSED, self.EXCUSED), encoding="utf-8")
+            code, output = self.gate(root)
+        self.assertEqual(1, code, output)
+        self.assertIn("  %s is named back by "
+                      "examples/assumptions-register-filled.md, so it has a "
+                      "filled example to link" % self.EXCUSED, output)
+
+    def test_every_entry_needs_a_one_line_reason(self):
+        for reason in ("", "   ", "One line.\nAnd a second."):
+            with self.subTest(reason=reason):
+                code, output = self.gate(REPO, {self.EXCUSED: reason})
+                self.assertEqual(1, code, output)
+                self.assertIn("  %s has no one-line reason" % self.EXCUSED,
+                              output)
+
+    def test_every_template_several_examples_name_back_is_listed_with_all(self):
+        """Which of several examples a template links is a reviewer's call the
+        gate cannot make, so it lists each such template with every candidate
+        and marks the linked ones, on a passing run too. The expectation is
+        read from examples/ here, through the five opening lines every example
+        declares its template in, so a listing that dropped a candidate or
+        read another window disagrees with it."""
+        code, output = quietly(template_rubric.main, ["--backpointers"])
+        self.assertEqual(0, code, output)
+        listed, current = {}, None
+        for line in self.block(output, "named back by more than one file"):
+            if line.startswith("  templates/"):
+                current = listed.setdefault(line.strip(), {})
+            else:
+                current[line[6:]] = line[4] == "*"
+        openings = {
+            "examples/" + path.relative_to(REPO / "examples").as_posix():
+                "\n".join(path.read_text(encoding="utf-8").splitlines()[:5])
+            for path in sorted((REPO / "examples").rglob("*.md"))}
+        expected = {}
+        for template in sorted((REPO / "templates").rglob("*.md")):
+            rel = template.relative_to(REPO).as_posix()
+            named = [name for name, opening in openings.items()
+                     if rel in opening]
+            if template.name == "README.md" or len(named) < 2:
+                continue
+            linked = {line.split("(../../", 1)[1].split(")", 1)[0]
+                      for line in template.read_text(encoding="utf-8").splitlines()
+                      if line.startswith("Filled example: [")}
+            expected[rel] = {name: name in linked for name in named}
+        self.assertTrue(expected)
+        self.assertEqual(expected, listed)
+
+    def test_a_name_back_counts_on_the_fifth_line_and_not_the_sixth(self):
+        """The window is what "names it back" means, pinned from both sides
+        here, because every example in the tree names its template on its
+        third line and so cannot tell a three-line window from an eight-line
+        one."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.copy(tmp)
+            for line in (5, 6):
+                rel = "templates/definition/boundary-%d.md" % line
+                (root / rel).write_text(
+                    "# Boundary\n\nFilled example: [boundary]"
+                    "(../../examples/boundary-%d.md)\n" % line, encoding="utf-8")
+                opening = (["# Boundary %d" % line] + ["filler"] * (line - 2)
+                           + ["Fills %s." % rel])
+                (root / "examples" / ("boundary-%d.md" % line)).write_text(
+                    "\n".join(opening) + "\n", encoding="utf-8")
+            code, output = self.gate(root)
+        self.assertEqual(1, code, output)
+        self.assertEqual(self.unexcused("templates/definition/boundary-6.md"),
+                         self.unpointed(output))
+
+    def test_every_candidate_listed_is_one_a_link_would_verify(self):
+        """The listing and the link check read the same opening lines. If they
+        differed, a file offered as a candidate could be refused as a link."""
+        offered = 0
+        for row in template_rubric.backpointer_rows():
+            template = REPO / row["path"]
+            up = "../" * (len(Path(row["path"]).parts) - 1)
+            for candidate in row["candidates"]:
+                offered += 1
+                self.assertEqual(
+                    [(REPO / candidate).resolve()],
+                    template_rubric.linked_examples(
+                        template, "[filled](%s%s)" % (up, candidate)),
+                    "%s offers %s" % (row["path"], candidate))
+        self.assertGreater(offered, 0)
+
+    def test_a_file_under_examples_that_is_not_text_is_skipped(self):
+        """Every file under examples/ is read for candidates, not only the
+        ones a template links, so an image or a folder there must not stop
+        the gate reading the rest."""
+        for kind in ("an image", "a folder"):
+            with self.subTest(kind=kind), tempfile.TemporaryDirectory() as tmp:
+                root = self.copy(tmp)
+                if kind == "an image":
+                    (root / "examples" / "diagram.png").write_bytes(
+                        b"\x89PNG\r\n\x1a\n\xff\xfe")
+                else:
+                    (root / "examples" / "images").mkdir()
+                code, output = self.gate(root)
+                self.assertEqual(0, code, output)
 
 
 class PmWorkingSetGateTests(unittest.TestCase):

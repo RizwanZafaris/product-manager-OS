@@ -606,6 +606,15 @@ class GeneratedEvidenceFreshnessTests(unittest.TestCase):
         argv = {tuple(gate.argv) for gate in ci_gate.GATES}
         self.assertIn(("python3", "tools/what_checks.py", "--check"), argv)
 
+    def test_the_template_backpointer_check_is_a_release_gate(self):
+        # A template's filled-example link is verified only when something
+        # runs this mode, and no workflow step or other gate runs
+        # tools/template_rubric.py. Without the gate, a pointer deleted or
+        # repointed at another template's example fails nothing.
+        argv = {tuple(gate.argv) for gate in ci_gate.GATES}
+        self.assertIn(("python3", "tools/template_rubric.py", "--backpointers"),
+                      argv)
+
 
 class BuildArtifactIgnoreTests(unittest.TestCase):
     """A build artifact left in the tree must not become repository content."""

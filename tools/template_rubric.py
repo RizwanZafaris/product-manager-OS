@@ -4,6 +4,7 @@
     python3 tools/template_rubric.py
     python3 tools/template_rubric.py --json docs/readiness/template-rubric.json
     python3 tools/template_rubric.py --min 70          # gate mode: fail below
+    python3 tools/template_rubric.py --backpointers    # gate mode: see backpointers()
 
 Standard library only, like every other script in this tree.
 
@@ -122,10 +123,26 @@ ILLUSTRATIVE_RE = re.compile(
 # credit is for a real, checkable, completed exercise, not for a link that
 # merely looks like one.
 EXAMPLE_LINK_RE = re.compile(r"(?<!!)\[[^\]]*\]\(([^)]+)\)")
+# How many opening lines of an examples/ file are searched for the template's
+# path. One constant, because two readers depend on agreeing about it:
+# linked_examples() checks a link against this window, and backpointer_rows()
+# lists every file a link could point at by the same window. A wider listing
+# would offer files the check then refuses; a narrower one would hide files it
+# accepts.
+NAMES_BACK_WITHIN = 5
 
 
-def worked_example_link(path, text):
-    """True when `text` links to an examples/ file that names this template.
+def _opening(path):
+    """A file's first NAMES_BACK_WITHIN lines, or None when it is unreadable."""
+    try:
+        head = path.read_text(encoding="utf-8")
+    except (UnicodeDecodeError, OSError):
+        return None
+    return "\n".join(head.splitlines()[:NAMES_BACK_WITHIN])
+
+
+def linked_examples(path, text):
+    """Every examples/ file `text` links to whose opening names this template.
 
     `path` must already be the resolved, absolute path score_template() reads,
     so a relative link can be resolved against its directory the way a reader
@@ -134,8 +151,9 @@ def worked_example_link(path, text):
     try:
         repo_relative = path.relative_to(REPO).as_posix()
     except ValueError:
-        return False
+        return []
     examples_root = (REPO / "examples").resolve()
+    found = []
     for match in EXAMPLE_LINK_RE.finditer(text):
         target = match.group(1).strip().strip("<>").split("#", 1)[0].strip()
         if not target or "://" in target:
@@ -147,14 +165,15 @@ def worked_example_link(path, text):
             continue
         if not candidate.is_file():
             continue
-        try:
-            head = candidate.read_text(encoding="utf-8")
-        except (UnicodeDecodeError, OSError):
-            continue
-        first_five = "\n".join(head.splitlines()[:5])
-        if repo_relative in first_five:
-            return True
-    return False
+        opening = _opening(candidate)
+        if opening is not None and repo_relative in opening:
+            found.append(candidate)
+    return found
+
+
+def worked_example_link(path, text):
+    """True when `text` links to an examples/ file that names this template."""
+    return bool(linked_examples(path, text))
 
 
 EXIT_GATE_RE = re.compile(r"^##\s*Exit gate", re.M | re.I)
@@ -183,6 +202,25 @@ EXEMPT = {
         "per-section guidance would reward breaking one set of rules into "
         "seven partial restatements, which is how a protocol stops being "
         "readable as one.",
+}
+
+# Templates allowed to have no verified back-pointer, each with a one-line
+# reason. --backpointers fails unless the templates with none are exactly these
+# rather than holding a floor on how many have one: a floor of 107 still passes
+# when a 109th template lands with no pointer, because the count it floors does
+# not move, and this list turns that into a failure naming the file. The
+# equality runs the other way too, so an entry fails once its template links a
+# filled example. It also fails once any examples/ file names the template
+# back, because the one reason an entry may give is that there is nothing to
+# link. Scoring is a separate question: EXEMPT above takes
+# templates/execution/state.md out of the statistics, and that template still
+# needs its pointer here.
+BACKPOINTER_EXCEPTIONS = {
+    "templates/definition/assumptions-register.md":
+        "No file under examples/ names it back in its first five lines, which "
+        "is what this gate counts as a filled example: other examples mention it "
+        "and examples/example-brd.md carries a labelled excerpt of it inside a "
+        "BRD, but none is a filled copy of it.",
 }
 
 WEIGHTS = {
@@ -318,6 +356,123 @@ def _wrap(text, width):
     return out
 
 
+def template_paths():
+    """Every file this module reads as a template: templates/**/*.md but the
+    catalog. The scoring run and the back-pointer gate both call this, so the
+    two cannot disagree about which files are templates."""
+    return sorted(p for p in TEMPLATES.rglob("*.md") if p.name != "README.md")
+
+
+def backpointer_rows():
+    """One row per template: the examples it links, and every one it could.
+
+    "linked" is what linked_examples() verifies, so a template whose list is
+    empty has no verified back-pointer. "candidates" is every file under
+    examples/ whose opening names the template, which is every file a link
+    could point at and be verified. Two or more candidates make the link a
+    choice this module can check and cannot judge: any of them passes, and
+    whether the linked one is the right example is a reviewer's call.
+    """
+    examples_root = (REPO / "examples").resolve()
+    # Everything under examples/, not only .md files, because a link to any
+    # file there is verified the same way. What cannot be read as text, a
+    # directory included, has no opening and drops out.
+    openings = []
+    for candidate in sorted(examples_root.rglob("*")):
+        opening = _opening(candidate)
+        if opening is not None:
+            openings.append((candidate, opening))
+
+    def shown(example):
+        return "examples/" + example.relative_to(examples_root).as_posix()
+
+    rows = []
+    for path in template_paths():
+        rel = path.relative_to(REPO).as_posix()
+        linked = linked_examples(path, path.read_text(encoding="utf-8"))
+        rows.append({
+            "path": rel,
+            "linked": [shown(example) for example in linked],
+            "candidates": [shown(example) for example, opening in openings
+                           if rel in opening],
+        })
+    return rows
+
+
+def backpointers():
+    """Gate mode: exit 1 unless the unpointed templates are exactly the list.
+
+    A template is unpointed when linked_examples() verifies none of its links.
+    The unpointed set has to equal BACKPOINTER_EXCEPTIONS, and every entry has
+    to give a one-line reason and still have no filled example to link. Every
+    template that more than one example names back is printed with all of
+    them, on a passing run as well, because passing says nothing about whether
+    the linked example is the right one.
+    """
+    rows = backpointer_rows()
+    by_path = {row["path"]: row for row in rows}
+    unpointed = [row for row in rows if not row["linked"]]
+    unexcused = [row for row in unpointed
+                 if row["path"] not in BACKPOINTER_EXCEPTIONS]
+    stale = []
+    for rel, reason in sorted(BACKPOINTER_EXCEPTIONS.items()):
+        row = by_path.get(rel)
+        if row is None:
+            stale.append("%s is not a template in this tree" % rel)
+        elif row["linked"]:
+            stale.append("%s has a verified back-pointer to %s"
+                         % (rel, ", ".join(row["linked"])))
+        elif row["candidates"]:
+            stale.append("%s is named back by %s, so it has a filled example "
+                         "to link" % (rel, ", ".join(row["candidates"])))
+        if len(reason.strip().splitlines()) != 1:
+            stale.append("%s has no one-line reason" % rel)
+    choices = [row for row in rows if len(row["candidates"]) > 1]
+
+    print("template back-pointers, verified the way worked_example_link() "
+          "verifies one")
+    print("  templates read                  : %d" % len(rows))
+    print("  with a verified back-pointer    : %d" % (len(rows) - len(unpointed)))
+    print("  without one                     : %d" % len(unpointed))
+    print("  named back by more than one file: %d (%d of them link none)"
+          % (len(choices), sum(1 for row in choices if not row["linked"])))
+    print("")
+    print("named back by more than one file under examples/. Any of them "
+          "passes this gate, so which one a template should link is a "
+          "reviewer's call, not this check's (* marks a linked file):")
+    for row in choices:
+        print("  " + row["path"])
+        for candidate in row["candidates"]:
+            print("    %s %s" % ("*" if candidate in row["linked"] else " ",
+                                 candidate))
+    print("")
+    print("without a verified back-pointer. Each needs a link to a file under "
+          "examples/ whose first %d lines name it, or an entry on the "
+          "exception list with a one-line reason:" % NAMES_BACK_WITHIN)
+    for row in unpointed:
+        reason = BACKPOINTER_EXCEPTIONS.get(row["path"])
+        print("  %s  %s" % (row["path"], "NOT ON THE EXCEPTION LIST"
+                            if reason is None else "on the exception list"))
+        for line in _wrap(reason or "", 66):
+            print("      " + line)
+        for candidate in row["candidates"]:
+            print("      could link " + candidate)
+    if stale:
+        print("")
+        print("exception list entries that no longer hold:")
+        for problem in stale:
+            print("  " + problem)
+    print("")
+    if unexcused or stale:
+        print("back-pointer gate failed: %d template(s) without a verified "
+              "back-pointer are not on the exception list, and %d exception "
+              "list problem(s)." % (len(unexcused), len(stale)))
+        return 1
+    print("the %d template(s) without a verified back-pointer are exactly the "
+          "exception list." % len(unpointed))
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--json", metavar="PATH",
@@ -330,7 +485,14 @@ def main(argv=None):
                         help="how many of the highest hidden-guidance share "
                              "to print (default 10)")
     parser.add_argument("--path", help="score one file and stop")
+    parser.add_argument("--backpointers", action="store_true",
+                        help="exit 1 unless the templates with no verified "
+                             "filled-example link are exactly "
+                             "BACKPOINTER_EXCEPTIONS")
     args = parser.parse_args(argv)
+
+    if args.backpointers:
+        return backpointers()
 
     if args.path:
         report = score_template(Path(args.path))
@@ -338,10 +500,8 @@ def main(argv=None):
         return 0
 
     reference = score_template(REFERENCE)
-    everything = sorted(
-        (score_template(p) for p in sorted(TEMPLATES.rglob("*.md"))
-         if p.name != "README.md"),
-        key=lambda r: r["score"])
+    everything = sorted((score_template(p) for p in template_paths()),
+                        key=lambda r: r["score"])
     # Exempt files keep their score and leave the statistics. Dropping them
     # silently would let the median improve by declaring the weak files out of
     # scope, which is the failure this list is most likely to enable.
