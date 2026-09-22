@@ -42,7 +42,9 @@
   ],
   "test_pmos_conductor": [
    "ConductorTest",
-   "QuotationTest"
+   "QuotationTest",
+   "PhaseStatusDocTest",
+   "RefusalTableTest"
   ],
   "test_pmos_domain": [
    "DomainTest"
@@ -172,7 +174,10 @@
    "GateCountGateTests",
    "GraphFreshnessGateTests",
    "PmWorkingSetGateTests",
+   "ProseMetricsTests",
    "ReadinessCategoryExitTests",
+   "ReadinessChangelogTests",
+   "ReadinessClaimGateTests",
    "ReadinessProbeCiWiringTests",
    "ReadinessProbeMutationAnchorTests",
    "TemplateInventoryGateTests",

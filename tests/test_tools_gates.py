@@ -44,13 +44,16 @@ for _entry in (str(REPO), str(TOOLS)):
 import ci_gate  # noqa: E402
 import frontmatter_init  # noqa: E402
 import pm_working_set  # noqa: E402
+import prose_metrics  # noqa: E402
 import readiness  # noqa: E402
 import readiness_probe  # noqa: E402
 import template_rubric  # noqa: E402
 from tools.docs_contract import (check as check_docs,  # noqa: E402
                                  _example_families,
                                  check_examples_inventory, check_gate_count,
-                                 check_inventory)
+                                 check_inventory, check_readiness_claims,
+                                 main as docs_contract_main, README_READINESS,
+                                 READINESS_CLAIMS)
 from tools.graph import check_unique_ids, node_id  # noqa: E402
 
 
@@ -147,6 +150,790 @@ class GateCountGateTests(unittest.TestCase):
             (root / "README.md").write_text(
                 "See `tools/ci_gate.py`, which runs 99 gates.\n", encoding="utf-8")
             self.assertEqual([], self.findings(root))
+
+
+class ReadinessClaimGateTests(unittest.TestCase):
+    """What a development-ready report leaves uncertified, which nothing checked.
+
+    The quickstart's readiness section used to list what readiness requires
+    and say nothing of what it does not, so a reader could take
+    development_ready to mean the answers were evidenced. Three statements now
+    say otherwise. Each seed below removes, rewords, moves, hides or
+    contradicts them and runs the gate the way CI does, and a few check that
+    what should pass does. The hedged-sentence seed matters most: it keeps the
+    keywords and drops only the clause that makes the sentence a limit, and a
+    rule that passed it would be a spelling test.
+    """
+
+    SOURCE = ("Whether an answer cites a workspace document, and whether a quotation it\n"
+              "supplies was found there, is reported, as `quote_verified`,\n"
+              "`source_verified` and `supplied_unverified` in `pmos status --json` at the\n"
+              "top level and again per phase under `completed`, and under `evidence` in the\n"
+              "handoff package and in `handoff/CONTEXT.md`, and is a condition of nothing.")
+    EVIDENCED = ("It does not certify that every answer is evidenced:\n"
+                 "a product whose every answer is `supplied_unverified` can be\n"
+                 "development-ready.")
+    ACTOR = ("It does not certify that a typed actor ID is\n"
+             "authenticated: `pmos gate` records the ID it was given and stamps the\n"
+             "approval a local attestation.")
+
+    def gate(self, root):
+        """Run tools/docs_contract.py --strict against root, as ci_gate does."""
+        return quietly(docs_contract_main, ["--root", str(root), "--strict"])
+
+    def seeded(self, tmp, old, new):
+        root = copy_tree(tmp)
+        path = root / "docs" / "RUNTIME-QUICKSTART.md"
+        text = path.read_text(encoding="utf-8")
+        self.assertEqual(1, text.count(old), "the seed no longer matches the quickstart")
+        path.write_text(text.replace(old, new, 1), encoding="utf-8")
+        return root
+
+    def assertNames(self, output, claim):
+        self.assertIn("docs/RUNTIME-QUICKSTART.md", output)
+        self.assertIn("no longer says that " + claim, output)
+
+    def test_every_pin_ends_with_its_own_full_stop(self):
+        """_as_sentence checks where a pin starts and not where it ends,
+        which is sound only while each pin closes its own sentence."""
+        for sentence in [s for _, s in READINESS_CLAIMS] + [README_READINESS]:
+            with self.subTest(sentence=sentence[:30]):
+                self.assertTrue(sentence.endswith("."))
+
+    def test_the_tree_as_it_stands_makes_all_three_statements(self):
+        self.assertEqual([], check_readiness_claims(REPO))
+
+    def test_deleting_the_condition_of_nothing_sentence_fails_the_gate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            code, output = self.gate(self.seeded(tmp, self.SOURCE, ""))
+        self.assertEqual(1, code)
+        self.assertNames(output, "source verification is reported and is a "
+                                 "condition of nothing")
+
+    def test_deleting_the_evidence_non_certification_fails_the_gate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            code, output = self.gate(self.seeded(tmp, self.EVIDENCED, ""))
+        self.assertEqual(1, code)
+        self.assertNames(output, "a development-ready report does not certify "
+                                 "that every answer is evidenced")
+
+    def test_deleting_the_actor_non_certification_fails_the_gate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            code, output = self.gate(self.seeded(tmp, self.ACTOR, ""))
+        self.assertEqual(1, code)
+        self.assertNames(output, "a development-ready report does not certify "
+                                 "that a typed actor id is authenticated")
+
+    def test_the_hedged_sentence_that_keeps_the_keywords_still_fails(self):
+        """Reported, and in the right places, and a condition of nothing no
+        longer: the weaker sentence has to fail, or the rule checks spelling."""
+        hedged = ("Source verification is reported in the handoff package and in "
+                  "`pmos status --json`.")
+        with tempfile.TemporaryDirectory() as tmp:
+            code, output = self.gate(self.seeded(tmp, self.SOURCE, hedged))
+        self.assertEqual(1, code)
+        self.assertNames(output, "source verification is reported and is a "
+                                 "condition of nothing")
+        self.assertNotIn("every answer is evidenced", output)
+
+    def test_moving_the_statements_out_of_the_handoff_section_fails(self):
+        """The section is the scope: the same words under another heading are
+        not where a reader of the readiness conditions looks."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.seeded(tmp, "## Development handoff\n", "## Handoff notes\n")
+            code, output = self.gate(root)
+        self.assertEqual(1, code)
+        self.assertEqual(3, output.count("readiness-claim"))
+
+    def test_an_inverted_condition_of_nothing_sentence_fails(self):
+        """Every keyword the earlier rule asked for, and the claim reversed."""
+        inverted = ("Whether an answer cites a workspace document is reported, and it is "
+                    "no longer a condition of nothing: readiness now refuses a product "
+                    "with any supplied_unverified answer.")
+        with tempfile.TemporaryDirectory() as tmp:
+            code, output = self.gate(self.seeded(tmp, self.SOURCE, inverted))
+        self.assertEqual(1, code)
+        self.assertNames(output, "source verification is reported and is a "
+                                 "condition of nothing")
+        self.assertIn("makes source verification a condition of something", output)
+
+    def test_an_affirmed_every_answer_is_evidenced_fails(self):
+        inverted = "It does not certify anything it cannot see, and every answer is evidenced."
+        with tempfile.TemporaryDirectory() as tmp:
+            code, output = self.gate(self.seeded(tmp, self.EVIDENCED, inverted))
+        self.assertEqual(1, code)
+        self.assertNames(output, "a development-ready report does not certify "
+                                 "that every answer is evidenced")
+        self.assertIn("says every answer is evidenced", output)
+
+    def test_a_contradiction_added_beside_the_pinned_sentences_fails(self):
+        """The three sentences intact and a fourth that takes them back."""
+        added = self.ACTOR + " In practice every gate actor is authenticated."
+        with tempfile.TemporaryDirectory() as tmp:
+            code, output = self.gate(self.seeded(tmp, self.ACTOR, added))
+        self.assertEqual(1, code)
+        self.assertNotIn("no longer says", output)
+        self.assertIn("says an actor id is authenticated", output)
+
+    def test_a_source_verification_floor_added_beside_them_fails(self):
+        """The runtime has no min_source_verified floor, and only the pattern
+        naming one catches this sentence."""
+        added = self.ACTOR + " The runtime has a min_source_verified floor of one answer."
+        with tempfile.TemporaryDirectory() as tmp:
+            code, output = self.gate(self.seeded(tmp, self.ACTOR, added))
+        self.assertEqual(1, code)
+        self.assertNotIn("no longer says", output)
+        self.assertIn("describes a source-verification floor the runtime does not have",
+                      output)
+
+    def test_verification_made_a_condition_of_readiness_fails(self):
+        """The condition-of pattern's first half, which needs no "no longer"."""
+        added = self.ACTOR + " Source verification is a condition of readiness."
+        with tempfile.TemporaryDirectory() as tmp:
+            code, output = self.gate(self.seeded(tmp, self.ACTOR, added))
+        self.assertEqual(1, code)
+        self.assertNotIn("no longer says", output)
+        self.assertIn("makes source verification a condition of something", output)
+
+    def test_a_sentence_that_agrees_with_the_pin_passes(self):
+        """"A condition of nothing" said again beside the pins restates the
+        claim, and is no contradiction of it."""
+        added = self.ACTOR + " Evidence stays a condition of nothing."
+        with tempfile.TemporaryDirectory() as tmp:
+            code, output = self.gate(self.seeded(tmp, self.ACTOR, added))
+        self.assertEqual(0, code, output)
+
+    def test_a_statement_moved_below_the_next_heading_fails(self):
+        """The section ends at the next level-2 heading, so a pinned sentence
+        moved under that heading is not in it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.seeded(tmp, self.ACTOR, "")
+            path = root / "docs" / "RUNTIME-QUICKSTART.md"
+            text = path.read_text(encoding="utf-8")
+            after = "## Adopting revised question banks\n"
+            self.assertEqual(1, text.count(after))
+            path.write_text(text.replace(after, after + "\nMoved here. " + self.ACTOR + "\n"),
+                            encoding="utf-8")
+            code, output = self.gate(root)
+        self.assertEqual(1, code)
+        self.assertNames(output, "a development-ready report does not certify "
+                                 "that a typed actor id is authenticated")
+
+    def test_a_heading_that_only_mentions_the_section_is_not_it(self):
+        """The section starts at the line that is its heading. An H3 whose text
+        contains "## Development handoff" is not that line."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            path = root / "docs" / "RUNTIME-QUICKSTART.md"
+            text = path.read_text(encoding="utf-8")
+            path.write_text("### Development handoff, in brief\n\n" + text, encoding="utf-8")
+            code, output = self.gate(root)
+        self.assertEqual(0, code, output)
+
+    def test_readiness_made_to_turn_on_evidence_fails(self):
+        """Only the refuses, blocks or requires pattern catches these two."""
+        for added in ("Readiness requires that every answer be source_verified.",
+                      "pmos handoff refuses a product with supplied_unverified answers."):
+            with self.subTest(added=added), tempfile.TemporaryDirectory() as tmp:
+                code, output = self.gate(self.seeded(tmp, self.ACTOR,
+                                                     self.ACTOR + " " + added))
+                self.assertEqual(1, code)
+                self.assertNotIn("no longer says", output)
+                self.assertIn("makes readiness turn on how answers are evidenced", output)
+
+    def test_a_pinned_sentence_prefixed_into_its_negation_fails(self):
+        """The words of the pin intact inside a sentence that denies them. A
+        substring test passed this; the pin has to stand as its own sentence."""
+        denied = "It is false that " + self.SOURCE[0].lower() + self.SOURCE[1:]
+        with tempfile.TemporaryDirectory() as tmp:
+            code, output = self.gate(self.seeded(tmp, self.SOURCE, denied))
+        self.assertEqual(1, code)
+        self.assertNames(output, "source verification is reported and is a "
+                                 "condition of nothing")
+
+    def test_a_pinned_sentence_negated_across_a_colon_or_semicolon_fails(self):
+        """A colon or a semicolon does not end a sentence, so the pin after
+        one sits inside the sentence that denies it."""
+        for mark in (":", ";"):
+            denied = "It is false%s %s%s" % (mark, self.ACTOR[0].lower(), self.ACTOR[1:])
+            with self.subTest(mark=mark), tempfile.TemporaryDirectory() as tmp:
+                code, output = self.gate(self.seeded(tmp, self.ACTOR, denied))
+                self.assertEqual(1, code)
+                self.assertNames(output, "a development-ready report does not "
+                                         "certify that a typed actor id is authenticated")
+
+    def test_the_readme_mirror_negated_across_a_colon_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            readme = root / "README.md"
+            text = readme.read_text(encoding="utf-8")
+            self.assertEqual(1, text.count("Readiness is structural:"))
+            readme.write_text(text.replace("Readiness is structural:",
+                                           "It is untrue: readiness is structural:"),
+                              encoding="utf-8")
+            code, output = self.gate(root)
+        self.assertEqual(1, code)
+        self.assertIn("README.md no longer mirrors", output)
+
+    def test_the_readme_mirror_prefixed_into_its_negation_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            readme = root / "README.md"
+            text = readme.read_text(encoding="utf-8")
+            self.assertEqual(1, text.count("Readiness is structural:"))
+            readme.write_text(text.replace("Readiness is structural:",
+                                           "It is untrue that readiness is structural:"),
+                              encoding="utf-8")
+            code, output = self.gate(root)
+        self.assertEqual(1, code)
+        self.assertIn("README.md no longer mirrors", output)
+
+    def test_dropping_the_readme_mirror_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            readme = root / "README.md"
+            text = readme.read_text(encoding="utf-8")
+            start = text.index("Readiness is structural:")
+            end = text.index("That is the mechanism", start)
+            readme.write_text(text[:start] + text[end:], encoding="utf-8")
+            code, output = self.gate(root)
+        self.assertEqual(1, code)
+        self.assertIn("README.md no longer mirrors the quickstart's readiness limits", output)
+
+    # A pin a reader cannot see states nothing. Each seed below puts pinned
+    # text inside an HTML comment, which a renderer does not show, where the
+    # text as written still reads as the pinned sentence.
+
+    def hidden(self, tmp, first, last):
+        """The tree with the quickstart's text from first through last commented out."""
+        text = (REPO / "docs" / "RUNTIME-QUICKSTART.md").read_text(encoding="utf-8")
+        start = text.index(first)
+        end = text.index(last, start) + len(last)
+        return self.seeded(tmp, text[start:end], "<!--\n" + text[start:end] + "\n-->")
+
+    def assertAllThreeMissing(self, code, output):
+        self.assertEqual(1, code)
+        self.assertEqual(3, output.count("readiness-claim"))
+        for name, _sentence in READINESS_CLAIMS:
+            self.assertNames(output, name)
+
+    def test_the_statements_hidden_in_a_comment_fail(self):
+        """Both paragraphs commented out: in the text as written each pin
+        still starts a sentence, and none of them renders."""
+        with tempfile.TemporaryDirectory() as tmp:
+            code, output = self.gate(self.hidden(tmp, "Readiness is structural. Every",
+                                                 "approval a local attestation."))
+        self.assertAllThreeMissing(code, output)
+
+    def test_the_heading_hidden_in_a_comment_fails(self):
+        """Only the heading commented out: the three statements still render,
+        under the section above it, and a heading that does not render is not
+        the section, so none of them is found in it. The finding names line 1,
+        as for a heading that is gone."""
+        with tempfile.TemporaryDirectory() as tmp:
+            code, output = self.gate(self.hidden(tmp, "## Development handoff",
+                                                 "## Development handoff"))
+        self.assertAllThreeMissing(code, output)
+        self.assertIn("docs/RUNTIME-QUICKSTART.md:1: error readiness-claim", output)
+
+    def test_a_contradiction_inside_a_comment_still_fails(self):
+        """The contradictions are looked for in the text as written, so a
+        comment is no place to keep one: whoever reads the raw file, an agent
+        included, reads it."""
+        added = self.ACTOR + " <!-- In practice every gate actor is authenticated. -->"
+        with tempfile.TemporaryDirectory() as tmp:
+            code, output = self.gate(self.seeded(tmp, self.ACTOR, added))
+        self.assertEqual(1, code)
+        self.assertNotIn("no longer says", output)
+        self.assertIn("says an actor id is authenticated", output)
+
+    def test_a_comment_left_open_hides_the_rest_of_the_file(self):
+        """A comment that opens a line and never closes hides everything after
+        it, so the statements below it are not stated."""
+        with tempfile.TemporaryDirectory() as tmp:
+            code, output = self.gate(self.seeded(tmp, "Readiness is structural. Every",
+                                                 "<!--\nReadiness is structural. Every"))
+        self.assertAllThreeMissing(code, output)
+
+    def test_a_comment_opened_in_code_joins_nothing(self):
+        """A "<!--" in a code span renders as itself, so the words after it
+        show, and here they deny the pin. Taking them for a comment must not
+        join what is left into a sentence that satisfies the pin."""
+        denied = "Done. `<!--` It is false that --> " + self.SOURCE
+        with tempfile.TemporaryDirectory() as tmp:
+            code, output = self.gate(self.seeded(tmp, self.SOURCE, denied))
+        self.assertEqual(1, code)
+        self.assertNames(output, "source verification is reported and is a "
+                                 "condition of nothing")
+
+    def test_comments_around_the_section_change_nothing_else(self):
+        """A comment above the section and one below it: the statements
+        between them still count, and a finding still names the heading's own
+        line, because each comment keeps the line breaks it held."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.seeded(tmp, self.ACTOR, "")
+            path = root / "docs" / "RUNTIME-QUICKSTART.md"
+            text = path.read_text(encoding="utf-8")
+            after = "## Adopting revised question banks"
+            self.assertEqual(1, text.count(after))
+            text = "<!--\nOne.\nTwo.\n-->\n" + text.replace(
+                after, "<!-- a closing note -->\n\n" + after)
+            path.write_text(text, encoding="utf-8")
+            heading = text.split("\n").index("## Development handoff") + 1
+            code, output = self.gate(root)
+        self.assertEqual(1, code)
+        self.assertEqual(1, output.count("readiness-claim"))
+        self.assertIn("docs/RUNTIME-QUICKSTART.md:%d: error readiness-claim" % heading, output)
+        self.assertNames(output, "a development-ready report does not certify "
+                                 "that a typed actor id is authenticated")
+
+    def test_the_readme_mirror_hidden_in_a_comment_fails(self):
+        """The paragraph commented out, so the mirror still starts a sentence
+        of the text as written, and does not render."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            readme = root / "README.md"
+            text = readme.read_text(encoding="utf-8")
+            start = text.index("A product is development-ready only once")
+            last = "typed actor ID is authenticated."
+            end = text.index(last, start) + len(last)
+            readme.write_text(text[:start] + "<!-- " + text[start:end] + " -->" + text[end:],
+                              encoding="utf-8")
+            code, output = self.gate(root)
+        self.assertEqual(1, code)
+        self.assertIn("README.md no longer mirrors", output)
+
+
+class ReadinessChangelogTests(unittest.TestCase):
+    """The CHANGELOG entry for the Gate 5 report defect names what it must.
+
+    This checks that the entry names the affected surfaces, the unaffected one,
+    the origin and the no-change-to-approval scope. It cannot check that those
+    statements are true: that is read against R1's diff by a reviewer.
+    """
+
+    def entry(self):
+        text = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
+        entries = [line for line in text.splitlines()
+                   if line.startswith("- ") and "AI overlay: guardrails live, kill switch tested" in line]
+        self.assertEqual(1, len(entries), "the Gate 5 report entry is missing or duplicated")
+        return entries[0]
+
+    def test_the_entry_names_every_surface_and_its_scope(self):
+        entry = self.entry()
+        for phrase in ("from 0.8.0", "`pmos status --json`", "`pmos_status`",
+                       "The human `pmos status` view never showed it",
+                       "nothing about what can be approved"):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, entry)
+
+
+class ProseMetricsTests(unittest.TestCase):
+    """The whole-file prose measurement, and the quickstart held to it.
+
+    The refusal paragraph in docs/RUNTIME-QUICKSTART.md was 341 words, measured
+    over a line window. A window can be satisfied by moving the paragraph
+    below it, so the bar is taken over every block in the file instead.
+    """
+
+    LIMIT = 120
+
+    def test_the_quickstart_has_no_prose_block_over_the_limit(self):
+        text = (REPO / "docs" / "RUNTIME-QUICKSTART.md").read_text(encoding="utf-8")
+        line, words = prose_metrics.longest_prose_block(text)
+        self.assertLessEqual(words, self.LIMIT,
+                             "docs/RUNTIME-QUICKSTART.md:%d is a %d-word block" % (line, words))
+
+    def test_a_long_block_moved_below_a_table_is_still_found(self):
+        """The seed the acceptance names: a table where the paragraph was and
+        the paragraph pushed past line 145. A line window misses it."""
+        paragraph = " ".join(["word"] * 341) + "."
+        text = ("| a | b |\n|---|---|\n| 1 | 2 |\n" + "\n" * 150
+                + paragraph + "\n")
+        line, words = prose_metrics.longest_prose_block(text)
+        self.assertEqual((line, words), (154, 341))
+
+    def test_one_trailing_list_line_does_not_hide_a_paragraph(self):
+        """The bypass an earlier version had: any list-like line in a block made
+        the whole block non-prose, so one '- ...' line hid 341 words."""
+        paragraph = " ".join(["word"] * 341) + "."
+        text = ("| a | b |\n|---|---|\n\n" + paragraph
+                + "\n- In short: see the table above.\n")
+        self.assertEqual(prose_metrics.longest_prose_block(text), (4, 341))
+
+    def test_a_multi_line_comment_is_not_prose(self):
+        filler = " ".join(["word"] * 200)
+        text = "<!-- a note\n" + filler + "\n-->\nFive words of prose here.\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (4, 5))
+
+    def half(self, count=102):
+        return " ".join(["word"] * count)
+
+    def test_a_wrapped_line_opening_with_a_number_other_than_one_stays_in_its_paragraph(self):
+        """CommonMark lets only an ordered list starting at 1 interrupt a
+        paragraph, so this renders as one 205-word paragraph."""
+        text = self.half() + "\n2026. The runtime " + self.half(100) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (1, 205))
+
+    def test_a_wrapped_line_opening_with_a_pipe_stays_in_its_paragraph(self):
+        """A "|" line with no delimiter row under it is not a table."""
+        text = self.half() + "\n| are split " + self.half(100) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (1, 205))
+
+    def test_a_marker_indented_four_spaces_stays_in_its_paragraph(self):
+        text = self.half() + "\n    - and " + self.half(100) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (1, 204))
+
+    def test_an_empty_first_item_stays_in_its_paragraph(self):
+        """An empty list item cannot interrupt a paragraph either."""
+        text = self.half() + "\n1. \n" + self.half(100) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (1, 203))
+
+    def test_a_delimiter_row_with_the_wrong_cell_count_is_not_a_table(self):
+        """GFM makes a table only when header and delimiter agree on columns."""
+        text = self.half() + "\n| a | b |\n|---|\n" + self.half(100) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (1, 208))
+
+    def test_prose_under_a_heading_that_ends_a_list_item_is_prose(self):
+        """A heading interrupts a list item's lazy continuation, so what
+        follows the heading is not absorbed into the item."""
+        text = "- item\n# Heading\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (3, 200))
+
+    def test_a_list_items_lazy_continuation_is_not_prose(self):
+        text = "- item " + self.half(5) + "\n" + self.half(200) + "\nShort.\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (0, 0))
+
+    def test_a_table_ends_a_list_items_continuation(self):
+        """The line after the table is measured, as the docstring's over-count
+        note says, rather than folded back into the list item."""
+        text = "- item\n| h |\n|---|\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (4, 200))
+
+    def test_what_does_interrupt_a_paragraph_still_ends_it(self):
+        """The other side of the rules above: an ordered item at 1, a bullet,
+        a heading, a quote, a comment and a real table each end the paragraph,
+        and are not counted in it."""
+        for opener in ("1. first " + self.half(), "- item " + self.half(),
+                       "# Heading " + self.half(), "> quote " + self.half(),
+                       "<!-- note " + self.half() + " -->",
+                       "| h |\n|---|\n| %s |" % self.half()):
+            with self.subTest(opener=opener[:10]):
+                text = "Five words of prose here.\n" + opener + "\n"
+                self.assertEqual(prose_metrics.longest_prose_block(text), (1, 5))
+
+    # Each seed below hid a paragraph from an earlier version of the scanner:
+    # a renderer shows the 200 words as a paragraph, and the ceiling check
+    # measured fewer.
+
+    def test_a_comment_after_a_list_item_ends_its_continuation(self):
+        text = "- item\n<!-- c -->\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (3, 200))
+
+    def test_a_thematic_break_is_not_a_list_item(self):
+        """"* * *" and "- - -" match a bullet; they are rules, and the
+        paragraph after one is prose."""
+        for rule in ("* * *", "- - -", "_ _ _", "***"):
+            with self.subTest(rule=rule):
+                text = "intro line\n" + rule + "\n" + self.half(200) + "\n"
+                self.assertEqual(prose_metrics.longest_prose_block(text), (3, 200))
+
+    def test_a_thematic_break_ends_a_paragraph_and_is_not_counted(self):
+        text = "Five words of prose here.\n***\nFour more words here.\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (1, 5))
+
+    def test_an_item_whose_text_is_a_rule_takes_no_continuation(self):
+        text = "- ***\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (2, 200))
+
+    def test_an_indented_rule_under_an_item_ends_its_continuation(self):
+        text = "- item\n    ***\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (3, 200))
+
+    def test_an_ordered_marker_has_at_most_nine_digits(self):
+        """CommonMark caps an ordered marker at nine digits, so a line opening
+        with a ten-digit number is prose, and the paragraph it opens is too."""
+        text = "1234567890. x\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (1, 202))
+
+    def test_a_ten_digit_number_inside_a_quote_is_its_text(self):
+        """The same cap inside a container: "> 1234567890. # h" is a quoted
+        paragraph, so the line after it is its lazy continuation."""
+        text = "> 1234567890. # h\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (0, 0))
+
+    def test_an_empty_bullet_stays_in_its_paragraph(self):
+        text = self.half() + "\n- \n" + self.half(100) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (1, 203))
+
+    def test_a_fence_closes_only_on_its_own_character(self):
+        text = "```\ncode\n~~~\nstill code\n```\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (6, 200))
+
+    def test_a_fence_closes_only_on_as_many_markers(self):
+        text = "````\n```\ncode\n````\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (5, 200))
+
+    def test_a_fence_line_with_an_info_string_does_not_close_one(self):
+        text = "```\n```python\n```\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (4, 200))
+
+    def test_a_closing_fence_is_indented_at_most_three_spaces(self):
+        """Four spaces in, the line is code, so the fence runs to the end."""
+        text = "```\n    ```\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (0, 0))
+
+    def test_backticks_with_a_backtick_after_them_open_no_fence(self):
+        text = "``` a`b\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (1, 202))
+
+    def test_a_blank_line_does_not_end_a_comment(self):
+        """A comment runs to its "-->", blank lines included. Ending it at the
+        blank made the fence inside it open, and swallow what followed."""
+        text = "<!--\n\n```\n-->\n" + self.half(200) + "\n```\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (5, 200))
+
+    def test_a_table_ends_at_a_line_less_indented_than_its_header(self):
+        """A table inside a list item ends with the item; the "|" line after
+        it, at the margin, opens a paragraph."""
+        text = "- a\n\n  | h |\n  |---|\n| row " + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (5, 202))
+
+    def test_an_item_indented_four_columns_takes_no_continuation(self):
+        text = "    - x\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (2, 200))
+
+    def test_a_deeply_indented_item_under_a_quote_ends_the_lazy_run(self):
+        """markdown-it reads the 200 words as a paragraph, CommonMark as lazy
+        text; the scanner takes the reading that counts them."""
+        text = ">> x\n    - x\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (3, 200))
+
+    def test_an_item_holding_indented_code_takes_no_continuation(self):
+        for item in ("-     code", "-\t\tcode"):
+            with self.subTest(item=item):
+                text = item + "\n" + self.half(200) + "\n"
+                self.assertEqual(prose_metrics.longest_prose_block(text), (2, 200))
+
+    def test_an_item_holding_a_link_definition_takes_no_continuation(self):
+        text = "- [a]: /u\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (2, 200))
+
+    def test_an_item_holding_a_table_row_takes_no_continuation(self):
+        text = "- | a |\n  |---|\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (2, 201))
+
+    def test_an_empty_item_or_quote_takes_no_continuation(self):
+        """An empty item or quote holds no paragraph, so the line after it
+        opens one of its own."""
+        for opener in ("-", "- ", ">", "1."):
+            with self.subTest(opener=opener):
+                text = opener + "\n" + self.half(200) + "\n"
+                self.assertEqual(prose_metrics.longest_prose_block(text), (2, 200))
+
+    def test_an_item_holding_a_heading_takes_no_continuation(self):
+        text = "- # h\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (2, 200))
+
+    # Each seed below is held by one reset in prose_blocks: take the reset out
+    # and the scanner measures (0, 0) where a renderer shows the 200 words as
+    # a paragraph.
+
+    def test_a_fence_ends_a_list_items_continuation(self):
+        """A fence at the margin ends the list, so the paragraph after the
+        fence is not the item's lazy continuation."""
+        text = "- item\n```\ncode\n```\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (5, 200))
+
+    def test_a_blank_line_ends_a_table(self):
+        """A "|" line after the blank opens a paragraph, not another row."""
+        text = "| a |\n|---|\n| b |\n\n| " + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (5, 201))
+
+    def test_a_thematic_break_ends_a_list_items_continuation(self):
+        text = "- item\n***\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (3, 200))
+
+    def test_a_blank_line_ends_a_list_items_continuation(self):
+        """Lazy continuation stops at a blank line. The quickstart has this
+        shape: the readiness list, a blank line, then the paragraph that
+        states what readiness leaves uncertified."""
+        text = "- item\n\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (3, 200))
+
+    def test_a_fence_ends_a_table(self):
+        """The "|" line after the fence opens a paragraph, not another row."""
+        text = "| a |\n|---|\n```\ncode\n```\n| " + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (6, 201))
+
+    def test_a_line_that_is_not_a_row_ends_a_table(self):
+        """A heading ends the table, so the "|" line after it is a paragraph."""
+        text = "| a |\n|---|\n# h\n| " + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (4, 201))
+
+    # Each seed below is held by one alternative of a pattern above, or one
+    # clause of a helper: take it out and the measure differs from what a
+    # CommonMark renderer with GFM tables shows, often by losing the 200-word
+    # paragraph.
+
+    def test_a_tilde_fence_is_a_fence(self):
+        """Its contents are code, not a list item whose lazy lines would take
+        the paragraph after the closing fence."""
+        text = "~~~\n- item\n~~~\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (4, 200))
+
+    def test_two_backticks_open_no_fence(self):
+        """Two are a code span inside a paragraph; a fence takes three."""
+        text = "``\n" + self.half(200) + "\n``\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (1, 202))
+
+    def test_a_rule_indented_four_spaces_does_not_end_a_paragraph(self):
+        text = self.half(200) + "\n    ***\n" + self.half(100) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (1, 301))
+
+    def test_three_dashes_after_a_blank_line_are_a_rule(self):
+        """After a blank line they are no setext underline but a rule, and the
+        paragraph after the rule is measured on its own."""
+        text = "Two words.\n\n---\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (4, 200))
+
+    def test_two_dashes_are_not_a_rule(self):
+        text = "Two words.\n\n--\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (3, 201))
+
+    def test_a_rule_has_nothing_else_on_its_line(self):
+        text = "Two words.\n\n***x " + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (3, 201))
+
+    def test_seven_hashes_are_not_a_heading(self):
+        """Text wherever they stand: opening a block, inside a paragraph, and
+        on a list item's lazy line."""
+        for text, expected in (("####### " + self.half(200) + "\n", (1, 201)),
+                               (self.half() + "\n####### " + self.half(100) + "\n", (1, 203)),
+                               ("- item\n####### " + self.half(200) + "\n", (0, 0))):
+            with self.subTest(text=text[:12]):
+                self.assertEqual(prose_metrics.longest_prose_block(text), expected)
+
+    def test_a_hash_with_no_space_after_it_is_not_a_heading(self):
+        for text, expected in (("#hashtag " + self.half(200) + "\n", (1, 201)),
+                               (self.half() + "\n#hashtag " + self.half(100) + "\n", (1, 203)),
+                               ("- item\n#hashtag " + self.half(200) + "\n", (0, 0))):
+            with self.subTest(text=text[:12]):
+                self.assertEqual(prose_metrics.longest_prose_block(text), expected)
+
+    def test_a_dash_with_no_space_after_it_is_not_a_bullet(self):
+        """"-->" opens a paragraph, and "--" on an item's lazy line is its
+        text, not a sibling item."""
+        for text, expected in (("--> " + self.half(200) + "\n", (1, 201)),
+                               ("- item\n--\n" + self.half(200) + "\n", (0, 0))):
+            with self.subTest(text=text[:8]):
+                self.assertEqual(prose_metrics.longest_prose_block(text), expected)
+
+    def test_a_number_with_no_space_after_its_dot_is_not_an_item(self):
+        text = "2026.5 percent " + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (1, 202))
+
+    def test_an_ordered_item_holding_a_heading_takes_no_continuation(self):
+        text = "- item\n1. # h\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (3, 200))
+
+    def test_a_sibling_item_holding_a_heading_takes_no_continuation(self):
+        text = "- item\n- # h\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (3, 200))
+
+    def test_a_heading_in_an_item_in_a_quote_takes_no_continuation(self):
+        """Every container marker is read, not only the first."""
+        text = "> - # h\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (2, 200))
+
+    def test_a_tab_before_a_marker_is_four_columns(self):
+        """Four columns in, the line is indented code, not a list item whose
+        lazy lines would take the paragraph after it."""
+        text = "\t- item\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (2, 200))
+
+    def test_a_row_indented_four_spaces_starts_no_table(self):
+        """Inside a paragraph it is paragraph text, and so is the delimiter
+        row under it."""
+        text = self.half(200) + "\n    | h |\n|---|\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (1, 204))
+
+    def test_a_delimiter_row_indented_four_spaces_starts_no_table(self):
+        text = "| starts " + self.half(200) + "\n    |---|\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (1, 203))
+
+    def test_a_delimiter_row_has_nothing_else_on_its_line(self):
+        """"- item" begins like a delimiter row and is a list item, so the
+        "|" line above it is a paragraph, not a table header."""
+        text = "| " + self.half(200) + "\n- item\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (1, 201))
+
+    def test_outer_pipes_are_optional_on_either_row(self):
+        """A header and a delimiter row that differ in their outer pipes still
+        make a table, so the header is not prose. A delimiter row with no
+        leading "|" is itself counted, one word here, as prose_blocks says."""
+        for delimiter in ("---|---|", "|---|---"):
+            with self.subTest(delimiter=delimiter):
+                text = "| a | b |\n" + delimiter + "\n\nFive words of prose here.\n"
+                self.assertEqual(prose_metrics.longest_prose_block(text), (4, 5))
+
+    def test_an_escaped_pipe_does_not_split_a_cell(self):
+        text = "| a \\| b | c |\n|---|---|\n\nFive words of prose here.\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (4, 5))
+
+    def test_a_fence_ends_the_paragraph_before_it(self):
+        text = self.half(200) + "\n```\ncode\n```\nFive words of prose here.\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (1, 200))
+
+    def test_a_table_ends_the_paragraph_before_it(self):
+        """The line under the table, which prose_blocks counts as prose (its
+        docstring says why), is a block of its own and does not rejoin the
+        paragraph above the table."""
+        text = self.half(200) + "\n| a |\n|---|\nFive more words here now.\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (1, 200))
+
+    def test_a_heading_ends_the_paragraph_before_it(self):
+        text = "Five words of prose here.\n# Heading\nFour more words here.\n"
+        self.assertEqual(prose_metrics.longest_prose_block(text), (1, 5))
+
+    def test_a_one_line_comment_does_not_hide_the_line_after_it(self):
+        """The indented fence on line 2 is something this does not read, so
+        the whole file is measured as one block. Were the comment on line 1
+        taken to run on, line 2 would be skipped, and the margin fence on
+        line 4 would open a fence that hides the paragraph."""
+        text = "<!-- c -->\n  ```\ncode\n```\n" + self.half(200) + "\n"
+        self.assertEqual(prose_metrics.unmodelled_line(text), 2)
+        self.assertEqual(prose_metrics.longest_prose_block(text), (1, len(text.split())))
+
+    def test_what_it_does_not_read_is_measured_whole(self):
+        """Each of these holds a paragraph the scanner, reading on, would miss:
+        a fence or comment a list item or indent holds, or raw HTML. The file
+        is then one block, and the ceiling fails."""
+        for seed in ("  ```\n```\n", "  <!--\n```\n-->\n", "<div>\n```\n</div>\n\n",
+                     "- ```\n   1. x\n", "> <!-- c\n> 1. x\n", "  ~~~\n~~~\n",
+                     "  <div>\n```\n</div>\n\n", "- ~~~\n   1. x\n", "1. ```\n   1. x\n"):
+            with self.subTest(seed=seed):
+                text = seed + self.half(200) + "\n"
+                self.assertEqual(prose_metrics.unmodelled_line(text), 1)
+                self.assertEqual(prose_metrics.longest_prose_block(text),
+                                 (1, len(text.split())))
+
+    def test_a_margin_comment_and_fenced_html_are_read(self):
+        """What the refusal above does not reach: a comment at the margin, and
+        HTML or an indented fence line inside a fence or a comment."""
+        for text in ("<!-- a note -->\nFive words of prose here.\n",
+                     "```\n<div>\n    ```\n```\nFive words of prose here.\n",
+                     "<!--\n<div>\n  ```\n-->\nFive words of prose here.\n"):
+            with self.subTest(text=text[:12]):
+                self.assertEqual(prose_metrics.unmodelled_line(text), 0)
+                self.assertEqual(prose_metrics.longest_prose_block(text)[1], 5)
+
+    def test_code_tables_lists_and_quotes_are_not_prose(self):
+        filler = " ".join(["word"] * 200)
+        text = "\n\n".join(["```", filler, "```", "| %s |\n|---|" % filler, "- " + filler,
+                             "> " + filler, "# " + filler, "<!-- %s -->" % filler,
+                             "Ten words of running prose, and nothing else, here now."])
+        self.assertEqual(prose_metrics.longest_prose_block(text)[1], 10)
 
 
 class TemplateInventoryGateTests(unittest.TestCase):

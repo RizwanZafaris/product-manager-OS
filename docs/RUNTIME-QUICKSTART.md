@@ -102,22 +102,28 @@ pmos gate --path ./products/my-product --product-id checkout --bank-id discover 
 ```
 
 A refusal never records a gate approval, and the answer it refused is not
-accepted. Most refusals are still committed as a turn record, so the store
-revision advances: insufficient evidence, an answer to any question other
-than the one offered (an unknown question ID included), and an unverifiable
-gate source each write a record and move the revision on. A stale expected
-revision and a reused turn ID leave the revision where it was, and so does a
-request refused before the conductor reads it: a question ID that is not well
-formed, evidence that is not a JSON object, or a bank ID that does not exist.
-Replaying a turn ID with the identical request returns its original result.
+accepted. Whether the store revision advances turns on one thing only: how
+far the request got before it was refused.
+
+| Refusal | Store revision advances | Why |
+|---|---|---|
+| insufficient evidence | yes | The conductor read the answer and filed a challenge, or a park on the third one. |
+| an answer to a question other than the one offered | yes | The mismatch is found after the request is loaded, so the turn is recorded like any other. |
+| an unknown question ID | yes | The same path as the row above: a well-formed ID that is not the question on offer. |
+| an unverifiable gate source | yes | The request had passed the revision and turn-ID checks, and every refusal after those two is recorded. |
+| a stale expected revision | no | The expected revision is compared before anything is written, and a mismatch writes nothing. |
+| a reused turn ID | no | The idempotency window answers from the stored record: the original result, or a conflict when the payload differs. |
+| a quotation that is not in the cited document or cannot be checked | yes | The conductor read the answer and filed a challenge, as for any invalid evidence. Five sub-cases: the words are not in the document, the quotation is under three words, the source is not a document inside the workspace, the document cannot be read, and no document reader is configured. |
+| a request refused before the conductor reads it | no | Nothing is loaded and nothing is written. Three sub-cases: a question ID that is not well formed, evidence that is not a JSON object, and a bank ID that does not exist. |
+
 Read the next revision from `pmos status`, which prints `revision_token`
 (the exact token to pass as `--expected-revision`; a product made by `init`
 is already at revision 1 because `init` commits the pinned contract, and
 `pmos status` always prints the exact token), or, for a refusal that wrote a
 record, from that refusal's own `revision` field. After a refusal that wrote
 a record, the revision `answer` returned is stale and retrying with it is
-refused as a
-conflict; `pmos status` is current either way.
+refused as a conflict; `pmos status` is current either way.
+
 A third refused submission, after two challenges, parks it: the answer is
 filed as offered and marked parked, the cursor moves on, and the bank's
 remaining questions can still be answered. The bank's gate proof is refused
@@ -125,6 +131,7 @@ while any of its answers is parked. To recover, reopen the parked question
 with its question ID, a reason, the current revision, and a new turn ID, then
 answer it with fresh evidence, because evidence identical to a refused
 submission is refused afterwards.
+
 Replace every angle-bracket value with a real, traceable source; the source
 must be a regular, non-symlink file inside the workspace (but outside
 `.pmos/`) and its digest must match. The pinned banks name `local-reviewer`
@@ -137,20 +144,22 @@ in the workspace whose artifact block names that bank's gate (DISCOVER is
 gate 1, and so on to OPERATE, gate 6), each with its path and revision (the
 SHA-256 of its body after the block), plus the artifacts they depend on. A
 gate whose artifacts depend on one the workspace does not have yet is
-refused, and the error names it. Every later command checks each approval's
-source file and manifest again, and an edited or deleted artifact makes that
-approval stale. `pmos status` then lists every stale bank under
-`stale_banks`, earliest first, each with `changed` (the artifact, its
-reviewed and its current revision) and `reconcile` (the approved artifacts
-that depend on a changed one), and `next` is the gate command for the
-earliest. Proving a stale bank again records the current revisions, keeps
-the earlier approval as superseded history and moves nothing else; another
-bank whose approval still binds the old revision stays stale until it is
-approved again. A gate submitted with `"decision":"rejected"` is recorded,
-reported with `rejection_recorded` and listed under `rejections` in status,
-and it never advances the interview. Every approval is labelled a local
-attestation (`approvals` in status), because actor IDs are typed, not
-authenticated.
+refused, and the error names it.
+
+Every later command checks each approval's source file and manifest again, and
+an edited or deleted artifact makes that approval stale. `pmos status` then
+lists every stale bank under `stale_banks`, earliest first, each with
+`changed` (the artifact, its reviewed and its current revision) and
+`reconcile` (the approved artifacts that depend on a changed one), and `next`
+is the gate command for the earliest. Proving a stale bank again records the
+current revisions, keeps the earlier approval as superseded history and moves
+nothing else; another bank whose approval still binds the old revision stays
+stale until it is approved again.
+
+A gate submitted with `"decision":"rejected"` is recorded, reported with
+`rejection_recorded` and listed under `rejections` in status, and it never
+advances the interview. Every approval is labelled a local attestation
+(`approvals` in status), because actor IDs are typed, not authenticated.
 
 ## Phase status
 
@@ -158,9 +167,12 @@ authenticated.
 through OPERATE, in stage order, built by the same read-only query an adapter
 can call on its own, such as the desktop adapter's `pmos_status` tool (see
 `docs/COMPATIBILITY.md`'s execution-host matrix and
-`harness/adapters/desktop/README.md`). In human mode the line
-prints as JSON, the same as every other list `status` already prints; add
-`--json` for the whole document. Each entry carries:
+`harness/adapters/desktop/README.md`). In human mode `status` does not print
+`phases` itself: it prints one table row per phase (gate, stage, state, and
+how many questions are answered or what the phase waits for), then a line for
+each unmet checklist line, each line no question stands behind, and each line
+that cites another bank's questions. Add `--json` for the whole document.
+Each entry carries:
 
 - `phase` (the stage name, for example `DISCOVER`), `bank_id` (the bank's
   internal id, for example `discover`), and `gate` (the gate number that
@@ -169,9 +181,20 @@ prints as JSON, the same as every other list `status` already prints; add
   parked answer), `in_progress`, or `not_started`.
 - `outcomes`: each Gate checklist line from the pinned contract, with the
   question IDs that evidence it and `met` (`true` once every one of those
-  questions is answered and unparked, `false` while any is missing or
-  parked, `null` for a line no question can evidence, such as a human
-  sign-off the Conductor only reports the presence of).
+  questions is answered and unparked, each cited question read from the bank
+  that owns it, so a Gate 5 line naming `BUILD-5` reads the answer given at
+  Gate 4; `false` while any is missing or parked, and `false` for a line
+  citing an ID no bank defines, which `tools/question_banks.py` refuses to
+  compile in the first place; `null` for a line no question can evidence,
+  such as a human sign-off the Conductor only reports the presence of).
+  Every row also carries `answered_in`, the bank that owns each cited
+  question, and `carried`, the other banks among those: `["build"]` for that
+  Gate 5 line whether or not BUILD-5 has been answered yet, and an empty list
+  for a row that cites only its own bank's questions. The marker is there
+  because the checklist row's own text asks for those answers to be
+  re-verified against the release candidate and the runtime holds no
+  re-verification fact: it knows only that the question was answered once,
+  at the earlier gate.
 - `documents` and `named_documents`: `documents` lists the workspace
   artifacts whose artifact block names this gate, each with its `id`, `path`,
   `phase`, its current status and revision from `scan()`, and, once the gate
@@ -182,7 +205,10 @@ prints as JSON, the same as every other list `status` already prints; add
   into `quote_verified`, `source_verified` and `supplied_unverified` counts,
   one label per answer.
 - `missing`: unanswered question IDs, parked question IDs, and unmet Gate
-  lines; for a stale bank it also carries `changed` (the artifacts that no
+  lines under `gate_lines`. `unknown_gate_lines` holds the rest: the
+  checklist lines whose `met` is `null` because no question stands behind
+  them, which belong in no other list and were named nowhere before. For a
+  stale bank `missing` also carries `changed` (the artifacts that no
   longer match the approved revision) and `reconcile` (the approved
   artifacts that depend on one of those changed artifacts), both empty for
   a bank that is not stale.
@@ -345,6 +371,22 @@ A product is development-ready only when every one of these holds at once:
   or carries an `N/A because` line.
 - Every linked artifact actually resolves in the workspace.
 
+Readiness is structural. Every condition above is about gates, artifacts and
+links, and none is about the strength of the evidence behind an answer.
+Whether an answer cites a workspace document, and whether a quotation it
+supplies was found there, is reported, as `quote_verified`,
+`source_verified` and `supplied_unverified` in `pmos status --json` at the
+top level and again per phase under `completed`, and under `evidence` in the
+handoff package and in `handoff/CONTEXT.md`, and is a condition of nothing.
+
+A development-ready report certifies that Gates 1 to 3 are approved and
+current, that the handoff artifact exists, and that all nine sections link
+artifacts which resolve. It does not certify that every answer is evidenced:
+a product whose every answer is `supplied_unverified` can be
+development-ready. It does not certify that a typed actor ID is
+authenticated: `pmos gate` records the ID it was given and stamps the
+approval a local attestation.
+
 A `Gap:` line, an empty section, or a link that does not resolve blocks the
 designation, and `handoff/CONTEXT.md` names which. Run on a freshly
 initialized product with none of this done yet (a product named `demo` here,
@@ -369,7 +411,37 @@ A product keeps the question banks it started with, so a repository update never
 python3 -m pmos.cli repin --path . --product-id <product> --dry-run
 ```
 
-The preview names each bank whose questions changed, which questions were added, removed or reworded, and which gates will have to be proved again. It writes nothing. Running it without `--dry-run` adopts the contract and keeps every stored answer, parked answer, reopened question and approval. Each bank's cursor is set to the bank's first question with neither a stored answer nor an outstanding reopen, and never moves forward. So in a bank this product has not yet approved, the questions the contract appends are asked when the interview reaches them; a reworded question keeps its stored answer and is not asked again, and if its bank was approved, that gate goes stale until it is proved against the current questions; and a question that was parked and then reopened stays reopened and is asked next, before the rest of its bank. Gates whose questions did not change are untouched. `pmos repin` refuses a contract when the state it would write fails the Conductor's own validation of a stored state, since no later command could open such a product: one that adds questions to a bank this product has already approved, one that removes a question the product has answered, or one that puts a new question in front of answered ones, which the bank rules forbid (new questions append). The refusal comes before anything is written, dry run included, and the check is made again inside the write on the state that write replaces, so an approval recorded in between is refused as well. For a product it would refuse, `pmos status` names the reason instead of advising `pmos repin`, and the product keeps the banks it started with.
+The preview names each bank whose questions changed, which questions were
+added, removed or reworded, and which gates will have to be proved again. It
+writes nothing. Running it without `--dry-run` adopts the contract and keeps
+every stored answer, parked answer, reopened question and approval.
+
+Each bank's cursor is then set to that bank's first question with neither a
+stored answer nor an outstanding reopen, and never moves forward. So:
+
+- In a bank this product has not yet approved, the questions the contract
+  appends are asked when the interview reaches them.
+- A reworded question keeps its stored answer and is not asked again. If its
+  bank was approved, that gate goes stale until it is proved against the
+  current questions.
+- A question that was parked and then reopened stays reopened and is asked
+  next, before the rest of its bank.
+- Gates whose questions did not change are untouched.
+
+`pmos repin` refuses a contract when the state it would write fails the
+Conductor's own validation of a stored state, since no later command could
+open such a product. Three contracts are refused for that reason:
+
+- one that adds questions to a bank this product has already approved;
+- one that removes a question the product has answered;
+- one that puts a new question in front of answered ones, which the bank rules
+  forbid, since new questions append.
+
+The refusal comes before anything is written, dry run included, and the check
+is made again inside the write on the state that write replaces, so an
+approval recorded in between is refused as well. For a product it would
+refuse, `pmos status` names the reason instead of advising `pmos repin`, and
+the product keeps the banks it started with.
 
 As with every gate approval, `development_ready` reflects local attestation,
 never authenticated team approval: the package records who ran each gate and
@@ -403,17 +475,20 @@ pmos rollback ./products/my-product
 
 Migration builds and verifies a new database beside the active runtime, makes
 a SQLite backup of an existing runtime, and activates the new database with a
-single filesystem replace. A durable activation journal is written before the
-replace. If a process dies after replacement, `recover` verifies the journal's
-hash and SQLite invariants, then finalizes the migration; if verification fails
-it restores a verified backup or quarantines the unverified runtime. Rollback
-uses the same two-phase journal: a process death after rollback replacement is
-recovered only when the restored runtime exactly matches its recorded hash and
-SQLite invariants. Recovery is idempotent and never overwrites a runtime whose
-hash is not the pinned migration or rollback state. If a normal injected fault
-occurs after migration replacement, the old runtime is restored synchronously
-and the journal records `aborted`. `rollback` uses the recorded backup and
-verifies it before activation.
+single filesystem replace.
+
+A durable activation journal is written before the replace. If a process dies
+after replacement, `recover` verifies the journal's hash and SQLite
+invariants, then finalizes the migration; if verification fails it restores a
+verified backup or quarantines the unverified runtime. Rollback uses the same
+two-phase journal: a process death after rollback replacement is recovered
+only when the restored runtime exactly matches its recorded hash and SQLite
+invariants. Recovery is idempotent and never overwrites a runtime whose hash
+is not the pinned migration or rollback state.
+
+If a normal injected fault occurs after migration replacement, the old runtime
+is restored synchronously and the journal records `aborted`. `rollback` uses
+the recorded backup and verifies it before activation.
 
 `migrate`, `recover`, and `rollback` take the same destination-scoped local
 advisory lock for their whole lifecycle. A concurrent lifecycle operation waits

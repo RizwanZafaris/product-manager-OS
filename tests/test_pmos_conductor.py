@@ -1772,5 +1772,272 @@ class QuotationTest(unittest.TestCase):
         self.assertIn("no document reader configured", result.message)
 
 
+QUICKSTART = Path(__file__).resolve().parent.parent / "docs" / "RUNTIME-QUICKSTART.md"
+TABLE_HEADER = "| Refusal | Store revision advances | Why |"
+# The seven refusals the paragraph this table replaced named, and the
+# quotation refusal the excerpt check added beside them, committed here rather
+# than read from the table, so a row can be neither dropped nor invented
+# without this set being edited in the same change where a reviewer sees it.
+REFUSALS_NAMED = frozenset({
+    "insufficient evidence",
+    "an answer to a question other than the one offered",
+    "an unknown question ID",
+    "an unverifiable gate source",
+    "a stale expected revision",
+    "a reused turn ID",
+    "a request refused before the conductor reads it",
+    "a quotation that is not in the cited document or cannot be checked",
+})
+
+
+def refusal_table(text: str) -> dict[str, bool]:
+    """The quickstart's refusal table, as refusal -> does the revision advance."""
+    lines = text.splitlines()
+    start = lines.index(TABLE_HEADER) + 2
+    rows: dict[str, bool] = {}
+    for raw in lines[start:]:
+        if not raw.startswith("|"):
+            break
+        refusal, advances = [cell.strip() for cell in raw.strip("|").split("|")][:2]
+        if advances not in ("yes", "no"):
+            raise AssertionError("row %r says %r, not yes or no" % (refusal, advances))
+        rows[refusal] = advances == "yes"
+    return rows
+
+
+class RefusalTableTest(unittest.TestCase):
+    """docs/RUNTIME-QUICKSTART.md's refusal table, driven through a real Conductor.
+
+    The table replaced a paragraph that stated the same seven facts as running
+    prose, which nothing checked. Every row is a claim about store behaviour,
+    so a row that is wrong makes the document falser than the paragraph was.
+    Each sub-case also checks the outcome it got back, so a driver that stopped
+    reaching its refusal fails here rather than passing on a revision that
+    simply never moved.
+    """
+
+    def setUp(self) -> None:
+        self.temp = TemporaryDirectory()
+        self.store = Store(Path(self.temp.name) / "runtime.sqlite")
+        self.stores = [self.store]
+        verifier = lambda source, digest: source == "gate-1.md" and digest == GATE_HASH
+        self.conductor = Conductor(self.store, "payments", BANKS, gate_source_verifier=verifier)
+
+    def tearDown(self) -> None:
+        for store in self.stores:
+            store.close()
+        self.temp.cleanup()
+
+    def quotation_refusals(self) -> list[tuple[bool, bool, object]]:
+        """The five ways the excerpt check refuses, each on a fresh store."""
+        root = Path(self.temp.name, "workspace")
+        (root / "notes").mkdir(parents=True)
+        (root / "notes" / "interview.md").write_text(INTERVIEW, encoding="utf-8")
+        (root / "notes" / "latin1.md").write_bytes(b"caf\xe9 notes, not UTF-8 text\n")
+        cases = (
+            ("absent", True, "notes/interview.md", FABRICATED, "does not occur in"),
+            ("short", True, "notes/interview.md", "Monday morning", "too short to check"),
+            ("uncitable", True, "Asha interview", GENUINE, "can only be recorded against a citable"),
+            ("unreadable", True, "notes/latin1.md", GENUINE, "could not be read to check"),
+            ("no-reader", False, "notes/interview.md", GENUINE, "no document reader configured"),
+        )
+        results = []
+        for name, reader, source, quote, reason in cases:
+            self.store = Store(Path(self.temp.name) / (name + ".sqlite"))
+            self.stores.append(self.store)
+            conductor = Conductor(self.store, "payments", BANKS,
+                                  source_resolver=source_resolver(root),
+                                  document_reader=document_reader(root) if reader else None)
+            evidence = dict(observed(), source=source, quote=quote)
+            results.append(self.moved(
+                lambda: conductor.submit_answer("discover.person", "Mina exported the failures.",
+                                                evidence, expected_revision=self.token(),
+                                                turn_id=name),
+                lambda result, reason=reason: (isinstance(result, TurnOutcome)
+                                               and result.status == "challenge"
+                                               and reason in result.message)))
+        return results
+
+    def token(self) -> str:
+        return self.store.head("payments").token
+
+    def moved(self, action, expect) -> tuple[bool, bool, object]:
+        """(did the revision move, was the outcome the one expected, the outcome)."""
+        before = self.store.head("payments").revision
+        try:
+            result = action()
+        except ValidationError as exc:
+            result = exc
+        return self.store.head("payments").revision != before, expect(result), result
+
+    @staticmethod
+    def outcome(status: str, message: str | None = None):
+        return lambda result: (isinstance(result, TurnOutcome) and result.status == status
+                               and (message is None or result.message == message))
+
+    @staticmethod
+    def raised(result) -> bool:
+        return isinstance(result, ValidationError)
+
+    def drive(self, refusal: str) -> list[tuple[bool, bool, object]]:
+        if refusal == "a quotation that is not in the cited document or cannot be checked":
+            return self.quotation_refusals()
+        conductor, token = self.conductor, self.token
+        first = conductor.next_turn()
+        mismatch = self.outcome("conflict", "answer does not match the current question")
+        if refusal == "insufficient evidence":
+            return [self.moved(lambda: conductor.submit_answer(
+                "discover.person", "A hunch.", {"class": "team_belief", "source": "hunch"},
+                expected_revision=token(), turn_id="weak"), self.outcome("challenge"))]
+        if refusal == "an answer to a question other than the one offered":
+            return [self.moved(lambda: conductor.submit_answer(
+                "discover.cost", "Support exported 41.", artifact(),
+                expected_revision=token(), turn_id="ahead"), mismatch)]
+        if refusal == "an unknown question ID":
+            return [self.moved(lambda: conductor.submit_answer(
+                "discover.nowhere", "An answer.", observed(),
+                expected_revision=token(), turn_id="nowhere"), mismatch)]
+        person = conductor.submit_answer("discover.person", "Mina exported the failures.", observed(),
+                                         expected_revision=first.revision, turn_id="person")
+        self.assertEqual(person.status, "accepted")
+        if refusal == "an unverifiable gate source":
+            conductor.submit_answer("discover.cost", "Support exported 41.", artifact(),
+                                    expected_revision=token(), turn_id="cost")
+            return [self.moved(lambda: conductor.prove_gate(
+                "discover", gate_proof(source="forged.md"), expected_revision=token(), turn_id="gate"),
+                self.outcome("blocked", "gate source could not be verified"))]
+        if refusal == "a stale expected revision":
+            return [self.moved(lambda: conductor.submit_answer(
+                "discover.cost", "Support exported 41.", artifact(),
+                expected_revision=first.revision, turn_id="late"),
+                self.outcome("conflict", "expected revision is stale"))]
+        if refusal == "a reused turn ID":
+            # Both halves of the row: the identical replay returns the original
+            # result, and a different payload under the same ID is a conflict.
+            return [
+                self.moved(lambda: conductor.submit_answer(
+                    "discover.person", "Mina exported the failures.", observed(),
+                    expected_revision=token(), turn_id="person"), self.outcome("accepted")),
+                self.moved(lambda: conductor.submit_answer(
+                    "discover.cost", "Something else.", artifact(),
+                    expected_revision=token(), turn_id="person"), self.outcome("conflict")),
+            ]
+        if refusal == "a request refused before the conductor reads it":
+            return [
+                self.moved(lambda: conductor.submit_answer(
+                    "", "An answer.", observed(), expected_revision=token(), turn_id="bad-id"),
+                    self.raised),
+                self.moved(lambda: conductor.submit_answer(
+                    "discover.cost", "An answer.", "not an object",
+                    expected_revision=token(), turn_id="bad-evidence"), self.raised),
+                self.moved(lambda: conductor.prove_gate(
+                    "nosuchbank", gate_proof(), expected_revision=token(), turn_id="bad-bank"),
+                    self.raised),
+            ]
+        raise AssertionError("no driver for the refusal %r" % refusal)
+
+    def test_the_table_names_exactly_the_refusals_the_paragraph_did(self) -> None:
+        self.assertEqual(REFUSALS_NAMED, set(refusal_table(QUICKSTART.read_text(encoding="utf-8"))))
+
+    def test_every_row_is_true_of_the_store_revision(self) -> None:
+        for refusal, advances in refusal_table(QUICKSTART.read_text(encoding="utf-8")).items():
+            with self.subTest(refusal=refusal):
+                self.tearDown()
+                self.setUp()
+                cases = self.drive(refusal)
+                for moved, expected, result in cases:
+                    self.assertTrue(expected, "%r did not produce its refusal: %r" % (refusal, result))
+                    self.assertEqual(advances, moved,
+                                     "the table says the revision %s after %r, and it %s"
+                                     % ("advances" if advances else "stays",
+                                        refusal, "moved" if moved else "stayed"))
+
+
+def quickstart_bullet(text: str, key: str) -> str:
+    """The quickstart's Phase status bullet that opens with `key`, flattened."""
+    lines = text.splitlines()
+    opener = "- `%s`" % key
+    start = next(index for index, raw in enumerate(lines) if raw.startswith(opener))
+    body = [lines[start]]
+    for raw in lines[start + 1:]:
+        if not raw.startswith("  "):
+            break
+        body.append(raw)
+    return " ".join(" ".join(body).split())
+
+
+class PhaseStatusDocTest(unittest.TestCase):
+    """The quickstart's `outcomes` and `missing` bullets, against a real report.
+
+    The bullets name the keys a reader of `pmos status --json` will look for
+    and say that a Gate 5 line citing BUILD-5 reads Gate 4's answer. Here the
+    bullets are held to their wording, and the report a freshly initialised
+    product produces is held to the keys they name, to `answered_in` naming
+    the gate-4 bank for BUILD-5, and to the `carried` marker. Nothing is
+    answered on a fresh product, so `met` turning true on a carried answer is
+    not exercised here; tests/test_pmos_phases.py drives that (a carried
+    answer met, a parked one unmet).
+    """
+
+    def status(self, *flags: str) -> str:
+        import contextlib
+        import io
+        from pmos.cli import main
+        with TemporaryDirectory() as folder:
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["init", "--path", folder, "--product-id", "demo"]), 0)
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                main(["status", "--path", folder, "--product-id", "demo", *flags])
+        return out.getvalue()
+
+    def report(self) -> dict:
+        return json.loads(self.status("--json"))
+
+    def test_human_mode_prints_the_table_and_not_the_phases_list(self) -> None:
+        """The paragraph once said human mode printed `phases` as JSON; 0.8.0
+        dropped it from human output, and the paragraph now says so."""
+        text = " ".join(QUICKSTART.read_text(encoding="utf-8").split())
+        self.assertIn("In human mode `status` does not print `phases` itself", text)
+        human = self.status().splitlines()
+        self.assertFalse([line for line in human if line.startswith("phases:")])
+        self.assertEqual(6, len([line for line in human if line.startswith("Gate ")]))
+        self.assertTrue([line for line in human if "no question stands behind" in line])
+        self.assertTrue([line for line in human if "carried from build" in line])
+
+    def test_the_bullets_name_the_keys_and_the_cross_bank_read(self) -> None:
+        text = QUICKSTART.read_text(encoding="utf-8")
+        outcomes = quickstart_bullet(text, "outcomes")
+        missing = quickstart_bullet(text, "missing")
+        for phrase in ("read from the bank that owns it", "`BUILD-5`", "Gate 4",
+                       "`answered_in`", "`carried`", '`["build"]`'):
+            with self.subTest(bullet="outcomes", phrase=phrase):
+                self.assertIn(phrase, outcomes)
+        for phrase in ("`gate_lines`", "`unknown_gate_lines`", "`met` is `null`"):
+            with self.subTest(bullet="missing", phrase=phrase):
+                self.assertIn(phrase, missing)
+
+    def test_the_report_has_what_the_bullets_describe(self) -> None:
+        phases = self.report()["phases"]
+        gate_of = {phase["bank_id"]: phase["gate"] for phase in phases}
+        for phase in phases:
+            with self.subTest(bank=phase["bank_id"]):
+                self.assertIn("gate_lines", phase["missing"])
+                self.assertEqual(
+                    phase["missing"]["unknown_gate_lines"],
+                    [row["line"] for row in phase["outcomes"] if row["met"] is None])
+                for row in phase["outcomes"]:
+                    self.assertEqual(row["carried"], sorted(
+                        {bank for bank in row["answered_in"].values() if bank != phase["bank_id"]}))
+        deliver = [phase for phase in phases if phase["gate"] == 5][0]
+        cites = [row for row in deliver["outcomes"] if "BUILD-5" in row["questions"]]
+        self.assertEqual(1, len(cites), "the Gate 5 line citing BUILD-5 is gone")
+        row = cites[0]
+        self.assertEqual(4, gate_of[row["answered_in"]["BUILD-5"]])
+        # Unanswered on a fresh product, and still marked: the marker names the
+        # owning bank, not an answer that was carried.
+        self.assertFalse(row["met"])
+        self.assertEqual(["build"], row["carried"])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
