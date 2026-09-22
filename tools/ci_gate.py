@@ -106,6 +106,13 @@ GATES = (
     # and working-copy IDs, so a stale copy points them at the wrong one.
     Gate("phase-index-freshness", ("python3", "tools/phase_index.py",
          "--check")),
+    # Every template links a filled example under examples/ that names it
+    # back, or sits on the exception list in tools/template_rubric.py with a
+    # reason. An exact set rather than a floor on the count: a floor still
+    # passes when a new template lands with no pointer, and a grep for the
+    # "Filled example:" line passes a line that links nothing.
+    Gate("template-backpointers", ("python3", "tools/template_rubric.py",
+         "--backpointers")),
     Gate("manifest-contract", ("python3", "tools/check_manifest.py",
          "--quiet")),
     Gate("frontmatter", ("python3", "tools/frontmatter_init.py", "--dry-run"),

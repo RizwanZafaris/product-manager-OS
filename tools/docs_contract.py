@@ -68,8 +68,23 @@ INVENTORY_DOCS = ("README.md", "docs/ARCHITECTURE.md")
 # claim about this tree, so it is read; a number on any other line is not,
 # which is the same stated limit the inventory check carries. CHANGELOG.md is
 # excluded for the reason given above: its older figures are correct history.
-GATE_COUNT = re.compile(r"\b(\d+)\s+(?:release\s+)?gates\b", re.I)
-GATE_COUNT_DOCS = ("README.md", "docs/FAQ.md")
+#
+# Unlike the other counts in this file, this one is read in words as well as
+# digits, up to ninety-nine, with "release" or "named" allowed before "gates".
+# A larger figure in words is misread by its last words ("one hundred
+# twenty-six gates" reads as 26); no document here writes one.
+# docs/ARCHITECTURE.md said "twenty-two named gates" and "Its twenty-two gates"
+# beside ci_gate.py while the file defined 25, and a check that read digits
+# alone, in README.md and docs/FAQ.md alone, passed both.
+_UNITS = ("zero one two three four five six seven eight nine ten eleven twelve "
+          "thirteen fourteen fifteen sixteen seventeen eighteen nineteen").split()
+_TENS = "twenty thirty forty fifty sixty seventy eighty ninety".split()
+NUMBER_WORDS = dict({word: value for value, word in enumerate(_UNITS)},
+                    **{word: 10 * value for value, word in enumerate(_TENS, 2)})
+GATE_COUNT = re.compile(
+    r"\b(\d+|(?:%s)(?:[-\s](?:%s))?|%s)\s+(?:(?:release|named)\s+)?gates\b"
+    % ("|".join(_TENS), "|".join(_UNITS[1:10]), "|".join(_UNITS)), re.I)
+GATE_COUNT_DOCS = ("README.md", "docs/FAQ.md", "docs/ARCHITECTURE.md")
 CI_GATE = "tools/ci_gate.py"
 
 # The examples inventory, which failed the same way the template inventory did:
@@ -85,7 +100,7 @@ EXAMPLES_INDEX = "examples/README.md"
 JOURNEY = "-journey.md"
 SUPPLEMENTARY = ("-coverage-sheet.md", "-design-sheet.md")
 # "the artifact map for the 58 files below": how a section states its count.
-# Numerals only, the limit the other counts here state.
+# Numerals only, the limit the template inventory states.
 SECTION_COUNT = re.compile(r"\b(\d+)\s+files\s+below\b")
 # Any other "N files" in a family section restates that family's figure.
 FILES_COUNT = re.compile(r"\b(\d+)\s+files\b")
@@ -394,6 +409,13 @@ def _gate_total(root: Path):
     return None
 
 
+def _stated_count(figure: str) -> int:
+    """A figure GATE_COUNT matched, "26", "twenty-six" or "Twenty Six", as a number."""
+    if figure.isdigit():
+        return int(figure)
+    return sum(NUMBER_WORDS[word] for word in re.split(r"[-\s]+", figure.lower()))
+
+
 def check_gate_count(root: Path) -> list[Issue]:
     """Gate counts stated beside ci_gate.py, against what that file defines.
 
@@ -402,22 +424,27 @@ def check_gate_count(root: Path) -> list[Issue]:
     22, the FAQ said twenty-one, and tools/ci_gate.py defined 25. A figure a
     reader cannot check is a figure nothing re-measures when gates are added.
 
-    Spelled-out numbers are not read, the same limit the inventory check
-    states. A document that wants to be checked writes the digit.
+    A count is read in digits or in words up to ninety-nine, on any line that
+    names ci_gate.py with or without its tools/ directory. A larger number
+    written in words is not read.
     """
     issues: list[Issue] = []
     total = _gate_total(root)
     if total is None:
         return issues
+    # The bare file name counts as naming it: docs/ARCHITECTURE.md's tree
+    # diagram states the count on the line listing ci_gate.py under tools/,
+    # where the full path never appears.
+    named = Path(CI_GATE).name
     for name in GATE_COUNT_DOCS:
         path = root / name
         if not path.is_file():
             continue
         for number, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-            if CI_GATE not in raw:
+            if named not in raw:
                 continue
             for match in GATE_COUNT.finditer(raw):
-                if int(match.group(1)) != total:
+                if _stated_count(match.group(1)) != total:
                     issues.append(Issue("error", "gate-count", name, number,
                                         "this says %r and %s defines %d"
                                         % (match.group(0), CI_GATE, total)))
