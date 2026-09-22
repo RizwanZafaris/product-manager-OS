@@ -4,13 +4,13 @@
   "reviewer_kind": "independent-agent",
   "independent_implementation": true,
   "identity_assurance": "unauthenticated-local-claim",
-  "reviewed_at": "2026-09-22T08:33:39Z",
-  "reviewed_tree_sha256": "313f179a64aa7f19753d7bcded6f3adcc24d51a6e994e53677bc135703f3c721",
-  "reviewer_transcript": "docs/readiness/review-transcripts/2026-09-22-r8-evidence-allowlist.md",
-  "reviewer_transcript_sha256": "5a0950aa40a179c43e1138f2cc054ffa482b4aa05c05eb17164b3e657ba39cb3",
+  "reviewed_at": "2026-09-22T09:08:58Z",
+  "reviewed_tree_sha256": "19521eb739b03c6250c13ba866c0c08d6083d405ab248d1744aaa7d269627d6c",
+  "reviewer_transcript": "docs/readiness/review-transcripts/2026-09-22-r5-examples-inventory.md",
+  "reviewer_transcript_sha256": "f78f737c1cf8858614146ba1fb1867a4707deca31fd8cbfa7f98ff4c0365bfd2",
   "scope": [
-    "Change set 4688642..eedecdd, task R8: a review record's evidence must be a check this repository defines (an exact gate argv or an EVIDENCE_COMMANDS entry), is re-run at --record, and must print the recorded result; a finding and an in-tree reviewer transcript are required; --reexecute re-runs a committed record",
-    "Built by one agent and broken by another in four rounds; the last breaker reverted all 15 listed guards and each turned its named test red. Reviewed in three rounds: r8-1 accepted on A1-A4, r8-2-deep returned no text, r8-3-deep accepted on A1 and A5-A8 with one P3. The transcript holds each reply verbatim"
+    "Change set 2dc3a8c..e0a29ec, task R5: every count in examples/README.md corrected to the tree (58, 44, 54, 14, 170 and 16) and held there by check_examples_inventory in tools/docs_contract.py, with families derived from examples/<family>-journey.md; the 475-word opening paragraph split",
+    "Built by one agent and broken by another in four rounds; the last breaker reverted every listed guard and each turned its named test red, with one equivalent mutant deleted. Reviewed in one round, r5-1, which accepted with twelve named checks covering A1 to A7 and no issues; the transcript holds the reply verbatim"
   ],
   "evidence": [
     {
@@ -28,7 +28,7 @@
     {
       "command": "python3 tools/ci_gate.py",
       "result": "release gates: 24/25 passed",
-      "output": "[PASS] compile                1.10s\n[PASS] root-tests             118.69s\n[PASS] harness-tests          4.04s\n[PASS] regulated-tests        0.22s\n[PASS] claude-adapter         0.09s\n[PASS] desktop-adapter        0.49s\n[PASS] workspace-lifecycle    2.06s\n[PASS] workspace-links        2.22s\n[PASS] workspace-contract     0.16s\n[PASS] journey-record         2.08s\n[PASS] journey-chain          1.45s\n[PASS] what-checks-freshness  0.14s\n[PASS] regulated-template     0.10s\n[PASS] regulated-example      0.10s\n[PASS] os-tree                9.09s\n[PASS] json-syntax            0.24s\n[PASS] graph-freshness        1.84s\n[PASS] skill-rubric-freshness 0.29s\n[PASS] phase-index-freshness  0.51s\n[PASS] manifest-contract      0.10s\n[PASS] frontmatter            1.32s\n[PASS] security-policy        3.56s\n[PASS] docs-contract          0.10s\n[PASS] skill-rubric           0.07s\n[FAIL] readiness-local        252.70s\n       exit 1\nevidence : 48 criteria\n  failing          : 1 criteria\n  not built        : 0 criteria\n  external blockers: EXT-AI, EXT-CI, EXT-INTEGRATIONS, EXT-REGULATORY, EXT-RELEASE, EXT-TEAM, EXT-USER\n  hard gate rubric_integrity_green                   GREEN\n  hard gate task_ledger_buildable                    GREEN\n  hard gate all_tasks_green                          GREEN\n  hard gate every_verifiable_criterion_passes        NOT GREEN\n  hard gate no_unbuilt_criteria                      GREEN\n  hard gate tree_clean_and_stable                    NOT GREEN\n  hard gate thirteen_use_cases_green                 GREEN\n  hard gate routes_executable                        GREEN\n  hard gate ci_parity_green                          GREEN\n  hard gate process_fault_suite_green                GREEN\n  hard gate links_green                              GREEN\n  hard gate security_green                           GREEN\n  hard gate local_review_record_complete             NOT GREEN\n  hard gate operator_docs_contract_green             GREEN\n\nCOMPLETE PM OS READINESS: NOT 100/100 \u2014 WORK REMAINS\n  measured on eedecdd9133f with Python 3.11.15\n  external evidence remains required; local tests cannot self-attest it\nrelease gates: 24/25 passed\n",
+      "output": "[PASS] compile                2.33s\n[PASS] root-tests             436.81s\n[PASS] harness-tests          5.83s\n[PASS] regulated-tests        0.29s\n[PASS] claude-adapter         0.07s\n[PASS] desktop-adapter        0.39s\n[PASS] workspace-lifecycle    2.74s\n[PASS] workspace-links        3.04s\n[PASS] workspace-contract     0.36s\n[PASS] journey-record         2.53s\n[PASS] journey-chain          1.85s\n[PASS] what-checks-freshness  0.23s\n[PASS] regulated-template     0.11s\n[PASS] regulated-example      0.06s\n[PASS] os-tree                6.80s\n[PASS] json-syntax            0.31s\n[PASS] graph-freshness        0.24s\n[PASS] skill-rubric-freshness 0.08s\n[PASS] phase-index-freshness  0.50s\n[PASS] manifest-contract      0.08s\n[PASS] frontmatter            0.77s\n[PASS] security-policy        1.88s\n[PASS] docs-contract          0.10s\n[PASS] skill-rubric           0.05s\n[FAIL] readiness-local        585.24s\n       exit 1\nevidence : 48 criteria\n  failing          : 1 criteria\n  not built        : 0 criteria\n  external blockers: EXT-AI, EXT-CI, EXT-INTEGRATIONS, EXT-REGULATORY, EXT-RELEASE, EXT-TEAM, EXT-USER\n  hard gate rubric_integrity_green                   GREEN\n  hard gate task_ledger_buildable                    GREEN\n  hard gate all_tasks_green                          GREEN\n  hard gate every_verifiable_criterion_passes        NOT GREEN\n  hard gate no_unbuilt_criteria                      GREEN\n  hard gate tree_clean_and_stable                    NOT GREEN\n  hard gate thirteen_use_cases_green                 GREEN\n  hard gate routes_executable                        GREEN\n  hard gate ci_parity_green                          GREEN\n  hard gate process_fault_suite_green                GREEN\n  hard gate links_green                              GREEN\n  hard gate security_green                           GREEN\n  hard gate local_review_record_complete             NOT GREEN\n  hard gate operator_docs_contract_green             GREEN\n\nCOMPLETE PM OS READINESS: NOT 100/100 \u2014 WORK REMAINS\n  measured on e0a29eca8a4a with Python 3.11.15\n  external evidence remains required; local tests cannot self-attest it\nrelease gates: 24/25 passed\n",
       "exit_code": 1
     }
   ],
@@ -37,8 +37,8 @@
       "id": "R1",
       "severity": "P3",
       "status": "accepted",
-      "summary": "An evidence value of a command, a pipe and exit=0 with no result parses with exit=0 taken as the result, so the refusal names a missing result rather than a malformed value",
-      "evidence": "Reproduced with parse_evidence on the lint command followed by exit=0: it returns the command, 0 and the string exit=0. It fails closed, since the command runs and is refused because exit=0 is not in its output. Message quality only; a follow-up can reject it at parse time"
+      "summary": "no defect found",
+      "evidence": "The reviewer traced each of the four seeds to its test, the longest-prefix family rule to test_a_family_named_inside_another_is_counted_once, and the stated limit that word-form and subset figures are not read, and raised no issue"
     }
   ],
   "verdict": "accepted"

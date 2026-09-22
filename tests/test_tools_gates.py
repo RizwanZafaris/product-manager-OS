@@ -47,7 +47,9 @@ import pm_working_set  # noqa: E402
 import readiness  # noqa: E402
 import readiness_probe  # noqa: E402
 import template_rubric  # noqa: E402
-from tools.docs_contract import (check as check_docs, check_gate_count,  # noqa: E402
+from tools.docs_contract import (check as check_docs,  # noqa: E402
+                                 _example_families,
+                                 check_examples_inventory, check_gate_count,
                                  check_inventory)
 from tools.graph import check_unique_ids, node_id  # noqa: E402
 
@@ -258,6 +260,420 @@ class TemplateInventoryGateTests(unittest.TestCase):
             root = copy_tree(tmp)
             shutil.rmtree(root / "templates")
             self.assertEqual([], self.findings(root))
+
+
+class ExamplesInventoryGateTests(unittest.TestCase):
+    """The examples index, counted against examples/ rather than against itself.
+
+    Three of its four journey figures were stale and summed to its stale total,
+    and the gate never opened the file. Each seed below passed silently before
+    this check existed.
+    """
+
+    INDEX = "examples/README.md"
+    COUNT = "the artifact map for the 58 files below"
+
+    def findings(self, root):
+        return [(item.path, item.line, item.message)
+                for item in check_examples_inventory(root)]
+
+    def rewrite(self, path, old, new):
+        text = path.read_text(encoding="utf-8")
+        self.assertEqual(1, text.count(old), old)
+        path.write_text(text.replace(old, new), encoding="utf-8")
+
+    def line_of(self, root, needle):
+        lines = (root / self.INDEX).read_text(encoding="utf-8").splitlines()
+        return next(number for number, raw in enumerate(lines, 1)
+                    if needle in raw)
+
+    def test_the_tree_as_it_stands_states_its_own_inventory(self):
+        self.assertEqual([], self.findings(REPO))
+        self.assertEqual([], [item for item in check_docs(REPO)
+                              if item.path == self.INDEX])
+
+    def test_a_section_count_off_by_one_is_reported_at_its_line(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            self.rewrite(root / self.INDEX, self.COUNT,
+                         "the artifact map for the 57 files below")
+            line = self.line_of(root, "57 files below")
+            self.assertIn((self.INDEX, line, "the ledgerline section says "
+                           "'57 files' and examples/ holds 58 ledgerline "
+                           "artifact(s)"), self.findings(root))
+            self.assertIn("examples-inventory",
+                          {item.code for item in check_docs(root)
+                           if item.severity == "error"})
+
+    def test_a_new_file_with_its_row_and_a_stale_digit_is_reported(self):
+        """The discriminating seed. The file is in the tree and in the table,
+        so the orphan check is satisfied and the row count agrees with the
+        tree: only the stated figure is stale, and a count read back from the
+        document's own rows would pass it forever."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            (root / "examples" / "ledgerline-brand-new-thing.md").write_text(
+                "# Brand new thing\n", encoding="utf-8")
+            row = ("| [ledgerline-retrospective.md](ledgerline-retrospective.md)"
+                   " |")
+            index = root / self.INDEX
+            text = index.read_text(encoding="utf-8")
+            start = text.index(row)
+            end = text.index("\n", start)
+            index.write_text(text[:end] + "\n| [ledgerline-brand-new-thing.md]"
+                             "(ledgerline-brand-new-thing.md) | None | None |"
+                             + text[end:], encoding="utf-8")
+            messages = [message for _path, _line, message
+                        in self.findings(root)]
+            self.assertNotIn("examples/ledgerline-brand-new-thing.md is in the "
+                             "tree and not in the index", messages)
+            self.assertIn("the ledgerline section says '58 files' and "
+                          "examples/ holds 59 ledgerline artifact(s)", messages)
+            self.assertIn("the summary row for ledgerline says 58 and "
+                          "examples/ holds 59", messages)
+            self.assertIn("the index says 170 artifacts in all and examples/ "
+                          "holds 171", messages)
+
+    def test_dropping_the_count_sentence_is_not_a_way_to_pass(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            self.rewrite(root / self.INDEX,
+                         " It fills no template itself: it is the data sheet "
+                         "and the artifact map for the 58 files below, apart "
+                         "from the last 7 rows.", "")
+            messages = [message for _path, _line, message
+                        in self.findings(root)]
+            self.assertTrue(any(message.startswith(
+                "no operator document states the examples inventory for "
+                "ledgerline") for message in messages), messages)
+
+    def test_a_row_pointing_at_no_file_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            self.rewrite(root / self.INDEX,
+                         "| [example-brd.md](example-brd.md) |",
+                         "| [does-not-exist.md](does-not-exist.md) | None | "
+                         "None |\n| [example-brd.md](example-brd.md) |")
+            line = self.line_of(root, "does-not-exist.md")
+            self.assertIn((self.INDEX, line, "the index links does-not-exist.md"
+                           ", which does not resolve"), self.findings(root))
+
+    def test_a_file_the_index_never_links_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            (root / "examples" / "unlisted.md").write_text(
+                "# Unlisted\n", encoding="utf-8")
+            self.assertIn((self.INDEX, 1, "examples/unlisted.md is in the tree "
+                           "and not in the index"), self.findings(root))
+
+    def test_a_tree_with_no_examples_makes_no_inventory_claim(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            shutil.rmtree(root / "examples")
+            self.assertEqual([], self.findings(root))
+
+    def row_line(self, text, name):
+        prefix = "| [%s](%s) |" % (name, name)
+        found = [raw for raw in text.splitlines() if raw.startswith(prefix)]
+        self.assertEqual(1, len(found), name)
+        return found[0]
+
+    def swap_rows(self, root, first, second):
+        index = root / self.INDEX
+        text = index.read_text(encoding="utf-8")
+        one, two = self.row_line(text, first), self.row_line(text, second)
+        text = text.replace(one, "\0").replace(two, one).replace("\0", two)
+        index.write_text(text, encoding="utf-8")
+
+    def messages(self, root):
+        return [message for _path, _line, message in self.findings(root)]
+
+    def test_a_standalone_count_off_by_one_is_reported(self):
+        """A section that names no journey is held to its rows, and only by
+        the rows comparison: nothing else reads "the 16 files below"."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            self.rewrite(root / self.INDEX, "Each of the 16 files below",
+                         "Each of the 17 files below")
+            line = self.line_of(root, "Each of the 17 files below")
+            self.assertIn((self.INDEX, line, "the 'Standalone examples' "
+                           "section says 17 file(s) and its table has 16 "
+                           "row(s)"), self.findings(root))
+
+    def test_dropping_the_total_is_not_a_way_to_pass(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            self.rewrite(root / self.INDEX, "the four hold 170 artifacts in "
+                         "all, counted", "the four are counted")
+            self.assertIn((self.INDEX, 1, "no operator document states the "
+                           "examples inventory for the journeys' total. Its "
+                           "section has to say \"the N files below\" and the "
+                           "index \"N artifacts in all\", or the figure is "
+                           "measured by nobody"), self.findings(root))
+
+    def test_a_family_row_moved_into_another_section_is_reported(self):
+        """The original stray-row defect with every count kept equal: a
+        Ledgerline row in the standalone table and a standalone row in the
+        Ledgerline table leave every row count and tree count unchanged."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            self.swap_rows(root, "ledgerline-business-case.md",
+                           "example-brd.md")
+            messages = self.messages(root)
+            self.assertIn("the ledgerline section lists example-brd.md, which "
+                          "is not a ledgerline artifact", messages)
+            self.assertIn("the ledgerline section does not list "
+                          "ledgerline-business-case.md", messages)
+
+    def test_rows_swapped_between_two_families_are_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            self.swap_rows(root, "sahulat-decision-log.md",
+                           "harbourgate-adr.md")
+            messages = self.messages(root)
+            self.assertIn("the sahulat section lists harbourgate-adr.md, "
+                          "which is not a sahulat artifact", messages)
+            self.assertIn("the harbourgate section does not list "
+                          "harbourgate-adr.md", messages)
+
+    def test_a_row_listed_twice_in_its_family_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            index = root / self.INDEX
+            text = index.read_text(encoding="utf-8")
+            text = text.replace(self.row_line(text, "ledgerline-okrs.md"),
+                                self.row_line(text,
+                                              "ledgerline-positioning.md"))
+            index.write_text(text, encoding="utf-8")
+            messages = self.messages(root)
+            self.assertIn("the ledgerline section lists "
+                          "ledgerline-positioning.md more than once", messages)
+            self.assertIn("the ledgerline section does not list "
+                          "ledgerline-okrs.md", messages)
+
+    def test_a_deleted_summary_row_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            index = root / self.INDEX
+            text = index.read_text(encoding="utf-8")
+            row = self.row_line(text, "sahulat-journey.md")
+            index.write_text(text.replace(row + "\n", ""), encoding="utf-8")
+            self.assertIn("the summary table has 0 row(s) for sahulat and "
+                          "needs one", self.messages(root))
+
+    def test_the_lead_counts_are_held_to_their_sections(self):
+        seeds = (
+            ("16 standalone examples", "17 standalone examples",
+             "the index says '17 standalone examples' and the 'Standalone "
+             "examples' table has 16 row(s)"),
+            ("41 single-file industry examples",
+             "40 single-file industry examples",
+             "the index says '40 single-file industry examples' and the "
+             "'Industry examples' table has 41 row(s)"),
+            ("and 4 journeys", "and 5 journeys",
+             "the index says '5 journeys' and examples/ holds 4 journey(s)"),
+        )
+        for old, new, message in seeds:
+            with self.subTest(new=new), tempfile.TemporaryDirectory() as tmp:
+                root = copy_tree(tmp)
+                self.rewrite(root / self.INDEX, old, new)
+                self.assertIn((self.INDEX, 3, message), self.findings(root))
+
+    def test_a_lead_count_whose_section_is_gone_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            self.rewrite(root / self.INDEX, "## Industry examples\n",
+                         "## Examples by industry\n")
+            self.assertIn((self.INDEX, 3, "the index says '41 single-file "
+                           "industry examples' and has no 'Industry examples' "
+                           "section to count"), self.findings(root))
+
+    def test_the_added_and_original_figures_are_held_to_the_tree(self):
+        """The 38 / 30 / 38 figures were stale beside the family counts and
+        nothing read them."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            self.rewrite(root / self.INDEX, "the 38 artifacts added below the "
+                         "original 13", "the 39 artifacts added below the "
+                         "original 13")
+            self.assertIn("the ledgerline section's 39 added, 13 original and "
+                          "7 last rows make 59, and examples/ holds 58",
+                          self.messages(root))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            self.rewrite(root / self.INDEX, "the 30 artifacts added below the "
+                         "original 14", "the 31 artifacts added below the "
+                         "original 13")
+            messages = self.messages(root)
+            # 31 + 13 still makes 44, so only the artifact map catches it.
+            self.assertEqual(["the sahulat section says 'the original 13' and "
+                              "its journey's artifact map lists 14"],
+                             [m for m in messages if "sahulat" in m])
+
+    def test_the_last_rows_figure_is_held_to_the_table(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            self.rewrite(root / self.INDEX, "The last 7 Ledgerline rows",
+                         "The last 8 Ledgerline rows")
+            self.assertIn("the index gives [7, 8] figures for the last "
+                          "ledgerline rows", self.messages(root))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            index = root / self.INDEX
+            text = index.read_text(encoding="utf-8")
+            self.assertEqual(3, text.count("last 7 "))
+            index.write_text(text.replace("last 7 ", "last 8 "),
+                             encoding="utf-8")
+            messages = self.messages(root)
+            self.assertIn("the index says the last 8 ledgerline rows are "
+                          "outside the artifact map and cite neither the "
+                          "journey nor its sheets, and 7 of them are",
+                          messages)
+            self.assertIn("the ledgerline section's 38 added, 13 original and "
+                          "8 last rows make 59, and examples/ holds 58",
+                          messages)
+
+    JOURNEY = "examples/ledgerline-journey.md"
+    TAIL_ROW = ("- [JTBD job map](ledgerline-jtbd-job-map.md) fills the job "
+                "map worksheet.\n\n")
+
+    def tail_messages(self, root, outside):
+        return [message for message in self.messages(root)
+                if message == "the index says the last 7 ledgerline rows are "
+                "outside the artifact map and cite neither the journey nor "
+                "its sheets, and %d of them are" % outside]
+
+    def test_a_last_row_moved_into_the_artifact_map_is_reported(self):
+        """The 'outside its artifact map' half of the last-rows clause. The
+        moved row cites no journey, so only the map lookup can catch it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            self.rewrite(root / self.JOURNEY, "## What this journey teaches",
+                         self.TAIL_ROW + "## What this journey teaches")
+            # One finding for each place the index states the figure.
+            self.assertEqual(3, len(self.tail_messages(root, 6)))
+
+    def test_the_artifact_map_runs_to_the_next_h2(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            # A subheading inside the map keeps the map's links.
+            self.rewrite(root / self.JOURNEY, "## What this journey teaches",
+                         "### A later addition\n\n" + self.TAIL_ROW
+                         + "## What this journey teaches")
+            # One finding for each place the index states the figure.
+            self.assertEqual(3, len(self.tail_messages(root, 6)))
+        # A heading of the same name at another level is not the map.
+        for heading in ("### Artifact map", "# Artifact map"):
+            with self.subTest(heading=heading), \
+                    tempfile.TemporaryDirectory() as tmp:
+                root = copy_tree(tmp)
+                self.rewrite(root / self.JOURNEY, "### Timeline",
+                             heading + "\n\n" + self.TAIL_ROW
+                             + "### Timeline")
+                self.assertEqual([], [message
+                                      for message in self.messages(root)
+                                      if "ledgerline" in message])
+
+    def test_the_last_rows_are_the_rows_at_the_foot_of_the_table(self):
+        """The positional half of the last-rows clause: the K rows it names are
+        the K rows at the foot of the family's table, not any K rows in it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            index = root / self.INDEX
+            text = index.read_text(encoding="utf-8")
+            moved = self.row_line(text, "ledgerline-jtbd-job-map.md")
+            first = self.row_line(text, "ledgerline-positioning.md")
+            text = text.replace(moved + "\n", "")
+            text = text.replace(first, moved + "\n" + first)
+            index.write_text(text, encoding="utf-8")
+            # A mapped row now sits in the last 7, so only 6 of them are
+            # outside; one finding for each place the index states the figure.
+            self.assertEqual(3, len(self.tail_messages(root, 6)))
+
+    def test_a_tail_row_naming_no_file_is_reported_not_raised(self):
+        """A row at the foot of the table that links no file is a finding. The
+        tail filter reads only the family's own files, so the gate never opens
+        a file the tree does not hold."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            index = root / self.INDEX
+            text = index.read_text(encoding="utf-8")
+            last = self.row_line(text, "ledgerline-harness-routing-run.md")
+            index.write_text(text.replace(
+                last, last + "\n| [ledgerline-ghost.md](ledgerline-ghost.md) "
+                "| x | y |"), encoding="utf-8")
+            messages = self.messages(root)
+            self.assertIn("the index links ledgerline-ghost.md, which does "
+                          "not resolve", messages)
+            self.assertEqual(3, len(self.tail_messages(root, 6)))
+
+    def test_a_section_linking_two_journeys_indexes_neither(self):
+        """A section says which family it indexes by linking exactly one
+        journey. Linking two makes it no family's section, rather than the
+        section of whichever journey a set happens to yield first."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            self.rewrite(root / self.INDEX, "The last 7 rows sit outside",
+                         "[sahulat-journey.md](sahulat-journey.md) is another "
+                         "family. The last 7 rows sit outside")
+            messages = self.messages(root)
+            self.assertIn("no operator document states the examples "
+                          "inventory for ledgerline. Its section has to say "
+                          "\"the N files below\" and the index \"N artifacts "
+                          "in all\", or the figure is measured by nobody",
+                          messages)
+            self.assertEqual([], [message for message in messages
+                                  if "not a sahulat artifact" in message])
+            # The unnamed 'last 7 rows' in that section names no family either.
+            self.assertIn("'last 7 rows' names no journey family", messages)
+            self.assertEqual([], [message for message in messages
+                                  if "last 7 sahulat rows" in message])
+
+    def test_a_last_rows_figure_on_no_family_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            self.rewrite(root / self.INDEX, "Read the examples before filling "
+                         "the templates.", "Read the examples before filling "
+                         "the templates, the last 2 widget rows first.")
+            self.assertIn("'last 2 widget rows' names no journey family",
+                          self.messages(root))
+
+    def test_one_stale_figure_stated_twice_on_a_line_is_one_finding(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            index = root / self.INDEX
+            text = index.read_text(encoding="utf-8")
+            line = next(raw for raw in text.splitlines()
+                        if self.COUNT in raw)
+            self.assertEqual(2, line.count("58 files"))
+            index.write_text(text.replace(line, line.replace("58 files",
+                                                             "57 files")),
+                             encoding="utf-8")
+            self.assertEqual(1, self.messages(root).count(
+                "the ledgerline section says '57 files' and examples/ holds "
+                "58 ledgerline artifact(s)"))
+
+    def test_a_family_named_inside_another_is_counted_once(self):
+        members = _example_families({
+            "a-journey.md", "a-b-journey.md", "a-b-coverage-sheet.md",
+            "a-b-thing.md", "a-other.md", "a-design-sheet.md"})
+        self.assertEqual({"a": {"a-other.md"}, "a-b": {"a-b-thing.md"}},
+                         members)
+
+    def test_an_apple_double_file_is_not_an_example(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            (root / "examples" / "._ledgerline-positioning.md").write_bytes(
+                b"\x00\x05\x16\x07")
+            self.assertEqual([], self.findings(root))
+
+    def test_a_missing_index_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            (root / self.INDEX).unlink()
+            self.assertEqual([(self.INDEX, 1, "the examples index is missing, "
+                               "so nothing states the inventory it is the "
+                               "front door for")], self.findings(root))
 
 
 class ReadinessProbeMutationAnchorTests(unittest.TestCase):
