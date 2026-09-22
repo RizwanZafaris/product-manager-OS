@@ -10,7 +10,9 @@ the wheel carries pmos/ and nothing from skills/conductor/. Each bank stays the
 authored source and the contract is a reading of it. A bank's version is a hash
 of what it contracts, so only a change to the contract makes a new version; a
 change to the header prose does not. The tool fails, and writes nothing, when a
-bank breaks a rule of the format in skills/conductor/questions/README.md.
+bank breaks a rule of the format in skills/conductor/questions/README.md, or
+when its gate rendering table has more or fewer rows than its gate has
+checklist lines in os/STAGE-GATES.md.
 """
 from __future__ import annotations
 
@@ -46,6 +48,11 @@ FIELDS = {
 REQUIRED = ("Ask:", "Evidence class:", "Accept when:", "Lands in:")
 STAGE_RE = re.compile(r"^Stage:\s*([A-Z]+),\s*feeds\s+Gate\s+(\d+)")
 HEADING_RE = re.compile(r"^### ([A-Z]+)-(\d+):\s*(.+?)\s*$")
+GATE_HEADING_RE = re.compile(r"^## Gate (\d+):")
+# A checklist line is any box lint.py's CHECKBOX_RE accepts: '-' or '*', indented
+# or not, ticked or not. Matching '- [ ] ' alone let a line written '* [ ] ' or
+# '- [x] ' join a gate without the count noticing.
+CHECKLIST_BOX_RE = re.compile(r"^\s*[-*]\s*\[[ xX]\]\s*")
 # A leading rung: one digit from 1 to 5, or "N or M", which reads as the
 # larger number, the weaker rung the entry accepts.
 RUNG_RE = re.compile(r"^\s*([1-5])(?:\s+or\s+([1-5]))?\b")
@@ -224,6 +231,54 @@ def parse_signoffs(text: str) -> dict:
     return signoffs
 
 
+def parse_checklists(text: str) -> dict:
+    """Map gate number to the checklist lines of its section, box stripped, in order.
+
+    A gate's section runs from its '## Gate N:' heading to the next line that
+    starts with '## ', whatever that heading names, not to the next gate: the
+    file closes with sections that are not gates, and a box in one of those
+    would otherwise be counted as the last gate's line.
+    """
+    checklists, current = {}, None
+    for line in text.split("\n"):
+        heading = GATE_HEADING_RE.match(line)
+        if heading:
+            current = checklists.setdefault(int(heading.group(1)), [])
+        elif line.startswith("## "):
+            current = None
+        elif current is not None:
+            box = CHECKLIST_BOX_RE.match(line)
+            if box:
+                current.append(line[box.end():].strip())
+    return checklists
+
+
+def check_checklist_coverage(bank: dict, checklists: dict) -> None:
+    """Refuse a bank whose gate rendering has a row count unlike its gate's checklist.
+
+    Rows against checklist lines, not against questions: one question can
+    evidence several lines and a line can need a signature no question asks
+    for, so those two counts differ in shipped banks and are meant to. Counts,
+    not text: every row paraphrases its line on purpose, so comparing wording
+    would reject each faithful paraphrase. What a count catches is the drift
+    that happened, a line added to the gate with no row added to the bank, and
+    it has to be caught here because the runtime never reads these rows when
+    it records a gate approval. A row paired with the wrong line has the right
+    count, so it passes this check.
+    """
+    gate, source = bank["gate"], "skills/conductor/questions/%s.md" % bank["id"]
+    lines = checklists.get(gate)
+    if lines is None:
+        raise BankError("%s feeds Gate %d, and os/STAGE-GATES.md has no Gate %d "
+                        "checklist" % (source, gate, gate))
+    rows = bank["gate_rendering"]
+    if len(rows) != len(lines):
+        raise BankError(
+            "Gate %d in os/STAGE-GATES.md has %d checklist lines but the Gate %d "
+            "rendering table in %s has %d rows; add or remove rows until each "
+            "checklist line has one" % (gate, len(lines), gate, source, len(rows)))
+
+
 def parse_bank(stage: str, text: str) -> dict:
     """One bank's contract, raising BankError on any broken format rule."""
     upper = stage.upper()
@@ -267,6 +322,7 @@ def compile_contract() -> dict:
     except (OSError, UnicodeDecodeError) as error:
         raise BankError("cannot read %s: %s" % (STAGE_GATES, error))
     signoffs = parse_signoffs(stage_gates_text)
+    checklists = parse_checklists(stage_gates_text)
 
     banks = []
     for stage in ORDER:
@@ -278,6 +334,7 @@ def compile_contract() -> dict:
             raise BankError("%s: cannot read %s: %s" % (stage.upper(), path,
                                                         error))
         bank = parse_bank(stage, text)
+        check_checklist_coverage(bank, checklists)
         version = bank_version(bank)
         bank.update(source="skills/conductor/questions/%s.md" % stage,
                     source_sha256=_sha256_hex(raw), version=version)

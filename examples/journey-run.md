@@ -21,14 +21,14 @@ them changes this file and fails `python3 tools/journey_record.py --check`.
 
 ## Gates
 
-| Gate | Bank | Questions answered | Answers accepted | Gate outcome |
-|------|------|--------------------|--------------------|--------------|
-| 1 | discover | 9 | 9 | advanced |
-| 2 | define | 9 | 9 | advanced |
-| 3 | design | 8 | 8 | advanced |
-| 4 | build | 6 | 6 | advanced |
-| 5 | deliver | 12 | 12 | advanced |
-| 6 | operate | 10 | 10 | completed |
+| Gate | Bank | Questions answered | Answers accepted | pmos quote_verified | pmos source_verified | pmos supplied_unverified | Artifacts bound to the approval | Gate outcome |
+|------|------|--------------------|--------------------|------------------|------------------|------------------|------------------|--------------|
+| 1 | discover | 9 | 9 | 0 | 0 | 9 | 0 | advanced |
+| 2 | define | 12 | 12 | 0 | 0 | 12 | 0 | advanced |
+| 3 | design | 8 | 8 | 0 | 0 | 8 | 0 | advanced |
+| 4 | build | 6 | 6 | 0 | 0 | 6 | 0 | advanced |
+| 5 | deliver | 12 | 12 | 0 | 0 | 12 | 0 | advanced |
+| 6 | operate | 10 | 10 | 0 | 0 | 10 | 0 | completed |
 
 ## Staleness
 
@@ -41,4 +41,4 @@ them changes this file and fails `python3 tools/journey_record.py --check`.
 
 
 ## Result
-The runtime ended in interview state `completed` with 54 answers accepted across all six banks.
+The runtime ended in interview state `completed` with 57 answers accepted across all six banks. 0 of the 57 cite a file pmos found inside the workspace, and none of the 6 approvals bound a workspace artifact. For a run whose answers cite workspace documents and whose approvals bind them, see [journey-chain.md](journey-chain.md).

@@ -65,7 +65,7 @@ products/ledgerline/: 7 file(s), 0 broken link(s).
 
 **Next action.** Fill in every square-bracket field. Then make the gate attempt itself: copy Gate 1's section out of [os/STAGE-GATES.md](os/STAGE-GATES.md) into `products/ledgerline/gates/gate-1-attempt-1.md`, complete it, tick only what is honestly true, and collect the signatures. That file is the gate attempt; nothing generates it for you. `cat os/WHICH-DOCUMENT.md` first if you are unsure how much document a decision deserves.
 
-**To see the runtime enforce all six gates**, read [examples/journey-run.md](examples/journey-run.md): the `pmos` command line answering 54 questions and proving every gate on a fictional product, then refusing to call it complete once a gate's proof changes. `python3 tools/journey_record.py --check` re-runs it and compares, and CI does the same on every commit.
+**To see the runtime enforce all six gates**, read [examples/journey-run.md](examples/journey-run.md): the `pmos` command line answering 57 questions and proving every gate on a fictional product, then refusing to call it complete once a gate's proof changes. `python3 tools/journey_record.py --check` re-runs it and compares, and CI does the same on every commit.
 
 That is the whole default path. Everything past this point, the six-stage loop, the pmos runtime, the Claude Code plugin, model routing, is optional depth you reach for when the default path stops being enough, covered under [Supported paths](#supported-paths) below.
 

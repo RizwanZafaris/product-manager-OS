@@ -179,7 +179,8 @@ prints as JSON, the same as every other list `status` already prints; add
   workspace paths the bank's own questions land in, each with `present`
   (`true` when that path is a regular file in the workspace).
 - `completed`: the accepted question IDs for this bank (`questions`), split
-  into `source_verified` and `supplied_unverified` counts.
+  into `quote_verified`, `source_verified` and `supplied_unverified` counts,
+  one label per answer.
 - `missing`: unanswered question IDs, parked question IDs, and unmet Gate
   lines; for a stale bank it also carries `changed` (the artifacts that no
   longer match the approved revision) and `reconcile` (the approved
@@ -350,8 +351,15 @@ initialized product with none of this done yet (a product named `demo` here,
 to show real output), `pmos handoff --json` returned:
 
 ```json
-{"context": "handoff/CONTEXT.md", "development_ready": false, "index": "handoff/context-index.json", "missing": ["development-handoff.md artifact is missing", "Gate 1 is not approved", "Gate 2 is not approved", "Gate 3 is not approved", "Section 1. Problem is missing", "Section 2. Vision and strategy is missing", "Section 3. Outcomes and success measures is missing", "Section 4. Scope and exclusions is missing", "Section 5. Requirements and acceptance criteria is missing", "Section 6. Evidence and decisions is missing", "Section 7. Dependencies is missing", "Section 8. Interface and data contracts is missing", "Section 9. Unresolved risks and constraints is missing"], "ok": false, "product_id": "demo"}
+{"context": "handoff/CONTEXT.md", "development_ready": false, "evidence": {"quote_verified": 0, "source_verified": 0, "supplied_unverified": 0}, "evidence_by_gate": {"1": {"quote_verified": 0, "source_verified": 0, "supplied_unverified": 0}, "2": {"quote_verified": 0, "source_verified": 0, "supplied_unverified": 0}, "3": {"quote_verified": 0, "source_verified": 0, "supplied_unverified": 0}}, "index": "handoff/context-index.json", "missing": ["development-handoff.md artifact is missing", "Gate 1 is not approved", "Gate 2 is not approved", "Gate 3 is not approved", "Section 1. Problem is missing", "Section 2. Vision and strategy is missing", "Section 3. Outcomes and success measures is missing", "Section 4. Scope and exclusions is missing", "Section 5. Requirements and acceptance criteria is missing", "Section 6. Evidence and decisions is missing", "Section 7. Dependencies is missing", "Section 8. Interface and data contracts is missing", "Section 9. Unresolved risks and constraints is missing"], "ok": false, "product_id": "demo"}
 ```
+
+`evidence` counts every bank's accepted answers by the label pmos stored with
+each, and `evidence_by_gate` counts each Gate 1 to 3 bank's own;
+`handoff/CONTEXT.md` prints both, and on the line after `Development-ready`
+how many accepted answers cite a file pmos found inside the workspace, the
+`quote_verified` and `source_verified` ones together. `development_ready`
+reads none of these figures.
 
 ## Adopting revised question banks
 
@@ -361,7 +369,7 @@ A product keeps the question banks it started with, so a repository update never
 python3 -m pmos.cli repin --path . --product-id <product> --dry-run
 ```
 
-The preview names each bank whose questions changed, which questions were added, removed or reworded, and which gates will have to be proved again. It writes nothing. Running it without `--dry-run` adopts the contract: every stored answer is kept, questions that are new or reworded are asked again, and each changed bank's gate goes stale until it is proved against the current questions. Gates whose questions did not change are untouched.
+The preview names each bank whose questions changed, which questions were added, removed or reworded, and which gates will have to be proved again. It writes nothing. Running it without `--dry-run` adopts the contract and keeps every stored answer, parked answer, reopened question and approval. Each bank's cursor is set to the bank's first question with neither a stored answer nor an outstanding reopen, and never moves forward. So in a bank this product has not yet approved, the questions the contract appends are asked when the interview reaches them; a reworded question keeps its stored answer and is not asked again, and if its bank was approved, that gate goes stale until it is proved against the current questions; and a question that was parked and then reopened stays reopened and is asked next, before the rest of its bank. Gates whose questions did not change are untouched. `pmos repin` refuses a contract when the state it would write fails the Conductor's own validation of a stored state, since no later command could open such a product: one that adds questions to a bank this product has already approved, one that removes a question the product has answered, or one that puts a new question in front of answered ones, which the bank rules forbid (new questions append). The refusal comes before anything is written, dry run included, and the check is made again inside the write on the state that write replaces, so an approval recorded in between is refused as well. For a product it would refuse, `pmos status` names the reason instead of advising `pmos repin`, and the product keeps the banks it started with.
 
 As with every gate approval, `development_ready` reflects local attestation,
 never authenticated team approval: the package records who ran each gate and
@@ -370,9 +378,9 @@ that actor's identity.
 
 An answer may carry the evidence class its question asks for or a stronger
 one, observed behavior being the strongest. A product keeps the contract it
-started with, and `pmos status` shows its pinned and shipped bank versions
-under `question_banks`. Moving a product to a newer contract is not
-supported yet. A product created before the contract, or by `pmos migrate`,
+started with until `pmos repin` moves it, as above, and `pmos status` shows
+its pinned and shipped bank versions under `question_banks`. A product
+created before the contract, or by `pmos migrate`,
 keeps the one-question onboarding bank.
 
 The runtime retains the most recent 1,024 Conductor turn records as an

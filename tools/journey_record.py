@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from pmos.cli import main as pmos_main
+from pmos.conductor import VERIFICATION_LABELS
 
 def run_main(argv):
     """Run pmos_main with argv, capture stdout, return (returncode, stdout_text)."""
@@ -182,12 +183,20 @@ def generate_record_text():
         lines.append("")
         lines.append("- when a proof's source file changes after approval the gate goes stale and nothing later completes until it is proved again, which the Staleness table below shows happening.")
         lines.append("")
+        # Read from the runtime after the last re-proof, not restated from what this generator
+        # supplied: the columns exist to show what the runtime holds, and a run whose evidence
+        # cited workspace files would change them without anyone editing this file.
+        phase_of = {phase["bank_id"]: phase for phase in st_c.get("phases", [])}
         lines.append("## Gates")
         lines.append("")
-        lines.append("| Gate | Bank | Questions answered | Answers accepted | Gate outcome |")
-        lines.append("|------|------|--------------------|--------------------|--------------|")
+        labels = " | ".join("pmos %s" % label for label in VERIFICATION_LABELS)
+        lines.append(f"| Gate | Bank | Questions answered | Answers accepted | {labels} | Artifacts bound to the approval | Gate outcome |")
+        lines.append("|------|------|--------------------|--------------------|------------------|------------------|------------------|------------------|--------------|")
         for i, (bank, q, a, o) in enumerate(zip(bank_ids, questions_per_bank, accepted_per_bank, gate_outcomes), 1):
-            lines.append(f"| {i} | {bank} | {q} | {a} | {o} |")
+            phase = phase_of[bank]
+            counts = " | ".join(str(phase["completed"][label]) for label in VERIFICATION_LABELS)
+            bound = len((phase.get("approval") or {}).get("artifacts") or [])
+            lines.append(f"| {i} | {bank} | {q} | {a} | {counts} | {bound} | {o} |")
         lines.append("")
         lines.append("## Staleness")
         lines.append("")
@@ -201,7 +210,16 @@ def generate_record_text():
         lines.append("")
         lines.append("## Result")
         total_accepted = sum(accepted_per_bank)
-        lines.append(f"The runtime ended in interview state `{interview_c}` with {total_accepted} answers accepted across all six banks.")
+        answers_held = sum(st_c[label] for label in VERIFICATION_LABELS)
+        # quote_verified and source_verified both name a file pmos found inside the workspace.
+        citing = st_c["quote_verified"] + st_c["source_verified"]
+        approvals_held = st_c.get("approvals", [])
+        binding = sum(1 for item in approvals_held if item.get("artifacts"))
+        if binding:
+            bound_text = f"{binding} of the {len(approvals_held)} approvals bound a workspace artifact"
+        else:
+            bound_text = f"none of the {len(approvals_held)} approvals bound a workspace artifact"
+        lines.append(f"The runtime ended in interview state `{interview_c}` with {total_accepted} answers accepted across all six banks. {citing} of the {answers_held} cite a file pmos found inside the workspace, and {bound_text}. For a run whose answers cite workspace documents and whose approvals bind them, see [journey-chain.md](journey-chain.md).")
         lines.append("")
         return "\n".join(lines)
 

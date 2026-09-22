@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import re
 import sys
 import tempfile
 import unittest
@@ -93,6 +94,32 @@ SYNTHETIC_SIGNOFFS = (
     "|---|---|---|\n"
     "| Ignore this | Person | 2026 |\n"
 )
+
+# A gate's section ends at the next '## ' heading of any kind. The shipped file has
+# no box under a non-gate heading today, so a parser that ran each gate to the
+# next '## Gate' heading counts it the same; this text is what tells the two apart.
+# Gate 1's later lines use the other spellings lint.py's CHECKBOX_RE accepts, which
+# the shipped file does not use either, so only this text tells a parser that
+# counts '- [ ] ' alone from one that counts every box.
+SYNTHETIC_CHECKLISTS = (
+    "- [ ] a box before any gate belongs to none\n\n"
+    "## Gate 1: one\n\n"
+    "- [ ] first line of gate one\n"
+    "- [ ] second line of gate one\n\n"
+    "### A subsection does not end its gate\n\n"
+    "- [ ] third line of gate one\n"
+    "- [x] a ticked line of gate one\n"
+    "* [ ] a starred line of gate one\n"
+    "  - [ ] an indented line of gate one\n\n"
+    "## Gate 2: two\n\n"
+    "- [ ] the only line of gate two\n\n"
+    "## What a gate is worth\n\n"
+    "- [ ] a box under a heading that is not a gate belongs to none\n"
+)
+
+PLANNING_QUESTIONS = {"DEFINE-10": "planning/vision.md",
+                      "DEFINE-11": "planning/product-strategy.md",
+                      "DEFINE-12": "planning/roadmap.md"}
 
 SYNTHETIC_SIGNOFFS_MISSING = (
     "## Gate 1: one\n\n"
@@ -282,6 +309,124 @@ class QuestionBankCompileTests(unittest.TestCase):
             question_banks.BankError,
             "os/STAGE-GATES.md: Gate 1 has no sign-off table"):
             question_banks.parse_signoffs(text)
+
+    def test_parse_checklists_counts_lines_per_gate(self):
+        self.assertEqual(question_banks.parse_checklists(SYNTHETIC_CHECKLISTS), {
+            1: ["first line of gate one", "second line of gate one",
+                "third line of gate one", "a ticked line of gate one",
+                "a starred line of gate one", "an indented line of gate one"],
+            2: ["the only line of gate two"],
+        })
+        # Every box the fixture spells is one lint.py counts as a checkbox, so the
+        # compiler and the linter agree on what a checklist line is.
+        import lint
+        boxes = [line for line in SYNTHETIC_CHECKLISTS.split("\n") if "[ ]" in line or "[x]" in line]
+        self.assertEqual(len(boxes), 9)
+        for line in boxes:
+            self.assertTrue(lint.CHECKBOX_RE.match(line), line)
+        shipped = question_banks.parse_checklists(
+            question_banks.STAGE_GATES.read_text(encoding="utf-8"))
+        self.assertEqual({gate: len(lines) for gate, lines in shipped.items()},
+                         {1: 8, 2: 11, 3: 9, 4: 6, 5: 8, 6: 8})
+
+    def test_a_rendering_table_that_misses_a_checklist_line_is_a_bank_error(self):
+        bank = self._parse()  # SYNTHETIC feeds Gate 9 and renders two rows
+        three = question_banks.parse_checklists(
+            "## Gate 9: test\n- [ ] one\n- [ ] two\n- [ ] three\n")
+        with self.assertRaisesRegex(
+                question_banks.BankError,
+                "has 3 checklist lines but .* has 2 rows") as caught:
+            question_banks.check_checklist_coverage(bank, three)
+        self.assertIn("Gate 9", str(caught.exception))
+        self.assertIn("skills/conductor/questions/test.md", str(caught.exception))
+        # Equal counts pass: the check compares rows with lines, nothing else.
+        question_banks.check_checklist_coverage(bank, question_banks.parse_checklists(
+            "## Gate 9: test\n- [ ] one\n- [ ] two\n"))
+        with self.assertRaisesRegex(question_banks.BankError, "has no Gate 9 checklist"):
+            question_banks.check_checklist_coverage(bank, {})
+
+    def test_the_define_bank_before_the_planning_questions_fails_the_coverage_check(self):
+        """The red state this check was written against, rebuilt so it stays provable.
+
+        Before DEFINE-10 to DEFINE-12 the bank rendered eight rows for Gate 2's
+        eleven lines and compiled cleanly. That bank is rebuilt here from the
+        shipped file by removing the three entries and their rows, and the
+        real --check and write modes are run over it with the other five banks
+        and the real os/STAGE-GATES.md.
+        """
+        text = (question_banks.SOURCE_DIR / "define.md").read_text(encoding="utf-8")
+        kept, skipping = [], False
+        for line in text.split("\n"):
+            if line.startswith("### "):
+                skipping = any(line.startswith("### %s:" % question_id)
+                               for question_id in PLANNING_QUESTIONS)
+            elif line.startswith("## "):
+                skipping = False
+            if skipping or (line.startswith("|") and any(
+                    re.search(r"\b%s\b" % question_id, line) for question_id in PLANNING_QUESTIONS)):
+                continue
+            kept.append(line)
+        before = question_banks.parse_bank("define", "\n".join(kept))
+        self.assertEqual([question["id"] for question in before["questions"]],
+                         ["DEFINE-%d" % number for number in range(1, 10)])
+        self.assertEqual(len(before["gate_rendering"]), 8)
+        expected = (r"Gate 2 in os/STAGE-GATES\.md has 11 checklist lines but .*"
+                    r"skills/conductor/questions/define\.md has 8 rows")
+        checklists = question_banks.parse_checklists(
+            question_banks.STAGE_GATES.read_text(encoding="utf-8"))
+        with self.assertRaisesRegex(question_banks.BankError, expected):
+            question_banks.check_checklist_coverage(before, checklists)
+
+        source_dir, output = question_banks.SOURCE_DIR, question_banks.OUTPUT
+        with tempfile.TemporaryDirectory() as tmp:
+            rebuilt = Path(tmp) / "questions"
+            rebuilt.mkdir()
+            for stage in question_banks.ORDER:
+                (rebuilt / ("%s.md" % stage)).write_bytes(
+                    (source_dir / ("%s.md" % stage)).read_bytes())
+            (rebuilt / "define.md").write_text("\n".join(kept), encoding="utf-8")
+            committed = output.read_bytes()
+            question_banks.SOURCE_DIR = rebuilt
+            question_banks.OUTPUT = Path(tmp) / "question_banks.json"
+            question_banks.OUTPUT.write_bytes(committed)
+            try:
+                for argv in (["--check"], []):
+                    errors = io.StringIO()
+                    with contextlib.redirect_stdout(io.StringIO()), \
+                            contextlib.redirect_stderr(errors):
+                        code = question_banks.main(argv)
+                    self.assertEqual(code, 1, argv)
+                    self.assertRegex(errors.getvalue(), expected)
+                    self.assertEqual(question_banks.OUTPUT.read_bytes(), committed, argv)
+            finally:
+                question_banks.SOURCE_DIR, question_banks.OUTPUT = source_dir, output
+
+    def test_the_define_bank_asks_for_the_planning_set(self):
+        define = next(bank for bank in self.contract["banks"] if bank["id"] == "define")
+        landing = {question["id"]: re.findall(r"`([^`]+\.md)`", question["lands_in"])
+                   for question in define["questions"]}
+        for question_id, path in PLANNING_QUESTIONS.items():
+            self.assertEqual(landing[question_id][0], path, question_id)
+        self.assertEqual({question_id for question_id, paths in landing.items()
+                          if any(path.startswith("planning/") for path in paths)},
+                         set(PLANNING_QUESTIONS))
+        # Appended after DEFINE-9, never inserted: a resumed journey points at an ID.
+        self.assertEqual([question["id"] for question in define["questions"]][-3:],
+                         list(PLANNING_QUESTIONS))
+        self.assertEqual([row["questions"] for row in define["gate_rendering"][:3]],
+                         [[question_id] for question_id in PLANNING_QUESTIONS])
+        self.assertEqual((len(define["questions"]), len(define["gate_rendering"])), (12, 11))
+        # Each approver set is the one os/STAGE-GATES.md names for that document, and
+        # each entry takes a one-pager that carries it, which Gate 2 allows at that weight.
+        approvers = {"DEFINE-10": ("business sponsor",),
+                     "DEFINE-11": ("product owner", "business sponsor"),
+                     "DEFINE-12": ("product owner", "engineering lead")}
+        for question_id, roles in approvers.items():
+            accept = self.questions[question_id]["accept_when"]
+            for role in roles:
+                self.assertIn(role, accept, question_id)
+            self.assertIn("one-pager", accept, question_id)
+            self.assertEqual(self.questions[question_id]["evidence_rung"], 2, question_id)
 
     def test_the_committed_contract_has_complete_signoffs(self):
         self.assertEqual(

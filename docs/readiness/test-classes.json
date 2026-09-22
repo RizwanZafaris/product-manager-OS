@@ -7,6 +7,10 @@
    "ModelIdGateTests",
    "WorkspaceContractGateTests"
   ],
+  "test_journey_chain": [
+   "JourneyChainTests",
+   "JourneyRunRecordTests"
+  ],
   "test_lint": [
    "GraphDeclarationTests",
    "GraphTruthTests",
