@@ -15,9 +15,9 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from pmos.cli import (_cli_source_resolver, _gate_result, _local_gate_verifier, _paths,
-                      _product_conductor, _unsupported_platform_reason, main, PIN_PATH,
+                      _product_conductor, _repinned_state, _unsupported_platform_reason, main, PIN_PATH,
                       UNSUPPORTED_PLATFORM_EXIT_CODE)
-from pmos.banks import CONTRACT_PATH
+from pmos.banks import CONTRACT_PATH, shipped_banks
 from pmos.conductor import STATE_PATH, TurnOutcome
 from pmos.migrations import (create_legacy_fixture, migrate_workspace, recover_workspace,
                               rollback_workspace, MigrationError)
@@ -228,6 +228,288 @@ class CliTests(unittest.TestCase):
             # the answers are still there: the bank is not back at its first question
             self.assertEqual(after["source_verified"] + after["supplied_unverified"], 9)
 
+    def pin_before_the_planning_questions(self, folder: str) -> None:
+        """Pin the contract as it stood before DEFINE-10 to DEFINE-12 were appended."""
+        contract = json.loads(CONTRACT_PATH.read_bytes())
+        define = next(bank for bank in contract["banks"] if bank["id"] == "define")
+        define["questions"] = [question for question in define["questions"]
+                               if question["id"] not in ("DEFINE-10", "DEFINE-11", "DEFINE-12")]
+        define["version"] = "c0000000000000000"
+        self.pin(folder, json.dumps(contract).encode("utf-8"))
+
+    def test_repin_asks_the_planning_questions_of_a_define_bank_not_yet_approved(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            self.pin_before_the_planning_questions(folder)
+            status = self.answer_bank(folder, "discover")
+            self.assertEqual(self.gate(folder, status["revision_token"], "gate-discover", "approved")[0], 0)
+            status = self.answer_bank(folder, "define")
+            self.assertEqual((status["interview"], status["current_bank_id"]), ("blocked", "define"))
+            output = StringIO()
+            with redirect_stdout(output):
+                self.assertEqual(main(["--json", "repin", "--path", folder, "--product-id", "checkout"]), 0)
+            done = json.loads(output.getvalue())
+            self.assertEqual(done["changed"], [{"bank_id": "define", "added": ["DEFINE-10", "DEFINE-11", "DEFINE-12"],
+                                                "modified": [], "removed": []}])
+            after = self.status(folder)
+            self.assertEqual((after["interview"], after["question"]["id"]), ("question", "DEFINE-10"))
+            self.assertTrue(after["question_banks"]["current"])
+
+    def test_status_still_answers_when_the_shipped_contract_cannot_be_read(self):
+        # The shipped banks feed both the version comparison and the check for questions added
+        # to an approved bank; with none readable, status reports no shipped versions and goes on.
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            with patch("pmos.cli.shipped_banks", side_effect=ValidationError("unreadable")):
+                status = self.status(folder)
+            self.assertNotIn("interview_error", status)
+            self.assertIsNone(status["question_banks"]["shipped"])
+            self.assertFalse(status["question_banks"]["current"])
+            # With no shipped banks to adopt there is nothing repin could be refused over.
+            self.assertNotIn("refuses", status["question_banks"]["message"])
+            self.assertEqual((status["interview"], status["question"]["id"]), ("question", "DISCOVER-1"))
+
+    def test_repin_before_the_first_answer_adopts_the_contract(self):
+        # init writes no conductor state until the first turn, so there is no approved bank to
+        # protect yet, and the check for one must not trip over the missing state.
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            self.pin_before_the_planning_questions(folder)
+            with Store(Path(folder) / ".pmos/runtime.sqlite") as store:
+                self.assertNotIn(STATE_PATH, store.read_snapshot("checkout").files)
+            output = StringIO()
+            with redirect_stdout(output):
+                self.assertEqual(main(["--json", "repin", "--path", folder, "--product-id", "checkout"]), 0)
+            self.assertEqual([entry["bank_id"] for entry in json.loads(output.getvalue())["changed"]],
+                             ["define"])
+            after = self.status(folder)
+            self.assertTrue(after["question_banks"]["current"])
+            self.assertEqual((after["interview"], after["question"]["id"]), ("question", "DISCOVER-1"))
+
+    def test_repin_refuses_questions_added_to_an_approved_bank_and_writes_nothing(self):
+        # Adopting it would keep the define approval over a bank with three unasked questions,
+        # a state the Conductor refuses to open, so every later command would fail.
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            self.pin_before_the_planning_questions(folder)
+            for bank_id in ("discover", "define"):
+                status = self.answer_bank(folder, bank_id)
+                rc, result = self.gate(folder, status["revision_token"], "gate-" + bank_id, "approved", bank_id)
+                self.assertEqual(rc, 0, result)
+            before = self.status(folder)
+            self.assertIn("refuses", before["question_banks"]["message"])
+            self.assertNotIn("adopt it with", before["question_banks"]["message"])
+            for dry_run in (["--dry-run"], []):
+                output = StringIO()
+                with redirect_stdout(output):
+                    rc = main(["--json", "repin", "--path", folder, "--product-id", "checkout", *dry_run])
+                refused = json.loads(output.getvalue())
+                self.assertEqual(rc, 2, refused)
+                self.assertIn("define: DEFINE-10, DEFINE-11, DEFINE-12", refused["error"])
+            after = self.status(folder)
+            self.assertNotIn("interview_error", after)
+            self.assertEqual(after["revision_token"], before["revision_token"])
+            self.assertEqual(after["question_banks"]["pinned"]["define"], "c0000000000000000")
+            self.assertEqual((after["interview"], after["question"]["id"]), ("question", "DESIGN-1"))
+
+    def repin(self, folder: str, *extra: str) -> tuple[int, dict]:
+        output = StringIO()
+        with redirect_stdout(output):
+            rc = main(["--json", "repin", "--path", folder, "--product-id", "checkout", *extra])
+        return rc, json.loads(output.getvalue())
+
+    def park_and_reopen(self, folder: str, question_id: str, answered_between: tuple = ()) -> None:
+        """Three invalid answers park question_id, the next ones are answered, then it is reopened."""
+        invalid = {"class": "observed_behavior", "source": "real interview"}
+        outcomes = []
+        for label in ("bad1", "bad2", "bad3"):
+            status = self.status(folder)
+            self.assertEqual(status["question"]["id"], question_id)
+            outcomes.append(self.answer(folder, invalid, status["revision_token"],
+                                        "%s-%s" % (question_id, label), question_id)["outcome"]["status"])
+        self.assertEqual(outcomes, ["challenge", "challenge", "parked"])
+        for later in answered_between:
+            status = self.status(folder)
+            self.assertEqual(status["question"]["id"], later)
+            result = self.answer(folder, {"class": "observed_behavior", "source": "interview-001",
+                                          "date": "2026-09-04", "location": "customer-call"},
+                                 status["revision_token"], "between-" + later, later)
+            self.assertEqual(result["outcome"]["status"], "accepted")
+        output = StringIO()
+        with redirect_stdout(output):
+            main(["reopen", "--path", folder, "--product-id", "checkout", "--question-id", question_id,
+                  "--reason", "the call recording turned up", "--expected-revision",
+                  self.status(folder)["revision_token"], "--turn-id", "reopen-" + question_id, "--json"])
+        self.assertEqual(json.loads(output.getvalue())["outcome"]["status"], "reopened")
+
+    def reopened_under_the_old_contract(self, folder: str, bank_id: str) -> str:
+        """A product pinned before DEFINE-10 to DEFINE-12 with a question of bank_id, the bank in
+        progress, parked and reopened after the question behind it was answered."""
+        self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+        self.pin_before_the_planning_questions(folder)
+        prefix = bank_id.upper()
+        if bank_id == "define":
+            status = self.answer_bank(folder, "discover")
+            self.assertEqual(self.gate(folder, status["revision_token"], "gate-discover", "approved")[0], 0)
+        status = self.status(folder)
+        self.assertEqual(status["question"]["id"], prefix + "-1")
+        self.answer(folder, {"class": "observed_behavior", "source": "interview-001", "date": "2026-09-04",
+                             "location": "customer-call"}, status["revision_token"], "first", prefix + "-1")
+        self.park_and_reopen(folder, prefix + "-2", (prefix + "-3",))
+        before = self.status(folder)
+        self.assertEqual(before["question"]["id"], prefix + "-2")
+        # Nothing stops this product adopting the contract, so status advises it.
+        self.assertIn("adopt it with `pmos repin`", before["question_banks"]["message"])
+        return prefix
+
+    def test_repin_keeps_a_reopened_question_reopened_and_asks_it_next(self):
+        """The product this stranded: a question parked, then reopened, in the bank in progress.
+        Reopening deletes the parked answer and leaves the question behind the bank's cursor;
+        repin moved each cursor back to the bank's first question with no stored answer, in front
+        of the reopened one, and returned 0, and from then on the Conductor refused the product
+        ("conductor reopened questions are invalid") while a second repin found nothing to do.
+        Measured on DEFINE-2 and on DISCOVER-2, the latter in a bank whose questions did not change."""
+        for bank_id in ("define", "discover"):
+            with self.subTest(bank=bank_id), TemporaryDirectory() as folder:
+                prefix = self.reopened_under_the_old_contract(folder, bank_id)
+                rc, done = self.repin(folder)
+                self.assertEqual(rc, 0, done)
+                after = self.status(folder)
+                self.assertNotIn("interview_error", after)
+                self.assertTrue(after["question_banks"]["current"])
+                self.assertEqual((after["interview"], after["question"]["id"]), ("question", prefix + "-2"))
+                saved = self.conductor_state(folder)["banks"][bank_id]
+                self.assertEqual((saved["cursor"], saved["reopened"], sorted(saved["answers"])),
+                                 (3, [prefix + "-2"], [prefix + "-1", prefix + "-3"]))
+                self.assertEqual(self.repin(folder)[1]["message"],
+                                 "the pinned contract already matches the shipped contract; nothing to do")
+
+    def test_the_repinned_state_is_computed_on_a_copy(self):
+        """Status computes the state repin would write only to decide its advice; the state it
+        reports from afterwards must be the stored one."""
+        with TemporaryDirectory() as folder:
+            self.reopened_under_the_old_contract(folder, "define")
+            state = self.conductor_state(folder)
+            kept = json.loads(json.dumps(state))
+            repinned = _repinned_state(state, shipped_banks())
+            self.assertEqual(state, kept)
+            self.assertNotEqual(repinned["banks"]["define"]["version"], state["banks"]["define"]["version"])
+
+    def test_a_product_repinned_with_a_reopened_question_answers_it_and_proves_the_gate(self):
+        with TemporaryDirectory() as folder:
+            self.reopened_under_the_old_contract(folder, "define")
+            self.assertEqual(self.repin(folder)[0], 0)
+            status = self.answer_bank(folder, "define")
+            answered = self.conductor_state(folder)["banks"]["define"]
+            self.assertEqual((answered["reopened"], len(answered["answers"])), ([], 12))
+            self.assertEqual((status["interview"], status["current_bank_id"]), ("blocked", "define"))
+            rc, gated = self.gate(folder, status["revision_token"], "gate-define", "approved", "define")
+            self.assertEqual((rc, gated["outcome"]["status"]), (0, "advanced"), gated)
+            self.assertEqual(self.status(folder)["question"]["id"], "DESIGN-1")
+
+    def test_repin_refuses_a_contract_whose_state_the_conductor_would_refuse(self):
+        """Repin must not commit a state the Conductor's validation of a stored state rejects,
+        since the Conductor would then refuse to open the product. Two such contracts, each
+        refused before anything is written, dry run included: one dropping a question the product
+        answered, and one putting a new question in front of answered ones, which the bank rules
+        forbid (new questions append)."""
+        shipped = json.loads(CONTRACT_PATH.read_bytes())
+        discover = next(bank for bank in shipped["banks"] if bank["id"] == "discover")
+        extra = dict(discover["questions"][-1], id="DISCOVER-10", ask="Which question did the shipped contract drop?")
+        cases = (("an answered question removed", discover["questions"] + [extra], 10,
+                  "conductor bank has unknown question state"),
+                 ("a question inserted", [q for q in discover["questions"] if q["id"] != "DISCOVER-2"], 2,
+                  "conductor answers do not match the durable cursor"))
+        for label, questions, answer_count, reason in cases:
+            with self.subTest(label), TemporaryDirectory() as folder:
+                self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+                contract = json.loads(CONTRACT_PATH.read_bytes())
+                pinned = next(bank for bank in contract["banks"] if bank["id"] == "discover")
+                pinned.update(questions=questions, version="c0000000000000000")
+                self.pin(folder, json.dumps(contract).encode("utf-8"))
+                for number in range(answer_count):
+                    status = self.status(folder)
+                    self.answer(folder, {"class": "observed_behavior", "source": "interview-001",
+                                         "date": "2026-09-04", "location": "customer-call"},
+                                status["revision_token"], "answer-%d" % number, status["question"]["id"])
+                before = self.status(folder)
+                self.assertIn("refuses to adopt it", before["question_banks"]["message"])
+                self.assertIn(reason, before["question_banks"]["message"])
+                self.assertNotIn("adopt it with", before["question_banks"]["message"])
+                for dry_run in (["--dry-run"], []):
+                    rc, refused = self.repin(folder, *dry_run)
+                    self.assertEqual(rc, 2, refused)
+                    self.assertIn(reason, refused["error"])
+                    self.assertIn("Nothing was changed", refused["error"])
+                after = self.status(folder)
+                self.assertNotIn("interview_error", after)
+                self.assertEqual(after["revision_token"], before["revision_token"])
+                self.assertEqual((after["interview"], (after["question"] or {}).get("id")),
+                                 (before["interview"], (before["question"] or {}).get("id")))
+
+    def test_repin_checks_again_inside_the_write_for_an_approval_recorded_meanwhile(self):
+        """The first check reads one snapshot and the write reads another. An approval landing
+        between them used to be committed over, stranding the product; the write refuses it."""
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+            self.pin_before_the_planning_questions(folder)
+            status = self.answer_bank(folder, "discover")
+            self.assertEqual(self.gate(folder, status["revision_token"], "gate-discover", "approved")[0], 0)
+            waiting = self.answer_bank(folder, "define")
+            self.assertEqual((waiting["interview"], waiting["current_bank_id"]), ("blocked", "define"))
+            import pmos.cli as cli_module
+            real = cli_module._repin_refusal
+            calls = []
+
+            def approve_after_the_first_check(*args):
+                reason = real(*args)
+                calls.append(reason)
+                if len(calls) == 1:
+                    # Another command proves Gate 2 before repin's write begins.
+                    rc, gated = self.gate(folder, waiting["revision_token"], "gate-define", "approved", "define")
+                    self.assertEqual((rc, gated["outcome"]["status"]), (0, "advanced"), gated)
+                return reason
+
+            with patch.object(cli_module, "_repin_refusal", approve_after_the_first_check):
+                rc, refused = self.repin(folder)
+            self.assertIsNone(calls[0])
+            self.assertEqual(rc, 2, refused)
+            self.assertIn("define: DEFINE-10, DEFINE-11, DEFINE-12", refused["error"])
+            after = self.status(folder)
+            self.assertNotIn("interview_error", after)
+            self.assertEqual(after["question_banks"]["pinned"]["define"], "c0000000000000000")
+            self.assertEqual((after["interview"], after["question"]["id"]), ("question", "DESIGN-1"))
+
+    def test_status_names_the_planning_documents_for_gate_two(self):
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
+
+            def named() -> dict:
+                define = next(phase for phase in self.status(folder)["phases"] if phase["bank_id"] == "define")
+                return {document["path"]: document["present"] for document in define["named_documents"]}
+
+            planning = ("planning/vision.md", "planning/product-strategy.md", "planning/roadmap.md")
+            self.assertEqual({path: named().get(path) for path in planning}, dict.fromkeys(planning, False))
+            # present is read from the workspace: one file appearing flips only its own entry.
+            Path(folder, "planning").mkdir()
+            Path(folder, "planning", "vision.md").write_text("# Vision\n", encoding="utf-8")
+            self.assertEqual({path: named().get(path) for path in planning},
+                             {"planning/vision.md": True, "planning/product-strategy.md": False,
+                              "planning/roadmap.md": False})
+
+    def test_the_quickstart_handoff_sample_is_what_handoff_returns(self):
+        """docs/RUNTIME-QUICKSTART.md calls its sample real output for a fresh product named demo."""
+        quickstart = (Path(__file__).resolve().parent.parent / "docs" / "RUNTIME-QUICKSTART.md"
+                      ).read_text(encoding="utf-8")
+        sample = quickstart.split("`pmos handoff --json` returned:", 1)[1]
+        sample = sample.split("```json\n", 1)[1].split("\n```", 1)[0]
+        with TemporaryDirectory() as folder:
+            self.assertEqual(main(["init", "--path", folder, "--product-id", "demo"]), 0)
+            output = StringIO()
+            with redirect_stdout(output):
+                main(["handoff", "--path", folder, "--product-id", "demo", "--json"])
+        self.assertEqual(json.loads(sample), json.loads(output.getvalue()))
+
     def test_a_corrupt_pin_is_reported_rather_than_raised(self):
         with TemporaryDirectory() as folder:
             self.assertEqual(main(["init", "--path", folder, "--product-id", "checkout"]), 0)
@@ -301,7 +583,10 @@ class CliTests(unittest.TestCase):
                                          "cited-%d" % answered, question_id=status["question"]["id"])
                     self.assertEqual(result["outcome"]["status"], "accepted")
                     answered += 1
-                if answered == 29:
+                # Gates 1 to 3 hold exactly 29 questions, so the 29th answer closes DESIGN; its
+                # gate is proved too, which leaves a question open for the quoted answer below.
+                status = self.status(folder)
+                if status["interview"] == "question":
                     break
                 rc, gated = self.gate(folder, status["revision_token"], "gate-" + bank_id, "approved",
                                       bank_id=bank_id)
@@ -865,7 +1150,7 @@ class CliTests(unittest.TestCase):
                     self.assertEqual(result["outcome"]["status"], "advanced")
             final = self.status(folder)
             self.assertEqual(final["interview"], "completed")
-            self.assertEqual(final["source_verified"] + final["supplied_unverified"], 54)
+            self.assertEqual(final["source_verified"] + final["supplied_unverified"], 57)
 
     def test_a_stale_gate_can_be_proved_again_through_the_cli(self):
         with TemporaryDirectory() as folder:

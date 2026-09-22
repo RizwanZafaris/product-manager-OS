@@ -12,8 +12,8 @@ import sys
 from pathlib import Path
 from typing import Any, Sequence
 
-from .banks import CONTRACT_PATH, LEGACY_ONBOARDING, parse_contract, shipped_banks
-from .conductor import STATE_PATH, TurnOutcome, evidence_counts
+from .banks import CONTRACT_PATH, LEGACY_ONBOARDING, banks_from_contract, parse_contract, shipped_banks
+from .conductor import STATE_PATH, VERIFICATION_LABELS, Conductor, QuestionBank, TurnOutcome, evidence_counts
 from .export import build_export, render_export_markdown
 from .handoff import build_handoff
 from .migrations import migrate_workspace, recover_workspace, rollback_workspace
@@ -191,6 +191,106 @@ def _status_lines(payload: dict[str, Any]) -> list[str]:
     return lines
 
 
+def _questions_added_to_approved_banks(state: Any, shipped: dict[str, list[str]]) -> dict[str, list[str]]:
+    """Per bank this product has approved, the shipped question ids it holds no answer for.
+
+    Repinning keeps every approval, and the Conductor refuses to open a state
+    where an approved bank still has a question to ask, so a contract that
+    appends questions to an approved bank cannot be adopted. These ids name
+    what the refusal is about.
+    """
+    found: dict[str, list[str]] = {}
+    for bank_id in state.get("gates", {}):
+        answered = state.get("banks", {}).get(bank_id, {}).get("answers", {})
+        new = [question_id for question_id in shipped.get(bank_id, []) if question_id not in answered]
+        if new:
+            found[bank_id] = new
+    return found
+
+
+def _repinned_state(state: dict[str, Any], banks: Sequence[QuestionBank]) -> dict[str, Any]:
+    """The Conductor state `pmos repin` writes when it adopts these banks; state is not changed.
+
+    The Conductor refuses to open a product whose recorded bank definitions no
+    longer match the banks it is given, so the state moves with the pin. Answers,
+    challenges, parked and reopened questions and gates are kept as they are.
+    Each bank's cursor moves back, never forward, to its first question that has
+    neither a stored answer nor an outstanding reopen: a question appended to a
+    bank is asked when the interview reaches it, a reworded question keeps its
+    answer and is not asked again, and a question that was parked and then
+    reopened stays behind the cursor and reopened, so it is asked next, as it was
+    before. A reopened question has no stored answer, since reopening deletes the
+    parked one, so stopping at the first question without an answer used to put
+    it in front of the cursor, a state the Conductor refuses ("conductor reopened
+    questions are invalid"). An approved bank whose questions changed goes stale
+    on the next turn, because its approval recorded the fingerprint of the
+    questions it was given.
+    """
+    state = json.loads(json.dumps(state))
+    saved = state.get("banks", {})
+    for bank in banks:
+        entry = saved.get(bank.id)
+        if entry is None:
+            saved[bank.id] = {"version": bank.version, "definition_hash": bank.definition_hash,
+                              "cursor": 0, "answers": {}, "challenges": {}, "parked": [],
+                              "reopened": [], "rejected": {}}
+            continue
+        entry["version"] = bank.version
+        entry["definition_hash"] = bank.definition_hash
+        behind = set(entry.get("answers") or {}) | set(entry.get("reopened") or [])
+        cursor = 0
+        for question in bank.questions:
+            if question.id in behind:
+                cursor += 1
+            else:
+                break
+        # Belt and braces: in any state the Conductor opens, the answered and reopened questions
+        # are exactly those behind the cursor, so this first question with neither is never past
+        # it. min() matters only for a state edited by hand.
+        entry["cursor"] = min(entry.get("cursor", 0), cursor)
+    kept = {bank.id for bank in banks}
+    for bank_id in [bank_id for bank_id in saved if bank_id not in kept]:
+        del saved[bank_id]
+    state["banks"] = saved
+    state["current_bank"] = min(state.get("current_bank", 0), len(banks))
+    return state
+
+
+def _repin_refusal(store: Store, product_id: str, state: Any, banks: Sequence[QuestionBank]) -> str | None:
+    """Why `pmos repin` must not adopt these banks for this product, or None when it may.
+
+    A refusal is decided on the state as stored, before anything is written, so
+    it holds for --dry-run too, and `pmos status` uses the same answer to decide
+    whether to advise repin at all. There are two reasons. Questions added to a
+    bank the product has already approved come first, and are named, because a
+    contract that only appends questions meets no other. For anything else, the
+    reason is that the Conductor's own validation of a stored state rejects the
+    state repin would write, as it does an answer kept for a question the
+    contract removed. Adopting either would commit a product no command could
+    open again. That validation is Conductor._validate_state; the size bound the
+    Conductor also checks when it loads a state is not checked here. A product
+    with no Conductor state yet has nothing to strand.
+    """
+    if not isinstance(state, dict):
+        return None
+    stranded = _questions_added_to_approved_banks(
+        state, {bank.id: [question.id for question in bank.questions] for bank in banks})
+    if stranded:
+        return ("it adds questions to a bank this product has already approved (%s), and the Conductor "
+                "will not open an approved bank that still has questions to ask"
+                % "; ".join("%s: %s" % (bank_id, ", ".join(ids)) for bank_id, ids in stranded.items()))
+    try:
+        Conductor(store, product_id, banks)._validate_state(_repinned_state(state, banks))
+    except ValidationError as exc:
+        return "the state adopting it would write is one the Conductor refuses to open (%s)" % exc
+    return None
+
+
+def _refuse_repin(reason: str) -> ValidationError:
+    return ValidationError("pmos repin refuses the shipped contract for this product: %s. Nothing was "
+                           "changed, and this product keeps the banks it started with" % reason)
+
+
 def _repin(args: argparse.Namespace) -> dict[str, Any]:
     """Re-pin a product to the shipped question bank contract.
 
@@ -200,18 +300,29 @@ def _repin(args: argparse.Namespace) -> dict[str, Any]:
     are kept, and gates are not touched here. An approval records the
     fingerprint of the questions its bank asked, so a bank whose questions
     changed reports its gate stale on the next turn, through the same path a
-    changed proof source takes. --dry-run reports what would change and writes
-    nothing.
+    changed proof source takes. _repinned_state says how each bank's cursor
+    moves. A contract whose adoption _repin_refusal refuses is refused before
+    anything is written, dry run included, and checked again inside the write
+    against the state the write replaces, so an approval recorded in between is
+    refused too. --dry-run reports what would change and writes nothing.
     """
     root = Path(args.path).expanduser().resolve()
     database = root / ".pmos" / "runtime.sqlite"
+
+    # Read once: the bytes pinned below are the contract every check here was made against.
+    raw = CONTRACT_PATH.read_bytes()
+    contract = parse_contract(raw)
+    new_banks = banks_from_contract(contract)
 
     with Store(database) as store:
         pinned = pinned_contract(store, args.product_id)
         if pinned is None:
             raise ValidationError("this product has no pinned contract to upgrade")
-
-    contract = parse_contract(CONTRACT_PATH.read_bytes())
+        saved_state = store.read_snapshot(args.product_id).files.get(STATE_PATH)
+        refusal = _repin_refusal(store, args.product_id,
+                                 json.loads(saved_state) if saved_state is not None else None, new_banks)
+    if refusal:
+        raise _refuse_repin(refusal)
 
     pinned_banks = {b["id"]: b for b in pinned.get("banks", [])}
     shipped_map = {b["id"]: b for b in contract.get("banks", [])}
@@ -296,46 +407,22 @@ def _repin(args: argparse.Namespace) -> dict[str, Any]:
         )
         return result
 
-    raw = CONTRACT_PATH.read_bytes()
-
     with Store(database) as store:
         # A commit is the whole snapshot, not a patch: writing the pin alone would delete the
         # conductor's own state, and with it every answer and approval this is meant to keep.
         snapshot = store.read_snapshot(args.product_id)
         files = dict(snapshot.files)
         files[PIN_PATH] = raw
-        # The Conductor refuses to open a product whose recorded bank definitions no longer match
-        # the banks it is given, so the state has to move with the pin. Answers are kept as they
-        # are; each changed bank's cursor is recomputed so questions that are new or reworded get
-        # asked again, and its gate goes stale on the next turn because the approval recorded the
-        # fingerprint of the questions it was given.
         state_raw = files.get(STATE_PATH)
         if state_raw is not None:
             state = json.loads(state_raw)
-            new_banks = {bank.id: bank for bank in shipped_banks()}
-            saved = state.get("banks", {})
-            for bank_id, bank in new_banks.items():
-                entry = saved.get(bank_id)
-                if entry is None:
-                    saved[bank_id] = {"version": bank.version, "definition_hash": bank.definition_hash,
-                                      "cursor": 0, "answers": {}, "challenges": {}, "parked": [],
-                                      "reopened": [], "rejected": {}}
-                    continue
-                entry["version"] = bank.version
-                entry["definition_hash"] = bank.definition_hash
-                answers = entry.get("answers") or {}
-                cursor = 0
-                for question in bank.questions:
-                    if question.id in answers:
-                        cursor += 1
-                    else:
-                        break
-                entry["cursor"] = min(entry.get("cursor", 0), cursor)
-            for bank_id in [bank_id for bank_id in saved if bank_id not in new_banks]:
-                del saved[bank_id]
-            state["banks"] = saved
-            state["current_bank"] = min(state.get("current_bank", 0), len(new_banks))
-            files[STATE_PATH] = json.dumps(state, sort_keys=True, ensure_ascii=False).encode("utf-8")
+            # Checked again on the state this commit replaces: the check above read an earlier
+            # snapshot, and an approval recorded since would otherwise be committed over.
+            refusal = _repin_refusal(store, args.product_id, state, new_banks)
+            if refusal:
+                raise _refuse_repin(refusal)
+            files[STATE_PATH] = json.dumps(_repinned_state(state, new_banks), sort_keys=True,
+                                           ensure_ascii=False).encode("utf-8")
         published = store.commit(
             args.product_id,
             files,
@@ -560,19 +647,24 @@ def _interview_status(store: Store, root: Path, product_id: str, token: str) -> 
         next_command = None
     pinned = {bank.id: bank.version for bank in banks}
     try:
-        shipped: dict[str, str] | None = {bank.id: bank.version for bank in shipped_banks()}
+        shipped_set = shipped_banks()
+        shipped: dict[str, str] | None = {bank.id: bank.version for bank in shipped_set}
     except ValidationError:
-        shipped = None
+        shipped_set, shipped = (), None
     current = pinned == shipped
     # _product_banks returns LEGACY_ONBOARDING itself only when the product has no pin.
     if banks is LEGACY_ONBOARDING:
         message = "This product started before the question bank contract and keeps the one-question onboarding bank."
-    elif not current:
-        message = ("This product keeps the question banks it started with; the shipped contract differs, "
-                   "adopt it with `pmos repin`, which keeps every answer and asks the changed banks to prove "
-                   "their gates again.")
-    else:
+    elif current:
         message = "This product runs the shipped question banks."
+    elif shipped_set and (refusal := _repin_refusal(store, product_id, state, shipped_set)):
+        # The same decision `pmos repin` makes, so status never advises a repin that would be refused.
+        message = ("This product keeps the question banks it started with. The shipped contract differs, "
+                   "and `pmos repin` refuses to adopt it for this product: %s." % refusal)
+    else:
+        message = ("This product keeps the question banks it started with; the shipped contract differs, "
+                   "adopt it with `pmos repin`, which keeps every answer; an approved bank whose questions "
+                   "changed then has to prove its gate again.")
     approvals: list[dict[str, Any]] = []
     for bank in banks:
         if bank.id not in state["gates"]:
@@ -731,20 +823,33 @@ def _relative_to_handoff_folder(root: Path, root_relative: str) -> str:
 
 def _context_markdown(package: dict[str, Any], root: Path) -> str:
     """A short Markdown index of the handoff package, using relative links only."""
+    evidence = package["evidence"]
     lines = ["# Development handoff context", "",
              "Product: %s" % package["product_id"],
              "Source revision: %s" % package["source_revision"],
              "Development-ready: %s" % ("yes" if package["development_ready"] else "no"),
+             # Next to the verdict and saying it does not feed it: readiness is decided without
+             # this figure, and a reader who saw only the verdict would assume otherwise. Both
+             # quote_verified and source_verified name a file pmos found inside the workspace.
+             "Accepted answers whose cited file pmos found inside the workspace when it took them: "
+             "%d of %d, every bank counted (development_ready does not read this figure)"
+             % (evidence["quote_verified"] + evidence["source_verified"],
+                sum(evidence[label] for label in VERIFICATION_LABELS)),
              "", "## Missing", ""]
     if package["missing"]:
         lines.extend("- %s" % reason for reason in package["missing"])
     else:
         lines.append("- (none)")
-    evidence = package["evidence"]
     lines.extend(["", "## Evidence", "",
                   "- quote_verified: %d (a quotation found in the cited document)" % evidence["quote_verified"],
                   "- source_verified: %d (the cited file exists; no quotation checked)" % evidence["source_verified"],
                   "- supplied_unverified: %d (recorded as supplied)" % evidence["supplied_unverified"]])
+    if package["approvals"]:
+        lines.extend(["", "The three figures above count every bank. By gate, each Gate 1 to 3 bank's "
+                      "own accepted answers:", ""])
+        lines.extend("- Gate %d (%s): %s" % (item["gate"], item["bank_id"], ", ".join(
+            "%d %s" % (item["evidence"][label], label) for label in VERIFICATION_LABELS))
+            for item in package["approvals"])
     lines.extend(["", "## Sections", ""])
     for section in package["sections"]:
         targets = [_relative_to_handoff_folder(root, link["path"]) for link in section["links"]]
@@ -801,6 +906,8 @@ def _handoff(args: argparse.Namespace) -> dict[str, Any]:
     return {"ok": package["development_ready"], "product_id": args.product_id,
             "development_ready": package["development_ready"], "missing": list(package["missing"]),
             "evidence": dict(package["evidence"]),
+            "evidence_by_gate": {str(item["gate"]): dict(item["evidence"])
+                                 for item in package["approvals"]},
             "index": "handoff/context-index.json", "context": "handoff/CONTEXT.md"}
 
 

@@ -198,6 +198,27 @@
    "gate": 2,
    "gate_rendering": [
     {
+     "evidenced_by": "DEFINE-10",
+     "line": "Vision names who it serves, the Gate 1 problem and the change; sponsor approved",
+     "questions": [
+      "DEFINE-10"
+     ]
+    },
+    {
+     "evidenced_by": "DEFINE-11",
+     "line": "Strategy names where to play, how to win and what it will not do, traced to the vision; owner and sponsor approved",
+     "questions": [
+      "DEFINE-11"
+     ]
+    },
+    {
+     "evidenced_by": "DEFINE-12",
+     "line": "Roadmap phases each carry an outcome, a success measure and dependencies, traced to the strategy; owner and engineering lead approved",
+     "questions": [
+      "DEFINE-12"
+     ]
+    },
+    {
      "evidenced_by": "DEFINE-4, DEFINE-5",
      "line": "Every objective traces to Gate 1; every requirement traces to a PRD item",
      "questions": [
@@ -371,12 +392,51 @@
      "lands_in": "`definition/ui-state-inventory.md` and STATE.md accepted answers.",
      "options": null,
      "wrong_costs": "A screen whose states are unlisted ships with gaps in behavior, accessibility, and ownership."
+    },
+    {
+     "accept_when": "the vision names who it serves, which Gate 1 problem it answers and the change it aims for, and the business sponsor's approval is dated. At one-pager weight, a few lines of the one-pager that carry all three pass in place of a separate file, under the same dated approval; a vision the one-pager does not carry is missing, not implied.",
+     "ask": "Which customer, which Gate 1 problem and which change does the product vision name, and has the business sponsor approved it?",
+     "cross_examine": "the vision names a market or a mood where a customer belongs, or answers a problem Gate 1 never accepted. Move: category to name, then: which Gate 1 sentence does this answer?",
+     "evidence": "2, the vision itself, or at one-pager weight the one-pager lines that carry it, with the business sponsor's approval dated on it.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "product vision",
+     "id": "DEFINE-10",
+     "lands_in": "`planning/vision.md`, or at one-pager weight the lines of `definition/one-pager.md` that carry it, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "With no agreed destination, the strategy and the roadmap each supply their own, and the definition set is built toward whichever of them was written last."
+    },
+    {
+     "accept_when": "the strategy names where to play, how to win and what the product will not do, traces to the vision, and the product owner's and the business sponsor's approvals are both dated. At one-pager weight, a few lines of the one-pager that carry all of that pass in place of a separate file, under the same two dated approvals.",
+     "ask": "Where does the product strategy play, how does it win, what does it refuse, and have the product owner and the business sponsor approved it?",
+     "cross_examine": "a bet refuses nothing, or the strategy never says which vision it serves. Move: banned openers, then: name the option this bet gives up.",
+     "evidence": "2, the strategy itself, or at one-pager weight the one-pager lines that carry it, with both approvals dated on it.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "product strategy",
+     "id": "DEFINE-11",
+     "lands_in": "`planning/product-strategy.md`, or at one-pager weight the lines of `definition/one-pager.md` that carry it, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "A strategy that refuses nothing cannot tell the roadmap what to drop, so every request that arrives becomes a roadmap row."
+    },
+    {
+     "accept_when": "the roadmap orders phases, each with an outcome, a success measure and its dependencies, traces to the strategy, and the product owner's and the engineering lead's approvals are both dated. At one-pager weight, a few lines of the one-pager that carry all of that pass in place of a separate file, under the same two dated approvals.",
+     "ask": "Which phases does the roadmap order, each with what outcome, success measure and dependencies, and have the product owner and the engineering lead approved it?",
+     "cross_examine": "a phase carries a date and no outcome, or names a dependency that appears nowhere else. Move: naked numbers, then: what outcome does this phase buy, and who else must deliver for it?",
+     "evidence": "2, the roadmap itself, or at one-pager weight the one-pager lines that carry it, with both approvals dated on it.",
+     "evidence_class": "artifact",
+     "evidence_rung": 2,
+     "handle": "roadmap",
+     "id": "DEFINE-12",
+     "lands_in": "`planning/roadmap.md`, or at one-pager weight the lines of `definition/one-pager.md` that carry it, and STATE.md accepted answers.",
+     "options": null,
+     "wrong_costs": "A roadmap of dates with no outcomes becomes a delivery contract nobody signed, and the PRD's objectives trace to deadlines instead of results."
     }
    ],
    "source": "skills/conductor/questions/define.md",
-   "source_sha256": "8015edd4be640477af5839400d5db9b5120f3f4a2b454e45878eb94ae78082b3",
+   "source_sha256": "2b5fcea19de8fcdf2ec16d3dd2ca431f6dcdf457a4e8bdbf15f7ad3e39fca9aa",
    "stage": "DEFINE",
-   "version": "c5c480a5005f2332f"
+   "version": "c81ac4afedd80cc9e"
   },
   {
    "forced_pair": [

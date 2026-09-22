@@ -10,6 +10,7 @@ from pathlib import Path
 from pmos.artifacts import build_manifest, check_manifest
 from pmos.conductor import Conductor, EvidenceClass, Question, QuestionBank
 from pmos.handoff import SECTIONS, build_handoff
+from pmos.product import source_resolver
 from pmos.store import Store
 
 from test_pmos_artifacts import BLOCK_TEMPLATE, block
@@ -162,6 +163,79 @@ class HandoffTests(unittest.TestCase):
         for entry in result["approvals"]:
             self.assertEqual(entry["attestation"], "local")
             self.assertTrue(entry["approved"])
+
+    def test_each_approval_carries_its_evidence_and_the_package_totals_them(self) -> None:
+        self._approve()
+        result = self._result()
+        # observed() cites "session replay", free text this conductor has no resolver for.
+        for entry in result["approvals"]:
+            self.assertEqual(entry["evidence"],
+                             {"quote_verified": 0, "source_verified": 0, "supplied_unverified": 1})
+        self.assertEqual(result["evidence"],
+                         {"quote_verified": 0, "source_verified": 0, "supplied_unverified": 3})
+        # Reported, not gated: every answer is unverified and the package is still ready.
+        self.assertTrue(result["development_ready"])
+
+    def test_the_package_total_counts_every_bank_and_each_row_only_its_own(self) -> None:
+        """The package total counts every bank's answers; each approvals row counts its own
+        bank's. A BUILD answer given after Gate 3 is in the total and in no row."""
+        build = QuestionBank("build", "v1", (
+            Question("build.tests", "Which tests pass?", EvidenceClass.OBSERVED_BEHAVIOR),
+        ), gate_prerequisites=("signed_by",), gate_approvers=("asha",))
+        self.conductor = Conductor(self.store, "later", BANKS + (build,),
+                                   gate_source_verifier=self._gate_source_verifier,
+                                   gate_manifest=self._gate_manifest,
+                                   manifest_verifier=self._manifest_verifier)
+        self._approve()
+        turn = self.conductor.next_turn()
+        self.assertEqual((turn.status, turn.bank_id), ("question", "build"))
+        answered = self.conductor.submit_answer(
+            turn.question.id, "It is documented.", observed(),
+            expected_revision=turn.revision, turn_id="build-answer")
+        self.assertEqual(answered.status, "accepted")
+        contract = dict(self.contract, banks=list(self.contract["banks"]) + [
+            {"id": "build", "version": "v1", "questions": [], "gate": 4}])
+        result = build_handoff(self.conductor, contract, self.root)
+        self.assertEqual([item["bank_id"] for item in result["approvals"]],
+                         ["discover", "define", "design"])
+        for item in result["approvals"]:
+            self.assertEqual(item["evidence"],
+                             {"quote_verified": 0, "source_verified": 0, "supplied_unverified": 1})
+        self.assertEqual(result["evidence"],
+                         {"quote_verified": 0, "source_verified": 0, "supplied_unverified": 4})
+
+    def test_the_evidence_count_leaves_out_a_parked_answer(self) -> None:
+        """A parked answer was filed as offered, not accepted, so it is no evidence at all.
+
+        Counted as supplied_unverified it would report two answers behind a bank
+        that accepted one.
+        """
+        banks = (QuestionBank("discover", "v1", (
+            Question("discover.problem", "What is the problem statement?", EvidenceClass.OBSERVED_BEHAVIOR),
+            Question("discover.person", "Who has the problem?", EvidenceClass.OBSERVED_BEHAVIOR),
+        ), gate_prerequisites=("signed_by",), gate_approvers=("asha",)),) + BANKS[1:]
+        conductor = Conductor(self.store, "parking", banks, source_resolver=source_resolver(self.root))
+        turn = conductor.next_turn()
+        cited = conductor.submit_answer(
+            "discover.problem", "It is documented.",
+            {"class": "observed_behavior", "source": "sections/1.md", "date": "2026-09-03",
+             "location": "section 1"},
+            expected_revision=turn.revision, turn_id="problem")
+        self.assertEqual(cited.status, "accepted")
+        for attempt in range(3):
+            turn = conductor.next_turn()
+            refused = conductor.submit_answer(
+                "discover.person", "It is documented.",
+                {"class": "observed_behavior", "source": "a hallway remark %d" % attempt},
+                expected_revision=turn.revision, turn_id="person-%d" % attempt)
+        self.assertEqual(refused.status, "parked")
+        self.assertEqual(conductor.state()["banks"]["discover"]["parked"], ["discover.person"])
+        result = build_handoff(conductor, self.contract, self.root)
+        discover = next(item for item in result["approvals"] if item["bank_id"] == "discover")
+        self.assertEqual(discover["evidence"],
+                         {"quote_verified": 0, "source_verified": 1, "supplied_unverified": 0})
+        self.assertEqual(result["evidence"],
+                         {"quote_verified": 0, "source_verified": 1, "supplied_unverified": 0})
 
     def test_gap_line_marks_section_as_gap_and_not_ready(self) -> None:
         self._write(

@@ -54,4 +54,4 @@ Strongest first. Every `Evidence class` field names its minimum from this list.
 - The `Ask` sentence is asked as written. The Conductor may add product context around it, never soften it.
 - One decision per entry. An Ask line may join two clauses when they resolve the same decision; an entry that forces two separate decisions is two entries.
 - `Lands in` paths are workspace-relative per [../../../os/PRODUCT-WORKSPACE.md](../../../os/PRODUCT-WORKSPACE.md): the filled copy, never the blank under `templates/`.
-- A bank edit is a repo change: run `python3 lint.py --os` and check the gate-rendering table still covers every checklist line.
+- A bank edit is a repo change: run `python3 lint.py --os`, then `python3 tools/question_banks.py`, which refuses a bank whose gate-rendering table has more or fewer rows than its gate has checklist lines in [../../../os/STAGE-GATES.md](../../../os/STAGE-GATES.md). It counts the rows and does not read them, so check by eye that each row still paraphrases the line in its position.

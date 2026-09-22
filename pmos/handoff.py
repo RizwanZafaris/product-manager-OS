@@ -291,6 +291,9 @@ def build_handoff(conductor, contract: dict[str, Any] | None, root) -> dict[str,
             "artifacts": artifacts_payload,
             "dependencies": dependencies_payload,
             "superseded": len(state.get("superseded_gates", {}).get(bank.id, [])),
+            # This bank's own accepted answers, by the same labels and the same function as the
+            # package total below, so a reader can see which gate's evidence is weak.
+            "evidence": evidence_counts(state, [bank]),
         })
 
     development_ready = True
@@ -348,6 +351,8 @@ def build_handoff(conductor, contract: dict[str, Any] | None, root) -> dict[str,
         # What the interview's evidence was checked against, carried so a
         # development team reads the strength of the record and not only its
         # completeness. Reported, not gated: development_ready is unchanged.
+        # Every bank is counted, so an answer to a bank after Gate 3 is in this
+        # total and in no approvals row.
         "evidence": evidence_counts(state, conductor.banks),
         "handoff": handoff,
         "sections": sections,

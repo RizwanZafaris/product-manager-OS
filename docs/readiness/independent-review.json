@@ -4,13 +4,13 @@
   "reviewer_kind": "independent-agent",
   "independent_implementation": true,
   "identity_assurance": "unauthenticated-local-claim",
-  "reviewed_at": "2026-09-22T09:08:58Z",
-  "reviewed_tree_sha256": "19521eb739b03c6250c13ba866c0c08d6083d405ab248d1744aaa7d269627d6c",
-  "reviewer_transcript": "docs/readiness/review-transcripts/2026-09-22-r5-examples-inventory.md",
-  "reviewer_transcript_sha256": "f78f737c1cf8858614146ba1fb1867a4707deca31fd8cbfa7f98ff4c0365bfd2",
+  "reviewed_at": "2026-09-22T17:51:18Z",
+  "reviewed_tree_sha256": "683d9f1f5c3ffcd2574a78725ce7bcd9c004975147227c807e2bc782ab3d5819",
+  "reviewer_transcript": "docs/readiness/review-transcripts/2026-09-22-r2-define-planning-set.md",
+  "reviewer_transcript_sha256": "eb7a7d6d123c7efcfe362b8bfb6f05fe991668ee3312bad36065d6f14746b97b",
   "scope": [
-    "Change set 2dc3a8c..e0a29ec, task R5: every count in examples/README.md corrected to the tree (58, 44, 54, 14, 170 and 16) and held there by check_examples_inventory in tools/docs_contract.py, with families derived from examples/<family>-journey.md; the 475-word opening paragraph split",
-    "Built by one agent and broken by another in four rounds; the last breaker reverted every listed guard and each turned its named test red, with one equivalent mutant deleted. Reviewed in one round, r5-1, which accepted with twelve named checks covering A1 to A7 and no issues; the transcript holds the reply verbatim"
+    "Change set 4a1115e..57ffe16, task R2: DEFINE gains the three planning questions, the compiler refuses a checklist row citing an unknown or later question, pmos repin no longer strands a product with a reopened question and refuses a product past the changed bank's gate before writing, and examples/journey-chain.md answers cite the document each came from with the quote checked against the cited section",
+    "Built by one agent and broken by another over three rounds; the last checker verified the repin fix on products built by the unpatched runtime and reproduced the old stranding on the same products. Reviewed in two rounds: r2-1 returned reject while withdrawing every issue in its own text, r2-2 with the verdict rule stated accepted with three named checks. Both replies are in the transcript"
   ],
   "evidence": [
     {
@@ -26,9 +26,15 @@
       "exit_code": 0
     },
     {
+      "command": "python3 tools/journey_chain.py --check",
+      "result": "journey chain matches a fresh run",
+      "output": "journey chain matches a fresh run\n",
+      "exit_code": 0
+    },
+    {
       "command": "python3 tools/ci_gate.py",
       "result": "release gates: 24/25 passed",
-      "output": "[PASS] compile                2.33s\n[PASS] root-tests             436.81s\n[PASS] harness-tests          5.83s\n[PASS] regulated-tests        0.29s\n[PASS] claude-adapter         0.07s\n[PASS] desktop-adapter        0.39s\n[PASS] workspace-lifecycle    2.74s\n[PASS] workspace-links        3.04s\n[PASS] workspace-contract     0.36s\n[PASS] journey-record         2.53s\n[PASS] journey-chain          1.85s\n[PASS] what-checks-freshness  0.23s\n[PASS] regulated-template     0.11s\n[PASS] regulated-example      0.06s\n[PASS] os-tree                6.80s\n[PASS] json-syntax            0.31s\n[PASS] graph-freshness        0.24s\n[PASS] skill-rubric-freshness 0.08s\n[PASS] phase-index-freshness  0.50s\n[PASS] manifest-contract      0.08s\n[PASS] frontmatter            0.77s\n[PASS] security-policy        1.88s\n[PASS] docs-contract          0.10s\n[PASS] skill-rubric           0.05s\n[FAIL] readiness-local        585.24s\n       exit 1\nevidence : 48 criteria\n  failing          : 1 criteria\n  not built        : 0 criteria\n  external blockers: EXT-AI, EXT-CI, EXT-INTEGRATIONS, EXT-REGULATORY, EXT-RELEASE, EXT-TEAM, EXT-USER\n  hard gate rubric_integrity_green                   GREEN\n  hard gate task_ledger_buildable                    GREEN\n  hard gate all_tasks_green                          GREEN\n  hard gate every_verifiable_criterion_passes        NOT GREEN\n  hard gate no_unbuilt_criteria                      GREEN\n  hard gate tree_clean_and_stable                    NOT GREEN\n  hard gate thirteen_use_cases_green                 GREEN\n  hard gate routes_executable                        GREEN\n  hard gate ci_parity_green                          GREEN\n  hard gate process_fault_suite_green                GREEN\n  hard gate links_green                              GREEN\n  hard gate security_green                           GREEN\n  hard gate local_review_record_complete             NOT GREEN\n  hard gate operator_docs_contract_green             GREEN\n\nCOMPLETE PM OS READINESS: NOT 100/100 \u2014 WORK REMAINS\n  measured on e0a29eca8a4a with Python 3.11.15\n  external evidence remains required; local tests cannot self-attest it\nrelease gates: 24/25 passed\n",
+      "output": "[PASS] compile                0.29s\n[PASS] root-tests             96.13s\n[PASS] harness-tests          2.47s\n[PASS] regulated-tests        0.10s\n[PASS] claude-adapter         0.04s\n[PASS] desktop-adapter        0.26s\n[PASS] workspace-lifecycle    0.88s\n[PASS] workspace-links        1.09s\n[PASS] workspace-contract     0.09s\n[PASS] journey-record         1.09s\n[PASS] journey-chain          0.72s\n[PASS] what-checks-freshness  0.07s\n[PASS] regulated-template     0.04s\n[PASS] regulated-example      0.05s\n[PASS] os-tree                4.54s\n[PASS] json-syntax            0.13s\n[PASS] graph-freshness        0.16s\n[PASS] skill-rubric-freshness 0.04s\n[PASS] phase-index-freshness  0.20s\n[PASS] manifest-contract      0.04s\n[PASS] frontmatter            0.21s\n[PASS] security-policy        1.30s\n[PASS] docs-contract          0.08s\n[PASS] skill-rubric           0.04s\n[FAIL] readiness-local        166.72s\n       exit 1\nevidence : 48 criteria\n  failing          : 1 criteria\n  not built        : 0 criteria\n  external blockers: EXT-AI, EXT-CI, EXT-INTEGRATIONS, EXT-REGULATORY, EXT-RELEASE, EXT-TEAM, EXT-USER\n  hard gate rubric_integrity_green                   GREEN\n  hard gate task_ledger_buildable                    GREEN\n  hard gate all_tasks_green                          GREEN\n  hard gate every_verifiable_criterion_passes        NOT GREEN\n  hard gate no_unbuilt_criteria                      GREEN\n  hard gate tree_clean_and_stable                    NOT GREEN\n  hard gate thirteen_use_cases_green                 GREEN\n  hard gate routes_executable                        GREEN\n  hard gate ci_parity_green                          GREEN\n  hard gate process_fault_suite_green                GREEN\n  hard gate links_green                              GREEN\n  hard gate security_green                           GREEN\n  hard gate local_review_record_complete             NOT GREEN\n  hard gate operator_docs_contract_green             GREEN\n\nCOMPLETE PM OS READINESS: NOT 100/100 \u2014 WORK REMAINS\n  measured on 57ffe165578f with Python 3.11.15\n  external evidence remains required; local tests cannot self-attest it\nrelease gates: 24/25 passed\n",
       "exit_code": 1
     }
   ],
@@ -38,7 +44,7 @@
       "severity": "P3",
       "status": "accepted",
       "summary": "no defect found",
-      "evidence": "The reviewer traced each of the four seeds to its test, the longest-prefix family rule to test_a_family_named_inside_another_is_counted_once, and the stated limit that word-form and subset figures are not read, and raised no issue"
+      "evidence": "Round r2-2 traced the repin fix to test_repin_keeps_a_reopened_question_reopened_and_asks_it_next, the record's quotes and slices to test_no_answer_is_a_slice_of_the_document_it_cites_and_every_quote_is, and the CHANGELOG's claims to the tests that pin them, and raised no issue. Round r2-1's reject withdrew each of its own issues; its one substantive worry, that the cursor recompute skips a reopened question, is contradicted by the checker's live run where that question is asked next"
     }
   ],
   "verdict": "accepted"

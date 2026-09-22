@@ -326,7 +326,7 @@ product-manager-OS/
 │   │   └── questions/
 │   │       ├── README.md  Bank file format and the five-class evidence ladder
 │   │       ├── discover.md  Nine core questions, ending at the one-sentence problem statement composed from the accepted answers, with the domain pack at DISCOVER-8
-│   │       ├── define.md  Eight core questions, opening with the WHICH-DOCUMENT weight tree
+│   │       ├── define.md  Twelve questions: eight core, opening with the WHICH-DOCUMENT weight tree, the UI state inventory at DEFINE-9, and the vision, strategy and roadmap at DEFINE-10 to DEFINE-12
 │   │       ├── design.md  Seven core questions, including the twice-asked premortem entry
 │   │       ├── build.md  Six core questions against acceptance criteria, edge cases, and the red team
 │   │       ├── deliver.md  Twelve questions: six core, the gtm-plan block, comms approval and the kill-switch rehearsal

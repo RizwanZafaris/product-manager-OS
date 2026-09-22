@@ -170,15 +170,18 @@ class JourneyRuntimeTests(unittest.TestCase):
         self.assertEqual(code, 0, result)
         return result
 
-    def answer_bank(self, folder: str, prefix: str) -> dict:
+    def answer_bank(self, folder: str, prefix: str, source: str | None = None,
+                    quote: str | None = None) -> dict:
         """Answer every open question of the current bank with fictional evidence.
 
         The evidence class is always observed_behavior: it is the strongest
         rung on the conductor's evidence ladder, so it satisfies every
-        question regardless of that question's own required class. The
-        source named in the evidence is visibly fictional and never a real
-        file, so it is recorded as supplied rather than verified; that is
-        fine, since acceptance never requires verification.
+        question regardless of that question's own required class. Without
+        a source the evidence names a visibly fictional one that is never a
+        real file, so it is recorded as supplied rather than verified; that
+        is fine, since acceptance never requires verification. With one, it
+        names that workspace file, which pmos records as source_verified,
+        or, when a quote from that file comes with it, as quote_verified.
         """
         for _ in range(20):
             status = self.status(folder)
@@ -186,8 +189,10 @@ class JourneyRuntimeTests(unittest.TestCase):
                 return status
             question_id = status["question"]["id"]
             evidence = {"class": "observed_behavior",
-                        "source": "fictional-test-evidence-" + question_id.lower(),
+                        "source": source or "fictional-test-evidence-" + question_id.lower(),
                         "date": "2026-08-13", "location": "fictional-test-interview"}
+            if quote:
+                evidence["quote"] = quote
             code, result = self.run_cli([
                 "answer", "--path", folder, "--product-id", PRODUCT_ID,
                 "--question-id", question_id,
@@ -254,112 +259,133 @@ class JourneyRuntimeTests(unittest.TestCase):
     def handoff(self, folder: str) -> tuple:
         return self.run_cli(["handoff", "--path", folder, "--product-id", PRODUCT_ID])
 
-    # --------------------------------- the test ---------------------------------
+    def drive_to_gate_three(self, folder: str, sources: dict, quotes: dict | None = None) -> None:
+        """Steps 1 to 3: init, write the working copies, answer and approve Gates 1 to 3.
+
+        sources maps each bank to the evidence source its answers name: a
+        workspace file, or free text, or None for the fictional default.
+        quotes maps a bank to words its answers quote from that source.
+        """
+        quotes = quotes or {}
+        # 1. pmos init.
+        code, result = self.run_cli(["init", "--path", folder, "--product-id", PRODUCT_ID])
+        self.assertEqual((code, result["ok"]), (0, True), result)
+
+        # 2. Gate 1: problem framing, answered and approved by a fictional sponsor.
+        self.write_working_copy(
+            folder, "discovery/problem-framing.md", "ledgerline/discovery/problem-framing",
+            "DISCOVER", 1, [], "templates/discovery/problem-framing.md",
+            "FICTIONAL TEST DATA\nA minimal fictional problem framing, invented for this test.\n")
+        status = self.answer_bank(folder, "discover", sources.get("discover"), quotes.get("discover"))
+        code, result = self.approve_gate(folder, status["revision_token"], "journey-gate-1", "discover")
+        self.assertEqual((code, result["outcome"]["status"]), (0, "advanced"), result)
+
+        # 2. Gate 2: vision, product strategy, roadmap and PRD, each depending
+        # on the artifact before it, all answered and approved together.
+        self.write_working_copy(
+            folder, "planning/vision.md", "ledgerline/planning/vision", "DEFINE", 2,
+            ["ledgerline/discovery/problem-framing"], "templates/planning/vision.md",
+            "FICTIONAL TEST DATA\nA minimal fictional vision, invented for this test.\n")
+        self.write_working_copy(
+            folder, "planning/product-strategy.md", "ledgerline/planning/product-strategy",
+            "DEFINE", 2, ["ledgerline/planning/vision"], "templates/planning/product-strategy.md",
+            "FICTIONAL TEST DATA\nA minimal fictional product strategy, invented for this test.\n")
+        self.write_working_copy(
+            folder, "planning/roadmap.md", "ledgerline/planning/roadmap", "DEFINE", 2,
+            ["ledgerline/planning/product-strategy"], "templates/planning/roadmap.md",
+            "FICTIONAL TEST DATA\nA minimal fictional roadmap, invented for this test.\n")
+        self.write_working_copy(
+            folder, "definition/prd.md", "ledgerline/definition/prd", "DEFINE", 2,
+            ["ledgerline/planning/roadmap"], "templates/definition/prd.md",
+            "FICTIONAL TEST DATA\nA minimal fictional PRD, invented for this test.\n")
+        status = self.answer_bank(folder, "define", sources.get("define"), quotes.get("define"))
+        code, result = self.approve_gate(folder, status["revision_token"], "journey-gate-2", "define")
+        self.assertEqual((code, result["outcome"]["status"]), (0, "advanced"), result)
+
+        # 2. Gate 3: a data model, an API contract and the development handoff
+        # itself, which fills all nine sections (requirement 3 below).
+        self.write_working_copy(
+            folder, "architecture/data-model.md", "ledgerline/architecture/data-model",
+            "DESIGN", 3, ["ledgerline/definition/prd"], "templates/architecture/data-model.md",
+            "FICTIONAL TEST DATA\nA minimal fictional data model, invented for this test.\n")
+        self.write_working_copy(
+            folder, "architecture/api-contract.md", "ledgerline/architecture/api-contract",
+            "DESIGN", 3, ["ledgerline/architecture/data-model"],
+            "templates/architecture/api-contract.md",
+            "FICTIONAL TEST DATA\nA minimal fictional API contract, invented for this test.\n")
+        handoff_body = "\n".join([
+            "FICTIONAL TEST DATA",
+            "A minimal fictional development handoff, invented for this test.",
+            "",
+            "## 1. Problem",
+            "",
+            "Link: [problem framing](../discovery/problem-framing.md)",
+            "",
+            "## 2. Vision and strategy",
+            "",
+            "Link: [vision](../planning/vision.md)",
+            "Link: [product strategy](../planning/product-strategy.md)",
+            "",
+            "## 3. Outcomes and success measures",
+            "",
+            "Link: [roadmap](../planning/roadmap.md)",
+            "",
+            "## 4. Scope and exclusions",
+            "",
+            "Link: [PRD](../definition/prd.md)",
+            "",
+            "## 5. Requirements and acceptance criteria",
+            "",
+            "Link: [PRD](../definition/prd.md)",
+            "",
+            "## 6. Evidence and decisions",
+            "",
+            "Link: [product strategy](../planning/product-strategy.md)",
+            "",
+            "## 7. Dependencies",
+            "",
+            "Link: [roadmap](../planning/roadmap.md)",
+            "",
+            "## 8. Interface and data contracts",
+            "",
+            "Link: [data model](data-model.md)",
+            "Link: [API contract](api-contract.md)",
+            "",
+            "## 9. Unresolved risks and constraints",
+            "",
+            "Link: [API contract](api-contract.md)",
+        ])
+        self.write_working_copy(
+            folder, "architecture/development-handoff.md",
+            "ledgerline/architecture/development-handoff", "DESIGN", 3,
+            ["ledgerline/architecture/api-contract"],
+            "templates/architecture/development-handoff.md", handoff_body)
+        status = self.answer_bank(folder, "design", sources.get("design"), quotes.get("design"))
+        code, result = self.approve_gate(folder, status["revision_token"], "journey-gate-3", "design")
+        self.assertEqual((code, result["outcome"]["status"]), (0, "advanced"), result)
+
+    # --------------------------------- the tests ---------------------------------
 
     def test_the_journey_reaches_a_development_ready_handoff_then_a_gate_one_edit_stales_it(self):
         with TemporaryDirectory() as folder:
-            # 1. pmos init.
-            code, result = self.run_cli(["init", "--path", folder, "--product-id", PRODUCT_ID])
-            self.assertEqual((code, result["ok"]), (0, True), result)
-
-            # 2. Gate 1: problem framing, answered and approved by a fictional sponsor.
-            self.write_working_copy(
-                folder, "discovery/problem-framing.md", "ledgerline/discovery/problem-framing",
-                "DISCOVER", 1, [], "templates/discovery/problem-framing.md",
-                "FICTIONAL TEST DATA\nA minimal fictional problem framing, invented for this test.\n")
-            status = self.answer_bank(folder, "discover")
-            code, result = self.approve_gate(folder, status["revision_token"], "journey-gate-1", "discover")
-            self.assertEqual((code, result["outcome"]["status"]), (0, "advanced"), result)
-
-            # 2. Gate 2: vision, product strategy, roadmap and PRD, each depending
-            # on the artifact before it, all answered and approved together.
-            self.write_working_copy(
-                folder, "planning/vision.md", "ledgerline/planning/vision", "DEFINE", 2,
-                ["ledgerline/discovery/problem-framing"], "templates/planning/vision.md",
-                "FICTIONAL TEST DATA\nA minimal fictional vision, invented for this test.\n")
-            self.write_working_copy(
-                folder, "planning/product-strategy.md", "ledgerline/planning/product-strategy",
-                "DEFINE", 2, ["ledgerline/planning/vision"], "templates/planning/product-strategy.md",
-                "FICTIONAL TEST DATA\nA minimal fictional product strategy, invented for this test.\n")
-            self.write_working_copy(
-                folder, "planning/roadmap.md", "ledgerline/planning/roadmap", "DEFINE", 2,
-                ["ledgerline/planning/product-strategy"], "templates/planning/roadmap.md",
-                "FICTIONAL TEST DATA\nA minimal fictional roadmap, invented for this test.\n")
-            self.write_working_copy(
-                folder, "definition/prd.md", "ledgerline/definition/prd", "DEFINE", 2,
-                ["ledgerline/planning/roadmap"], "templates/definition/prd.md",
-                "FICTIONAL TEST DATA\nA minimal fictional PRD, invented for this test.\n")
-            status = self.answer_bank(folder, "define")
-            code, result = self.approve_gate(folder, status["revision_token"], "journey-gate-2", "define")
-            self.assertEqual((code, result["outcome"]["status"]), (0, "advanced"), result)
-
-            # 2. Gate 3: a data model, an API contract and the development handoff
-            # itself, which fills all nine sections (requirement 3 below).
-            self.write_working_copy(
-                folder, "architecture/data-model.md", "ledgerline/architecture/data-model",
-                "DESIGN", 3, ["ledgerline/definition/prd"], "templates/architecture/data-model.md",
-                "FICTIONAL TEST DATA\nA minimal fictional data model, invented for this test.\n")
-            self.write_working_copy(
-                folder, "architecture/api-contract.md", "ledgerline/architecture/api-contract",
-                "DESIGN", 3, ["ledgerline/architecture/data-model"],
-                "templates/architecture/api-contract.md",
-                "FICTIONAL TEST DATA\nA minimal fictional API contract, invented for this test.\n")
-            handoff_body = "\n".join([
-                "FICTIONAL TEST DATA",
-                "A minimal fictional development handoff, invented for this test.",
-                "",
-                "## 1. Problem",
-                "",
-                "Link: [problem framing](../discovery/problem-framing.md)",
-                "",
-                "## 2. Vision and strategy",
-                "",
-                "Link: [vision](../planning/vision.md)",
-                "Link: [product strategy](../planning/product-strategy.md)",
-                "",
-                "## 3. Outcomes and success measures",
-                "",
-                "Link: [roadmap](../planning/roadmap.md)",
-                "",
-                "## 4. Scope and exclusions",
-                "",
-                "Link: [PRD](../definition/prd.md)",
-                "",
-                "## 5. Requirements and acceptance criteria",
-                "",
-                "Link: [PRD](../definition/prd.md)",
-                "",
-                "## 6. Evidence and decisions",
-                "",
-                "Link: [product strategy](../planning/product-strategy.md)",
-                "",
-                "## 7. Dependencies",
-                "",
-                "Link: [roadmap](../planning/roadmap.md)",
-                "",
-                "## 8. Interface and data contracts",
-                "",
-                "Link: [data model](data-model.md)",
-                "Link: [API contract](api-contract.md)",
-                "",
-                "## 9. Unresolved risks and constraints",
-                "",
-                "Link: [API contract](api-contract.md)",
-            ])
-            self.write_working_copy(
-                folder, "architecture/development-handoff.md",
-                "ledgerline/architecture/development-handoff", "DESIGN", 3,
-                ["ledgerline/architecture/api-contract"],
-                "templates/architecture/development-handoff.md", handoff_body)
-            status = self.answer_bank(folder, "design")
-            code, result = self.approve_gate(folder, status["revision_token"], "journey-gate-3", "design")
-            self.assertEqual((code, result["outcome"]["status"]), (0, "advanced"), result)
+            # Each bank's answers cite a working copy that exists when they are given, and
+            # Gate 1's also quote it, so the three banks' evidence reads differently.
+            self.drive_to_gate_three(folder, {"discover": "discovery/problem-framing.md",
+                                              "define": "definition/prd.md",
+                                              "design": "architecture/data-model.md"},
+                                     {"discover": "A minimal fictional problem framing"})
 
             # 4. pmos handoff now reports a development-ready package.
             code, package = self.handoff(folder)
             self.assertEqual(code, 0, package)
             self.assertTrue(package["development_ready"], package)
             self.assertEqual(package["missing"], [])
+            self.assertEqual(package["evidence"],
+                             {"quote_verified": 9, "source_verified": 20, "supplied_unverified": 0})
+            self.assertEqual(package["evidence_by_gate"], {
+                "1": {"quote_verified": 9, "source_verified": 0, "supplied_unverified": 0},
+                "2": {"quote_verified": 0, "source_verified": 12, "supplied_unverified": 0},
+                "3": {"quote_verified": 0, "source_verified": 8, "supplied_unverified": 0}})
 
             status = self.status(folder)
             index = json.loads(Path(folder, "handoff/context-index.json").read_text(encoding="utf-8"))
@@ -367,6 +393,15 @@ class JourneyRuntimeTests(unittest.TestCase):
 
             context = Path(folder, "handoff/CONTEXT.md").read_text(encoding="utf-8")
             self.assertIn("Development-ready: yes", context)
+            lines = context.split("\n")
+            figure = lines[lines.index("Development-ready: yes") + 1]
+            self.assertIn("29 of 29", figure)
+            # One line per gate, each with that gate's own figures: a line dropped, or one
+            # gate's figures printed for another, fails here.
+            self.assertEqual(self.gate_evidence_lines(context), [
+                "- Gate 1 (discover): 9 quote_verified, 0 source_verified, 0 supplied_unverified",
+                "- Gate 2 (define): 0 quote_verified, 12 source_verified, 0 supplied_unverified",
+                "- Gate 3 (design): 0 quote_verified, 8 source_verified, 0 supplied_unverified"])
             for gate_number, bank_id in ((1, "discover"), (2, "define"), (3, "design")):
                 self.assertIn("Gate %d (%s)" % (gate_number, bank_id), context)
             self.assertEqual(context.count("local attestation"), 3)
@@ -383,6 +418,32 @@ class JourneyRuntimeTests(unittest.TestCase):
 
             status = self.status(folder)
             self.assertIn("discover", [stale["bank_id"] for stale in status["stale_banks"]])
+
+    def test_a_handoff_whose_answers_cite_no_workspace_file_is_still_development_ready(self):
+        """Verification is reported and gates nothing: the same journey, every answer
+        citing an interview id instead of a file, reaches the same verdict."""
+        with TemporaryDirectory() as folder:
+            self.drive_to_gate_three(folder, dict.fromkeys(("discover", "define", "design"),
+                                                           "interview-001"))
+            code, package = self.handoff(folder)
+            self.assertEqual(code, 0, package)
+            self.assertTrue(package["development_ready"], package)
+            self.assertEqual(package["missing"], [])
+            self.assertEqual(package["evidence"],
+                             {"quote_verified": 0, "source_verified": 0, "supplied_unverified": 29})
+            context = Path(folder, "handoff/CONTEXT.md").read_text(encoding="utf-8")
+            lines = context.split("\n")
+            self.assertIn("0 of 29", lines[lines.index("Development-ready: yes") + 1])
+            self.assertEqual(self.gate_evidence_lines(context), [
+                "- Gate 1 (discover): 0 quote_verified, 0 source_verified, 9 supplied_unverified",
+                "- Gate 2 (define): 0 quote_verified, 0 source_verified, 12 supplied_unverified",
+                "- Gate 3 (design): 0 quote_verified, 0 source_verified, 8 supplied_unverified"])
+
+    @staticmethod
+    def gate_evidence_lines(context: str) -> list:
+        """The per-gate lines of CONTEXT.md's Evidence section, in order."""
+        section = context.split("\n## Evidence\n", 1)[1].split("\n## ", 1)[0]
+        return [line for line in section.split("\n") if line.startswith("- Gate ")]
 
     # ------------------------------ static half ------------------------------
     #

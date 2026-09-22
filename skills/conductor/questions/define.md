@@ -11,6 +11,7 @@ aliases: ["DEFINE bank"]
 Stage: DEFINE, feeds Gate 2 (requirements signed off) in [../../../os/STAGE-GATES.md](../../../os/STAGE-GATES.md).
 Working handoffs: drafting via [../../../agents/drafting-agent.md](../../../agents/drafting-agent.md); [../../ai-prd/SKILL.md](../../ai-prd/SKILL.md) when a model is inside; [../../../agents/validation-agent.md](../../../agents/validation-agent.md) before the gate.
 Questions 1 to 3 run the tree in [../../../os/WHICH-DOCUMENT.md](../../../os/WHICH-DOCUMENT.md) and pick the artifact weight before any template opens. The honest outcome may be "decide and log", in which case the interview ends with one decision-log entry and no document.
+Questions 10 to 12 ask for the vision, strategy and roadmap, which the work produces before the definition set; they come last here only because IDs append rather than insert.
 Format and ladder: [README.md](README.md).
 
 ### DEFINE-1: stakes
@@ -95,6 +96,33 @@ Cross-examine when: the answer is "we have a UI" but the inventory is missing or
 Accept when: a filled inventory, or a stated reason the product has no UI.
 Lands in: `definition/ui-state-inventory.md` and STATE.md accepted answers.
 
+### DEFINE-10: product vision
+
+Ask: Which customer, which Gate 1 problem and which change does the product vision name, and has the business sponsor approved it?
+Wrong costs: With no agreed destination, the strategy and the roadmap each supply their own, and the definition set is built toward whichever of them was written last.
+Evidence class: 2, the vision itself, or at one-pager weight the one-pager lines that carry it, with the business sponsor's approval dated on it.
+Cross-examine when: the vision names a market or a mood where a customer belongs, or answers a problem Gate 1 never accepted. Move: category to name, then: which Gate 1 sentence does this answer?
+Accept when: the vision names who it serves, which Gate 1 problem it answers and the change it aims for, and the business sponsor's approval is dated. At one-pager weight, a few lines of the one-pager that carry all three pass in place of a separate file, under the same dated approval; a vision the one-pager does not carry is missing, not implied.
+Lands in: `planning/vision.md`, or at one-pager weight the lines of `definition/one-pager.md` that carry it, and STATE.md accepted answers.
+
+### DEFINE-11: product strategy
+
+Ask: Where does the product strategy play, how does it win, what does it refuse, and have the product owner and the business sponsor approved it?
+Wrong costs: A strategy that refuses nothing cannot tell the roadmap what to drop, so every request that arrives becomes a roadmap row.
+Evidence class: 2, the strategy itself, or at one-pager weight the one-pager lines that carry it, with both approvals dated on it.
+Cross-examine when: a bet refuses nothing, or the strategy never says which vision it serves. Move: banned openers, then: name the option this bet gives up.
+Accept when: the strategy names where to play, how to win and what the product will not do, traces to the vision, and the product owner's and the business sponsor's approvals are both dated. At one-pager weight, a few lines of the one-pager that carry all of that pass in place of a separate file, under the same two dated approvals.
+Lands in: `planning/product-strategy.md`, or at one-pager weight the lines of `definition/one-pager.md` that carry it, and STATE.md accepted answers.
+
+### DEFINE-12: roadmap
+
+Ask: Which phases does the roadmap order, each with what outcome, success measure and dependencies, and have the product owner and the engineering lead approved it?
+Wrong costs: A roadmap of dates with no outcomes becomes a delivery contract nobody signed, and the PRD's objectives trace to deadlines instead of results.
+Evidence class: 2, the roadmap itself, or at one-pager weight the one-pager lines that carry it, with both approvals dated on it.
+Cross-examine when: a phase carries a date and no outcome, or names a dependency that appears nowhere else. Move: naked numbers, then: what outcome does this phase buy, and who else must deliver for it?
+Accept when: the roadmap orders phases, each with an outcome, a success measure and its dependencies, traces to the strategy, and the product owner's and the engineering lead's approvals are both dated. At one-pager weight, a few lines of the one-pager that carry all of that pass in place of a separate file, under the same two dated approvals.
+Lands in: `planning/roadmap.md`, or at one-pager weight the lines of `definition/one-pager.md` that carry it, and STATE.md accepted answers.
+
 ## Forced pair
 
 On "advance anyway": DEFINE-5, then DEFINE-8. Untestable requirements and an unexamined overlay are the two skips that multiply in cost with every stage they survive.
@@ -103,6 +131,9 @@ On "advance anyway": DEFINE-5, then DEFINE-8. Untestable requirements and an une
 
 | Gate 2 checklist line | Evidenced by |
 |---|---|
+| Vision names who it serves, the Gate 1 problem and the change; sponsor approved | DEFINE-10 |
+| Strategy names where to play, how to win and what it will not do, traced to the vision; owner and sponsor approved | DEFINE-11 |
+| Roadmap phases each carry an outcome, a success measure and dependencies, traced to the strategy; owner and engineering lead approved | DEFINE-12 |
 | Every objective traces to Gate 1; every requirement traces to a PRD item | DEFINE-4, DEFINE-5 |
 | Every acceptance criterion can fail | DEFINE-5 |
 | Every NFR target is a number or names a dated owner | DEFINE-5, checked by the validation agent against `definition/nfr.md` |
