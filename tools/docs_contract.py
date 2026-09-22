@@ -114,6 +114,100 @@ ADDED = re.compile(r"\b(\d+)\s+artifacts\s+added\s+below\s+the\s+original\s+"
 LAST_ROWS = re.compile(r"\blast\s+(\d+)\s+(?:([A-Za-z][A-Za-z-]*)\s+)?rows\b")
 ARTIFACT_MAP = "Artifact map"
 
+# What a development-ready report does and does not certify, stated where a
+# reader of the handoff section meets it. Three claims, each pinned as one
+# exact sentence (compared with backticks dropped, case folded and whitespace
+# collapsed) and checked on its own, so deleting one names the one deleted.
+# A pin counts only where it stands as a sentence of its own: at the start of
+# the section or after a ".", "!" or "?" and a space, so wording prefixed into
+# the same sentence ("It is false that ...", "It is false: ...") does not
+# satisfy it. And it counts only outside an HTML comment: the section,
+# heading included, is found and read with every comment taken out (see
+# COMMENT and _shown), so a pin inside one does not count. Other raw HTML is
+# read as text, so a pin hidden some other way, in an attribute or in an
+# element a browser does not display, still counts. That is a stated limit,
+# checked by a reviewer.
+# Exact, because a rule built from keywords passes a sentence that keeps the
+# keywords and inverts the claim: "is no longer a condition of nothing" and
+# "does not certify anything it cannot see, and every answer is evidenced"
+# both carried every phrase an earlier version of this rule asked for.
+# Rewording a pinned sentence therefore means editing it here too, in the
+# same change, where a reviewer sees both.
+QUICKSTART = "docs/RUNTIME-QUICKSTART.md"
+QUICKSTART_READINESS = "## Development handoff"
+READINESS_CLAIMS = (
+    ("source verification is reported and is a condition of nothing",
+     "whether an answer cites a workspace document, and whether a quotation it "
+     "supplies was found there, is reported, as quote_verified, source_verified and "
+     "supplied_unverified in pmos status --json at the top level and again per phase "
+     "under completed, and under evidence in the handoff package and in "
+     "handoff/context.md, and is a condition of nothing."),
+    ("a development-ready report does not certify that every answer is evidenced",
+     "it does not certify that every answer is evidenced: a product whose every "
+     "answer is supplied_unverified can be development-ready."),
+    ("a development-ready report does not certify that a typed actor id is authenticated",
+     "it does not certify that a typed actor id is authenticated: pmos gate records "
+     "the id it was given and stamps the approval a local attestation."),
+)
+# The same three facts in one line where README.md describes readiness.
+README_READINESS = (
+    "readiness is structural: how many answers cite a workspace document is reported "
+    "by pmos status --json and is a condition of nothing, so a development-ready "
+    "report does not certify that every answer is evidenced, nor that any typed "
+    "actor id is authenticated.")
+# Pinning the three sentences does not stop a fourth, added beside them, that
+# says the opposite. These are the contradictions of those three claims this
+# rule can recognise, checked sentence by sentence over the rest of the
+# section as written, comments included, once the pinned sentences are taken
+# out. It is a list, not an understanding of English: a contradiction worded
+# some other way passes.
+READINESS_CONTRADICTIONS = (
+    (re.compile(r"\bevery answer is evidenced\b"),
+     "says every answer is evidenced"),
+    (re.compile(r"\b(?:is|are) authenticated\b"),
+     "says an actor id is authenticated"),
+    (re.compile(r"\bcondition of (?!nothing)|\bno longer a condition\b"),
+     "makes source verification a condition of something"),
+    (re.compile(r"\bmin_source_verified\b"),
+     "describes a source-verification floor the runtime does not have"),
+    (re.compile(r"\b(?:refuses?|blocks?|requires?)\b.*\b(?:source_verified|"
+                r"supplied_unverified|unverified|evidenced)\b"),
+     "makes readiness turn on how answers are evidenced"),
+)
+SENTENCE = re.compile(r"(?<=[.!?:;])\s+")
+# An HTML comment, which a renderer does not show: "<!--" through the next
+# "-->", or through the end of the file when none follows, as a comment that
+# opens a line hides the rest of the document. This is not code-aware: a
+# "<!--" in a code span or block is taken for a comment too, and the words
+# after it for hidden. That errs one way only. Each comment is replaced by a
+# mark (see _shown), so the text on either side of one is never joined, and
+# reading too much as a comment can stop a pin counting but never make one
+# count. A pin straight after a comment does not count either.
+COMMENT = re.compile(r"<!--.*?(?:-->|\Z)", re.S)
+
+
+def _flat(text: str) -> str:
+    return " ".join(text.replace("`", "").lower().split())
+
+
+def _shown(text: str) -> str:
+    """text with its HTML comments (see COMMENT) taken out, and nothing else.
+
+    Each comment becomes a mark and the line breaks it held: the mark keeps
+    the words on either side of it apart, and the line breaks keep every line
+    at the number it has in the file, so a finding names its true line and the
+    text as written can be read over the same lines.
+    """
+    return COMMENT.sub(lambda found: "\0" + "\n" * found.group(0).count("\n"), text)
+
+
+def _as_sentence(sentence: str) -> "re.Pattern[str]":
+    """A pinned sentence, matched only where it starts a sentence.
+
+    Where it ends needs no check: every pin ends with its own full stop.
+    """
+    return re.compile(r"(?:^|(?<=[.!?] ))" + re.escape(sentence))
+
 
 @dataclass(frozen=True)
 class Issue:
@@ -614,6 +708,76 @@ def check_examples_inventory(root: Path) -> list[Issue]:
     return list(dict.fromkeys(issues))
 
 
+def _section(lines: list, heading: str):
+    """Where a level-2 section lies in lines, up to the next one.
+
+    The number of its heading line, which is also the index of the line after
+    it, and the index of the next line that starts with "## ", or len(lines);
+    (0, 0) when no line is the heading.
+    """
+    for index, raw in enumerate(lines):
+        if raw.strip() == heading:
+            end = next((later for later in range(index + 1, len(lines))
+                        if lines[later].startswith("## ")), len(lines))
+            return index + 1, end
+    return 0, 0
+
+
+def check_readiness_claims(root: Path) -> list[Issue]:
+    """The three statements of what readiness leaves uncertified, and README's mirror.
+
+    A tree with no quickstart makes no claim and is not checked, the same
+    posture the inventory and gate-count checks take toward fixture roots.
+    A quickstart that has lost the handoff section fails every claim, since
+    moving the heading is otherwise a way to drop all three at once. The
+    section and its pins are looked for with the comments taken out (see
+    _shown), so a heading or a pin inside a comment does not count, and the
+    contradictions over the same lines as written. README.md's mirror is
+    looked for with its comments taken out the same way.
+    """
+    path = root / QUICKSTART
+    if not path.is_file():
+        return []
+    text = path.read_text(encoding="utf-8")
+    written, shown = text.split("\n"), _shown(text).split("\n")
+    line, end = _section(shown, QUICKSTART_READINESS)
+    flat = _flat("\n".join(written[line:end]))
+    visible = _flat("\n".join(shown[line:end]))
+    issues: list[Issue] = []
+    spans = []
+    for name, sentence in READINESS_CLAIMS:
+        pinned = _as_sentence(sentence)
+        found = pinned.search(flat)
+        if found:
+            spans.append(found.span())
+        if pinned.search(visible):
+            continue
+        issues.append(Issue("error", "readiness-claim", QUICKSTART, line or 1,
+                            "the %r section no longer says that %s (pinned in "
+                            "tools/docs_contract.py as: %r)"
+                            % (QUICKSTART_READINESS[3:], name, sentence)))
+    rest, cursor = [], 0
+    for begin, end in sorted(spans):
+        rest.append(flat[cursor:begin])
+        cursor = end
+    rest.append(flat[cursor:])
+    for sentence in SENTENCE.split(" ".join(rest)):
+        for pattern, what in READINESS_CONTRADICTIONS:
+            if pattern.search(sentence):
+                issues.append(Issue("error", "readiness-contradiction", QUICKSTART,
+                                    line or 1,
+                                    "the %r section %s: %r"
+                                    % (QUICKSTART_READINESS[3:], what, sentence)))
+    readme = root / "README.md"
+    if readme.is_file() and not _as_sentence(README_READINESS).search(
+            _flat(_shown(readme.read_text(encoding="utf-8")))):
+        issues.append(Issue("error", "readiness-claim", "README.md", 1,
+                            "README.md no longer mirrors the quickstart's readiness "
+                            "limits (pinned in tools/docs_contract.py as: %r)"
+                            % README_READINESS))
+    return issues
+
+
 def check(root: Path) -> list[Issue]:
     root = root.resolve()
     issues: list[Issue] = []
@@ -670,6 +834,7 @@ def check(root: Path) -> list[Issue]:
     issues.extend(check_inventory(root))
     issues.extend(check_gate_count(root))
     issues.extend(check_examples_inventory(root))
+    issues.extend(check_readiness_claims(root))
     return sorted(issues, key=lambda item: (item.severity, item.path, item.line,
                                              item.code, item.message))
 
