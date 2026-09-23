@@ -169,8 +169,15 @@
   ],
   "test_tools_gates": [
    "CiGateVerdictTests",
+<<<<<<< ours
    "ExampleAvailabilityGateTests",
+=======
+   "CommitmentProbeGateTests",
+   "DeclaredPathGateTests",
+   "DuplicateHeadingGateTests",
+>>>>>>> theirs
    "ExamplesInventoryGateTests",
+   "ExecutableSurfaceGateTests",
    "FrontmatterInitGateTests",
    "GateCountGateTests",
    "GraphFreshnessGateTests",
@@ -181,6 +188,7 @@
    "ReadinessClaimGateTests",
    "ReadinessProbeCiWiringTests",
    "ReadinessProbeMutationAnchorTests",
+   "ScriptCountGateTests",
    "TemplateBackpointerGateTests",
    "TemplateInventoryGateTests",
    "TemplateRubricGateTests"

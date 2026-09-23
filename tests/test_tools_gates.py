@@ -51,10 +51,16 @@ import example_availability  # noqa: E402
 import template_rubric  # noqa: E402
 from tools.docs_contract import (check as check_docs,  # noqa: E402
                                  _example_families,
-                                 check_examples_inventory, check_gate_count,
+                                 check_commitment_probe_rule,
+                                 check_declared_paths,
+                                 check_duplicate_headings,
+                                 check_examples_inventory, check_executable_surface,
+                                 check_gate_count,
                                  check_inventory, check_readiness_claims,
+                                 check_script_count,
                                  main as docs_contract_main, README_READINESS,
                                  READINESS_CLAIMS)
+from tools import exec_surface  # noqa: E402
 from tools.graph import check_unique_ids, node_id  # noqa: E402
 
 
@@ -94,6 +100,770 @@ def mutation_table():
                     return ast.literal_eval(statement.value)
     raise AssertionError("probe_mutation_checks no longer assigns a literal "
                          "mutations list, so its anchors cannot be read")
+
+
+class DuplicateHeadingGateTests(unittest.TestCase):
+    """The heading a form carried twice, and the sibling rule that finds it.
+
+    templates/discovery/discovery-synthesis.md opened its themes with two
+    "### Theme 1" headings, one after the other, and every structural check
+    walked past: the heading parses, the level does not jump, the link is not
+    broken. A whole-file rule cannot be the answer, because a changelog writes
+    "### Fixed" under every release on purpose. Siblings can, and these tests
+    fail when that distinction stops being made in either direction.
+    """
+
+    DUPLICATE = ("### Theme 1: [name the theme in the customers' terms]\n"
+                 "\n"
+                 "### Theme 1: [name the theme in the customers' terms]\n")
+    SINGLE = "### Theme 1: [name the theme in the customers' terms]\n"
+
+    def findings(self, root):
+        return [(item.path, item.line, item.message)
+                for item in check_duplicate_headings(root)]
+
+    def test_the_tree_as_it_stands_repeats_no_sibling_heading(self):
+        self.assertEqual([], self.findings(REPO))
+
+    def test_the_synthesis_template_with_its_duplicate_back_is_reported(self):
+        """The audited defect, put back where the audit found it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            document = root / "templates" / "discovery" / "discovery-synthesis.md"
+            text = document.read_text(encoding="utf-8")
+            self.assertIn(self.SINGLE, text)
+            document.write_text(text.replace(self.SINGLE, self.DUPLICATE, 1),
+                                encoding="utf-8")
+            reported = [(path, line) for path, line, _message in self.findings(root)]
+            self.assertIn(("templates/discovery/discovery-synthesis.md", 66),
+                          reported)
+            message = dict(((path, line), message)
+                           for path, line, message in self.findings(root))[
+                               ("templates/discovery/discovery-synthesis.md", 66)]
+            self.assertIn("line 64", message)
+
+    def test_a_repeat_under_another_parent_is_not_a_duplicate(self):
+        """The changelog shape: one "### Fixed" per release is not a defect,
+        and a rule that cannot tell the two apart is not usable here."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            (root / "note.md").write_text(
+                "# Note\n\n## 0.2.0\n\n### Fixed\n\nsomething\n\n"
+                "## 0.1.0\n\n### Fixed\n\nsomething else\n", encoding="utf-8")
+            self.assertEqual([], [row for row in self.findings(root)
+                                  if row[0] == "note.md"])
+
+    def test_a_repeat_under_one_parent_is_a_duplicate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            (root / "note.md").write_text(
+                "# Note\n\n## 0.2.0\n\n### Fixed\n\nsomething\n\n"
+                "### Fixed\n\nsomething else\n", encoding="utf-8")
+            self.assertEqual([("note.md", 9, "'Fixed' repeats the heading of "
+                               "the same level and the same parent on line 5")],
+                             [row for row in self.findings(root)
+                              if row[0] == "note.md"])
+
+    def test_a_heading_inside_an_html_comment_is_not_a_heading(self):
+        """A guidance comment showing the filler what a repeated section looks
+        like is an example of a heading, not two headings. This tree's
+        templates are built out of such comments, so a check that reads them
+        fails the tree it is meant to protect."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            (root / "note.md").write_text(
+                "# Note\n\n## Themes\n\n"
+                "<!-- Write one block per theme, like this:\n"
+                "### Theme n: [name]\n"
+                "...\n"
+                "### Theme n: [name]\n"
+                "-->\n", encoding="utf-8")
+            self.assertEqual([], [row for row in self.findings(root)
+                                  if row[0] == "note.md"])
+
+    def test_a_real_duplicate_after_a_comment_is_still_reported(self):
+        """The positive control for the line above: skipping comments must not
+        skip what follows them."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            (root / "note.md").write_text(
+                "# Note\n\n<!-- guidance\n### Theme n: [name]\n-->\n\n"
+                "## Themes\n\n### Theme 1\n\n### Theme 1\n",
+                encoding="utf-8")
+            self.assertEqual([("note.md", 11, "'Theme 1' repeats the heading "
+                               "of the same level and the same parent on line 9")],
+                             [row for row in self.findings(root)
+                              if row[0] == "note.md"])
+
+    def test_a_repeat_spelled_with_a_closing_hash_sequence_is_reported(self):
+        """CommonMark's other ATX spelling. A reviewer repeated a heading as
+        "## Zed" and "## Zed ##" and the comparison, which kept the trailing
+        hashes in the text, called them two different headings."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            (root / "note.md").write_text(
+                "# Note\n\n## Zed\n\nx\n\n## Zed ##\n\ny\n",
+                encoding="utf-8")
+            found = [row for row in self.findings(root) if row[0] == "note.md"]
+            self.assertEqual(1, len(found), found)
+            self.assertEqual(7, found[0][1])
+            self.assertIn("on line 3", found[0][2])
+
+    def test_a_repeated_setext_heading_is_reported(self):
+        """The same reviewer's second spelling: a line of text underlined by
+        "=" is a level-1 heading, and the reading took only ATX."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            (root / "note.md").write_text(
+                "Zed\n====\n\nx\n\nZed\n====\n\ny\n", encoding="utf-8")
+            found = [row for row in self.findings(root) if row[0] == "note.md"]
+            self.assertEqual(1, len(found), found)
+            self.assertEqual(6, found[0][1])
+            self.assertIn("on line 1", found[0][2])
+
+    def test_a_dashed_setext_heading_is_read_as_level_two(self):
+        """A "-" underline is level 2, so it repeats a sibling "## Zed" rather
+        than a "# Zed"; without the level the two would never collide."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            (root / "note.md").write_text(
+                "# Note\n\n## Zed\n\nx\n\nZed\n---\n\ny\n",
+                encoding="utf-8")
+            found = [row for row in self.findings(root) if row[0] == "note.md"]
+            self.assertEqual(1, len(found), found)
+            self.assertEqual(7, found[0][1])
+
+    def test_a_table_a_break_and_front_matter_are_not_setext_headings(self):
+        """The positive control the widening owes: "-" also spells a table
+        delimiter, a thematic break and the close of YAML front matter, and a
+        reading that took those would report the tree it protects."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            (root / "note.md").write_text(
+                "---\ntitle: My Title\n---\n\n| a | b |\n|---|---|\n"
+                "| c | d |\n\n---\n\n- item\n---\n\nparagraph\n",
+                encoding="utf-8")
+            self.assertEqual([], [row for row in self.findings(root)
+                                  if row[0] == "note.md"])
+
+    def test_a_hash_inside_a_heading_is_not_a_closing_sequence(self):
+        """The positive control for the other half: only a run of hashes with
+        nothing after it is a closing sequence, so "## Hash # tag" keeps its
+        hash and is a different heading from "## Hash"."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            (root / "note.md").write_text(
+                "# Note\n\n## Hash # tag\n\nx\n\n## Hash\n\ny\n",
+                encoding="utf-8")
+            self.assertEqual([], [row for row in self.findings(root)
+                                  if row[0] == "note.md"])
+
+    def test_a_heading_inside_a_fenced_block_is_not_a_heading(self):
+        """A sample session that prints "## Stage" twice is output, not
+        structure, and a check that cannot see a fence reports the sample."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            (root / "note.md").write_text(
+                "# Note\n\n```\n## Stage\n## Stage\n```\n\n"
+                "````\n```\n## Stage\n## Stage\n````\n", encoding="utf-8")
+            self.assertEqual([], [row for row in self.findings(root)
+                                  if row[0] == "note.md"])
+
+
+class DeclaredPathGateTests(unittest.TestCase):
+    """The path a template declared and the tree never held.
+
+    templates/ai/eval-spec.md sent a reader to
+    "../architecture/ai-interaction-spec.md" from inside an HTML comment. That
+    path is real from templates/definition/ and dead from templates/ai/, where
+    it was written and where the file it means sits in the same directory. The
+    link check above reads markdown links in five operator documents, so
+    nothing in the tree resolved it.
+    """
+
+    WRONG = "../architecture/ai-interaction-spec.md"
+    RIGHT = "./ai-interaction-spec.md"
+
+    def findings(self, root):
+        return [(item.path, item.line, item.message)
+                for item in check_declared_paths(root)]
+
+    def test_the_tree_as_it_stands_declares_no_dead_path(self):
+        self.assertEqual([], self.findings(REPO))
+
+    def test_the_eval_spec_comment_with_its_wrong_path_back_is_reported(self):
+        """The audited defect, put back where the audit found it.
+
+        The audit of 49ca7e8 read it at templates/ai/eval-spec.md:78. The line
+        is computed here rather than pinned, because the section above it has
+        since gained fields and a line number is not the defect.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            document = root / "templates" / "ai" / "eval-spec.md"
+            text = document.read_text(encoding="utf-8")
+            self.assertIn(self.RIGHT, text)
+            broken = text.replace(self.RIGHT, self.WRONG, 1)
+            document.write_text(broken, encoding="utf-8")
+            line = broken.count("\n", 0, broken.index(self.WRONG)) + 1
+            self.assertEqual(
+                [("templates/ai/eval-spec.md", line,
+                  "%r names no file in this tree" % self.WRONG)],
+                self.findings(root))
+
+    def test_a_path_real_from_another_template_is_still_read_from_this_one(self):
+        """The defect class itself: the reference is not nonsense, it names a
+        file that exists, at the depth it would have from somewhere else. A
+        checker that resolved these against the repository root instead of
+        against the file that wrote them would pass this one."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            document = root / "templates" / "ai" / "borrowed.md"
+            document.write_text("# Borrowed\n\nSee ../os/STAGE-GATES.md.\n",
+                                encoding="utf-8")
+            self.assertTrue((root / "os" / "STAGE-GATES.md").is_file())
+            self.assertEqual(
+                [("templates/ai/borrowed.md", 3,
+                  "'../os/STAGE-GATES.md' names no file in this tree")],
+                [row for row in self.findings(root) if row[0].endswith("borrowed.md")])
+
+    def test_a_reference_that_climbs_out_of_the_repository_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            document = root / "templates" / "ai" / "borrowed.md"
+            document.write_text("# Borrowed\n\nSee ../../../secrets.md.\n",
+                                encoding="utf-8")
+            self.assertEqual(
+                [("templates/ai/borrowed.md", 3,
+                  "'../../../secrets.md' leaves the repository")],
+                [row for row in self.findings(root) if row[0].endswith("borrowed.md")])
+
+    def test_a_name_without_a_directory_is_not_read_as_a_path(self):
+        """The stated limit, pinned so it is a decision and not a bug: a bare
+        STATE.md in prose names a form, not a place."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            document = root / "templates" / "ai" / "borrowed.md"
+            document.write_text("# Borrowed\n\nFill nowhere-near-here.md.\n",
+                                encoding="utf-8")
+            self.assertEqual([], [row for row in self.findings(root)
+                                  if row[0].endswith("borrowed.md")])
+
+
+    def test_the_link_check_this_docstring_names_catches_what_it_says(self):
+        """A stated limit may not lean on a mitigation that is not there. This
+        check's docstring sends a reader to lint.py's LINK check for a markdown
+        link whose target is missing, and an earlier wording claimed that
+        covered the space form as well. It does not, and not because that gate
+        is weak: CommonMark does not read an unbracketed destination containing
+        a space as a link at all, so nothing renders it as one. The spelling
+        that IS a link, with the destination in angle brackets, is read."""
+        import lint  # noqa: PLC0415 -- the claim under test is lint's
+        self.assertTrue(lint.LINK_RE.search("[a spec](./nope-xyz.md)"))
+        self.assertTrue(lint.LINK_RE.search("[a spec](<./My Missing Spec.md>)"))
+        self.assertIsNone(lint.LINK_RE.search("[a spec](./My Missing Spec.md)"))
+        self.assertIn("CommonMark does not read",
+                      check_declared_paths.__doc__)
+
+
+class ExecutableSurfaceGateTests(unittest.TestCase):
+    """SECURITY.md's inventory of tools/, held to the directory it describes.
+
+    The file said "`tools/` holds eighteen scripts in all" while the directory
+    held 27, and named tools/ext_ai_probe.py as the only script that calls out
+    while tools/model_matrix.py had grown a urlopen of its own. Both sentences
+    were true when they were typed. The inventory is generated now, and these
+    tests fail when the generator stops reading the tree or the check stops
+    reading the generator.
+    """
+
+    def test_the_generated_inventory_is_every_tracked_script_under_tools(self):
+        """The closure proof the audit asked for: what the block counts is
+        exactly what git tracks under tools/, not a list kept beside it."""
+        # --others --exclude-standard as well as the index, so a script added
+        # in the working tree and not yet staged counts: the inventory has to
+        # describe the tree that is about to be committed, not the last one.
+        tracked = subprocess.run(["git", "ls-files", "--cached", "--others",
+                                  "--exclude-standard", "tools/"], cwd=REPO,
+                                 capture_output=True, text=True, check=True,
+                                 timeout=120).stdout.split()
+        self.assertEqual(sorted(name for name in tracked if name.endswith(".py")),
+                         ["tools/%s" % path.name
+                          for path in exec_surface.scripts(REPO)])
+
+    def test_the_committed_block_matches_the_tree(self):
+        problem, _block = exec_surface.compare(REPO)
+        self.assertIsNone(problem)
+        self.assertEqual([], [item.as_dict()
+                              for item in check_executable_surface(REPO)])
+
+    def test_a_new_script_makes_the_committed_block_stale(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            (root / "tools" / "invented.py").write_text("x = 1\n", encoding="utf-8")
+            messages = [item.message for item in check_executable_surface(root)]
+            self.assertEqual(1, len(messages), messages)
+            self.assertIn("does not match the tree", messages[0])
+
+    def test_a_script_that_reaches_the_network_is_named_by_the_generator(self):
+        """The second half of the defect: a count can be right while the list
+        of exceptions is wrong."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            (root / "tools" / "invented.py").write_text(
+                "import urllib.request\n\n\ndef go():\n"
+                "    return urllib.request.urlopen('https://example.invalid')\n",
+                encoding="utf-8")
+            block = exec_surface.render(root)
+            self.assertIn("| `tools/invented.py` | no | yes |", block)
+
+    def test_a_server_or_async_connection_is_named_too(self):
+        """The first version of this generator read urllib, http.client and a
+        socket, and a reviewer walked a script past it that spelled
+        `import http.server` and `asyncio.open_connection`. It got no row, and
+        the sentence over the table then said that script named no network
+        primitive."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            (root / "tools" / "invented.py").write_text(
+                "import asyncio\nimport http.server\n\n\ndef go():\n"
+                "    return asyncio.open_connection('h', 1)\n",
+                encoding="utf-8")
+            self.assertEqual((False, True),
+                             exec_surface.facts(root / "tools" / "invented.py"))
+            self.assertIn("| `tools/invented.py` | no | yes |",
+                          exec_surface.render(root))
+
+    def test_a_program_handed_to_a_subprocess_is_named_too(self):
+        """The other half of the same gap: the call that leaves the machine is
+        spelled as a string, not as an import."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            (root / "tools" / "invented.py").write_text(
+                "import subprocess\n\n\ndef go(url):\n"
+                "    return subprocess.run(['curl', '-s', url], check=False)\n",
+                encoding="utf-8")
+            self.assertIn("| `tools/invented.py` | no | yes |",
+                          exec_surface.render(root))
+
+    def test_a_module_on_the_list_imported_by_name_is_named_too(self):
+        """The second reviewer's walk-past. `import http.server` was read and
+        `from http import server` was not, because only urllib had an
+        ImportFrom case of its own -- while the block prints `http.server`,
+        `http.client` and `xmlrpc.client` inside the list it claims against,
+        so its disclaimer never covered these. This tree's own scripts spell
+        `from X import Y` more than twenty times."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            script = root / "tools" / "invented.py"
+            for source in ("from http import server\n",
+                           "from http import client\n",
+                           "from xmlrpc import client\n",
+                           "from http.server import HTTPServer\n",
+                           "from http import server as srv\n"):
+                script.write_text(source, encoding="utf-8")
+                self.assertEqual((False, True), exec_surface.facts(script),
+                                 source)
+            self.assertIn("| `tools/invented.py` | no | yes |",
+                          exec_surface.render(root))
+
+    def test_a_package_imported_alone_and_used_dotted_is_named_too(self):
+        """The same hole one layer out: the import names only the package and
+        the module on the list is spelled where it is used."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            script = root / "tools" / "invented.py"
+            script.write_text("import http\n\n\ndef go():\n"
+                              "    return http.server.HTTPServer(('', 0), None)\n",
+                              encoding="utf-8")
+            self.assertEqual((False, True), exec_surface.facts(script))
+            self.assertIn("| `tools/invented.py` | no | yes |",
+                          exec_surface.render(root))
+
+    def test_a_module_beside_one_on_the_list_is_not_read(self):
+        """The positive control the widening owes. urllib.parse is string
+        handling and is deliberately off the list, tools/workspace.py imports
+        it, and the suffix test is on a dot -- so "urllib.parse" is not
+        "urllib.request" and an attribute rooted anywhere but a name is not a
+        module at all."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            script = root / "tools" / "invented.py"
+            for source in ("import urllib.parse\n\nX = urllib.parse.quote('a b')\n",
+                           "from urllib import parse\n",
+                           "import sslcheck\n",
+                           "class C:\n    socket = 1\n\n\nX = C().socket\n"):
+                script.write_text(source, encoding="utf-8")
+                self.assertEqual((False, False), exec_surface.facts(script),
+                                 source)
+
+    def test_a_relative_import_is_not_a_network_module(self):
+        """`from . import server` names tools/server.py, not the http
+        package, and a reading that took the dotted join would say the tree's
+        own sibling imports leave the machine."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            script = root / "tools" / "invented.py"
+            script.write_text("from . import server\n", encoding="utf-8")
+            self.assertEqual((False, False), exec_surface.facts(script))
+
+    def test_the_block_names_the_spellings_its_reading_covers(self):
+        """The claim and the code, pinned together: the block prints a list of
+        modules, so it has to say that a module on it counts however the
+        source spells the import, or a reader takes the list for a list of
+        statements."""
+        block = exec_surface.render(REPO)
+        for spelling in ("`import http.server`", "`from http import server`",
+                         "`from http.server import HTTPServer`"):
+            self.assertIn(spelling, block)
+        self.assertIn("counts however the source spells it", block)
+
+    def test_the_word_curl_in_prose_is_not_a_call(self):
+        """The positive control for the line above: only a string that IS the
+        program counts, or every file that mentions one would carry a row."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            (root / "tools" / "invented.py").write_text(
+                '"""Explains why curl and ssh are not used here."""\n\n'
+                "MESSAGE = 'run curl yourself'\n", encoding="utf-8")
+            self.assertEqual((False, False),
+                             exec_surface.facts(root / "tools" / "invented.py"))
+
+    def test_the_block_prints_the_recognition_list_it_claims_against(self):
+        """"Names no network primitive" is a statement about a fixed list, so
+        the block has to print the list; without it the sentence reads as a
+        claim about what a script can do."""
+        block = exec_surface.render(REPO)
+        self.assertIn("The network list this reading recognises, in full",
+                      block)
+        for name in ("http.server", "socketserver", "requests",
+                     "open_connection", "curl"):
+            self.assertIn("`%s`" % name, block)
+        self.assertIn("not about what a script can do", block)
+
+    def test_this_generator_does_not_classify_itself(self):
+        """Its own constants name every module, call and program it looks for.
+        Parsing rather than searching is what keeps them out, and a set literal
+        inside frozenset(...) is what keeps the program names out."""
+        self.assertEqual((False, False),
+                         exec_surface.facts(TOOLS / "exec_surface.py"))
+
+    def test_deleting_the_markers_fails_instead_of_passing(self):
+        """Dropping the block is the cheapest way to drop the claim, so it has
+        to be the loudest failure and not a silent pass."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            document = root / "SECURITY.md"
+            text = document.read_text(encoding="utf-8")
+            start = text.index(exec_surface.BEGIN)
+            end = text.index(exec_surface.END) + len(exec_surface.END)
+            document.write_text(text[:start] + text[end:], encoding="utf-8")
+            messages = [item.message for item in check_executable_surface(root)]
+            self.assertEqual(1, len(messages), messages)
+            self.assertIn("no longer carries the executable-surface markers",
+                          messages[0])
+
+    def test_regenerating_a_stale_block_restores_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            document = root / "SECURITY.md"
+            document.write_text(
+                document.read_text(encoding="utf-8").replace(
+                    "`tools/` holds", "`tools/` allegedly holds", 1),
+                encoding="utf-8")
+            self.assertEqual(1, len(check_executable_surface(root)))
+            self.assertEqual(0, quietly(exec_surface.main,
+                                        ["--root", str(root)])[0])
+            self.assertEqual([], check_executable_surface(root))
+
+
+class ScriptCountGateTests(unittest.TestCase):
+    """The script count where it is typed by hand, outside the generated block.
+
+    Generating the inventory closed the sentence that carried the wrong number
+    and left the page it sits on open. A reviewer re-typed "`tools/` holds
+    eighteen scripts in all." into SECURITY.md's prose one line above the
+    markers and every check stayed green, because the generator compares only
+    what is between them. This is the gate-count technique applied to the
+    second count on the same page.
+    """
+
+    STALE = "`tools/` holds eighteen scripts in all.\n\n"
+
+    def findings(self, root):
+        return [(item.path, item.line, item.message)
+                for item in check_script_count(root)]
+
+    def test_the_tree_as_it_stands_states_no_count_outside_the_block(self):
+        self.assertEqual([], self.findings(REPO))
+
+    def test_the_stale_sentence_re_typed_above_the_block_is_reported(self):
+        """The bypass, exactly as the reviewer performed it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            document = root / "SECURITY.md"
+            text = document.read_text(encoding="utf-8")
+            document.write_text(
+                text.replace(exec_surface.BEGIN, self.STALE + exec_surface.BEGIN, 1),
+                encoding="utf-8")
+            found = self.findings(root)
+            self.assertEqual(1, len(found), found)
+            self.assertIn("holds eighteen scripts", found[0][2])
+            self.assertIn("tools/ holds %d script(s)"
+                          % len(exec_surface.scripts(root)), found[0][2])
+
+    def test_the_same_claim_below_the_block_is_reported_too(self):
+        """The count does not become true by moving under the markers."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            document = root / "SECURITY.md"
+            text = document.read_text(encoding="utf-8")
+            document.write_text(
+                text.replace(exec_surface.END, exec_surface.END + "\n\n" + self.STALE, 1),
+                encoding="utf-8")
+            self.assertEqual(1, len(self.findings(root)))
+
+    def test_a_right_count_in_prose_passes_and_rots_loudly(self):
+        """A hand-typed number is allowed while it is true, and reported the
+        day the directory changes under it. That is the whole contract: a
+        figure a reader cannot check is a figure nothing re-measures."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            document = root / "SECURITY.md"
+            total = len(exec_surface.scripts(root))
+            sentence = "`tools/` holds %d scripts in all.\n\n" % total
+            text = document.read_text(encoding="utf-8")
+            document.write_text(
+                text.replace(exec_surface.BEGIN, sentence + exec_surface.BEGIN, 1),
+                encoding="utf-8")
+            self.assertEqual([], self.findings(root))
+            (root / "tools" / "invented.py").write_text("x = 1\n", encoding="utf-8")
+            self.assertEqual(1, len(self.findings(root)))
+
+    def test_a_stale_exception_count_in_the_prose_is_reported(self):
+        """The other half of the same defect: the file named one script as the
+        only one that leaves the machine while a second had grown a network
+        call. That sentence sits in prose, above the generated table."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            document = root / "SECURITY.md"
+            text = document.read_text(encoding="utf-8")
+            self.assertIn("Two of them leave this path entirely", text)
+            document.write_text(
+                text.replace("Two of them leave this path entirely",
+                             "One of them leave this path entirely", 1),
+                encoding="utf-8")
+            found = self.findings(root)
+            self.assertEqual(1, len(found), found)
+            self.assertIn("2 script(s) under tools/ name a network primitive",
+                          found[0][2])
+
+    def test_a_new_network_script_stales_that_sentence_too(self):
+        """Not only a typo: adding a script that calls out makes the sentence
+        wrong without anyone touching it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            (root / "tools" / "invented.py").write_text(
+                "import http.server\n\n\ndef go():\n    return http.server\n",
+                encoding="utf-8")
+            messages = [row[2] for row in self.findings(root)]
+            self.assertTrue(any("leave this path" in message
+                                for message in messages), messages)
+
+    def test_the_environment_only_count_is_read_as_well(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            document = root / "SECURITY.md"
+            text = document.read_text(encoding="utf-8")
+            self.assertIn("The other four scripts the table lists", text)
+            document.write_text(
+                text.replace("The other four scripts the table lists",
+                             "The other five scripts the table lists", 1),
+                encoding="utf-8")
+            found = self.findings(root)
+            self.assertEqual(1, len(found), found)
+            self.assertIn("name an environment variable and no network "
+                          "primitive", found[0][2])
+
+    def test_the_stale_count_in_a_reworded_whole_directory_claim_is_reported(self):
+        """The reviewer's second pass re-typed the same figure in two wordings
+        the first shape did not read -- "contains" instead of "holds", and the
+        directory named after the count instead of before it -- and both
+        passed, on the same page and for the same reason as the original."""
+        for sentence in ("`tools/` contains eighteen scripts.\n\n",
+                         "There are 18 scripts under `tools/`.\n\n",
+                         "18 scripts in `tools/` do the work.\n\n"):
+            with tempfile.TemporaryDirectory() as tmp:
+                root = copy_tree(tmp)
+                document = root / "SECURITY.md"
+                text = document.read_text(encoding="utf-8")
+                document.write_text(
+                    text.replace(exec_surface.BEGIN,
+                                 sentence + exec_surface.BEGIN, 1),
+                    encoding="utf-8")
+                found = self.findings(root)
+                self.assertEqual(1, len(found), (sentence, found))
+                self.assertIn("tools/ holds %d script(s)"
+                              % len(exec_surface.scripts(root)), found[0][2])
+
+    def test_a_reworded_claim_that_is_right_passes(self):
+        """The same contract as the wording above it: true today, reported the
+        day the directory changes under it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            document = root / "SECURITY.md"
+            total = len(exec_surface.scripts(root))
+            sentence = "`tools/` contains %d scripts.\n\n" % total
+            text = document.read_text(encoding="utf-8")
+            document.write_text(
+                text.replace(exec_surface.BEGIN, sentence + exec_surface.BEGIN, 1),
+                encoding="utf-8")
+            self.assertEqual([], self.findings(root))
+            (root / "tools" / "invented.py").write_text("x = 1\n",
+                                                        encoding="utf-8")
+            self.assertEqual(1, len(self.findings(root)))
+
+    def test_a_count_of_a_named_subset_is_not_read(self):
+        """The stated limit, pinned so it is a decision and not a bug:
+        SECURITY.md's own "Six local scripts stay on this path" counts the six
+        it then names, and holding it to the directory total would be wrong."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            document = root / "SECURITY.md"
+            text = document.read_text(encoding="utf-8")
+            self.assertIn("Six local scripts stay on this path", text)
+            document.write_text(
+                text.replace("Six local scripts stay on this path",
+                             "Six local scripts stay on this path, as do three "
+                             "scripts named below", 1), encoding="utf-8")
+            self.assertEqual([], self.findings(root))
+
+
+class CommitmentProbeGateTests(unittest.TestCase):
+    """The interview guide that bans the question it also requires.
+
+    templates/discovery/interview-guide.md told its filler that no question
+    may ask about the future, and required two lines later the Block E probe
+    that asks what the participant would do next. The audit found it in the
+    template. It was also in the template's filled example, in the mom-test
+    framework worksheet, and in that worksheet's own filled example: six lines
+    in four files, none of which any structural check read.
+    """
+
+    BANNED = ("- [x] No question asks about the idea, the future, or a price; "
+              "every question asks about a specific past event or its cost\n")
+
+    def findings(self, root):
+        return [(item.path, item.line, item.message)
+                for item in check_commitment_probe_rule(root)]
+
+    def test_the_tree_as_it_stands_reconciles_every_guide_with_its_probe(self):
+        self.assertEqual([], self.findings(REPO))
+
+    def test_the_filled_example_with_its_pre_fix_line_back_is_reported(self):
+        """The closure proof the finding states in its own words: the guide and
+        its example agree. This is the example, with the line the audit read."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            document = root / "examples" / "sahulat-interview-guide.md"
+            text = document.read_text(encoding="utf-8")
+            line = [number for number, raw
+                    in enumerate(text.splitlines(), 1)
+                    if raw.startswith("- [x] No question asks about the idea")]
+            self.assertEqual(1, len(line))
+            document.write_text(
+                "\n".join(self.BANNED.rstrip("\n") if number == line[0] else raw
+                          for number, raw
+                          in enumerate(text.splitlines(), 1)) + "\n",
+                encoding="utf-8")
+            found = [row for row in self.findings(root)
+                     if row[0] == "examples/sahulat-interview-guide.md"]
+            self.assertEqual(1, len(found), found)
+            self.assertEqual(line[0], found[0][1])
+            self.assertIn("names no exemption", found[0][2])
+
+    def test_the_framework_worksheet_rule_without_its_exemption_is_reported(self):
+        """The same class one layer down, which no register record named and
+        which shipped with the same contradiction."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            document = (root / "frameworks" / "discovery"
+                        / "mom-test-interview-guide.md")
+            text = document.read_text(encoding="utf-8")
+            self.assertIn(", except in the closing commitment probe", text)
+            document.write_text(
+                text.replace(", except in the closing commitment probe", ""),
+                encoding="utf-8")
+            found = [row for row in self.findings(root)
+                     if row[0].endswith("mom-test-interview-guide.md")]
+            self.assertEqual(2, len(found), found)
+
+    def test_the_ban_written_as_a_plain_bullet_is_reported(self):
+        """The rule was read only on a table row or a checkbox item, so the
+        same sentence one character shorter -- a plain bullet, or a numbered
+        item -- stated the ban and named no exemption while the check stayed
+        silent."""
+        probe = ("| Close | What would you do next: try it, introduce us? "
+                 "| commitment, not a compliment |\n")
+        for rule in ("- Never ask what they would do in the future.\n",
+                     "* Never ask what they would do in the future.\n",
+                     "1. Never ask what they would do in the future.\n"):
+            with tempfile.TemporaryDirectory() as tmp:
+                root = copy_tree(tmp)
+                document = root / "templates" / "discovery" / "invented.md"
+                document.write_text("# Invented\n\n" + probe + "\n" + rule,
+                                    encoding="utf-8")
+                found = [row for row in self.findings(root)
+                         if row[0].endswith("invented.md")]
+                self.assertEqual(1, len(found), (rule, found))
+                self.assertEqual(5, found[0][1])
+
+    def test_a_rule_named_in_running_prose_is_not_read(self):
+        """The stated limit, pinned so it is a decision and not a bug: the
+        mom-test worksheet opens by summarising its own rules in a sentence
+        ("not opinions about the future"), and a check that read paragraphs
+        would demand an exemption clause from prose describing the rules."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            document = root / "templates" / "discovery" / "invented.md"
+            document.write_text(
+                "# Invented\n\n| Close | What would you do next? | commitment |"
+                "\n\nThe rules ask about what happened, not the future.\n",
+                encoding="utf-8")
+            self.assertEqual([], [row for row in self.findings(root)
+                                  if row[0].endswith("invented.md")])
+
+    def test_a_guide_that_asks_for_no_commitment_is_not_read(self):
+        """The stated limit: the rule is read only where the probe is, so a
+        questionnaire that bans the future and closes without a commitment ask
+        is left alone."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            document = root / "templates" / "discovery" / "invented.md"
+            document.write_text(
+                "# Invented\n\n- [ ] No question asks about the future\n",
+                encoding="utf-8")
+            self.assertEqual([], [row for row in self.findings(root)
+                                  if row[0].endswith("invented.md")])
+
+    def test_naming_the_exemption_is_what_clears_the_line(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            document = root / "templates" / "discovery" / "invented.md"
+            probe = ("| Close | What would you do next: try it, introduce us? "
+                     "| commitment, not a compliment |\n")
+            document.write_text(
+                "# Invented\n\n" + probe
+                + "\n- [ ] No question asks about the future\n",
+                encoding="utf-8")
+            self.assertEqual(1, len([row for row in self.findings(root)
+                                     if row[0].endswith("invented.md")]))
+            document.write_text(
+                "# Invented\n\n" + probe
+                + "\n- [ ] No question asks about the future, except the "
+                  "closing commitment probe\n", encoding="utf-8")
+            self.assertEqual([], [row for row in self.findings(root)
+                                  if row[0].endswith("invented.md")])
 
 
 class GateCountGateTests(unittest.TestCase):

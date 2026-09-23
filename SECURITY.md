@@ -1,6 +1,6 @@
 # Security
 
-Last reviewed 2026-09-03, against the tree as it stands on that date. The path inventory, the script list below it, and the agent-CLI section were re-checked against the tree on 2026-09-10; the rest of this file carries the earlier date.
+Last reviewed 2026-09-03, against the tree as it stands on that date. The path inventory and the agent-CLI section were re-checked against the tree on 2026-09-10; the rest of this file carries the earlier date. The script list below the path inventory carries no date at all any more: it is generated from the tree by `tools/exec_surface.py` and a release gate fails when it is stale, which is the only kind of inventory in this file that cannot quietly age.
 
 This repository has four paths through it and they have different security properties. Most readers only ever use the first. Read the one you are on, because a sentence that is true of the manual path is not automatically true of an agent CLI, the local runtime, or a provider call.
 
@@ -14,7 +14,24 @@ Clone the repository, copy a template, fill it in an editor, work the gate check
 
 Six local scripts stay on this path. `lint.py` and `tests/test_lint.py` are the quality gate and its tests, Python standard library only. `tools/graph.py`, `tools/frontmatter_init.py`, and `tools/check_manifest.py` read the tree and write `docs/GRAPH.md` or a report. They open no socket and read no environment variable. `harness/adapters/claude-code/generate.py` writes generated command files inside the repository.
 
-Those six are not the whole executable surface of the tree, and this file used to say they were. `tools/` holds eighteen scripts in all. Most of the fifteen not named above are gate and readiness runners that read files and print findings; `tools/init_product.py` is the quickstart tool that writes a workspace under `products/`; and one leaves this path entirely, because `tools/ext_ai_probe.py` reads `OPENROUTER_API_KEY` (or an OmniRoute gateway variable) and makes the outbound calls described under the provider path below. So the manual path is files you can read and scripts that read files, and three tracked entry points step off it when you invoke them: `harness/runner.py`, the desktop adapter, and that probe. A fourth needs no invocation at all, and is the section immediately below.
+Those six are not the whole executable surface of the tree, and this file used to say they were. It then said how large `tools/` is as a number typed by hand, which was right on the day it was typed and nine scripts wrong by the time an external audit read it. The inventory below is generated from the tree by `tools/exec_surface.py`, and `python3 tools/exec_surface.py --check` fails the build when the committed block no longer matches the directory. Most of the scripts it counts are gate and readiness runners that read files and print findings, and `tools/init_product.py` is the quickstart tool that writes a workspace under `products/`. Two of them leave this path entirely, and the table names both: `tools/ext_ai_probe.py` reads `OPENROUTER_API_KEY` (or an OmniRoute gateway variable) and makes the outbound calls described under the provider path below, and `tools/model_matrix.py` asks a loopback gateway what it can route to and then drives that probe across the models it names. The other four scripts the table lists read an environment variable without leaving the machine: three of them build the environment they hand to a subprocess, and `tools/review_gate.py` reads `GIT_DIR` when it asks whether it is standing inside a repository at all. So the manual path is files you can read and scripts that read files, and four tracked entry points step off it when you invoke them: `harness/runner.py`, the desktop adapter, and those two. A fifth needs no invocation at all, and is the section immediately below.
+
+<!-- BEGIN GENERATED executable-surface: written by tools/exec_surface.py. Never hand-edit; run `python3 tools/exec_surface.py` and commit the result. -->
+`tools/` holds 28 scripts. 22 of them read files and print or write a report: their source names no environment variable, and nothing on the network list this generator recognises, printed below the table. The rest are named here.
+
+| Script | Names an environment variable | Names a network primitive |
+|---|---|---|
+| `tools/ci_gate.py` | yes | no |
+| `tools/ext_ai_probe.py` | yes | yes |
+| `tools/model_matrix.py` | yes | yes |
+| `tools/readiness.py` | yes | no |
+| `tools/readiness_probe.py` | yes | no |
+| `tools/review_gate.py` | yes | no |
+
+Read from each script's syntax, not from a run: a cell says what the source spells, and a script that reaches either capability through another module is counted against the module that spells the call.
+
+The network list this reading recognises, in full: the modules `urllib.request`, `urllib.error`, `http.client`, `http.server`, `http.cookiejar`, `socket`, `socketserver`, `ssl`, `ftplib`, `smtplib`, `smtpd`, `imaplib`, `poplib`, `nntplib`, `telnetlib`, `xmlrpc.client`, `xmlrpc.server`, `webbrowser`, `requests`, `httpx`, `aiohttp`, `urllib3`, `httplib2`, `websockets`, `websocket`, `paramiko`, `boto3`, `botocore`, `grpc` and `pycurl`; the calls `create_connection`, `create_server`, `create_unix_connection`, `getaddrinfo`, `gethostbyaddr`, `gethostbyname`, `open_connection`, `start_server`, `start_unix_server`, `urlopen` and `urlretrieve`; and these programs handed to a subprocess as a string, `curl`, `ftp`, `nc`, `ncat`, `netcat`, `openssl`, `rsync`, `scp`, `sftp`, `ssh`, `telnet` and `wget`. A module on that list counts however the source spells it -- `import http.server`, `from http import server`, `from http.server import HTTPServer`, or `import http` with `http.server` where it is used all name the same module. A name outside the list is not seen, so "names no network primitive" is a statement about this list and not about what a script can do.
+<!-- END GENERATED executable-surface -->
 
 ## The agent-CLI path: a committed hook that runs on session events
 

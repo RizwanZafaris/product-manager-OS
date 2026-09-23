@@ -45,13 +45,15 @@ The new questions keep the customer's or agent's life at the centre. They ask ab
 
 | Rule | The tell that you broke it |
 |---|---|
-| R1 Their life, not your idea | The question names Sahulat, agent-assisted bill pay, a proposed commission or another product concept, or contains "would" |
-| R2 Specifics in the past, not generics or the future | The question uses "usually", "typically", "would you ever", or asks what the participant might do later |
+| R1 Their life, not your idea | The question names Sahulat, agent-assisted bill pay, a proposed commission or another product concept, or contains "would", except in the closing commitment probe |
+| R2 Specifics in the past, not generics or the future | The question uses "usually", "typically", "would you ever", or asks what the participant might do later, except in the closing commitment probe |
 | R3 Talk less; let silence do the follow-up | The interviewer explains the hypothesis instead of asking one short question and pausing |
 | R4 Never pitch | The interviewer says "so what we are thinking is" or describes the proposed agent flow |
 | R5 Ask what they tried and what it cost | The notes contain no workaround, time cost, money cost, queue cost, float cost or standing cost |
 | R6 Push a compliment back to a fact | A note says "good", "easy", "definitely" or "love it" without a past event, date, number, tool or role |
 | R7 Close with a commitment ask sized to the pain | The close is only "we will be in touch", or asks for a commitment larger than the pain supports |
+
+R7 is the one exemption to R1 and R2, and it is one question wide. The closing commitment probe, "Which part of that last bill would you be willing to walk through again or show us in a follow-up?", asks for a step the agent could take this week, not an opinion about agent-assisted bill pay, so the answer is checkable against what he afterwards does. Every other question in this guide stays in the past.
 
 | Draft question | Breaks | Rewrite |
 |---|---|---|

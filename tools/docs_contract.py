@@ -18,7 +18,27 @@ AMBIGUOUS = frozenset({"here", "this", "this link", "link", "more", "read more",
                        "click here", "details"})
 LINK = re.compile(r"(?<!!)\[([^\]]*)\]\(([^)]+)\)")
 IMAGE = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)")
-HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
+# CommonMark spells one heading two ways, and both had to be read before a
+# repeat of one could be seen. ATX: the closing sequence "## Zed ##" is a
+# decoration on the heading "Zed", so it is stripped rather than compared --
+# a reviewer repeated a heading in that spelling and the comparison called
+# "Zed ##" a different heading. The sequence is one or more hashes preceded
+# by whitespace and followed by nothing else, so "## Hash # tag" keeps its
+# hash and "## C# ##" is "C#".
+HEADING = re.compile(r"^(#{1,6})\s+(.+?)(?:\s+#+)?\s*$")
+# Setext: a line of text underlined by "=" (level 1) or "-" (level 2). The
+# other heading spelling, and the other half of the same evasion.
+SETEXT = re.compile(r"^ {0,3}(=+|-+)\s*$")
+# A previous line that a setext underline may NOT be reading. "-" carries
+# three other meanings in this tree -- a thematic break, a list bullet and
+# the closing fence of YAML front matter -- and a setext heading underlines a
+# paragraph, never a heading, a table row, a block quote, a list item, an HTML
+# block or an indented code block (four spaces or more). Every ambiguous shape
+# is left unread rather than guessed at: a "---" after a blank line stays a
+# thematic break, "| a | b |" over "|---|" stays a table, and the line under a
+# code sample stays sample output.
+NOT_SETEXT_TEXT = re.compile(
+    r"^(?: {4,}|(?: {0,3}(?:[-*+>|<]|#{1,6}\s|\d+[.)]\s|=+\s*$)))")
 FALSE_LIVE = re.compile(r"(?i)\b(?:100\s*/\s*100|all external gates are green|"
                         r"live sandbox verified|provider certified|regulatory certified|"
                         r"user validated)\b")
@@ -86,6 +106,106 @@ GATE_COUNT = re.compile(
     % ("|".join(_TENS), "|".join(_UNITS[1:10]), "|".join(_UNITS)), re.I)
 GATE_COUNT_DOCS = ("README.md", "docs/FAQ.md", "docs/ARCHITECTURE.md")
 CI_GATE = "tools/ci_gate.py"
+SECURITY = "SECURITY.md"
+
+# How many scripts tools/ holds, stated in prose rather than inside the block
+# the generator writes. The count in SECURITY.md was typed by hand until
+# tools/exec_surface.py took it over, and a reviewer put the stale sentence
+# back one line ABOVE the generated markers, where every check walked past it.
+# A whole-directory claim is what is read, in either of two shapes: a verb and
+# a number ("holds N scripts", "all N scripts", "contains N scripts") or a
+# number and a scope ("N scripts in all", "in total", "altogether", "under
+# `tools/`", "in `tools/`"). The second reviewer re-typed the stale figure in
+# two wordings the first shape alone did not read -- "`tools/` contains
+# eighteen scripts." and "There are 18 scripts under `tools/`." -- and both
+# passed, so the scope half was added.
+# A count of a named subset is still not read, which is why SECURITY.md's own
+# "Six local scripts stay on this path" is left alone, the same stated limit
+# INVENTORY carries above; the cost of naming the directory in the second shape
+# is that a subset claim that also names it ("six local scripts in `tools/`")
+# would be read as a whole-directory claim, and no sentence in this tree is
+# written that way.
+SCRIPT_COUNT = re.compile(
+    r"\b(?:holds|all|contains)\s+(\d+|(?:%s)(?:[-\s](?:%s))?|%s)\s+scripts\b"
+    r"|\b(\d+|(?:%s)(?:[-\s](?:%s))?|%s)\s+scripts\s+"
+    r"(?:in\s+all|in\s+total|altogether|"
+    r"(?:in|under)\s+`?%s/?`?)\b"
+    % ("|".join(_TENS), "|".join(_UNITS[1:10]), "|".join(_UNITS),
+       "|".join(_TENS), "|".join(_UNITS[1:10]), "|".join(_UNITS),
+       "tools"), re.I)
+
+# The interview-guide contradiction, as three readings of one line. A guide
+# states its question rules as checklist items or table rows; the ban is on
+# asking about the future, or on a question containing "would"; the closing
+# commitment probe asks exactly that and the same guides require it. A line
+# that states the ban without naming the exemption is the defect.
+# The two figures SECURITY.md's prose derives from the generated table above
+# it: how many scripts leave the manual path, and how many of the rest read an
+# environment variable without leaving it. Both said something different before
+# the table was generated, and both are a reader's summary of rows nobody can
+# be asked to count. Sentence-specific on purpose, the way the gate count is
+# tied to a line naming ci_gate.py: a rewording drops the reading, and the
+# check says only what the sentence it matches says.
+LEAVE_CLAIM = re.compile(
+    r"\b(\d+|(?:%s)(?:[-\s](?:%s))?|%s)\s+of them leave this path\b"
+    % ("|".join(_TENS), "|".join(_UNITS[1:10]), "|".join(_UNITS)), re.I)
+ENV_ONLY_CLAIM = re.compile(
+    r"\bother\s+(\d+|(?:%s)(?:[-\s](?:%s))?|%s)\s+scripts the table lists\b"
+    % ("|".join(_TENS), "|".join(_UNITS[1:10]), "|".join(_UNITS)), re.I)
+
+COMMITMENT = re.compile(r"\bcommitment\b", re.I)
+WOULD = re.compile(r"\bwould\b", re.I)
+QUESTION_BAN = re.compile(r"\bthe future\b|contains \"would\"|"
+                          r"\bmight do later\b", re.I)
+EXEMPTION = re.compile(r"\bexempt\w*\b|\bexcept\b", re.I)
+# The shapes a guide states a question rule in: a table row, or a list item
+# under any marker, with or without a checkbox. It was ("|", "- [") until a
+# reviewer wrote the ban as a plain bullet -- "- Never ask what they would do
+# in the future." -- which is the same rule one character shorter and was not
+# read. A rule written as a running sentence is still not read, and that is a
+# stated limit rather than an oversight: the mom-test worksheet opens by
+# summarising its own rules in prose ("not opinions about the future"), and a
+# check that read paragraphs would demand an exemption clause from a
+# sentence that is describing the rules rather than stating one.
+RULE_LINE = re.compile(r"^(?:\||[-*+]\s|\d+[.)]\s)")
+GUIDE_DIRS = ("templates", "examples", "frameworks")
+
+# Two editorial defects that every structural check in this tree walked past,
+# because each one is well-formed: the heading parses, the path is spelled like
+# a path. templates/discovery/discovery-synthesis.md carried "### Theme 1: [name
+# the theme in the customers' terms]" twice in a row, so whoever filled the form
+# saw two Theme 1 sections; templates/ai/eval-spec.md sent a reader to
+# "../architecture/ai-interaction-spec.md" from inside an HTML comment, and the
+# file it meant sits beside it in templates/ai/. Neither the link check above
+# (five operator documents, markdown links only, comments included but nothing
+# outside a link) nor the heading-order check (levels, not text) could see
+# either one.
+#
+# A fenced block, so a heading-shaped line inside one is not read as a heading.
+# CommonMark: three or more backticks or tildes, indented at most three spaces,
+# closed by at least as many of the same character on a line of its own.
+FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})\s*(.*)$")
+# An explicit relative path reference: a token that begins "./" or "../" and
+# ends in a suffix this tree actually commits. Written that way it is a claim
+# about where this repository keeps a file, wherever it appears -- in a link
+# target, in prose, or inside an HTML comment, which is where the eval-spec one
+# hid. A bare "STATE.md" is not read: in these documents a name without a
+# directory is usually the name of a form, not a path to one.
+# The trailing lookaheads let a sentence end on a path -- "see ../x.md." is a
+# reference and a full stop, not a reference to "x.md." -- while still refusing
+# to cut a longer name in half: a dot followed by a letter or digit continues
+# the token, so "../x.md.bak" matches nothing rather than matching "../x.md".
+DECLARED_PATH = re.compile(
+    r"(?<![\w./-])(\.{1,2}/[A-Za-z0-9._/-]*[A-Za-z0-9_-]"
+    r"\.(?:md|py|json|ya?ml|toml|txt|sh))(?![A-Za-z0-9_/-])(?!\.[A-Za-z0-9])")
+# Where a declared path is read. templates/ is the layer whose paths are a
+# contract: a blank tells the person filling it which other file to open, and a
+# wrong answer there is wrong in every copy made from it. This is a stated
+# limit, not a claim that nothing else declares a path: examples/ carries
+# inherited comments whose relative paths resolved from the template's
+# directory and not from examples/, and those are left to the finding that owns
+# the examples layer.
+DECLARED_PATH_DIR = "templates"
 
 # The examples inventory, which failed the same way the template inventory did:
 # three of four journey counts were stale and summed to the stale total, so the
@@ -449,6 +569,361 @@ def check_gate_count(root: Path) -> list[Issue]:
                                         "this says %r and %s defines %d"
                                         % (match.group(0), CI_GATE, total)))
     return issues
+
+
+def _markdown(root: Path, base: Path):
+    """Every markdown file under base, in a stable order, skipping the hidden.
+
+    A path segment that starts with "." is tooling rather than documentation,
+    and a name that starts with "._" is an exFAT resource fork: this tree is
+    edited from a drive that writes them beside every file, and reading one as
+    a document reports findings against a file nobody can see.
+    """
+    if not base.is_dir():
+        return []
+    out = []
+    for path in sorted(base.rglob("*.md")):
+        relative = path.relative_to(root)
+        if any(part.startswith(".") for part in relative.parts) \
+                or path.name.startswith("._"):
+            continue
+        out.append((path, relative.as_posix()))
+    return out
+
+
+def _headings(text: str):
+    """(line number, level, text) for every heading, fenced blocks left out.
+
+    The fence state is tracked rather than the fences removed, so a line keeps
+    the number it has in the file and a finding names that number.
+
+    An HTML comment is skipped for the same reason a fenced block is: this
+    tree's templates are built out of guidance comments, and a comment that
+    shows the filler what a repeated section looks like ("### Theme n: [name]",
+    twice, inside one comment) is an example of a heading and not a heading.
+    Nothing this tree ships puts a real heading inside a comment. The comment
+    state is tracked line by line, so a comment that opens and closes on one
+    line hides only that line.
+
+    Both of CommonMark's heading spellings are read: ATX ("## Zed", with or
+    without a closing "##") and setext (a line of text underlined by "=" or
+    "-"). A reviewer repeated a heading in each of those two spellings and the
+    reading, which took only bare ATX, saw one heading where the file had two.
+    YAML front matter is skipped whole, because its closing "---" underlines
+    the last line of the block and is not a heading.
+
+    What the setext reading does not do: it takes the LAST line above the
+    underline as the heading text, where CommonMark takes the whole paragraph,
+    and it reads no underline whose line above is ambiguous (see
+    NOT_SETEXT_TEXT). Both keep the widening from inventing a heading where the
+    file has a table, a list or a thematic break.
+    """
+    lines = text.splitlines()
+    out, fence, comment = [], None, False
+    start = 1
+    if lines and lines[0].strip() == "---":
+        closing = next((number for number, raw in enumerate(lines[1:], 2)
+                        if raw.strip() in ("---", "...")), None)
+        start = (closing + 1) if closing else len(lines) + 1
+    previous = None
+    for number, raw in enumerate(lines, 1):
+        if number < start:
+            continue
+        if comment:
+            comment = "-->" not in raw
+            previous = None
+            continue
+        if "<!--" in raw and "-->" not in raw.split("<!--", 1)[1]:
+            comment = True
+            previous = None
+            continue
+        found = FENCE.match(raw)
+        if found:
+            marker = found.group(1)
+            if fence is None:
+                fence = marker
+            # A closing fence is the same character, at least as long, and
+            # carries no info string; anything else opens nothing and closes
+            # nothing while a fence is open.
+            elif marker[0] == fence[0] and len(marker) >= len(fence) \
+                    and not found.group(2).strip():
+                fence = None
+            previous = None
+            continue
+        if fence is not None:
+            continue
+        heading = HEADING.match(raw)
+        if heading:
+            out.append((number, len(heading.group(1)), heading.group(2)))
+            previous = None
+            continue
+        underline = SETEXT.match(raw)
+        if underline and previous is not None:
+            level = 1 if underline.group(1)[0] == "=" else 2
+            out.append((previous[0], level, previous[1]))
+            previous = None
+            continue
+        stripped = raw.strip()
+        previous = None if not stripped or NOT_SETEXT_TEXT.match(raw) \
+            else (number, stripped)
+    return out
+
+
+def check_duplicate_headings(root: Path) -> list[Issue]:
+    """A heading that repeats one of its own siblings, in any markdown file.
+
+    Siblings, not the whole file: a changelog writes "### Fixed" under every
+    release heading and each of those is a different section, while two of them
+    under one release are one section written twice. The same shape covers a
+    persona sheet that repeats "#### Snapshot" under each persona. What the
+    rule cannot excuse is the defect it was written for, two "### Theme 1"
+    headings with the same parent and nothing between them.
+
+    Text is compared with its case and its runs of whitespace flattened, so
+    "### Theme 1" and "###  theme 1" are the same heading. What this does not
+    read: two sibling headings that differ by a word while naming the same
+    thing, which is a reader's finding and not a checker's.
+    """
+    issues: list[Issue] = []
+    for path, name in _markdown(root, root):
+        seen: dict = {}
+        stack: list = []
+        for number, level, text in _headings(path.read_text(encoding="utf-8")):
+            flat = " ".join(text.split()).lower()
+            while stack and stack[-1][0] >= level:
+                stack.pop()
+            key = (tuple(parent for _, parent in stack), level, flat)
+            first = seen.get(key)
+            if first is None:
+                seen[key] = number
+            else:
+                issues.append(Issue("error", "duplicate-heading", name, number,
+                                    "%r repeats the heading of the same level "
+                                    "and the same parent on line %d"
+                                    % (text, first)))
+            stack.append((level, flat))
+    return issues
+
+
+def check_declared_paths(root: Path) -> list[Issue]:
+    """Every explicit relative path a template declares, against the tree.
+
+    Read from the directory of the file that names it, which is the only way
+    the defect shows: "../architecture/ai-interaction-spec.md" is a real path
+    from templates/definition/ and a dead one from templates/ai/, where it was
+    written. A reference that climbs out of the repository is reported for the
+    same reason a missing one is: neither is a path a reader can follow here.
+
+    What this does not read, each one a stated limit and not an oversight: a
+    reference without a leading "./" or "../" (see DECLARED_PATH), so
+    "architecture/nope.md" written as bare prose passes; a reference whose
+    suffix is outside the committed list in DECLARED_PATH, so "../x.csv"
+    passes; a reference containing a space, since the pattern stops at one and
+    a sentence is not a path; a directory reference; and any file outside
+    templates/ (see DECLARED_PATH_DIR). A reviewer walked each of the first
+    three past this check deliberately, and a second reviewer walked all three
+    past it again. Widening any of them trades a class of miss for a class of
+    false positive across the 982 live references under templates/, which is a
+    change that owes its own fixtures.
+
+    What the other gate does and does not add, measured rather than assumed: a
+    WELL-FORMED markdown link whose target is missing is caught by lint.py's
+    LINK check, so "[a spec](./nope-xyz.md)" is reported there. The space form
+    is not, and not because that check is weak: CommonMark does not read
+    "[a spec](./My Missing Spec.md)" as a link at all, because an unbracketed
+    destination cannot contain a space, so nothing renders it as one either.
+    The spelling that IS a link, "[a spec](<./My Missing Spec.md>)", is read by
+    lint.py and reported. An earlier version of this docstring said the LINK
+    check caught the space form; it does not, and saying so claimed coverage
+    this tree does not have.
+    """
+    issues: list[Issue] = []
+    resolved = root.resolve()
+    for path, name in _markdown(root, root / DECLARED_PATH_DIR):
+        text = path.read_text(encoding="utf-8")
+        for found in DECLARED_PATH.finditer(text):
+            reference = found.group(1)
+            target = (path.parent / reference).resolve()
+            try:
+                target.relative_to(resolved)
+            except ValueError:
+                issues.append(Issue("error", "declared-path", name,
+                                    _line(text, found.start()),
+                                    "%r leaves the repository" % reference))
+                continue
+            if not target.is_file():
+                issues.append(Issue("error", "declared-path", name,
+                                    _line(text, found.start()),
+                                    "%r names no file in this tree" % reference))
+    return issues
+
+
+def check_script_count(root: Path) -> list[Issue]:
+    """The number of scripts under tools/, stated in SECURITY.md's prose.
+
+    The count is taken from tools/ and compared with what the file says, in
+    digits or in words up to ninety-nine, the same way the gate count is read.
+
+    It exists because the block above it was not enough. SECURITY.md said
+    "`tools/` holds eighteen scripts in all" while the directory held 27; the
+    sentence became a generated block between two markers, and a reviewer then
+    re-typed the stale one into the prose a line ABOVE those markers, where the
+    generator's own comparison does not look and every check stayed green. A
+    count a reader cannot check is a count nothing re-measures, wherever on the
+    page it sits.
+
+    Only SECURITY.md is read, and only outside the generated markers: inside
+    them, tools/exec_surface.py re-renders the text and check_executable_surface
+    compares it. A tree with no tools/ makes no claim and is not checked.
+
+    Two figures the prose derives from the generated table are read as well,
+    because a stale exception list is the other half of the defect this file
+    was fixed for: how many scripts leave the manual path, against the rows the
+    table marks as naming a network primitive, and how many of the rest read an
+    environment variable without leaving, against the rows marked that way.
+    Both are matched on the sentence that states them, the way the gate count
+    is matched on a line naming ci_gate.py, so rewording the sentence drops the
+    reading rather than failing the build.
+
+    What this does not read: a count of any other named subset of the scripts,
+    such as this file's own "Six local scripts stay on this path"; a count of
+    scripts in any other document; and a number written in words above
+    ninety-nine.
+    """
+    issues: list[Issue] = []
+    try:
+        try:
+            from tools import exec_surface
+        except ImportError:
+            import exec_surface  # type: ignore[no-redef]
+    except ImportError:
+        return [Issue("error", "script-count", SECURITY, 1,
+                      "tools/exec_surface.py could not be imported, so the "
+                      "script count in prose was not checked")]
+    found = [exec_surface.facts(path) for path in exec_surface.scripts(root)]
+    total = len(found)
+    if not total:
+        return issues
+    leaving = sum(1 for _environment, network in found if network)
+    environment_only = sum(1 for environment, network in found
+                           if environment and not network)
+    path = root / SECURITY
+    if not path.is_file():
+        return issues
+    inside = False
+    for number, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        if exec_surface.BEGIN in raw:
+            inside = True
+            continue
+        if exec_surface.END in raw:
+            inside = False
+            continue
+        if inside:
+            continue
+        for match in SCRIPT_COUNT.finditer(raw):
+            figure = match.group(1) or match.group(2)
+            if _stated_count(figure) != total:
+                issues.append(Issue("error", "script-count", SECURITY, number,
+                                    "this says %r and tools/ holds %d script(s)"
+                                    % (match.group(0), total)))
+        for pattern, measured, what in (
+                (LEAVE_CLAIM, leaving, "name a network primitive"),
+                (ENV_ONLY_CLAIM, environment_only,
+                 "name an environment variable and no network primitive")):
+            for match in pattern.finditer(raw):
+                if _stated_count(match.group(1)) != measured:
+                    issues.append(Issue(
+                        "error", "script-count", SECURITY, number,
+                        "this says %r and %d script(s) under tools/ %s"
+                        % (match.group(0), measured, what)))
+    return issues
+
+
+def check_commitment_probe_rule(root: Path) -> list[Issue]:
+    """An interview guide whose question rule bans the question it also asks.
+
+    Every markdown file under templates/, examples/ and frameworks/ is read.
+    A file that carries a line naming a commitment in words that use "would"
+    is taken to ask a closing commitment probe; in such a file, every table row
+    and every list item -- under any bullet or number, with or without a
+    checkbox -- that bans asking about the future, or bans a question
+    containing "would", has to name the exemption, and one that does not is
+    reported.
+
+    It exists because an external audit found templates/discovery/
+    interview-guide.md banning future questions on one line while requiring,
+    two lines later, the Block E probe that asks the participant what they
+    would do next. Correcting the template left the same contradiction in three
+    further files: the template's own filled example, the mom-test framework
+    worksheet, and that worksheet's filled example. Six lines in four files
+    carried it and no structural check saw any of them, because every one of
+    those lines parses and reads well on its own.
+
+    What this does not read: a ban written as a running sentence rather than as
+    a row or a list item (see RULE_LINE), because this tree's worksheets
+    summarise their own rules in prose and a check that read paragraphs would
+    demand an exemption clause from a sentence that is describing the rules;
+    the rule is matched as text, so a ban worded some other way is not
+    seen; a guide that asks the probe without any line naming
+    a commitment is not read at all; a line naming a commitment for some other
+    reason can make a file eligible, and the cost of that breadth is one more
+    line that has to say "except the closing commitment probe"; and the check
+    asks only whether the exemption is named, never whether the guide's
+    questions obey it, which is a reader's finding and not a checker's.
+    """
+    issues: list[Issue] = []
+    for directory in GUIDE_DIRS:
+        for path, name in _markdown(root, root / directory):
+            lines = path.read_text(encoding="utf-8").splitlines()
+            probe = None
+            for number, raw in enumerate(lines, 1):
+                if COMMITMENT.search(raw) and WOULD.search(raw):
+                    probe = number
+            if probe is None:
+                continue
+            for number, raw in enumerate(lines, 1):
+                if not RULE_LINE.match(raw.strip()):
+                    continue
+                if QUESTION_BAN.search(raw) and not EXEMPTION.search(raw):
+                    issues.append(Issue(
+                        "error", "commitment-probe", name, number,
+                        "this rules out the question the closing commitment "
+                        "probe asks, and names no exemption, while line %d of "
+                        "the same file asks for a commitment in words that use "
+                        "\"would\"" % probe))
+    return issues
+
+
+def check_executable_surface(root: Path) -> list[Issue]:
+    """SECURITY.md's inventory of tools/, against what tools/ holds.
+
+    The third count in this file that nothing measured, and the one with the
+    longest reach: SECURITY.md told a reader how many scripts the tree runs and
+    which of them leave the machine. It said eighteen while the directory held
+    27, and it named one script as the only one that calls out while a second
+    had grown a network call. The block is generated by tools/exec_surface.py;
+    this check re-renders it from the tree and reports the committed copy when
+    it differs, so the gate that already runs this file also fails on a stale
+    or deleted inventory.
+
+    What this does not read: what a script does with an environment variable or
+    a socket, which is prose beside the block and a reviewer's finding. A tree
+    with no tools/ makes no claim and is not checked.
+    """
+    try:
+        try:
+            from tools import exec_surface
+        except ImportError:
+            import exec_surface  # type: ignore[no-redef]
+    except ImportError:
+        return [Issue("error", "executable-surface", SECURITY, 1,
+                      "tools/exec_surface.py could not be imported, so the "
+                      "executable-surface inventory was not checked")]
+    problem, _block = exec_surface.compare(root)
+    if problem is None:
+        return []
+    return [Issue("error", "executable-surface", SECURITY, 1,
+                  "%s. Run: python3 tools/exec_surface.py" % problem)]
 
 
 def _example_families(names) -> dict:
@@ -858,6 +1333,11 @@ def check(root: Path) -> list[Issue]:
     if readme.exists() and "local evidence is not external evidence" not in readme.read_text(encoding="utf-8").lower():
         issues.append(Issue("warning", "readme-boundary", "README.md", 1,
                             "add: 'Local evidence is not external evidence.'"))
+    issues.extend(check_duplicate_headings(root))
+    issues.extend(check_executable_surface(root))
+    issues.extend(check_script_count(root))
+    issues.extend(check_commitment_probe_rule(root))
+    issues.extend(check_declared_paths(root))
     issues.extend(check_inventory(root))
     issues.extend(check_gate_count(root))
     issues.extend(check_examples_inventory(root))

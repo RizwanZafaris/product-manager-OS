@@ -36,13 +36,15 @@ An interview produces evidence only when it asks questions politeness cannot ans
 
 | Rule | The tell that you broke it |
 |---|---|
-| R1 Their life, not your idea | The question names your product or contains "would" |
-| R2 Specifics in the past, not generics or the future | "Usually", "typically", "would you ever" |
+| R1 Their life, not your idea | The question names your product or contains "would", except in the closing commitment probe |
+| R2 Specifics in the past, not generics or the future | "Usually", "typically", "would you ever", except in the closing commitment probe |
 | R3 Talk less; let silence do the follow-up | Your share of the transcript is above a third |
 | R4 Never pitch | You said "so what we are thinking is" |
 | R5 Ask what they tried and what it cost | No workaround in the notes |
 | R6 Push a compliment back to a fact | The note says "loved it" with no date |
 | R7 Close with a commitment ask sized to the pain | The close is "we will be in touch" |
+
+R7 is the one exemption to R1 and R2, and the exemption is one question wide: the closing commitment probe asks for a step the participant could take this week, not an opinion about the idea, so its answer is checkable against what they afterwards do. Every other question in the script stays in the past. Keep the probe last, and keep your idea out of the session until it.
 
 | Draft question | Breaks | Rewrite |
 |---|---|---|

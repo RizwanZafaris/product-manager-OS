@@ -63,8 +63,6 @@ Filled example: [Ledgerline commercial pass](../../examples/ledgerline-discovery
 
 ### Theme 1: [name the theme in the customers' terms]
 
-### Theme 1: [name the theme in the customers' terms]
-
 - **Seen in:** [n] of [total] sources
 - **Load-bearing quote:** "[verbatim, with source ID]"
 - **What it means:** [one or two sentences of interpretation, clearly separated from the data above]

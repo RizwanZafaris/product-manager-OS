@@ -114,7 +114,8 @@ product-manager-OS/
 │   ├── phase_index.py  Reads the template, framework and example declarations and renders docs/PHASE-INDEX.md; --check fails on drift
 │   ├── frontmatter_init.py  Seeds a declaration from what a file already states; never overwrites a value a human edited
 │   ├── security_gate.py  Source and configuration gate: fails on committed credential-shaped values and unsafe execution primitives; a source gate, not a penetration test
-│   ├── docs_contract.py  Holds the five operator documents to heading order, image alt text, descriptive link text, local link resolution, banned overclaim phrases, and the evidence-boundary vocabulary
+│   ├── docs_contract.py  Holds the five operator documents to heading order, image alt text, descriptive link text, local link resolution, banned overclaim phrases, and the evidence-boundary vocabulary; and holds the whole tree to four counted or repeated claims: sibling headings, relative paths declared under templates/, the generated script inventory and the counts stated around it, and an interview guide that bans the question its own commitment probe asks
+│   ├── exec_surface.py  Generates the executable-surface inventory in SECURITY.md from the tree: how many scripts tools/ holds and which of them name an environment variable or a network primitive, read from each script's syntax; --check fails when the committed block is stale
 │   ├── review_gate.py  Validates a local review record against the exact tree digest it reviewed; it binds a record to content and never attests to a reviewer's identity
 │   ├── ext_ai_probe.py  Collects the evidence the EXT-AI external gate owes, through the OpenRouter adapter or a loopback OmniRoute gateway, and nothing else; run by hand, no gate runs it
 │   ├── runtime_crash_probe.py  Test-only: kills itself at one allow-listed transaction boundary so a test can prove which side of the commit became durable
