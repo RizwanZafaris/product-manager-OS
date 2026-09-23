@@ -84,6 +84,14 @@ GATES = (
     # sign-off tables. When any of those changes, 137 files would quietly
     # describe the old contract; this gate makes that a failure instead.
     Gate("what-checks-freshness", ("python3", "tools/what_checks.py", "--check")),
+    # The example-availability paragraph in every domain card is generated from the
+    # same declared template/example relations the backpointer gate reads. Seven
+    # cards denied examples this tree already carried and the docs contract still
+    # reported zero errors, because prose is not checked by anything. This gate
+    # fails when a declared example is added or removed without the paragraph
+    # moving, and when a card's own prose claims a repository-wide absence again.
+    Gate("example-availability", ("python3", "tools/example_availability.py",
+         "--check")),
     # Structure only, which is why it is a separate gate from the worked
     # example below: an unfilled template is supposed to be unfilled.
     Gate("regulated-template", ("python3", "lint.py", "--template",

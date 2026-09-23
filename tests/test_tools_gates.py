@@ -47,6 +47,7 @@ import pm_working_set  # noqa: E402
 import prose_metrics  # noqa: E402
 import readiness  # noqa: E402
 import readiness_probe  # noqa: E402
+import example_availability  # noqa: E402
 import template_rubric  # noqa: E402
 from tools.docs_contract import (check as check_docs,  # noqa: E402
                                  _example_families,
@@ -2442,6 +2443,277 @@ class ReadinessCategoryExitTests(unittest.TestCase):
 
     def test_a_clean_category_passes_without_claiming_readiness(self):
         self.assertEqual(0, self.category(self.report()))
+
+
+class ExampleAvailabilityGateTests(unittest.TestCase):
+    """tools/example_availability.py --check: a domain card's statement about
+    which of its templates have filled examples is generated from the declared
+    relations, so it cannot survive them changing.
+
+    F07 of the audit of 2026-09-23: seven cards denied examples the tree already
+    carried (capital-markets said no filled failure-scenarios example existed
+    anywhere while examples/harbourgate-failure-scenarios.md sat in the tree),
+    and every gate passed, because nothing reads prose. Three seeds here, one
+    per way the sentence went wrong: an example is added, an example is removed,
+    and a card writes the claim by hand again.
+
+    Four more hold shut the ways a card could leave the gate rather than pass
+    it, each found by review of the first fix: dropping the anchor and the block,
+    parking the claim inside a second copy of the generator's own markers,
+    ending a repository-wide claim with a clause that merely mentions the domain,
+    and declaring a template pack by linking its directory.
+
+    Three more came out of the review after that, which broke the scoping test
+    four ways with the same trick: a trailing clause of any shape, backticks
+    round the template stem, and a closer written before its opener, which used
+    to reach the operator as a traceback rather than a named reason.
+    """
+
+    CARD = "knowledge/domains/capital-markets.md"
+
+    def copy(self, tmp):
+        """examples/, knowledge/ and templates/, which is all this gate reads."""
+        root = Path(tmp).resolve() / "repo"
+        for name in ("examples", "knowledge", "templates"):
+            shutil.copytree(REPO / name, root / name,
+                            ignore=shutil.ignore_patterns("._*"))
+        return root
+
+    def gate(self, root):
+        with unittest.mock.patch.object(example_availability, "ROOT", root):
+            return quietly(example_availability.main, ["--check"])
+
+    def generate(self, root):
+        with unittest.mock.patch.object(example_availability, "ROOT", root):
+            return quietly(example_availability.main, [])
+
+    def test_the_tree_as_it_stands_is_fresh(self):
+        code, output = quietly(example_availability.main, ["--check"])
+        self.assertEqual(0, code, output)
+
+    def test_adding_a_declared_example_stales_the_card_that_bends_it(self):
+        """The seed a hand-written sentence cannot catch: a new filled example
+        of a bent template lands and the card still says what it said."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.copy(tmp)
+            self.assertEqual(0, self.gate(root)[0])
+            (root / "examples" / "domain-capital-markets-observability.md"
+             ).write_text(
+                "# Observability: Tallyhouse Markets\n\n"
+                "Fills [templates/architecture/observability.md]"
+                "(../templates/architecture/observability.md). Everything "
+                "here is invented.\n", encoding="utf-8")
+            code, output = self.gate(root)
+        self.assertEqual(1, code, output)
+        self.assertIn("stale: %s" % self.CARD, output)
+
+    def test_removing_a_declared_example_stales_the_card_that_bends_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.copy(tmp)
+            self.assertEqual(0, self.gate(root)[0])
+            (root / "examples" / "harbourgate-failure-scenarios.md").unlink()
+            code, output = self.gate(root)
+        self.assertEqual(1, code, output)
+        self.assertIn("stale: %s" % self.CARD, output)
+
+    def test_a_hand_written_repository_wide_absence_claim_fails(self):
+        """The seed regeneration alone cannot catch: the generated paragraph is
+        fresh and the card's own prose says the opposite beside it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.copy(tmp)
+            card = root / self.CARD
+            card.write_text(card.read_text(encoding="utf-8") +
+                            "\nNo filled failure-scenarios example exists "
+                            "anywhere in the repository yet.\n",
+                            encoding="utf-8")
+            code, output = self.gate(root)
+        self.assertEqual(1, code, output)
+        self.assertIn("hand-written absence claim: %s" % self.CARD, output)
+
+    def test_a_claim_scoped_to_one_domain_is_allowed(self):
+        """Global existence and domain applicability are different statements:
+        this gate refuses the first in prose and permits the second."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.copy(tmp)
+            card = root / self.CARD
+            card.write_text(card.read_text(encoding="utf-8") +
+                            "\nfailure-scenarios has no filled example in the "
+                            "repository yet for this domain.\n",
+                            encoding="utf-8")
+            code, output = self.gate(root)
+        self.assertEqual(0, code, output)
+
+    def test_a_card_that_drops_the_anchor_and_the_block_is_not_excused(self):
+        """The hole that made every other seed here optional: a card with no
+        anchor and no block is regenerated by nothing, so it must fail rather
+        than be counted fresh."""
+        card = "knowledge/domains/travel-hospitality.md"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.copy(tmp)
+            self.assertEqual(0, self.gate(root)[0])
+            path = root / card
+            text = path.read_text(encoding="utf-8")
+            start = text.index(example_availability.BEGIN)
+            finish = text.index(example_availability.END) + len(example_availability.END)
+            text = text[:start] + text[finish:]
+            text = "".join(line for line in text.splitlines(keepends=True)
+                           if not line.startswith(example_availability.ANCHOR))
+            path.write_text(text, encoding="utf-8")
+            code, output = self.gate(root)
+        self.assertEqual(1, code, output)
+        self.assertIn("no generated block: %s" % card, output)
+
+    def test_a_second_generated_block_cannot_launder_an_absence_claim(self):
+        """Only the first marker pair is regenerated, so a second pair is a
+        place to park a false claim where nothing rewrites it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.copy(tmp)
+            self.assertEqual(0, self.gate(root)[0])
+            card = root / self.CARD
+            card.write_text(
+                card.read_text(encoding="utf-8") + "\n" +
+                example_availability.BEGIN + "\nNo filled failure-scenarios "
+                "example exists anywhere in the repository.\n" +
+                example_availability.END + "\n", encoding="utf-8")
+            code, output = self.gate(root)
+        self.assertEqual(1, code, output)
+        self.assertIn("no generated block: %s" % self.CARD, output)
+
+    def test_the_prose_scan_reads_past_the_first_marker_pair(self):
+        """The second lock on the same door as the test above: even if a card
+        with two marker pairs reached the prose scan, only the first pair is
+        dropped, because only the first pair is ever regenerated."""
+        begin, end = example_availability.BEGIN, example_availability.END
+        text = ("%s\nfresh generated prose\n%s\n\n%s\nNo filled "
+                "failure-scenarios example exists anywhere in the repository.\n%s\n"
+                % (begin, end, begin, end))
+        self.assertEqual(
+            ["No filled failure-scenarios example exists anywhere in the repository"],
+            example_availability.handwritten_absence(text))
+
+    def test_a_scoping_phrase_must_end_the_claim_it_scopes(self):
+        """Mentioning the domain in a trailing clause does not make a
+        repository-wide claim a claim about one domain."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.copy(tmp)
+            card = root / self.CARD
+            card.write_text(
+                card.read_text(encoding="utf-8") +
+                "\nNo filled failure-scenarios example exists in this "
+                "repository, which matters most for this domain because the "
+                "kill switch lives there.\n", encoding="utf-8")
+            code, output = self.gate(root)
+        self.assertEqual(1, code, output)
+        self.assertIn("hand-written absence claim: %s" % self.CARD, output)
+
+    def test_a_trailing_clause_cannot_scope_a_repository_wide_claim(self):
+        """A sentence that merely ends in the scoping words has not scoped
+        anything: each of these opens a new clause after a false
+        repository-wide claim, and each is checked on its own so that no one
+        of the four can pass inside a batch that fails for another."""
+        variants = [
+            "No filled failure-scenarios example exists in this repository, "
+            "and none is planned for this domain.",
+            "No filled failure-scenarios example exists in this repository, "
+            "though the gap is felt most keenly for this domain.",
+            "No filled failure-scenarios example exists in this repository; "
+            "that gap is the one that hurts for this domain.",
+            "No filled failure-scenarios example exists in this repository "
+            "and none is planned for this domain.",
+        ]
+        for sentence in variants:
+            with self.subTest(sentence=sentence):
+                with tempfile.TemporaryDirectory() as tmp:
+                    root = self.copy(tmp)
+                    card = root / self.CARD
+                    card.write_text(card.read_text(encoding="utf-8") +
+                                    "\n" + sentence + "\n", encoding="utf-8")
+                    code, output = self.gate(root)
+                self.assertEqual(1, code, output)
+                self.assertIn("hand-written absence claim: %s" % self.CARD,
+                              output)
+
+    def test_markdown_emphasis_does_not_hide_an_absence_claim(self):
+        """Backticks round the template stem are a disguise, not a different
+        sentence, and the generator's own wording of where is not a way out
+        of a claim written by hand."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.copy(tmp)
+            card = root / self.CARD
+            card.write_text(card.read_text(encoding="utf-8") +
+                            "\nNo filled `failure-scenarios` example exists "
+                            "anywhere in this repository.\n", encoding="utf-8")
+            code, output = self.gate(root)
+        self.assertEqual(1, code, output)
+        self.assertIn("hand-written absence claim: %s" % self.CARD, output)
+
+    def test_a_closer_before_its_opener_is_named_not_a_traceback(self):
+        """One of each marker in the wrong order is still a card with no
+        readable block, so the gate names it rather than raising out of
+        render()."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.copy(tmp)
+            card = root / self.CARD
+            text = card.read_text(encoding="utf-8")
+            start = text.index(example_availability.BEGIN)
+            finish = text.index(example_availability.END) + len(example_availability.END)
+            text = text[:start] + text[finish:]
+            card.write_text("%s\n%s\n%s\n" % (text, example_availability.END,
+                                              example_availability.BEGIN),
+                            encoding="utf-8")
+            code, output = self.gate(root)
+        self.assertEqual(1, code, output)
+        self.assertIn("no generated block: %s" % self.CARD, output)
+        self.assertIn("closer before its opener", output)
+
+    def test_a_claim_moved_into_the_directory_readme_is_still_read(self):
+        """The layer one file out: knowledge/domains/README.md carries no
+        generated paragraph, so a claim parked there would be regenerated by
+        nothing. It is read for claims like the cards beside it."""
+        sidecar = "knowledge/domains/README.md"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.copy(tmp)
+            self.assertEqual(0, self.gate(root)[0])
+            path = root / sidecar
+            path.write_text(path.read_text(encoding="utf-8") +
+                            "\nNo filled failure-scenarios example exists in "
+                            "this repository.\n", encoding="utf-8")
+            code, output = self.gate(root)
+        self.assertEqual(1, code, output)
+        self.assertIn("hand-written absence claim: %s" % sidecar, output)
+
+    def test_a_claim_that_wraps_across_two_lines_is_still_one_claim(self):
+        """A line break is not a disguise: the prose is read the way a reader
+        reads it, not the way the file happens to be wrapped."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.copy(tmp)
+            card = root / self.CARD
+            card.write_text(
+                card.read_text(encoding="utf-8") +
+                "\nNo filled failure-scenarios example exists in this\n"
+                "repository.\n", encoding="utf-8")
+            code, output = self.gate(root)
+        self.assertEqual(1, code, output)
+        self.assertIn("hand-written absence claim: %s" % self.CARD, output)
+
+    def test_a_pack_link_counts_every_template_in_the_pack(self):
+        """knowledge/domains/ai-products.md declares its pack by linking the
+        directory, so a template landing in that directory is a template it
+        bends and the card goes stale."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.copy(tmp)
+            self.assertEqual(0, self.gate(root)[0])
+            (root / "templates" / "ai" / "zz-illustrative-template.md").write_text(
+                "# Illustrative\n\nInvented for a test.\n", encoding="utf-8")
+            code, output = self.gate(root)
+        self.assertEqual(1, code, output)
+        self.assertIn("stale: knowledge/domains/ai-products.md", output)
+
+    def test_the_release_suite_runs_this_gate(self):
+        """A generator nothing invokes is a generator nothing checks."""
+        argvs = [tuple(gate.argv) for gate in ci_gate.GATES]
+        self.assertIn(("python3", "tools/example_availability.py", "--check"),
+                      argvs)
 
 
 if __name__ == "__main__":
