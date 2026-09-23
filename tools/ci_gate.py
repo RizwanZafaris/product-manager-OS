@@ -52,7 +52,7 @@ GATES = (
          "test_pmos_security", "test_pmos_review",
          "test_pmos_probe", "test_pmos_matrix", "test_pmos_invariants",
          "test_pmos_journey", "test_journey_chain",
-         "test_contract_gates"), expects_tests=True,
+         "test_contract_gates", "test_versioning_contract"), expects_tests=True,
          timeout=1800),
     Gate("harness-tests", ("python3", "-m", "unittest", "discover", "-s",
          "harness", "-p", "test_*.py", "-v"), expects_tests=True,

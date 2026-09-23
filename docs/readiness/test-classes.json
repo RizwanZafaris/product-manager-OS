@@ -183,6 +183,11 @@
    "TemplateBackpointerGateTests",
    "TemplateInventoryGateTests",
    "TemplateRubricGateTests"
+  ],
+  "test_versioning_contract": [
+   "DocumentSchemaAdditions",
+   "RuntimeBankContractAdditions",
+   "VersioningStatementsAgree"
   ]
  }
 }
