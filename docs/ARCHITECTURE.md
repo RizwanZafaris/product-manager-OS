@@ -289,7 +289,7 @@ product-manager-OS/
 │   │   ├── metrics-dictionary.md  One row per reported metric: definition, formula, source, owner, refresh, known gaps
 │   │   └── dashboard-spec.md  Audience, the questions it answers, tiles with metric ids, drill paths, and alerting
 │   ├── planning/
-│   │   ├── roadmap.md  Now, Next, Later horizons with theme, initiative, target period, confidence, dependencies, status, and a pre-written expectations-not-commitments preamble to keep above the tables
+│   │   ├── roadmap.md  Now, Next, Later horizons with a stable initiative ID, one accountable owner, theme, initiative, target period, confidence, dependencies and status, an initiative record per committed row (appetite, strategy or OKR reference, evidence, dependency IDs, score sheet, capacity reservation, commitment type, entry and exit rules, rejected-options decision link), a capacity line, a dependency index, quarterly gates, a defence page, and a pre-written expectations-not-commitments preamble to keep above the tables
 │   │   ├── okrs.md  Objective, three to five key results with baseline and target, scoring cadence
 │   │   ├── first-90-days.md  Mandate in the hirer's words, three learning questions, 30/60/90 blocks, one commitment that can fail, first meetings feeding the stakeholder map
 │   │   ├── gtm-plan.md  Written at DELIVER: first cohort and channel with evidence the channel reaches them, positioning against the named alternative, launch sequence, the one launch metric, the stop condition

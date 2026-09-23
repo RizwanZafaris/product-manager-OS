@@ -49,7 +49,7 @@ Scores create losers, and a loser who first learns their fate in the review beco
 
 - **Dependency overlay**: for each item, list what must exist first (technical, vendor, license, data), and record each in the dependency register so it gets governed weekly rather than remembered at kickoff. An item with an unbuilt dependency moves after it, whatever its score.
 - **Regulatory calendar overlay**: hard external dates pin items to quarters regardless of score. Mark each pinned item with its date and the cost of missing it.
-- **Capacity overlay**: fill quarters to 80% of stated capacity, never 100%. The remaining 20% is incident response, review findings and discovery. It WILL be used.
+- **Capacity overlay**: fill quarters to 80% of stated capacity, never 100%. The remaining 20% is incident response, review findings and discovery. It WILL be used. Each committed item's reservation goes in its initiative record and is summed against the plannable figure in the roadmap's `Capacity line`, so an over-capacity Now is visible in the document rather than discovered in month two.
 
 ### 5. Attach the program spine
 
@@ -70,9 +70,9 @@ A roadmap built in one sitting is a document; a roadmap the org believes is the 
 
 ## Output format
 
-1. Scored backlog table: | Item | Type | R | I | C | E | RICE | Pinned? | Depends on |
-2. Quarter-by-quarter sequence with gates and the 80% capacity line shown, written into the roadmap template's fields
-3. The defense page
+1. Scored backlog table: | Item | Type | R | I | C | E | RICE | Pinned? | Depends on |. Each funded item's record cites it in its `Score sheet` field
+2. Quarter-by-quarter sequence, written into the roadmap template's own sections: one row per initiative in Now or Next with its ID and owner, one `Initiative records` block per committed item, the reservations and the 80% line in `Capacity line`, the dependency IDs in `Dependency index`, and the entry and exit gates in `Quarterly gates`
+3. The defense page, in the template's `Defence page` section: the highest-scored items not funded, the items funded despite a lower score, and what would change the sequence
 
 ## Rules
 
@@ -90,7 +90,7 @@ A roadmap built in one sitting is a document; a roadmap the org believes is the 
 
 ## Exit gate
 
-A product's roadmap is the third DEFINE artifact, after the vision and strategy, approved at Gate 2 by the product owner and the engineering lead in [../../os/STAGE-GATES.md](../../os/STAGE-GATES.md). A portfolio roadmap still feeds the PLANNING track that runs across every stage of [../../os/OPERATING-LOOP.md](../../os/OPERATING-LOOP.md). Do not report it done until the roadmap template's fields are filled, every pinned item carries its external date, and the defense page exists.
+A product's roadmap is the third DEFINE artifact, after the vision and strategy, approved at Gate 2 by the product owner and the engineering lead in [../../os/STAGE-GATES.md](../../os/STAGE-GATES.md). A portfolio roadmap still feeds the PLANNING track that runs across every stage of [../../os/OPERATING-LOOP.md](../../os/OPERATING-LOOP.md). Do not report it done until the roadmap template's fields are filled, every pinned item carries its external date, and the defense page exists. Concretely: every row in Now and Next carries a stable ID and exactly one accountable owner, every Now row has one initiative record with its appetite, capacity reservation, commitment type and entry and exit rules, every dependency it cites resolves in the dependency index, and the reservations sit at or below the plannable figure on the capacity line. It also refuses a Now row that names no target period, a period whose gate row is missing, doubled, or has an empty entry or exit cell, a Dependencies column that disagrees with its initiative record, a raw HTML table in a section it reads, and a second capacity line row for one team. It reads those tables and headings in every spelling GitHub-flavoured markdown renders, including tables written without leading pipes and headings in any case, in bold, underlined, or at any level, and it finds a roadmap by its Now and initiative records sections as well as by its title, so retitling the document does not take it out of the gate. `python3 tools/docs_contract.py --strict` fails the `docs-contract` gate when any of those is not true of a roadmap in this repository.
 
 ## What checks this
 

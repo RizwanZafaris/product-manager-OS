@@ -27,6 +27,7 @@ import ast
 import contextlib
 import io
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -3215,6 +3216,7 @@ class ReadinessCategoryExitTests(unittest.TestCase):
         self.assertEqual(0, self.category(self.report()))
 
 
+<<<<<<< ours
 class ExampleAvailabilityGateTests(unittest.TestCase):
     """tools/example_availability.py --check: a domain card's statement about
     which of its templates have filled examples is generated from the declared
@@ -3484,6 +3486,593 @@ class ExampleAvailabilityGateTests(unittest.TestCase):
         argvs = [tuple(gate.argv) for gate in ci_gate.GATES]
         self.assertIn(("python3", "tools/example_availability.py", "--check"),
                       argvs)
+=======
+# The roadmap commitment contract. F04 of the 2026-09-23 external audit: a
+# roadmap row carried no stable id and no accountable owner, and the skill that
+# drives the template asked for an 80 percent capacity line, quarterly entry and
+# exit gates and a defence page that the template had no field for. The
+# counterexamples live as documents under tests/fixtures/roadmap/ rather than as
+# strings here, so each one can be read, and run through the gate by hand, as
+# the thing a PM would actually have written.
+ROADMAP_FIXTURES = REPO / "tests" / "fixtures" / "roadmap"
+
+# Each row is one GUARD SITE: the fixture that breaks it, the message format
+# string the site reports, and the edit that reverts that site ALONE. The
+# reversion tests below apply each edit to a copy of tools/docs_contract.py and
+# assert that the site's message stops being reported.
+#
+# Keyed by site rather than by issue code, because a code is not a guard. Five
+# codes here are reported from two or three places, so a matrix keyed by code
+# calls a code covered when one of its sites is pinned and leaves the others
+# deletable with the suite green - which is what the external review of
+# 2026-09-23 found for six sites, including the capacity arithmetic itself.
+ROADMAP_REVERSIONS = (
+    ("ownerless", "ownerless.md",
+     "%s names no accountable owner",
+     '            if _blank_cell(cell_at("owner")):',
+     "            if False:"),
+    ("two owners", "two-owners.md",
+     "%s names more than one owner: accountability splits and nobody carries it",
+     '            elif re.search(r",|;|/| and |&|\\+", owner):',
+     "            elif False:"),
+    ("over capacity", "over-capacity.md",
+     "'%s' commits %s against a plannable %s: Now is over capacity and an "
+     "initiative moves to Next",
+     "        elif total > ceiling:",
+     "        elif False:"),
+    ("phantom reservation", "phantom-reservation.md",
+     "'%s' declares %s reserved by Now and no record reserves anything on it",
+     "        if team not in booked and declared:",
+     "        if False:"),
+    ("capacity arithmetic", "capacity-mismatch.md",
+     "'%s' declares %s reserved by Now and its records reserve %s",
+     "        if declared is None or abs(declared - total) > 1e-9:",
+     "        if False:"),
+    ("no plannable figure", "no-plannable.md",
+     "'%s' states no plannable figure",
+     '            issues.append(Issue("error", "roadmap-capacity-total", name, line_no,\n'
+     '                                "\'%s\' states no plannable figure" % team))',
+     '            issues.append(Issue("warning", "roadmap-ignored", name, line_no,\n'
+     '                                "(reverted) %s" % team))'),
+    ("two capacity rows for one team", "duplicate-capacity-row.md",
+     "team '%s' has more than one capacity line row",
+     "            if team in plannable:",
+     "            if False:"),
+    ("the wrong unit", "wrong-unit.md",
+     "'%s' reserves in %s and its capacity line is in %s",
+     "        if len(units) > 1 or (unit and units and unit not in units):",
+     "        if False:"),
+    ("unknown dependency", "unknown-dependency.md",
+     "%s depends on %s, which has no row in the dependency index",
+     "                    elif token not in governed:",
+     "                    elif False:"),
+    ("a dependency id that is not an id", "malformed-dependency.md",
+     "%s cites '%s', which is not a dependency id",
+     "                    if not IDENTIFIER.match(token):",
+     "                    if False:"),
+    ("the dependencies a reader sees", "dependency-mismatch.md",
+     "%s publishes %s in Now and %s in its record: the table a reader sees and "
+     "the record disagree",
+     "            if published != recorded:",
+     "            if False:"),
+    # Rows that revert the finding rather than the branch: the code that follows
+    # them reads the entry the guard just proved absent, so deleting the branch
+    # would raise instead of passing, and an exception is not evidence that a
+    # counterexample was allowed through.
+    ("unknown team", "unknown-team.md",
+     "%s reserves capacity on '%s', which has no capacity line row",
+     '            issues.append(Issue("error", "roadmap-capacity-team", name, seen[0][1],\n'
+     '                                "%s reserves capacity on \'%s\', which has no capacity "\n'
+     '                                "line row" % (seen[0][0], team)))',
+     '            issues.append(Issue("warning", "roadmap-ignored", name, seen[0][1],\n'
+     '                                "(reverted) %s %s" % (seen[0][0], team)))'),
+    ("missing record", "no-record.md",
+     "%s is committed in Now with no initiative record",
+     '                issues.append(Issue("error", "roadmap-record-missing", name, line_no,\n'
+     '                                    "%s is committed in Now with no initiative record"\n'
+     '                                    % identifier))',
+     '                issues.append(Issue("warning", "roadmap-ignored", name, line_no,\n'
+     '                                    "(reverted) %s" % identifier))'),
+    ("a record field that is missing", "no-appetite.md",
+     "%s's record has no '%s' field",
+     '                    issues.append(Issue("error", "roadmap-record-field", name,\n'
+     '                                        record["line"],\n'
+     '                                        "%s\'s record has no \'%s\' field" % (identifier, key)))',
+     '                    issues.append(Issue("warning", "roadmap-ignored", name,\n'
+     '                                        record["line"],\n'
+     '                                        "(reverted) %s %s" % (identifier, key)))'),
+    ("a record field that is blank", "blank-appetite.md",
+     "%s's '%s' is unfilled",
+     "                elif _blank_cell(entry[1]):",
+     "                elif False:"),
+    ("commitment type", "shaped-in-now.md",
+     "%s sits in Now, so its commitment type is 'committed', not '%s'",
+     '            if commitment != "committed":',
+     "            if False:"),
+    ("owner mismatch", "owner-mismatch.md",
+     "%s is owned by %s in Now and %s in its record",
+     "            if record_owner and owner and record_owner != owner:",
+     "            if False:"),
+    ("reservation grammar", "bad-reservation.md",
+     "%s's capacity reservation must read '<n> <unit> on <team>, reserved in "
+     "[capacity plan](<link>)'",
+     "            if entry is not None and not _blank_cell(entry[1]) and booking is None:",
+     "            if False:"),
+    ("the period with no gate", "no-gate.md",
+     "%s targets '%s', which has no entry and exit gate",
+     '                issues.append(Issue("error", "roadmap-quarterly-gate", name, line_no,\n'
+     '                                    "%s targets \'%s\', which has no entry and exit gate"\n'
+     '                                    % (identifier, period)))',
+     '                issues.append(Issue("warning", "roadmap-ignored", name, line_no,\n'
+     '                                    "(reverted) %s %s" % (identifier, period)))'),
+    ("a gate row with a blank cell", "blank-gate.md",
+     "the '%s' period has no %s",
+     "                    if position >= len(gate_cells) or _blank_cell(gate_cells[position]):",
+     "                    if False:"),
+    ("two gate rows for one period", "duplicate-gate.md",
+     "the '%s' period has more than one gate row",
+     "            if period in gates:",
+     "            if False:"),
+    ("a row with no period at all", "no-period.md",
+     "%s names no target period, so no entry and exit gate governs it",
+     '            if _blank_cell(cell_at("target period")):',
+     "            if False:"),
+    ("defence page", "no-defence.md",
+     "the defence page needs '%s'",
+     '        if not re.search(r"^%s\\s*$" % re.escape(heading), defence, re.M):',
+     "        if False:"),
+    ("the defence page is a place, not a phrase", "defence-elsewhere.md",
+     "the defence page needs '%s'",
+     '    defence = "\\n".join(line for span in spans.get("Defence page") or ()\n'
+     "                        for line in lines[span[0]:span[1]])",
+     '    defence = "\\n".join(lines)'),
+    ("headings hidden in a comment", "defence-in-a-comment.md",
+     "the defence page needs '%s'",
+     "    blanked = COMMENT_BLOCK.sub(lambda m: re.sub(r\"[^\\n]\", \" \", m.group(0)), text)",
+     "    blanked = text"),
+    ("missing section", "no-records-section.md",
+     "a roadmap needs a '%s' section",
+     "        if not _roadmap_sections(lines, label, level=REQUIRED_SECTION_LEVEL):",
+     "        if False:"),
+    ("the columns of every table", "dropped-columns.md",
+     "the %s table needs a '%s' column",
+     "                if found is None:",
+     "                if False:"),
+    ("no initiative id", "no-id.md",
+     "a %s row needs a stable initiative id",
+     "            if not IDENTIFIER.match(identifier):",
+     "            if False:"),
+    ("no outcome", "no-outcome.md",
+     "%s names no outcome",
+     '            if _blank_cell(cell_at("outcome")):',
+     "            if False:"),
+    ("the decision link", "no-decision-link.md",
+     "%s's rejected options and override decision names no decision record to follow",
+     "            if (decision is not None and not _blank_cell(decision[1])\n"
+     "                    and not MD_LINK_TEXT.search(_bare(decision[1]))):",
+     "            if False:"),
+    ("two records for one initiative", "duplicate-record.md",
+     "initiative %s has more than one record",
+     "        if key in by_id:",
+     "        if False and key in by_id:"),
+    ("an HTML table is not a table this reads", "html-table.md",
+     "the %s section holds an HTML table at line %d: this check reads markdown "
+     "tables, so nothing reads that one",
+     "                if HTML_TABLE.search(lines[index]):",
+     "                if False:"),
+    # The parser rows. Each fixture parks the SAME ownerless committed row in a
+    # different legal markdown spelling, so each reversion below is a spelling
+    # of the horizon table or its heading that a reader reads and this check
+    # would stop reading.
+    ("every table in a section", "second-table.md",
+     "%s names no accountable owner",
+     "            yield header_cells, rows\n            index = cursor\n            continue",
+     "            yield header_cells, rows\n            return"),
+    ("a blank line does not end the section", "blank-line-split.md",
+     "%s names no accountable owner",
+     "            yield header_cells, rows\n            index = cursor\n            continue",
+     "            yield header_cells, rows\n"
+     "            if cursor < end and not lines[cursor].strip():\n"
+     "                return\n"
+     "            index = cursor\n            continue"),
+    ("a table without leading pipes", "pipeless-table.md",
+     "%s names no accountable owner",
+     '        if header and not header.startswith("#") and _is_table_delimiter(delimiter):',
+     '        if header.startswith("|") and _is_table_delimiter(delimiter):'),
+    ("a delimiter row with the wrong cell count", "ragged-table.md",
+     "%s names no accountable owner",
+     "            header_cells = _roadmap_cells(header)\n"
+     "            rows, cursor = [], index + 2",
+     "            header_cells = _roadmap_cells(header)\n"
+     "            if len(_roadmap_cells(delimiter)) != len(header_cells):\n"
+     "                index += 1\n"
+     "                continue\n"
+     "            rows, cursor = [], index + 2"),
+    ("a row without leading pipes", "pipeless-row.md",
+     "%s names no accountable owner",
+     '    return bool(text and "|" in text and not BLOCK_START.match(text))',
+     '    return text.startswith("|")'),
+    ("every section with the heading", "second-now-section.md",
+     "%s names no accountable owner",
+     "    for span in sorted(found):",
+     "    for span in sorted(found)[:1]:"),
+    ("a heading in another case", "now-in-caps.md",
+     "%s names no accountable owner",
+     '    wanted = re.compile(r"%s\\b" % re.escape(section), re.I)',
+     '    wanted = re.compile(r"%s\\b" % re.escape(section))'),
+    ("a heading in bold", "now-in-bold.md",
+     "%s names no accountable owner",
+     '    return re.sub(r"[*_`]", "", MD_LINK_TEXT.sub(r"\\1", text)).strip()',
+     "    return text.strip()"),
+    ("a heading underlined instead of hashed", "now-underlined.md",
+     "%s names no accountable owner",
+     '        under = (re.match(r"^ {0,3}(=+|-+)\\s*$", lines[index + 1])\n'
+     "                 if index + 1 < len(lines) else None)",
+     "        under = None"),
+    ("a heading at another level", "now-deeper-heading.md",
+     "%s names no accountable owner",
+     "        if level is not None and heading_level != level:",
+     "        if heading_level != (2 if level is None else level):"),
+)
+
+
+def site_pattern(site):
+    """The regex one guard site's messages match: its format string, filled in."""
+    return re.compile("^%s$" % re.escape(site).replace("%s", ".*").replace("%d", ".*"))
+
+
+def roadmap_issue_sites(source):
+    """Every place tools/docs_contract.py reports a roadmap issue, by message.
+
+    Read from the syntax tree rather than from the issue codes, because a code
+    is not a place: this is what makes the matrix below a closed inventory.
+    """
+    sites = set()
+    for node in ast.walk(ast.parse(source)):
+        if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                and node.func.id == "Issue" and len(node.args) >= 5):
+            continue
+        code = node.args[1]
+        if not (isinstance(code, ast.Constant)
+                and str(code.value).startswith("roadmap-")):
+            continue
+        message = node.args[4]
+        while isinstance(message, ast.BinOp) and isinstance(message.op, ast.Mod):
+            message = message.left
+        if isinstance(message, ast.Constant) and isinstance(message.value, str):
+            sites.add(message.value)
+        else:
+            # A message this cannot read is still a site. Recorded rather than
+            # skipped, so a guard written with an f-string cannot join the
+            # check by being unreadable to its own inventory.
+            sites.add("<message built at line %d>" % node.lineno)
+    return sites
+
+
+def roadmap_issues(name):
+    """What tools/docs_contract.py reports for one fixture."""
+    from tools.docs_contract import check_roadmap
+    path = ROADMAP_FIXTURES / name
+    return check_roadmap(name, path.read_text(encoding="utf-8"))
+
+
+def roadmap_codes(name):
+    """The issue codes reported for one fixture."""
+    return {issue.code for issue in roadmap_issues(name)}
+
+
+def roadmap_messages(name):
+    """The issue messages reported for one fixture."""
+    return [issue.message for issue in roadmap_issues(name)]
+
+
+class RoadmapCommitmentGateTests(unittest.TestCase):
+    """Each counterexample is refused, and the one that resolves is allowed.
+
+    The positive control matters as much as the counterexamples: a check that
+    refuses everything closes the finding on paper and makes the template
+    unusable, which is the failure the audit calls weakening a claim to pass.
+    """
+
+    def test_a_committed_row_that_resolves_is_allowed(self):
+        self.assertEqual(set(), roadmap_codes("committed.md"))
+
+    def test_an_escaped_pipe_in_a_cell_does_not_shift_the_columns(self):
+        """A second positive control. "\\|" renders as a pipe inside one cell;
+        splitting on it would read the cell beside the one a reader sees."""
+        self.assertEqual(set(), roadmap_codes("escaped-pipe.md"))
+
+    def test_the_three_shipped_roadmaps_pass_the_contract(self):
+        from tools.docs_contract import check_roadmaps
+        self.assertEqual([], check_roadmaps(REPO))
+
+    def test_an_ownerless_now_row_cannot_be_committed(self):
+        self.assertIn("roadmap-owner", roadmap_codes("ownerless.md"))
+
+    def test_a_now_row_owned_by_two_people_cannot_be_committed(self):
+        self.assertIn("roadmap-owner", roadmap_codes("two-owners.md"))
+
+    def test_an_over_capacity_now_cannot_be_committed(self):
+        self.assertIn("roadmap-over-capacity", roadmap_codes("over-capacity.md"))
+
+    def test_a_capacity_row_reserving_what_no_record_booked_is_refused(self):
+        self.assertIn("roadmap-capacity-total", roadmap_codes("phantom-reservation.md"))
+
+    def test_a_reservation_on_a_team_with_no_capacity_row_is_refused(self):
+        self.assertIn("roadmap-capacity-team", roadmap_codes("unknown-team.md"))
+
+    def test_a_dependency_nobody_governs_is_refused(self):
+        self.assertIn("roadmap-dependency-record", roadmap_codes("unknown-dependency.md"))
+
+    def test_a_now_row_with_no_initiative_record_is_refused(self):
+        self.assertIn("roadmap-record-missing", roadmap_codes("no-record.md"))
+
+    def test_a_record_missing_its_appetite_is_refused(self):
+        self.assertIn("roadmap-record-field", roadmap_codes("no-appetite.md"))
+
+    def test_a_now_row_whose_record_calls_itself_shaped_is_refused(self):
+        self.assertIn("roadmap-commitment-type", roadmap_codes("shaped-in-now.md"))
+
+    def test_a_row_and_its_record_naming_different_owners_is_refused(self):
+        self.assertIn("roadmap-owner-mismatch", roadmap_codes("owner-mismatch.md"))
+
+    def test_a_reservation_written_as_prose_is_refused(self):
+        self.assertIn("roadmap-capacity-reservation", roadmap_codes("bad-reservation.md"))
+
+    def test_a_now_period_with_no_entry_and_exit_gate_is_refused(self):
+        self.assertIn("roadmap-quarterly-gate", roadmap_codes("no-gate.md"))
+
+    def test_a_roadmap_without_a_defence_page_heading_is_refused(self):
+        self.assertIn("roadmap-defence", roadmap_codes("no-defence.md"))
+
+    def test_a_roadmap_with_no_initiative_records_section_is_refused(self):
+        self.assertIn("roadmap-section", roadmap_codes("no-records-section.md"))
+
+    def test_a_decision_field_with_no_record_to_follow_is_refused(self):
+        self.assertIn("roadmap-decision-link", roadmap_codes("no-decision-link.md"))
+
+    def test_a_now_row_that_names_no_outcome_is_refused(self):
+        self.assertIn("roadmap-outcome", roadmap_codes("no-outcome.md"))
+
+    def test_a_now_row_with_no_stable_id_is_refused(self):
+        self.assertIn("roadmap-initiative-id", roadmap_codes("no-id.md"))
+
+    def test_a_reservation_in_the_wrong_unit_is_refused(self):
+        self.assertIn("roadmap-capacity-unit", roadmap_codes("wrong-unit.md"))
+
+    def test_two_records_for_one_initiative_are_refused(self):
+        self.assertIn("roadmap-record-duplicate", roadmap_codes("duplicate-record.md"))
+
+
+class RoadmapTableParserTests(unittest.TestCase):
+    """The trap the audit names: a parser that reads the first table under a
+    heading, or stops at the first blank line, is itself the bypass. Every one
+    of these fixtures hides an ownerless committed row where such a parser
+    would never look."""
+
+    def test_a_row_in_a_second_table_under_now_is_read(self):
+        self.assertIn("roadmap-owner", roadmap_codes("second-table.md"))
+
+    def test_a_row_after_a_blank_line_between_two_tables_is_read(self):
+        self.assertIn("roadmap-owner", roadmap_codes("blank-line-split.md"))
+
+    def test_a_row_under_a_second_now_heading_is_read(self):
+        self.assertIn("roadmap-owner", roadmap_codes("second-now-section.md"))
+
+    def test_a_row_in_a_table_written_without_leading_pipes_is_read(self):
+        self.assertIn("roadmap-owner", roadmap_codes("pipeless-table.md"))
+
+    def test_a_row_written_without_leading_pipes_is_read(self):
+        self.assertIn("roadmap-owner", roadmap_codes("pipeless-row.md"))
+
+    def test_a_row_under_a_ragged_delimiter_row_is_read(self):
+        self.assertIn("roadmap-owner", roadmap_codes("ragged-table.md"))
+
+    def test_cells_are_split_where_the_renderer_splits_them(self):
+        from tools.docs_contract import _roadmap_cells
+        self.assertEqual(["F-1", "A | B", "Ada"], _roadmap_cells(r"| F-1 | A \| B | Ada |"))
+        self.assertEqual(["A", "B", "C"], _roadmap_cells("A | B | C"))
+
+    def test_a_row_under_a_now_heading_in_capitals_is_read(self):
+        self.assertIn("roadmap-owner", roadmap_codes("now-in-caps.md"))
+
+    def test_a_row_under_a_now_heading_in_bold_is_read(self):
+        self.assertIn("roadmap-owner", roadmap_codes("now-in-bold.md"))
+
+    def test_a_row_under_an_underlined_now_heading_is_read(self):
+        self.assertIn("roadmap-owner", roadmap_codes("now-underlined.md"))
+
+    def test_a_row_under_a_deeper_now_heading_is_read(self):
+        self.assertIn("roadmap-owner", roadmap_codes("now-deeper-heading.md"))
+
+    def test_a_horizon_row_written_as_an_html_table_is_reported(self):
+        self.assertIn("roadmap-html-table", roadmap_codes("html-table.md"))
+
+    def test_a_pipeless_table_yields_the_same_rows_as_a_piped_one(self):
+        from tools.docs_contract import _roadmap_tables
+        piped = ["| A | B |", "|---|---|", "| 1 | 2 |"]
+        pipeless = ["A | B", "--- | ---", "1 | 2"]
+        self.assertEqual(
+            [(["A", "B"], [(3, ["1", "2"])])],
+            [(header, rows) for header, rows in _roadmap_tables(piped, 0, 3)])
+        self.assertEqual(
+            [(["A", "B"], [(3, ["1", "2"])])],
+            [(header, rows) for header, rows in _roadmap_tables(pipeless, 0, 3)])
+
+    def test_a_thematic_break_and_a_frontmatter_fence_are_not_tables(self):
+        from tools.docs_contract import _roadmap_tables
+        lines = ["Some prose", "---", "more prose", "", "---", "key: value", "---"]
+        self.assertEqual([], list(_roadmap_tables(lines, 0, len(lines))))
+
+    def test_a_heading_is_matched_in_any_case_and_through_emphasis(self):
+        from tools.docs_contract import _roadmap_sections
+        lines = ["## NOW (continued)", "a", "## **Now** again", "b",
+                 "## Next", "c", "#### now once more", "d"]
+        self.assertEqual([(1, 2), (3, 4), (7, 8)],
+                         _roadmap_sections(lines, "Now"))
+
+    def test_an_underlined_heading_is_a_heading(self):
+        from tools.docs_contract import _roadmap_sections
+        lines = ["NOW (continued)", "---", "a", "", "## Next", "b"]
+        self.assertEqual([(2, 4)], _roadmap_sections(lines, "Now"))
+
+    def test_the_required_level_can_be_asked_for_on_its_own(self):
+        from tools.docs_contract import _roadmap_sections
+        lines = ["#### Now (continued)", "a", "## Now", "b"]
+        self.assertEqual([(1, 2), (3, 4)], _roadmap_sections(lines, "Now"))
+        self.assertEqual([(3, 4)], _roadmap_sections(lines, "Now", level=2))
+
+    def test_a_repeat_nested_under_its_own_section_is_read_once(self):
+        from tools.docs_contract import _roadmap_sections
+        lines = ["## Now", "a", "### Now (continued)", "b", "## Next", "c"]
+        self.assertEqual([(1, 4)], _roadmap_sections(lines, "Now"))
+
+    def test_a_heading_that_exists_only_inside_a_comment_does_not_count(self):
+        self.assertIn("roadmap-defence", roadmap_codes("defence-in-a-comment.md"))
+
+    def test_a_second_table_that_drops_the_id_and_owner_columns_is_reported(self):
+        codes = roadmap_codes("dropped-columns.md")
+        self.assertIn("roadmap-columns", codes)
+
+    def test_every_table_in_the_section_is_yielded(self):
+        from tools.docs_contract import _roadmap_tables
+        lines = ["| A | B |", "|---|---|", "| 1 | 2 |", "",
+                 "prose between them", "",
+                 "| C | D |", "|---|---|", "| 3 | 4 |"]
+        found = list(_roadmap_tables(lines, 0, len(lines)))
+        self.assertEqual([["A", "B"], ["C", "D"]], [header for header, _ in found])
+        self.assertEqual([1, 1], [len(rows) for _, rows in found])
+
+    def test_a_section_span_ends_at_the_next_heading_of_its_level(self):
+        from tools.docs_contract import _roadmap_sections
+        lines = ["## Now", "", "a", "", "### Sub", "b", "", "## Next", "c"]
+        self.assertEqual([(1, 7)], _roadmap_sections(lines, "Now"))
+
+    def test_every_section_carrying_the_heading_is_returned(self):
+        from tools.docs_contract import _roadmap_sections
+        lines = ["## Now", "a", "## Next", "b", "## Now again", "c"]
+        self.assertEqual([(1, 2), (5, 6)], _roadmap_sections(lines, "Now"))
+
+
+class RoadmapContractWiringTests(unittest.TestCase):
+    """The check has to run where the tree's document checks run, and it has to
+    find every roadmap in the tree rather than a list of paths kept here."""
+
+    def test_the_roadmap_check_runs_inside_the_docs_contract(self):
+        source = (TOOLS / "docs_contract.py").read_text(encoding="utf-8")
+        self.assertIn("issues.extend(check_roadmaps(root))", source)
+        self.assertIn(("python3", "tools/docs_contract.py", "--strict"),
+                      tuple(gate.argv for gate in ci_gate.GATES))
+
+    def test_the_scan_finds_every_roadmap_document_in_the_tree(self):
+        from tools.docs_contract import roadmap_documents
+        found = {name for name, _ in roadmap_documents(REPO)}
+        self.assertEqual({"templates/planning/roadmap.md",
+                          "examples/expense-copilot-roadmap.md",
+                          "examples/ledgerline-roadmap.md"}, found)
+
+    def test_a_roadmap_added_anywhere_else_in_the_tree_is_found(self):
+        from tools.docs_contract import roadmap_documents
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "os").mkdir()
+            (root / "os" / "stray.md").write_text("# Roadmap: Stray\n", encoding="utf-8")
+            (root / "os" / "other.markdown").write_text("# Roadmap: Other\n",
+                                                        encoding="utf-8")
+            (root / "tests" / "fixtures").mkdir(parents=True)
+            (root / "tests" / "fixtures" / "counter.md").write_text(
+                "# Roadmap: Counterexample\n", encoding="utf-8")
+            self.assertEqual({"os/stray.md", "os/other.markdown"},
+                             {name for name, _ in roadmap_documents(root)})
+
+    def test_a_roadmap_that_was_retitled_is_still_found(self):
+        """Discovery on the title alone is discovery a rename walks out of."""
+        from tools.docs_contract import is_roadmap, roadmap_documents
+        text = (ROADMAP_FIXTURES / "committed.md").read_text(encoding="utf-8")
+        renamed = text.replace("# Roadmap: Fixture Product",
+                               "# Product roadmap for the fixture", 1)
+        self.assertNotIn("# Roadmap:", renamed)
+        self.assertTrue(is_roadmap(renamed))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "os").mkdir()
+            (root / "os" / "renamed.md").write_text(renamed, encoding="utf-8")
+            self.assertEqual({"os/renamed.md"},
+                             {name for name, _ in roadmap_documents(root)})
+
+    def test_a_document_that_is_only_about_roadmaps_is_not_one(self):
+        """The skill that writes roadmaps is not a roadmap, and neither is the
+        framework page that explains the horizons."""
+        from tools.docs_contract import is_roadmap
+        for path in ("skills/roadmap-builder/SKILL.md",
+                     "frameworks/prioritization/now-next-later.md",
+                     "examples/ledgerline-now-next-later.md"):
+            with self.subTest(document=path):
+                self.assertFalse(is_roadmap((REPO / path).read_text(encoding="utf-8")))
+
+    def test_the_template_carries_a_field_for_every_required_record_line(self):
+        from tools.docs_contract import RECORD_FIELDS
+        text = (REPO / "templates" / "planning" / "roadmap.md").read_text(encoding="utf-8")
+        for key in RECORD_FIELDS:
+            with self.subTest(field=key):
+                self.assertRegex(text.lower(), r"(?m)^- \*\*%s" % re.escape(key))
+
+
+class RoadmapReversionTests(unittest.TestCase):
+    """The revert matrix, executed. Every guard site above is removed on its
+    own in a copy of the tool, and the message that site reports must stop
+    appearing for its counterexample. A guard that survives its own reversion
+    was never the thing doing the work, and a site that no row reverts is a
+    site that can be deleted with this suite green.
+    """
+
+    def run_reverted(self, old, new, fixture):
+        """Run one fixture through a copy of the gate with one site removed.
+
+        The patched source is written to a temporary directory and run as its
+        own process rather than copied into a whole tree: tools/docs_contract.py
+        imports nothing from this repository, and --roadmap reads the document
+        by path, so forty tree copies would only make the matrix slow enough
+        that it stopped being run.
+        """
+        source = (TOOLS / "docs_contract.py").read_text(encoding="utf-8")
+        self.assertIn(old, source, "the reverted guard is not in the source")
+        self.assertEqual(1, source.count(old),
+                         "the reverted guard is not unique in the source")
+        with tempfile.TemporaryDirectory() as tmp:
+            patched = Path(tmp) / "docs_contract.py"
+            patched.write_text(source.replace(old, new, 1), encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(patched), "--json", "--roadmap",
+                 str(ROADMAP_FIXTURES / fixture)],
+                capture_output=True, text=True)
+            self.assertEqual("", result.stderr, result.stderr)
+            return {issue["message"] for issue in json.loads(result.stdout)}
+
+    def test_every_guard_is_load_bearing_on_its_own(self):
+        for label, fixture, site, old, new in ROADMAP_REVERSIONS:
+            with self.subTest(guard=label):
+                pattern = site_pattern(site)
+                self.assertTrue(
+                    any(pattern.match(message) for message in roadmap_messages(fixture)),
+                    "%s: %s stopped reporting %r" % (label, fixture, site))
+                after = self.run_reverted(old, new, fixture)
+                self.assertFalse(
+                    any(pattern.match(message) for message in after),
+                    "%s: reverting this guard alone changed nothing, so it is "
+                    "not what catches %s" % (label, fixture))
+
+    def test_the_matrix_pins_every_guard_the_check_reports(self):
+        reported = roadmap_issue_sites(
+            (TOOLS / "docs_contract.py").read_text(encoding="utf-8"))
+        pinned = {site for _label, _fixture, site, _old, _new in ROADMAP_REVERSIONS}
+        self.assertEqual(set(), reported - pinned,
+                         "guard sites with no reversion row: %s"
+                         % sorted(reported - pinned))
+        self.assertEqual(set(), pinned - reported,
+                         "reversion rows for a guard the check no longer reports: %s"
+                         % sorted(pinned - reported))
+>>>>>>> theirs
 
 
 if __name__ == "__main__":

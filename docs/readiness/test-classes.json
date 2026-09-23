@@ -188,7 +188,14 @@
    "ReadinessClaimGateTests",
    "ReadinessProbeCiWiringTests",
    "ReadinessProbeMutationAnchorTests",
+<<<<<<< ours
    "ScriptCountGateTests",
+=======
+   "RoadmapCommitmentGateTests",
+   "RoadmapContractWiringTests",
+   "RoadmapReversionTests",
+   "RoadmapTableParserTests",
+>>>>>>> theirs
    "TemplateBackpointerGateTests",
    "TemplateInventoryGateTests",
    "TemplateRubricGateTests"
