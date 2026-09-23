@@ -42,8 +42,8 @@
   ],
   "test_pmos_conductor": [
    "ConductorTest",
-   "QuotationTest",
    "PhaseStatusDocTest",
+   "QuotationTest",
    "RefusalTableTest"
   ],
   "test_pmos_domain": [
@@ -172,13 +172,10 @@
   "test_tools_gates": [
    "ApprovalGateTests",
    "CiGateVerdictTests",
-<<<<<<< ours
-   "ExampleAvailabilityGateTests",
-=======
    "CommitmentProbeGateTests",
    "DeclaredPathGateTests",
    "DuplicateHeadingGateTests",
->>>>>>> theirs
+   "ExampleAvailabilityGateTests",
    "ExamplesInventoryGateTests",
    "ExecutableSurfaceGateTests",
    "FrontmatterInitGateTests",
@@ -191,14 +188,11 @@
    "ReadinessClaimGateTests",
    "ReadinessProbeCiWiringTests",
    "ReadinessProbeMutationAnchorTests",
-<<<<<<< ours
-   "ScriptCountGateTests",
-=======
    "RoadmapCommitmentGateTests",
    "RoadmapContractWiringTests",
    "RoadmapReversionTests",
    "RoadmapTableParserTests",
->>>>>>> theirs
+   "ScriptCountGateTests",
    "TemplateBackpointerGateTests",
    "TemplateInventoryGateTests",
    "TemplateRubricGateTests"

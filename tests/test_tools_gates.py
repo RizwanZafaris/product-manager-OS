@@ -3222,8 +3222,6 @@ class ReadinessCategoryExitTests(unittest.TestCase):
         self.assertEqual(0, self.category(self.report()))
 
 
-<<<<<<< ours
-<<<<<<< ours
 class ExampleAvailabilityGateTests(unittest.TestCase):
     """tools/example_availability.py --check: a domain card's statement about
     which of its templates have filled examples is generated from the declared
@@ -3493,7 +3491,6 @@ class ExampleAvailabilityGateTests(unittest.TestCase):
         argvs = [tuple(gate.argv) for gate in ci_gate.GATES]
         self.assertIn(("python3", "tools/example_availability.py", "--check"),
                       argvs)
-=======
 # The roadmap commitment contract. F04 of the 2026-09-23 external audit: a
 # roadmap row carried no stable id and no accountable owner, and the skill that
 # drives the template asked for an 80 percent capacity line, quarterly entry and
@@ -4079,8 +4076,6 @@ class RoadmapReversionTests(unittest.TestCase):
         self.assertEqual(set(), pinned - reported,
                          "reversion rows for a guard the check no longer reports: %s"
                          % sorted(pinned - reported))
->>>>>>> theirs
-=======
 class ApprovalGateTests(unittest.TestCase):
     """F13. The human-approval template used to stop at trigger, timeout and
     logging: nothing bound the yes to the bytes the approver saw, so an edited
@@ -4814,7 +4809,6 @@ class ApprovalGateTests(unittest.TestCase):
                 self.assertFalse(verdict.allowed)
                 self.assertEqual("unreconciled", verdict.reason)
                 self.assertEqual("R6", verdict.rule)
->>>>>>> theirs
 
 
 if __name__ == "__main__":
