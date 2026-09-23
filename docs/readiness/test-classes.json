@@ -54,7 +54,9 @@
   ],
   "test_pmos_hooks": [
    "ClaudeHookTests",
-   "RuntimeHookTests"
+   "ReadOnlyAllowlistIsArgumentAwareTests",
+   "RuntimeHookTests",
+   "SedScriptScannerTests"
   ],
   "test_pmos_invariants": [
    "CostIsNeverManufactured",

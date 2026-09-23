@@ -8,7 +8,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from pmos.hooks import HookBus, HookDecision, claude_output, contains_secret, decide
+from pmos.hooks import (HookBus, HookDecision, _sed_program_is_read_only,
+                        claude_output, contains_secret, decide)
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -206,17 +207,19 @@ class ClaudeHookTests(unittest.TestCase):
                 self.assertEqual(answer.action, "ask")
 
         safe_commands = (
-            "git -C /tmp status",
+            "git status",
             "rg -n readiness README.md",
             "pwd",
             "cat README.md | head -5",
             # Each wrapper below is itself off the read-only allowlist, so these
-            # are allowed only when the wrapper is actually stripped.
-            "sudo git -C /tmp status",
-            "env MODE=safe git -C /tmp status",
+            # are allowed only when the wrapper is actually stripped. None of
+            # them carries ``-C``: pointing git at a caller-chosen repository
+            # is a redirect, tested for its own sake below.
+            "sudo git status",
+            "env MODE=safe git status",
             "timeout 5 rg -n readiness README.md",
             "nice -n 5 cat README.md",
-            "time git -C /tmp status",
+            "time git status",
         )
         for command in safe_commands:
             with self.subTest(safe=command):
@@ -425,6 +428,497 @@ class RuntimeHookTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             bus.register("before_commit", "alpha", lambda event, payload:
                          HookDecision("allow"))
+
+
+class ReadOnlyAllowlistIsArgumentAwareTests(unittest.TestCase):
+    """The read-only allowlist classifies arguments, not executable names.
+
+    An external audit of 49ca7e8 ran three commands through ``decide`` and then
+    ran them for real in a disposable directory. All three were classified
+    "allow" and all three mutated that directory: ``sort input -o output`` wrote
+    a file, ``sed -n "w written" input`` wrote a file, and
+    ``git remote add ...`` rewrote the repository's configuration. The policy
+    looked only at the executable's basename, so every write-capable option and
+    subcommand of an allow-listed program was invisible to it.
+
+    These tests fail if the argument checks are removed: reverting any one of
+    them puts its probe back on the "allow" path.
+    """
+
+    def classify(self, command):
+        return decide("PreToolUse", {
+            "tool_name": "Bash", "tool_input": {"command": command}}).action
+
+    def test_the_three_audited_probes_are_no_longer_allowed(self):
+        for command in ("sort input -o output",
+                        'sed -n "w written" input',
+                        "git remote add audit https://example.invalid/repo.git"):
+            with self.subTest(command=command):
+                self.assertNotEqual(self.classify(command), "allow")
+
+    def test_write_capable_options_of_allowlisted_programs_require_approval(self):
+        probes = (
+            # sort's output file, spelled every way the option can be written.
+            "sort input -o output",
+            "sort -o output input",
+            "sort --output=output input",
+            "sort --output output input",
+            "sort -bo output input",
+            # uniq's second file operand is the file it overwrites.
+            "uniq input output",
+            "uniq -f 1 input output",
+            # yq edits in place and splits into files.
+            "yq -i '.a = 1' config.yaml",
+            "yq --inplace '.a = 1' config.yaml",
+            "yq -s '.name' config.yaml",
+            # find writes through its own output actions.
+            "find . -fprint listing",
+            "find . -fprintf listing %p",
+            # A long destination spelling is refused whichever program carries it.
+            "cat --output=copy input",
+        )
+        for command in probes:
+            with self.subTest(command=command):
+                self.assertEqual(self.classify(command), "ask")
+
+    def test_sed_is_classified_by_its_script_not_by_its_name(self):
+        writes_or_executes = (
+            'sed -n "w written" input',
+            'sed "1w written" input',
+            'sed -e "w written" input',
+            'sed -ew written input',
+            'sed "s/a/b/w written" input',
+            'sed "s/a/b/gw written" input',
+            'sed -n "W part" input',
+            'sed "1e date" input',
+            'sed "s/a/b/e" input',
+            'sed "r /etc/passwd" input',
+            'sed "R /etc/passwd" input',
+            # An in-place edit, bundled or suffixed.
+            "sed -i.bak s/a/b/ input",
+            "sed --in-place s/a/b/ input",
+            "sed -ni s/a/b/ input",
+            # A script this classifier cannot read before the command runs.
+            "sed -f script.sed input",
+            "sed --file=script.sed input",
+            # An option the classifier does not recognise fails closed.
+            "sed --unknown-option p input",
+        )
+        for command in writes_or_executes:
+            with self.subTest(command=command):
+                self.assertEqual(self.classify(command), "ask")
+
+        read_only_scripts = (
+            "sed -n '1,5p' input",
+            "sed -n '/heading/p' input",
+            "sed 's/were/was/g' input",
+            "sed -e '1d' -e '$d' input",
+            "sed -ne '2p' input",
+            "sed -n '2{p;q}' input",
+            "sed 'y/abc/xyz/' input",
+            "sed '/^# /d' input",
+            "sed -E 's/(a)(b)/\\2\\1/' input",
+        )
+        for command in read_only_scripts:
+            with self.subTest(command=command):
+                self.assertEqual(self.classify(command), "allow")
+
+    def test_git_remote_mutations_and_output_options_require_approval(self):
+        probes = (
+            "git remote add audit https://example.invalid/repo.git",
+            "git remote remove origin",
+            "git remote rm origin",
+            "git remote rename origin upstream",
+            "git remote set-url origin https://example.invalid/repo.git",
+            "git remote set-head origin main",
+            "git remote prune origin",
+            "git remote update",
+            # show contacts the remote, so it is network access, not a local read.
+            "git remote show origin",
+            # A global option before the subcommand must not hide the
+            # sub-subcommand. --no-pager is used rather than -C because -C is
+            # now refused in its own right, which would let this probe pass
+            # without the remote check running at all.
+            "git --no-pager remote add audit https://example.invalid/repo.git",
+            # Read-only subcommands can still be told to write or to run a pager.
+            "git diff --output=patch.txt",
+            "git grep -O cat needle",
+        )
+        for command in probes:
+            with self.subTest(command=command):
+                self.assertEqual(self.classify(command), "ask")
+
+        for command in ("git remote", "git remote -v", "git remote get-url origin",
+                        "git status", "git log --oneline -5"):
+            with self.subTest(read_only=command):
+                self.assertEqual(self.classify(command), "allow")
+
+    def test_wrappers_cannot_smuggle_a_write_past_the_classifier(self):
+        probes = (
+            # The wrapper is stripped, so the inner write is what gets seen.
+            "env MODE=safe sort input -o output",
+            "nice -n 5 sort input -o output",
+            "timeout 5 sort input -o output",
+            "sudo sort input -o output",
+            "bash -c 'sort input -o output'",
+            # These wrappers write or re-parse a command line themselves.
+            "time -o timing.txt git status",
+            "env -S 'sort input -o output'",
+            "nohup sort input -o output",
+            "busybox sed -i s/a/b/ input",
+        )
+        for command in probes:
+            with self.subTest(command=command):
+                self.assertEqual(self.classify(command), "ask")
+
+    def test_each_wrapper_guard_is_individually_load_bearing(self):
+        """Probes that depend on one wrapper guard and on nothing else.
+
+        ``env -S`` re-splits one token into a whole command line and ``nohup``
+        appends its child's output to ./nohup.out, so neither is a transparent
+        wrapper. With a harmless child, no other check fires, so these probes
+        fail the moment either guard is removed.
+        """
+        for command in ("env -S ls", "env --split-string=ls", "nohup ls -la"):
+            with self.subTest(command=command):
+                self.assertEqual(self.classify(command), "ask")
+
+    def test_environment_assignments_that_redirect_execution_require_approval(self):
+        # A variable that names a program, a library, a configuration file or a
+        # home directory makes an allow-listed read-only command execute
+        # something else; git runs GIT_EXTERNAL_DIFF itself.
+        probes = (
+            "GIT_EXTERNAL_DIFF=./ext.sh git diff",
+            "GIT_PAGER=./ext.sh git --paginate log",
+            "GIT_CONFIG_GLOBAL=/tmp/evil git log",
+            "LD_PRELOAD=./evil.so ls",
+            "PAGER=./ext.sh git log -p",
+            "HOME=/tmp/evil git log",
+            # The assignment is equally live behind a stripped wrapper.
+            "env GIT_PAGER=./ext.sh git log",
+            "sudo GIT_PAGER=./ext.sh git log",
+        )
+        for command in probes:
+            with self.subTest(command=command):
+                self.assertEqual(self.classify(command), "ask")
+
+        # An assignment that cannot name a program stays read-only.
+        for command in ("env MODE=safe git status", "MODE=safe sort input"):
+            with self.subTest(inert=command):
+                self.assertEqual(self.classify(command), "allow")
+
+    def test_git_arguments_are_checked_for_command_substitution(self):
+        # The subcommand is not the only place substitution can hide: the shell
+        # runs the backticked text to build the argument, and that text is
+        # never seen by this classifier.
+        for command in (r"git log `./ext.sh`", r"git show `cat payload`"):
+            with self.subTest(command=command):
+                self.assertEqual(self.classify(command), "deny")
+        self.assertEqual(self.classify("git log --oneline -5"), "allow")
+
+    def test_git_global_options_that_redirect_git_require_approval(self):
+        # --config-env names an environment variable to read a config value
+        # from, which is the -c injection path under a spelling that does not
+        # begin with -c.
+        self.assertEqual(
+            self.classify("git --config-env=core.pager=EVILVAR --paginate log"),
+            "deny")
+
+        # These point git at a caller-chosen directory, or turn on the
+        # external programs named by the repository's own configuration.
+        probes = (
+            "git --exec-path=/tmp/evil status",
+            "git --git-dir=/tmp/evil/.git status",
+            "git --work-tree=/tmp status",
+            "git log --ext-diff",
+            "git show --textconv HEAD",
+            "git cat-file --filters HEAD:file",
+        )
+        for command in probes:
+            with self.subTest(command=command):
+                self.assertEqual(self.classify(command), "ask")
+
+        # The --no- spellings switch the external programs off rather than
+        # on; after the subcommand --git-dir is a read-only query that prints a
+        # path, not a redirect; and -C after the subcommand is copy detection.
+        for command in ("git log --no-ext-diff", "git log --no-textconv",
+                        "git rev-parse --git-dir", "git log -C --oneline",
+                        "git log --text"):
+            with self.subTest(read_only=command):
+                self.assertEqual(self.classify(command), "allow")
+
+    def test_glued_short_options_cannot_hide_a_git_pager_program(self):
+        # git grep's -O<program> starts that program, and the option name test
+        # cannot see a value glued to the letter.
+        probes = ("git grep -O./ext.sh alpha", "git grep -nO./ext.sh alpha",
+                  "git diff -Otouch")
+        for command in probes:
+            with self.subTest(command=command):
+                self.assertEqual(self.classify(command), "ask")
+        # Lowercase o is ordinary read-only usage and is not part of the test.
+        self.assertEqual(self.classify("git status -uno"), "allow")
+
+    def test_options_whose_value_names_a_program_require_approval(self):
+        # --pre, --hostname-bin and --compress-program each run the program
+        # named by their value, so the read-only basename decides nothing.
+        probes = (
+            "rg --pre touch pattern .",
+            "rg --pre=/bin/sh pattern .",
+            "rg --hostname-bin ./ext.sh pattern .",
+            "sort --compress-program=touch bigfile",
+            "find . -name x --pre touch",
+            # A file operand built by running a program is the same defect
+            # arriving through the argument rather than through the option.
+            r"sed -n 1p `./ext.sh`",
+            r"find . -newer `./ext.sh`",
+        )
+        for command in probes:
+            with self.subTest(command=command):
+                self.assertEqual(self.classify(command), "ask")
+
+        # A "$" inside a sed script is a line address, not an expansion.
+        for command in ("rg -n pattern .", "sed -e '1d' -e '$d' input"):
+            with self.subTest(read_only=command):
+                self.assertEqual(self.classify(command), "allow")
+
+    def test_git_chdir_is_a_repository_redirect_like_git_dir(self):
+        """``git -C <dir>`` loads that directory's repository configuration.
+
+        Measured on git 2.50.1: ``git -C evil diff`` against a repository whose
+        config set ``diff.external``, and ``git -C evil status`` against one
+        whose config set ``core.fsmonitor``, each executed the named program.
+        ``git status`` needs no options at all for that, so the subcommand
+        cannot decide it; only the redirect can. The same attack spelled
+        ``--git-dir``/``--work-tree`` is refused one test above, so leaving
+        ``-C`` out was an internal inconsistency as well as a hole.
+        """
+        probes = ("git -C evil diff", "git -C evil status",
+                  "git -C evil show HEAD", "git -C evil log",
+                  "git -C evil grep pattern", "git -C /tmp status",
+                  "/usr/bin/git -C evil diff", "command git -C evil diff",
+                  "timeout 10 git -C evil status",
+                  # Glued and bundled spellings are refused by shape: git
+                  # 2.50.1 rejects them, and this guard does not rest on that.
+                  "git -Cevil status", "git -pCevil status",
+                  # The wrapper stack does not launder it either.
+                  "timeout 10 env -C evil git status")
+        for command in probes:
+            with self.subTest(command=command):
+                self.assertEqual(self.classify(command), "ask")
+
+    def test_a_wrapper_that_changes_directory_requires_approval(self):
+        """The same redirect spelled on the wrapper instead of on git.
+
+        ``env -C <dir>`` and ``sudo --chdir=<dir>`` put the child in a
+        caller-chosen repository, which is the ``git -C`` hole one layer out:
+        the child's own argument list carries no trace of it. Both wrappers
+        were being stripped silently.
+        """
+        probes = ("env -C evil git status", "env --chdir=evil git status",
+                  "env -Cevil git status", "sudo --chdir=evil git status",
+                  "sudo -D evil git status", "sudo -Devil git status")
+        for command in probes:
+            with self.subTest(command=command):
+                self.assertEqual(self.classify(command), "ask")
+        # A wrapper that does not change directory is still transparent.
+        for command in ("env ls -la", "sudo -u nobody git status",
+                        "timeout 10 git status"):
+            with self.subTest(read_only=command):
+                self.assertEqual(self.classify(command), "allow")
+
+    def test_abbreviated_long_options_cannot_walk_past_the_guards(self):
+        """A guard that matches exact spellings is not a guard on GNU tools.
+
+        GNU ``getopt_long`` and git's ``parse-options`` accept any unambiguous
+        abbreviation, so every exact-spelling frozenset in this module was
+        reachable under a shorter name. ``git grep --open-files-in-pag=./ext.sh``
+        was measured starting that program on git 2.50.1 while the unabbreviated
+        spelling was already refused.
+        """
+        probes = (
+            # value names a program
+            "sort --compress-prog=./ext.sh input",
+            "sort --compress-progra=./ext.sh input",
+            "rg --pr ./ext.sh pattern .",
+            # value names a written file
+            "sort --outp=/tmp/x input",
+            "git diff --outpu=/tmp/x",
+            # git's own pager option, the one that was measured executing
+            "git grep --open-files-in-pag=./ext.sh alpha",
+            # git global redirects, refused by shape whether or not this git
+            # build happens to accept the abbreviation
+            "git --git-di=/tmp/evil/.git status",
+            "git --work-tre=/tmp status",
+        )
+        for command in probes:
+            with self.subTest(command=command):
+                self.assertEqual(self.classify(command), "ask")
+
+        # A full option spelling that merely shares a prefix with a guarded
+        # one is not an abbreviation of it and stays read-only.
+        for command in ("git log --oneline -5", "rg --files", "git log --text",
+                        "git ls-files --others"):
+            with self.subTest(read_only=command):
+                self.assertEqual(self.classify(command), "allow")
+
+    def test_abbreviated_wrapper_and_config_options_are_guarded_too(self):
+        """The crossing the previous round left open: abbreviation x wrapper.
+
+        ``test_abbreviated_long_options_cannot_walk_past_the_guards`` probes
+        the option sets that are read through ``_option_abbreviates``, and
+        ``test_a_wrapper_that_changes_directory_requires_approval`` probes the
+        full ``--chdir`` spelling. Nothing crossed them, so
+        ``env --chd=<dir> git status`` and ``sudo --chd=<dir> git status``
+        were an ``allow`` while ``--chdir=`` was an ``ask``. Every long option
+        this policy compares now goes through one helper, ``_matches_option``,
+        and this test is the crossing.
+
+        ``sudo`` accepting the abbreviation was measured on this host:
+        ``sudo -n --chd=/tmp true`` reaches authentication, while
+        ``sudo -n --zzz=/tmp true`` is rejected as an unrecognised option.
+        The same sweep found ``time`` naming a file it truncates in three
+        spellings the wrapper scan could not see, including the short
+        ``-o`` with its value glued to the letter, which is a shape and
+        not an abbreviation: the two are the same miss looked at from
+        different sides, so they are probed together.
+        """
+        probes = (
+            # the redirect spelled short on the wrapper
+            "env --chd=evil git status", "env --ch=evil git status",
+            "sudo --chd=evil git status", "sudo --chdi=evil git status",
+            # the next spelling of the same wrapper idea: sudo also has a
+            # directory option that is not --chdir
+            "sudo --chroot=evil git status", "sudo --chro=evil git status",
+            "sudo -Revil git status",
+            # ``time`` names a file it truncates. The full spelling was an
+            # allow as well, because the wrapper and its option had already
+            # been consumed when the scan stopped, so the child alone was
+            # classified.
+            "time --output=f git status", "time --append=f git status",
+            "time --outp=f git status", "time --out=f git status",
+            "time --app=f git status",
+            # and the same option written short, with its value glued or
+            # bundled, which an option-name test cannot see at all
+            "time -of git status", "time -o/tmp/f git status",
+            "time -ao/tmp/f git status",
+            "timeout 10 time --outp=f git status",
+        )
+        for command in probes:
+            with self.subTest(command=command):
+                self.assertEqual(self.classify(command), "ask")
+        # Configuration injection is a deny, not an ask, and the abbreviation
+        # has to reach the same answer as the full spelling.
+        for command in ("git --config-env=core.pager=EVIL log",
+                        "git --config-en=core.pager=EVIL log",
+                        "git --conf=core.pager=EVIL log"):
+            with self.subTest(command=command):
+                self.assertEqual(self.classify(command), "deny")
+        # Options that merely start with the same letters are not
+        # abbreviations of a guarded spelling and stay read-only.
+        for command in ("time git status", "time -f %e git status",
+                        "time -p git status", "time -l git status",
+                        "sudo -u nobody git status", "env ls -la",
+                        "nice -n 5 git log", "timeout 10 git status",
+                        "git log --color=always", "git status --column",
+                        "git diff --cc"):
+            with self.subTest(read_only=command):
+                self.assertEqual(self.classify(command), "allow")
+
+    def test_a_wrapper_option_that_redirects_execution_requires_approval(self):
+        """Where the child runs and which binary it is are one class.
+
+        The previous round guarded the wrapper option that changes DIRECTORY
+        and only that one. A review then proved three more, all executing:
+        ``env --C<dir> git status`` and ``env --C<dir> git diff`` reach the
+        pointed-at repository's ``core.fsmonitor`` and ``diff.external``, and
+        ``env --P<dir> git status`` and ``env -P<dir> git status`` run an
+        attacker's ``./git`` outright, because ``-P`` names the directory env
+        resolves the utility from. An option that says WHERE the child runs
+        and one that says WHICH binary runs are the same hole, so they are
+        guarded and probed as one.
+
+        Measured on this host with a planted ``./git``: ``env -P/tmp/x/bin git
+        status`` and ``env --P/tmp/x/bin git status`` both printed the planted
+        program's output, and ``env --Path=/tmp/x/bin git status`` was read by
+        env as ``-P`` carrying the value ``ath=/tmp/x/bin``. This env is BSD
+        env with no long options at all, which is why ``--chdir=`` is rejected
+        outright and why a ``--`` token is read as a short cluster.
+
+        sudo's parser was measured accepting ``-s``, ``-E`` and
+        ``--preserve-env=PATH`` - each reaches authentication - and rejecting
+        ``--D/tmp`` as an unrecognised option, so that last spelling is a
+        refusal by shape rather than a closed exploit.
+        """
+        probes = (
+            # the directory spelling written with two dashes, which the
+            # previous round's letter test could not see at all
+            "env --C/tmp/evil git status", "env --C/tmp/evil git diff",
+            # the utility-path option: the new half of the class
+            "env --P/tmp/evil/bin git status", "env -P/tmp/evil/bin git status",
+            "env -P /tmp/evil/bin git status",
+            "env --Path=/tmp/evil/bin git status",
+            "env -iP/tmp/evil/bin git status",
+            # the re-split option, whose glued spelling was an allow
+            "env -Ssort git status",
+            # sudo's shell and environment options: each changes which binary
+            # runs rather than where it runs
+            "sudo -s git status", "sudo -i git status", "sudo -E git status",
+            "sudo --preserve-env=PATH git status", "sudo --login git status",
+            "sudo --shell git status",
+            # sudo's root option written short and glued, spelled so that no
+            # other guarded letter appears anywhere in the token
+            "sudo -R/tmp/root git status",
+            # refused by shape: sudo rejects this spelling itself
+            "sudo --D/tmp/evil git status",
+            # the wrapper stack does not launder any of it
+            "timeout 10 env -P/tmp/evil/bin git status",
+            "nice -n 5 env --C/tmp/evil git status",
+        )
+        for command in probes:
+            with self.subTest(command=command):
+                self.assertEqual(self.classify(command), "ask")
+        # A wrapper option that redirects nothing is still transparent, and a
+        # long option whose letters happen to include a guarded lower-case one
+        # is not read as a cluster.
+        for command in ("env ls -la", "env MODE=safe git status",
+                        "sudo -u nobody git status",
+                        "sudo --non-interactive git status",
+                        "sudo --stdin git status",
+                        "timeout 10 git status", "nice -n 5 git log",
+                        "git status"):
+            with self.subTest(read_only=command):
+                self.assertEqual(self.classify(command), "allow")
+
+    def test_the_read_only_path_still_works(self):
+        """The positive controls the audit required to keep working."""
+        for command in ("sort input", "sed -n '1,5p' input", "git status",
+                        "git log", "grep -r needle .", "ls -la", "pwd",
+                        "rg -n readiness README.md", "cat README.md | head -5",
+                        "wc -l README.md", "uniq sorted", "sort -nr input",
+                        "find . -name '*.py'", "diff left right",
+                        "jq '.name' package.json", "yq '.name' config.yaml"):
+            with self.subTest(command=command):
+                self.assertEqual(self.classify(command), "allow")
+
+
+class SedScriptScannerTests(unittest.TestCase):
+    """The sed scanner reports anything it cannot account for as unsafe."""
+
+    def test_unparsable_scripts_are_not_read_only(self):
+        for script in ("s/a/b", "s/a/b/q", "/unterminated", "\\", "K",
+                       "s/a/b/w out", "w out", "e date"):
+            with self.subTest(script=script):
+                self.assertFalse(_sed_program_is_read_only(script))
+        self.assertFalse(_sed_program_is_read_only(None))
+        # An empty script is a genuine no-op; sed with no script at all is
+        # refused one level up, in _classify_sed.
+        self.assertTrue(_sed_program_is_read_only(""))
+
+    def test_ordinary_print_and_delete_scripts_are_read_only(self):
+        for script in ("1,5p", "/x/p", "$p", "s/a/b/g", "2{p;q}", "y/abc/xyz/",
+                       "/^# /d", "s|a|b|g", "# comment\n1p"):
+            with self.subTest(script=script):
+                self.assertTrue(_sed_program_is_read_only(script))
 
 
 if __name__ == "__main__":
