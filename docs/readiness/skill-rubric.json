@@ -272,7 +272,7 @@
       "aliased": {},
       "workflow_steps": 6,
       "exit_gate_boxes": 0,
-      "exit_gate_words": 68,
+      "exit_gate_words": 260,
       "failure_modes": 5,
       "links": 13,
       "lines": 101

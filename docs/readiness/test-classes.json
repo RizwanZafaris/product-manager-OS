@@ -42,8 +42,8 @@
   ],
   "test_pmos_conductor": [
    "ConductorTest",
-   "QuotationTest",
    "PhaseStatusDocTest",
+   "QuotationTest",
    "RefusalTableTest"
   ],
   "test_pmos_domain": [
@@ -54,7 +54,9 @@
   ],
   "test_pmos_hooks": [
    "ClaudeHookTests",
-   "RuntimeHookTests"
+   "ReadOnlyAllowlistIsArgumentAwareTests",
+   "RuntimeHookTests",
+   "SedScriptScannerTests"
   ],
   "test_pmos_invariants": [
    "CostIsNeverManufactured",
@@ -168,8 +170,14 @@
    "VerifierExecutionTests"
   ],
   "test_tools_gates": [
+   "ApprovalGateTests",
    "CiGateVerdictTests",
+   "CommitmentProbeGateTests",
+   "DeclaredPathGateTests",
+   "DuplicateHeadingGateTests",
+   "ExampleAvailabilityGateTests",
    "ExamplesInventoryGateTests",
+   "ExecutableSurfaceGateTests",
    "FrontmatterInitGateTests",
    "GateCountGateTests",
    "GraphFreshnessGateTests",
@@ -180,9 +188,19 @@
    "ReadinessClaimGateTests",
    "ReadinessProbeCiWiringTests",
    "ReadinessProbeMutationAnchorTests",
+   "RoadmapCommitmentGateTests",
+   "RoadmapContractWiringTests",
+   "RoadmapReversionTests",
+   "RoadmapTableParserTests",
+   "ScriptCountGateTests",
    "TemplateBackpointerGateTests",
    "TemplateInventoryGateTests",
    "TemplateRubricGateTests"
+  ],
+  "test_versioning_contract": [
+   "DocumentSchemaAdditions",
+   "RuntimeBankContractAdditions",
+   "VersioningStatementsAgree"
   ]
  }
 }

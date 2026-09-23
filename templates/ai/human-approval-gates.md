@@ -27,25 +27,31 @@ Filled example: [Ledgerline Expense Copilot Add-on](../../examples/ledgerline-hu
 
 ## 1. Gate table
 
-| # | Trigger condition (specific, testable) | Action held | Approver role (role, not person; person on rota) | Channel and SLA | On timeout | Test |
+| # | Trigger condition (specific, testable) | Action held | Approver role (role, not person; person on rota) | Channel and SLA | On timeout | Test (positive, plus the NAC IDs from section 6 that apply) |
 |---|---|---|---|---|---|---|
-| 1 | [e.g. any irreversible action: payment, send, deletion, filing] | [the action] | [role] | [queue or channel, n minutes] | deny and notify | [test ID] |
-| 2 | [e.g. output value above threshold n] | [release of the output] | [role] | [channel, SLA] | deny and notify | [test ID] |
-| 3 | An agent proposes a tool call inside the live conversation (file write, code execution, an external API call) | The tool call, shown to the user with its parameters before it runs | The user in the conversation, in-line | Synchronous, blocks the turn until answered | deny, tool call not made | [test ID] |
-| 4 | A design agent with write access to design files proposes a change (for example, a Penpot MCP integration editing a shared file, paraphrased as the pattern, not a specific vendor's exact behaviour) | The write to the shared design file | Design lead, or the named owner of that file | [channel, SLA] | deny and notify | [test ID] |
+| 1 | [e.g. any irreversible action: payment, send, deletion, filing] | [the action] | [role] | [queue or channel, n minutes] | deny and notify | [test ID] · [NAC IDs] |
+| 2 | [e.g. output value above threshold n] | [release of the output] | [role] | [channel, SLA] | deny and notify | [test ID] · [NAC IDs] |
+| 3 | An agent proposes a tool call inside the live conversation (file write, code execution, an external API call) | The tool call, shown to the user with its parameters before it runs | The user in the conversation, in-line | Synchronous, blocks the turn until answered | deny, tool call not made | [test ID] · [NAC IDs] |
+| 4 | A design agent with write access to design files proposes a change (for example, a Penpot MCP integration editing a shared file, paraphrased as the pattern, not a specific vendor's exact behaviour) | The write to the shared design file | Design lead, or the named owner of that file | [channel, SLA] | deny and notify | [test ID] · [NAC IDs] |
 | 5 | [add] | | | | | |
 
 <!-- On timeout the default is deny. If a gate must fail open for operational reasons,
      write the reason, the risk owner's name, and the compensating control in section 3.
      A silent fail-open is how "human in the loop" becomes a legend. -->
 
+On timeout the default is deny. The Test column carries the positive test for the gate;
+the negative tests that must fail for it live in section 6, and every gate row names its
+NAC IDs there.
+
 ## 2. Audit log requirement
 
 Every gate decision writes a record with, at minimum:
 
-- Request ID, timestamp, triggering condition matched
+- Request ID, approval ID, action revision, timestamp, triggering condition matched
 - The held action's full parameters as presented to the approver
-- Approver identity, decision, decision time, and free-text reason if denied
+- Approver identity, authority scope applied, decision, decision time, and free-text reason if denied
+- Every state change of the approval record in section 4, including expiry, revocation, supersession and consumption, with who or what caused it
+- For each execution attempt: attempt ID, execution token presented, outcome, and, where the outcome was unknown, the reconciliation query and its result
 - Model version and prompt version that produced the request
 - Retention period for these records: [n, per applicable requirement]
 - Where the log lives and who can read it: [location, access rule]
@@ -58,6 +64,61 @@ Every gate decision writes a record with, at minimum:
 | [none is the right answer until proven otherwise] | | | | |
 | *Example: an automation that posts a channel reply to a routine, low-stakes question (ILLUSTRATIVE)* | *A queue-blocking approval on every reply would defeat the automation's purpose; the volume makes a human-in-the-loop gate impractical at this trigger* | *Replies are logged and sampled for review after the fact; any reply flagged by the sampling or by a recipient escalates to a real gate on the next occurrence of that pattern* | *[name]* | *[date]* |
 
+## 4. Approval record
+
+<details open>
+<summary>Guidance</summary>
+
+An approval is not a yes, it is a record bound to one exact action. What the approver saw is hashed into it, so the record cannot be stretched to cover a different payload, a later moment, or a second execution. The failure modes this designs out are the approval reused for edited parameters, the approval acted on after the answer stopped being true, and the same approval spent twice. Each gate in section 1 produces one record per held action.
+
+</details>
+
+| Field | What it holds | Why it must be there |
+|---|---|---|
+| Approval ID | [unique ID for this held action, issued when the gate fires] | The one handle the audit log, the execution attempt and any revocation all name |
+| Action revision | [hash of the exact parameters presented to the approver] | Ties the yes to those bytes; an edited payload no longer matches the hash |
+| Approver identity and authority scope | [person on the rota] · [what this role may approve, and the limit: amount, account, environment] | A named person is not authority; the limit is what makes "approved" checkable |
+| Issued at / Expires at | [YYYY-MM-DDThh:mm±zz] / [YYYY-MM-DDThh:mm±zz] | An approval with no end is an approval that survives the reason it was given |
+| State | pending, approved, denied, expired, revoked, superseded, or consumed | The executor reads the state, not the memory of a yes |
+| Single-use execution token | [token or idempotency key, valid for one execution] | The downstream system can refuse the second copy of the same action |
+| Execution record | [attempt ID] · [outcome: done, refused, unknown] · [reconciliation status] | An attempt whose outcome nobody recorded is an attempt nobody can safely retry |
+
+## 5. Invalidation, replay and reconciliation rules
+
+1. **R1 binding.** The approval authorises exactly the action revision hashed into it, and any change to those parameters puts the approval in superseded and requires a fresh one.
+2. **R2 authority.** The executor checks that the approver's authority scope still covers the action at execution time, not only when the request was raised, and refuses the execution when it does not.
+3. **R3 expiry.** An approval past its expires-at is expired and must not execute, whatever state it was in before.
+4. **R4 revocation.** The approver or the risk owner can revoke an approval at any point before it is consumed, and a revoked approval never executes.
+5. **R5 one-use.** The first execution attempt consumes the approval, and a second attempt presenting the same approval ID or execution token is refused rather than retried.
+6. **R6 uncertain outcome.** When an attempt was made and its outcome is unknown (a timeout, a dropped connection, no acknowledgement), the executor reconciles the downstream system by the idempotency key and records the result before any retry; a retry issued without that reconciliation is refused.
+
+<details open>
+<summary>Guidance</summary>
+
+The trap these rules exist for is the gate that checks the answer only at request time. Nothing then catches the answer that stopped being true between the yes and the action, and the resulting double send, stale payment or withdrawn permission all read as "human approved" in the log.
+
+</details>
+
+## 6. Negative acceptance criteria
+
+<details open>
+<summary>Guidance</summary>
+
+These are the cases that must fail. A gate tested only on the happy path is untested: every check above is invisible until something is refused by it.
+
+</details>
+
+| ID | Rule | Given | When | Then (must fail) |
+|---|---|---|---|---|
+| NAC-1 | R1 | An approved approval, parameters edited after the yes | Execution attempted | Refused: superseded, fresh approval required |
+| NAC-2 | R2 | The approver's authority scope no longer covers the action | Execution attempted | Refused: out of authority scope |
+| NAC-3 | R3 | An approval past its expires-at | Execution attempted | Refused: expired |
+| NAC-4 | R4 | An approval revoked before it was consumed | Execution attempted | Refused: revoked |
+| NAC-5 | R5 | An already consumed approval presented again | Second execution attempted | Refused: replay, and not retried |
+| NAC-6 | R6 | A first attempt that timed out with an unknown outcome | Retry attempted before reconciliation | Refused until the downstream system is reconciled by the idempotency key |
+
+Each NAC ID names a real test, listed against its gate in the Test column of section 1. `python3 tools/approval_gate.py --check` reads this file and every filled copy in `examples/`, and refuses a copy that has dropped a rule, a record field or a negative criterion, moved one of those rows out of the section that holds it, lost one of the numbered sections, hidden the rules inside an HTML comment, kept a rule's bold heading over a sentence that no longer carries the rule's own terms, or carried a phrase saying the contract is dead; a document that has been deleted outright is reported as missing rather than passed over. The six cases themselves are executed as fixtures by `ApprovalGateTests` in `tests/test_tools_gates.py`. The checker matches terms and phrases, it does not read for meaning, so a rewrite that keeps the terms and still says something wrong passes.
+
 ## Worked micro-example
 
 Gate: any outbound message composed by the assistant. Trigger: message ready to send. Approver role: duty ops reviewer, weekday rota of three. Channel: review queue, 30 minute SLA ILLUSTRATIVE. On timeout: message is not sent, requester notified, case reopens next shift. Log: full message body, approver, decision, model and prompt version. The message that never went out on a Friday night is the control working, not the control failing.
@@ -69,3 +130,7 @@ Gate: any outbound message composed by the assistant. Trigger: message ready to 
 - [ ] Every timeout behavior is deny, or the fail-open is in section 3 with an owner
 - [ ] The audit record fields are implemented, not aspirational; someone has read one
 - [ ] The audit record's data classes are classified and its PII handling is stated
+- [ ] Every held action produces an approval record with all seven fields in section 4, and the action revision is a hash of what the approver actually saw
+- [ ] R1 to R6 are implemented by the executor, not only written here; each has a test
+- [ ] NAC-1 to NAC-6 each name a test that fails when the rule is removed, and each gate row in section 1 names the NAC IDs that apply to it
+- [ ] An attempt with an unknown outcome cannot be retried until it has been reconciled, and someone has seen that path run

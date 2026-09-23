@@ -70,6 +70,117 @@ _READ_ONLY_GIT = frozenset({
     "status", "diff", "log", "show", "rev-parse", "ls-files", "grep",
     "cat-file", "merge-base", "name-rev", "describe", "remote",
 })
+# ``git remote`` alone lists remotes; its sub-subcommands rewrite the config.
+_GIT_REMOTE_READ_ONLY = frozenset({"get-url"})
+_GIT_REMOTE_MUTATING = frozenset({
+    "add", "rename", "remove", "rm", "set-head", "set-branches", "set-url",
+    "prune", "update",
+})
+# Long option spellings that name a file the program will write. These are
+# checked for every allow-listed program, so a destination is protected by the
+# shape of the argument rather than by which executable happens to carry it.
+_WRITE_DESTINATION_OPTIONS = frozenset({
+    "--output", "--output-file", "--outfile", "--out-file", "--write",
+    "--write-to", "--in-place", "--inplace", "--split-exp",
+})
+# ``git diff --output=FILE`` writes a file and ``git grep -O CMD`` starts a
+# program, so a read-only subcommand is not read-only with these present.
+# A wrapper's option grammar decides both which program runs and where it
+# runs, so the two are one class. ``env``: ``-C`` changes directory, ``-P``
+# names the directory the utility itself is resolved from, and ``-S`` re-splits
+# one token into a command line this classifier never sees (``-S`` is handled by
+# its own branch, which stops the scan instead of only flagging the token). ``sudo``: ``-D``
+# changes directory, ``-R`` changes root, ``-i``/``-s`` run the caller's shell
+# instead of the named program, and ``-E``/``--preserve-env`` lets the caller's
+# own PATH and loader variables through the reset that would otherwise fix
+# which binary is found. Letters are the short spellings; the long spellings
+# are matched abbreviation-tolerantly beside them.
+_ENV_REDIRECT_LETTERS = "CP"  # ``S`` is not listed here: the ``-S`` branch
+# below owns every spelling of it, and has to, because it must break the scan
+# rather than only flag the token.
+_ENV_REDIRECT_OPTIONS = ("--chdir",)  # ``--split-string`` is covered by
+# its own branch below, which has to break the scan rather than only flag it,
+# so listing it here as well would be a guard no test could hold to account.
+_SUDO_REDIRECT_LETTERS = "DREis"
+_SUDO_REDIRECT_OPTIONS = ("--chdir", "--chroot", "--login", "--shell",
+                          "--preserve-env")
+_GIT_OUTPUT_OPTIONS = frozenset({"-o", "-O", "--open-files-in-pager"})
+# An environment assignment written in front of a command is part of the
+# command. A variable that names a program, a library, a configuration file or
+# an interpreter's options turns an allow-listed read-only command into
+# arbitrary execution: ``GIT_EXTERNAL_DIFF=./x git diff`` runs ./x. The inert
+# direction cannot be enumerated, so it is the execution-influencing direction
+# that is named here and anything matching it is referred to the user.
+_EXECUTION_ENV_NAMES = frozenset({
+    "PATH", "HOME", "IFS", "ENV", "SHELL", "CDPATH", "PS4", "TMPDIR",
+    "ZDOTDIR", "VISUAL", "BROWSER", "RUBYOPT", "RUBYLIB",
+})
+_EXECUTION_ENV_PREFIXES = (
+    "GIT_", "LD_", "DYLD_", "BASH_", "PERL", "PYTHON", "NODE_", "RUBY",
+    "JAVA_", "_JAVA", "LESS", "SSH_", "SUDO_",
+)
+_EXECUTION_ENV_SUBSTRINGS = (
+    "PATH", "PAGER", "EDITOR", "PRELOAD", "COMMAND", "OPTS", "OPTIONS",
+    "CONFIG", "SHELL", "LIBRARY", "PLUGIN", "PROXY", "HOOK", "EXEC",
+    "INTERP", "WRAPPER", "LAUNCH", "STARTUP", "RCFILE", "PROFILE", "HOME",
+)
+# Long options whose VALUE is the name of a program the tool then runs
+# (``rg --pre PROG``, ``sort --compress-program=PROG``). These are checked for
+# every allow-listed program rather than per program name, because it is the
+# option that makes the command arbitrary execution, not the basename.
+_EXECUTABLE_VALUE_OPTIONS = frozenset({
+    "--pre", "--pre-glob", "--hostname-bin", "--compress-program", "--pager",
+    "--filter", "--exec", "--command", "--rsh", "--editor", "--diff-command",
+    "--sh", "--shell",
+})
+# git global options that make git discover and load a caller-chosen
+# repository's configuration. That configuration can name a program git then
+# runs: a pager, an external diff driver (``diff.external``), a textconv
+# filter, or the filesystem-monitor hook ``core.fsmonitor``, which runs on a
+# plain ``git status`` with no options at all.
+# ``-C`` is a member. It does NOT only change directory: changing directory is
+# exactly what makes git discover that directory's repository and obey its
+# configuration, which is the same mechanism as ``--git-dir``. It was measured
+# on git 2.50.1: ``git -C <dir> diff`` against a repository whose config set
+# ``diff.external``, and ``git -C <dir> status`` against one whose config set
+# ``core.fsmonitor``, each executed the named program.
+# These count only in the GLOBAL position, before the subcommand. After the
+# subcommand the same spelling means something else and stays allowed:
+# ``git rev-parse --git-dir`` prints a path and ``git log -C`` is copy
+# detection.
+_GIT_REDIRECT_OPTIONS = frozenset({
+    "-C", "--exec-path", "--git-dir", "--work-tree", "--namespace",
+    "--super-prefix", "--attr-source",
+})
+# Subcommand options that hand control to a program named by the repository's
+# own configuration, wherever they appear. The ``--no-`` spellings switch the
+# feature off and are not members, so they stay read-only. This membership is
+# an exact-spelling test, unlike the sets read through
+# ``_option_abbreviates``: git's diff option parser does not accept
+# abbreviations, measured on git 2.50.1, where ``--ext`` and ``--textcon`` are
+# both rejected as unrecognised arguments. Prefix-matching them would cost the
+# ordinary read-only ``git log --text`` and buy nothing.
+_GIT_EXTERNAL_PROGRAM_OPTIONS = frozenset({
+    "--ext-diff", "--textconv", "--filters",
+})
+_UNIQ_VALUE_OPTIONS = frozenset({
+    "-f", "-s", "-w", "--skip-fields", "--skip-chars", "--check-chars",
+})
+_FIND_OUTPUT_OPTIONS = frozenset({"-fprint", "-fprint0", "-fprintf", "-fls"})
+# sed script scanning. ``w``/``W`` write a file, ``e`` runs a shell command and
+# ``r``/``R`` pull in a file this classifier cannot bound, so none of them is a
+# read-only program regardless of how the script reaches sed.
+_SED_UNSAFE_COMMANDS = frozenset("wWeErR")
+_SED_TEXT_COMMANDS = frozenset("aic")
+_SED_LABEL_COMMANDS = frozenset("btT:")
+_SED_PLAIN_COMMANDS = frozenset("pPdDhHgGxnNqQzlF=#")
+_SED_SUBSTITUTION_FLAGS = frozenset("gpiImM0123456789")
+_SED_SAFE_SHORT_FLAGS = frozenset("nErsuz")
+_SED_SAFE_LONG_FLAGS = frozenset({
+    "--quiet", "--silent", "--regexp-extended", "--separate", "--null-data",
+    "--unbuffered", "--posix", "--debug", "--sandbox", "--follow-symlinks",
+    "--help", "--version",
+})
 
 
 @dataclass(frozen=True)
@@ -180,22 +291,103 @@ def _shell_segments(command):
     return segments
 
 
-def _unwrap_command(tokens):
-    """Remove well-known execution wrappers and environment assignments."""
+def _redirects_execution(token, letters, long_names):
+    """True when one wrapper option token selects WHICH binary runs or WHERE.
+
+    A wrapper's option grammar decides both, so the two are one class and not
+    two: ``env -C <dir>`` points the child at a caller-chosen repository and
+    ``env -P <dir>`` points env at a caller-chosen directory to resolve the
+    utility from, which runs the attacker's ``git`` outright. Measured on this
+    host: ``env -P/tmp/x/bin git status`` and ``env --P/tmp/x/bin git status``
+    both ran a planted ``git``.
+
+    A ``--`` prefix is a long-option marker only where the program has long
+    options. macOS/BSD env has none - it was measured reading ``--iP/dir``
+    exactly as the cluster ``-iP/dir``, and ``--Path=/tmp/bin`` as ``-P``
+    carrying the value ``ath=/tmp/bin`` - so a ``--`` token that spells no
+    guarded long option is read as a cluster too, but only against the
+    UPPER-CASE guarded letters. Long option names are lower case, so that
+    restriction is what keeps a genuine long spelling (``sudo --list``) from
+    being misread as a cluster carrying a lower-case guarded letter.
+
+    Two named limits, so neither is silent. (1) The same restriction means a
+    ``--`` token is not read against a LOWER-case guarded letter, so
+    ``sudo --is`` is not seen here; sudo 1.9.17p2 was measured rejecting
+    ``--is`` as an unrecognised option, so nothing runs, and env has no
+    lower-case guarded letter at all. (2) This function guards the wrapper's
+    options, not the identity of the program the wrapper finally runs: the
+    policy classifies a program by its basename, so ``./git status`` is an
+    allow, exactly as it is on 49ca7e8. Judging whether a path is trustworthy
+    is a filesystem question this decision path refuses to ask, for the reason
+    recorded where the repository-existence check was rejected - I/O, symlink
+    and relative-path resolution, and a time-of-check window.
+    """
+    if not token.startswith("-") or token in ("-", "--"):
+        return False
+    if _matches_option(token, long_names):
+        return True
+    body = token.lstrip("-").split("=", 1)[0]
+    if token.startswith("--"):
+        letters = [letter for letter in letters if letter.isupper()]
+    return any(letter in body for letter in letters)
+
+
+def _unwrap_command(tokens, assignments=None, redirects=None):
+    """Remove well-known execution wrappers and environment assignments.
+
+    Stripped assignments are appended to ``assignments`` when a list is
+    supplied: they are removed from the command line for classification, but
+    they are not thereby declared harmless, and the caller inspects them.
+
+    A wrapper option that redirects execution before the child runs is
+    appended to ``redirects`` the same way: one that changes directory, and one
+    that changes which binary is found. ``env -C <dir> git status`` and
+    ``sudo --chdir=<dir> git status`` reach a caller-chosen repository's
+    configuration exactly as ``git -C <dir> status`` does; ``env -P <dir> git
+    status`` runs the ``git`` in ``<dir>`` and never reaches the real one. The
+    child's own argument list carries no trace of either.
+    """
     values = list(tokens)
     index = 0
     while index < len(values):
         name = _command_name(values[index])
         if _ASSIGNMENT.match(values[index]):
+            if assignments is not None:
+                assignments.append(values[index])
             index += 1
             continue
-        if name in {"command", "builtin", "nohup", "time"}:
+        if name == "nohup":
+            # nohup appends its child's output to ./nohup.out, so it is not a
+            # transparent wrapper: leave it in place and let it be classified.
+            break
+        if name in {"command", "builtin", "time"}:
+            wrapper_start = index
             index += 1
+            wrote_output = False
             while index < len(values) and values[index].startswith("-"):
                 option = values[index]
                 index += 1
+                if name == "time" and (
+                        _matches_option(
+                            option, ("-o", "--output", "-a", "--append"))
+                        or _option_letters(option) & {"o", "a"}):
+                    # ``time -o FILE`` writes FILE, and so does the glued
+                    # ``time -o/tmp/f`` and the bundled ``time -ao /tmp/f``,
+                    # which an option-name test cannot see, so the letters
+                    # of a short token are read the way a write
+                    # destination is read elsewhere. Rewind to the wrapper
+                    # so the wrapper itself, not its child, is what gets
+                    # classified. Without the rewind the wrapper and its
+                    # option have already been consumed, and
+                    # ``time --output=FILE git status`` is classified as
+                    # the bare ``git status`` it wraps, which is an allow.
+                    wrote_output = True
+                    index = wrapper_start
+                    break
                 if name == "time" and option in ("-f", "-o") and index < len(values):
                     index += 1
+            if wrote_output:
+                break
             continue
         if name == "nice":
             index += 1
@@ -219,32 +411,54 @@ def _unwrap_command(tokens):
             while index < len(values) and values[index].startswith("-"):
                 option = values[index]
                 index += 1
-                if option in ("-u", "-g", "-h", "-p", "-C", "-T") and index < len(values):
+                if _redirects_execution(option, _SUDO_REDIRECT_LETTERS,
+                                        _SUDO_REDIRECT_OPTIONS):
+                    if redirects is not None:
+                        redirects.append(option)
+                if option in ("-u", "-g", "-h", "-p", "-C", "-T", "-D",
+                              "--chdir") and index < len(values):
                     index += 1
             continue
         if name == "env":
             index += 1
+            split_string = False
             while index < len(values):
-                if _ASSIGNMENT.match(values[index]):
+                option = values[index]
+                if _ASSIGNMENT.match(option):
+                    if assignments is not None:
+                        assignments.append(option)
                     index += 1
-                elif values[index] in ("-u", "--unset", "-C", "--chdir"):
-                    index += 2
-                elif values[index].startswith("-"):
-                    index += 1
-                else:
+                    continue
+                if not option.startswith("-"):
                     break
+                if _redirects_execution(option, _ENV_REDIRECT_LETTERS,
+                                        _ENV_REDIRECT_OPTIONS):
+                    if redirects is not None:
+                        redirects.append(option)
+                if _redirects_execution(option, "S", ("--split-string",)):
+                    # ``env -S "sort a -o b"`` re-splits one token into a whole
+                    # command line; that text is not classified here.
+                    split_string = True
+                    break
+                if (option in ("-u", "--unset", "-C", "--chdir")
+                        and index + 1 < len(values)):
+                    index += 2
+                else:
+                    index += 1
+            if split_string:
+                break
             continue
         break
     return values[index:]
 
 
-def _git_subcommand(arguments):
-    """Find a git subcommand after global options such as ``-C``/``-c``."""
+def _git_subcommand_index(arguments):
+    """Position of the git subcommand after global options such as ``-C``/``-c``."""
     index = 0
     while index < len(arguments):
         value = arguments[index]
         if value == "--":
-            return arguments[index + 1].lower() if index + 1 < len(arguments) else ""
+            return index + 1 if index + 1 < len(arguments) else -1
         option = value.split("=", 1)[0]
         if option in _GIT_GLOBAL_VALUE_OPTIONS:
             index += 1 if "=" in value else 2
@@ -252,8 +466,336 @@ def _git_subcommand(arguments):
         if value.startswith("-"):
             index += 1
             continue
-        return value.lower()
-    return ""
+        return index
+    return -1
+
+
+def _git_subcommand(arguments):
+    """Find a git subcommand after global options such as ``-C``/``-c``."""
+    index = _git_subcommand_index(arguments)
+    return arguments[index].lower() if 0 <= index < len(arguments) else ""
+
+
+def _option_name(value):
+    """The option spelling of one token, without any glued ``=value``."""
+    return value.split("=", 1)[0] if value.startswith("-") else ""
+
+
+def _option_abbreviates(option, known):
+    """True when one option spelling is a member of ``known`` or abbreviates one.
+
+    GNU ``getopt_long`` and git's ``parse-options`` both accept any unambiguous
+    abbreviation of a long option, so an exact-spelling test sees neither
+    ``sort --compress-prog=./x``, which runs ./x, nor
+    ``git grep --open-files-in-pag=./x``, which starts ./x. Both were measured:
+    the git one executed its program on git 2.50.1. A member is a prefix of
+    itself, so the full spelling is still covered, and a short option (one dash)
+    falls back to exact membership because short options are not abbreviated.
+    Over-reporting is the direction this test has to err in.
+    """
+    if not option.startswith("--") or len(option) <= 2:
+        return option in known
+    return any(name.startswith(option) for name in known)
+
+
+def _matches_option(token, names):
+    """True when one raw token spells any of ``names``.
+
+    This is the single long-option comparison this policy makes. A glued
+    ``=value`` is dropped and the spelling is then read through
+    ``_option_abbreviates``, so every long option is matched
+    abbreviation-tolerantly and no set can be left behind as an exact-spelling
+    test. A token that is not an option yields ``""`` from ``_option_name``
+    and matches nothing. Short spellings stay exact, because short options are
+    not abbreviated.
+    """
+    return _option_abbreviates(_option_name(token), names)
+
+
+def _option_letters(value):
+    """Letters carried by one bundled short-option token.
+
+    A short option's value can be glued to it (``-oFILE``), and options can be
+    bundled (``-bo``), so every character after the leading dash is reported.
+    That over-reports rather than under-reports, which is the direction a
+    write check has to err in.
+    """
+    if not value.startswith("-") or value.startswith("--") or value == "-":
+        return frozenset()
+    return frozenset(value[1:])
+
+
+def _assignment_redirects_execution(token):
+    """True when one NAME=VALUE token can change what the command executes."""
+    if not _ASSIGNMENT.match(token):
+        return False
+    name = token.split("=", 1)[0].upper()
+    if name in _EXECUTION_ENV_NAMES:
+        return True
+    if any(name.startswith(prefix) for prefix in _EXECUTION_ENV_PREFIXES):
+        return True
+    return any(part in name for part in _EXECUTION_ENV_SUBSTRINGS)
+
+
+def _names_executable_option(arguments):
+    """True when any argument spells an option whose value names a program."""
+    return any(_option_abbreviates(_option_name(value),
+                                   _EXECUTABLE_VALUE_OPTIONS)
+               for value in arguments)
+
+
+def _expands_at_runtime(arguments):
+    """True when an argument is produced by the shell running something else."""
+    return any("$" in value or "`" in value for value in arguments)
+
+
+def _git_runs_a_configured_program(arguments):
+    """True when a git option hands control to a program named by config."""
+    index = _git_subcommand_index(arguments)
+    globals_only = arguments[:index] if index >= 0 else arguments
+    if any(_option_abbreviates(_option_name(value), _GIT_REDIRECT_OPTIONS)
+           for value in globals_only):
+        return True
+    # ``-C`` glued or bundled (``-Cdir``, ``-pCdir``) is a spelling the
+    # membership test above cannot see, because the token is not the option
+    # name. git 2.50.1 rejects these rather than honouring them, but the shape
+    # is refused anyway so this does not rest on one git version's argument
+    # parser. The bare ``-C`` token is excluded on purpose: it is a member of
+    # ``_GIT_REDIRECT_OPTIONS`` above, and a guard that another guard covers
+    # cannot be shown to be load-bearing on its own.
+    if any(value != "-C" and _redirects_execution(value, "C", ())
+           for value in globals_only):
+        return True
+    return any(_option_name(value) in _GIT_EXTERNAL_PROGRAM_OPTIONS
+               for value in arguments)
+
+
+def _git_starts_a_pager_program(arguments):
+    """True when a short option token carries a glued or bundled capital ``-O``.
+
+    ``git grep -O<program>`` starts that program, and ``_option_name`` cannot
+    see it because the value is glued to the letter. Only capital ``O`` is
+    tested: lowercase ``-o`` is ordinary read-only usage (``git ls-files -o``,
+    ``git status -uno``) and the exact token ``-o`` is already refused by the
+    ``_GIT_OUTPUT_OPTIONS`` membership test.
+    """
+    return any("O" in _option_letters(value) for value in arguments)
+
+
+def _sed_skip_regex(program, index):
+    """Skip one ``/regex/`` or ``\\cregexc`` address; -1 when it never closes."""
+    if program[index] == "\\":
+        if index + 1 >= len(program):
+            return -1
+        delimiter = program[index + 1]
+        index += 2
+    else:
+        delimiter = "/"
+        index += 1
+    while index < len(program):
+        if program[index] == "\\":
+            index += 2
+            continue
+        if program[index] == delimiter:
+            index += 1
+            while index < len(program) and program[index] in "IM":
+                index += 1
+            return index
+        index += 1
+    return -1
+
+
+def _sed_skip_substitution(program, index):
+    """Skip one ``s///``/``y///`` command; return (next index, flags) or (-1, "")."""
+    command = program[index]
+    if index + 1 >= len(program):
+        return -1, ""
+    delimiter = program[index + 1]
+    if delimiter.isalnum() or delimiter in " \t\n\\":
+        return -1, ""
+    index += 2
+    parts = 0
+    while index < len(program) and parts < 2:
+        if program[index] == "\\":
+            index += 2
+            continue
+        if program[index] == delimiter:
+            parts += 1
+        index += 1
+    if parts < 2:
+        return -1, ""
+    flags = ""
+    while index < len(program) and program[index] not in " \t;\n}":
+        flags += program[index]
+        index += 1
+    if command == "y" and flags:
+        return -1, ""
+    return index, flags
+
+
+def _sed_program_is_read_only(program):
+    """True only when a sed script provably neither writes nor runs anything.
+
+    sed is not a read-only program: ``w``/``W`` and the ``s///w`` flag write a
+    file, and ``e`` runs a shell command. A complete sed grammar is out of
+    scope for a policy hook, so this scanner reports anything it cannot
+    account for as not read-only.
+    """
+    if not isinstance(program, str):
+        return False
+    index, length = 0, len(program)
+    while index < length:
+        char = program[index]
+        if char in " \t\n;{}!":
+            index += 1
+            continue
+        if char.isdigit() or char in "$,+~":
+            index += 1
+            continue
+        if char in "/\\":
+            index = _sed_skip_regex(program, index)
+            if index < 0:
+                return False
+            continue
+        if char in _SED_UNSAFE_COMMANDS:
+            return False
+        if char in "sy":
+            index, flags = _sed_skip_substitution(program, index)
+            if index < 0 or any(flag not in _SED_SUBSTITUTION_FLAGS for flag in flags):
+                return False
+            continue
+        if char in _SED_TEXT_COMMANDS:
+            newline = program.find("\n", index)
+            index = length if newline < 0 else newline + 1
+            continue
+        if char in _SED_LABEL_COMMANDS:
+            index += 1
+            while index < length and program[index] not in ";\n}":
+                index += 1
+            continue
+        if char in _SED_PLAIN_COMMANDS:
+            index += 1
+            if char == "#":
+                newline = program.find("\n", index)
+                index = length if newline < 0 else newline + 1
+                continue
+            while index < length and program[index] not in " \t;\n}":
+                if not program[index].isdigit():
+                    return False
+                index += 1
+            continue
+        return False
+    return True
+
+
+def _classify_sed(arguments):
+    """Classify sed by its script and options, never by its name alone."""
+    scripts, positional, index = [], [], 0
+    while index < len(arguments):
+        value = arguments[index]
+        option = _option_name(value)
+        if value == "--":
+            positional.extend(arguments[index + 1:])
+            break
+        if option in ("-e", "--expression") or option in ("-f", "--file"):
+            if option in ("-f", "--file"):
+                return "ask", "sed script file cannot be classified before it runs"
+            if "=" in value:
+                scripts.append(value.split("=", 1)[1])
+            elif index + 1 < len(arguments):
+                scripts.append(arguments[index + 1])
+                index += 1
+            else:
+                return "ask", "sed expression is missing its script"
+        elif option == "--in-place" or option == "--inplace":
+            return "ask", "in-place edit requires user approval"
+        elif value.startswith("--"):
+            if option in _SED_SAFE_LONG_FLAGS:
+                pass
+            elif option in ("-l", "--line-length"):
+                if "=" not in value:
+                    index += 1
+            else:
+                return "ask", "sed option is not on the read-only allowlist"
+        elif value.startswith("-") and value != "-":
+            letters = value[1:]
+            split = next((position for position, letter in enumerate(letters)
+                          if letter in "ef"), None)
+            head = letters if split is None else letters[:split]
+            if "i" in head:
+                return "ask", "in-place edit requires user approval"
+            if any(letter not in _SED_SAFE_SHORT_FLAGS for letter in head):
+                return "ask", "sed option is not on the read-only allowlist"
+            if split is not None:
+                if letters[split] == "f":
+                    return "ask", "sed script file cannot be classified before it runs"
+                remainder = letters[split + 1:]
+                if remainder:
+                    scripts.append(remainder)
+                elif index + 1 < len(arguments):
+                    scripts.append(arguments[index + 1])
+                    index += 1
+                else:
+                    return "ask", "sed expression is missing its script"
+        else:
+            positional.append(value)
+        index += 1
+    if not scripts:
+        if not positional:
+            return "ask", "sed has no script to classify"
+        operands = positional[1:]
+        scripts.append(positional[0])
+    else:
+        operands = positional
+    # Only the file operands are scanned: ``$`` is a legal sed address meaning
+    # the last line, so scanning the script text would reject ``sed '$d'``.
+    if _expands_at_runtime(operands):
+        return "ask", "dynamic shell expansion requires user approval"
+    if any(not _sed_program_is_read_only(script) for script in scripts):
+        return "ask", "sed script can write a file or run a command"
+    return "allow", "command is on the explicit read-only allowlist"
+
+
+def _uniq_names_an_output_file(arguments):
+    """uniq's second file operand is the file it overwrites."""
+    positional, index = [], 0
+    while index < len(arguments):
+        value = arguments[index]
+        if value == "--":
+            positional.extend(arguments[index + 1:])
+            break
+        if _option_name(value) in _UNIQ_VALUE_OPTIONS and "=" not in value:
+            index += 2
+            continue
+        if value.startswith("-") and value != "-":
+            index += 1
+            continue
+        positional.append(value)
+        index += 1
+    return len(positional) > 1
+
+
+def _classify_git_remote(arguments):
+    """``git remote`` lists remotes; its sub-subcommands rewrite configuration."""
+    index = _git_subcommand_index(arguments)
+    rest = [value for value in arguments[index + 1:] if not value.startswith("-")]
+    if not rest:
+        return "allow", "command is on the explicit read-only allowlist"
+    action = rest[0].lower()
+    if action in _GIT_REMOTE_MUTATING:
+        return "ask", "Git remote configuration change requires user approval"
+    if action == "show":
+        return "ask", "Git remote show contacts the remote and requires approval"
+    if action in _GIT_REMOTE_READ_ONLY:
+        return "allow", "command is on the explicit read-only allowlist"
+    return "ask", "Git remote subcommand is not on the read-only allowlist"
+
+
+def _names_write_destination(arguments):
+    """True when any argument spells a long option that names a written file."""
+    return any(_option_abbreviates(_option_name(value),
+                                   _WRITE_DESTINATION_OPTIONS)
+               for value in arguments)
 
 
 def _option_value(arguments, names):
@@ -270,10 +812,29 @@ def _option_value(arguments, names):
 
 
 def _classify_simple_command(tokens, depth=0):
-    """Return an explicit decision; unknown executable behavior is never safe."""
-    command = _unwrap_command(tokens)
+    """Return an explicit decision; unknown executable behavior is never safe.
+
+    An environment assignment that was stripped as a wrapper can only make the
+    command less safe, never more, so it can downgrade an ``allow`` but is not
+    allowed to soften a ``deny`` reached by the command itself.
+    """
+    assignments = []
+    redirects = []
+    command = _unwrap_command(tokens, assignments, redirects)
     if not command:
         return "ask", "empty or assignment-only shell command needs approval"
+    action, reason = _classify_unwrapped_command(command, depth)
+    if action == "allow" and any(_assignment_redirects_execution(value)
+                                 for value in assignments):
+        return "ask", "environment assignment can redirect what the command runs"
+    if action == "allow" and redirects:
+        return "ask", ("wrapper points the command at a caller-chosen "
+                       "directory or program")
+    return action, reason
+
+
+def _classify_unwrapped_command(command, depth=0):
+    """Classify one simple command whose wrappers have already been removed."""
     name = _command_name(command[0])
     arguments = command[1:]
 
@@ -295,11 +856,18 @@ def _classify_simple_command(tokens, depth=0):
         return "deny", "dynamic shell command cannot be classified safely"
 
     if name == "git":
+        # ``--config-env=core.pager=VAR`` injects configuration exactly like
+        # ``-c`` but does not start with ``-c``, so it is named separately.
         if any("alias." in value.lower() or value == "-c" or value.startswith("-c")
+               or _matches_option(value, ("--config-env",))
                for value in arguments):
             return "deny", "dynamic git configuration cannot be classified safely"
         subcommand = _git_subcommand(arguments)
         if "$" in subcommand or "`" in subcommand:
+            return "deny", "dynamic git command cannot be classified safely"
+        # The subcommand is not the only place substitution can hide:
+        # ``git log `./x`` `` runs ./x to produce an argument.
+        if _expands_at_runtime(arguments):
             return "deny", "dynamic git command cannot be classified safely"
         if subcommand in {"reset", "clean"}:
             flattened = " ".join(arguments).lower()
@@ -312,9 +880,25 @@ def _classify_simple_command(tokens, depth=0):
                     any(value.startswith("+") for value in arguments)):
                 return "deny", "destructive command is blocked"
             return "ask", "external state change requires user approval"
+        # Checked after the destructive subcommands, never before them: a
+        # redirect is an ``ask`` and ``git -C <dir> reset --hard`` is a
+        # ``deny``, and the stricter answer is the one that has to survive.
+        if _git_runs_a_configured_program(arguments):
+            return "ask", "Git option redirects git to a caller-chosen path or program"
         if subcommand in _READ_ONLY_GIT:
             # Even nominally read-only subcommands can invoke a pager or text
             # converter through caller-supplied configuration, rejected above.
+            # They can also be told to write: ``git diff --output=FILE`` writes
+            # FILE and ``git grep -O CMD`` starts a program, so the arguments
+            # decide here, not the subcommand name.
+            if (_names_write_destination(arguments) or
+                    any(_option_abbreviates(_option_name(value),
+                                            _GIT_OUTPUT_OPTIONS)
+                        for value in arguments) or
+                    _git_starts_a_pager_program(arguments)):
+                return "ask", "Git command names an output destination"
+            if subcommand == "remote":
+                return _classify_git_remote(arguments)
             return "allow", "command is on the explicit read-only allowlist"
         return "ask", "Git command is not on the read-only allowlist"
 
@@ -381,14 +965,35 @@ def _classify_simple_command(tokens, depth=0):
         if any(value in {"-delete", "-exec", "-execdir", "-ok", "-okdir"}
                for value in arguments):
             return "deny", "dynamic or mutating find command is blocked"
+        if any(_option_name(value) in _FIND_OUTPUT_OPTIONS for value in arguments):
+            return "ask", "find writes to a named output file"
+        if _names_executable_option(arguments):
+            return "ask", "command names an option whose value is a program"
+        # An argument built by command substitution is produced by running
+        # something this classifier never sees.
+        if _expands_at_runtime(arguments):
+            return "ask", "dynamic shell expansion requires user approval"
         return "allow", "command is on the explicit read-only allowlist"
     if name == "sed":
-        if any(value == "-i" or value.startswith("-i") for value in arguments):
-            return "ask", "in-place edit requires user approval"
-        return "allow", "command is on the explicit read-only allowlist"
+        return _classify_sed(arguments)
     if name in _READ_ONLY_COMMANDS:
         if any("$" in value or "`" in value for value in arguments):
             return "ask", "dynamic shell expansion requires user approval"
+        # A program on this list is read-only only while its arguments keep it
+        # that way: ``sort -o FILE``, ``uniq IN OUT`` and ``yq -i`` all write.
+        if _names_write_destination(arguments):
+            return "ask", "command names a write destination"
+        # ``rg --pre PROG`` and ``sort --compress-program=PROG`` run PROG, so a
+        # read-only basename is not a read-only command with these present.
+        if _names_executable_option(arguments):
+            return "ask", "command names an option whose value is a program"
+        if name == "sort" and any("o" in _option_letters(value) for value in arguments):
+            return "ask", "sort writes to a named output file"
+        if name == "yq" and any(letter in _option_letters(value)
+                                for value in arguments for letter in "is"):
+            return "ask", "yq can edit files in place"
+        if name == "uniq" and _uniq_names_an_output_file(arguments):
+            return "ask", "uniq overwrites its second file operand"
         return "allow", "command is on the explicit read-only allowlist"
     return "ask", "command is not on the explicit read-only allowlist"
 

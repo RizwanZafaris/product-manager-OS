@@ -378,9 +378,19 @@ def _repin(args: argparse.Namespace) -> dict[str, Any]:
                     "modified": question_modified,
                 })
 
-    gates_to_prove_again = (
-        [entry["bank_id"] for entry in changed] + removed
-    )
+    # Only a bank this product has already approved can have a gate to prove
+    # again. An approval records the fingerprint of the questions its bank
+    # asked, so a bank with no approval has nothing that can go stale, and
+    # `pmos status` reports none. This field used to list every changed bank,
+    # including banks the product had never gated, which named a re-proof the
+    # runtime never asks for and contradicted README.md's account of adopting a
+    # question added to a bank the product has not approved.
+    stored = json.loads(saved_state) if saved_state is not None else None
+    approved = set(stored.get("gates") or {}) if isinstance(stored, dict) else set()
+    gates_to_prove_again = [
+        bank_id for bank_id in [entry["bank_id"] for entry in changed] + removed
+        if bank_id in approved
+    ]
 
     result: dict[str, Any] = {
         "ok": True,

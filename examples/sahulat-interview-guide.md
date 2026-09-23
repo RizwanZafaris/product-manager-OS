@@ -81,6 +81,8 @@ Agent track: "Hi, I'm Hira from Sahulat's product team, this is Usman. I want to
 | "How much would you pay to skip the trip to the bill shop?" | nobody prices a trip in the abstract | "What do you spend on this today, including the fare and the shop's fee?" |
 | Anything that names Sahulat's bill-pay plans before the close | the session stops producing evidence the moment the idea is on the table | park it for the close |
 
+Block E's closing commitment probe is the one exemption to this table, and it is one question wide. It asks what the participant would do next with their next real bill, which is a step they can take this week and one we can check against what they afterwards do, not an opinion about a feature. Every other question in this guide asks about a past event. The exit gate states the exemption in the same words, as does the template this guide was filled from.
+
 ## 6. Close (3 minutes customers, 2 minutes agents)
 
 - Thank them; ask who else is worth talking to, an introduction on the spot if one is offered
@@ -109,7 +111,7 @@ The agent track's Block D forces question is part of v2, matching theme T3: agen
 Sessions run with this guide are recorded in sahulat-interview-notes.md and synthesized in sahulat-user-research-plan.md section 6, toward [Gate 1](../os/STAGE-GATES.md).
 
 - [x] Every block serves a named research question, and every research question has a block
-- [x] No question asks about the idea, the future, or a price; every question asks about a specific past event or its cost
+- [x] No question asks about the idea or a price, and every question asks about a specific past event or its cost, with one exemption: Block E's closing commitment probe, which asks what the participant would do next with their next real bill
 - [x] The commitment probe is present and sits last
 - [x] The guide was piloted and the revision log has at least one row
 - [x] Time budgets sum to the session length, including the close: customers 2 + 5 + 12 + 8 + 10 + 5 + 3 = 45 minutes; agents 1 + 3 + 8 + 5 + 6 + 5 + 2 = 30 minutes, matching N61

@@ -55,10 +55,10 @@ Filled example: [Expense Copilot (ledgerline-roadmap.md)](../../examples/ledgerl
 
 <!-- Confidence below 70% does not belong in Now. The italic row shows a completed entry. -->
 
-| Theme | Initiative | Outcome it serves (objective ref) | Success measure | Target period | Confidence | Dependencies | Status |
-|---|---|---|---|---|---|---|---|
-| | | | [the number that moves, and to what] | [month or sprint] | [%] | | Not started / In progress / Done |
-| *reduce manual entry (ILLUSTRATIVE)* | *receipt auto-extraction v1* | *O1: submission time cut in half* | *median submission time 14 min to 7 min* | *[month]* | *85%* | *storage service upgrade* | *In progress* |
+| ID | Theme | Initiative | Owner | Outcome it serves (objective ref) | Success measure | Target period | Confidence | Dependencies | Status |
+|---|---|---|---|---|---|---|---|---|---|
+| [R-n] | [theme] | [initiative] | [one name] | [objective ref] | [the number that moves, and to what] | [month or sprint] | [%] | [DEP-n, or none] | [Not started / In progress / Done] |
+| *R-1* | *reduce manual entry (ILLUSTRATIVE)* | *receipt auto-extraction v1* | *Dana Okafor* | *O1: submission time cut in half* | *median submission time 14 min to 7 min* | *2026 Q3* | *85%* | *DEP-1* | *In progress* |
 
 ## Next (planned, shaped, not yet committed)
 
@@ -68,9 +68,9 @@ Filled example: [Expense Copilot (ledgerline-roadmap.md)](../../examples/ledgerl
      decision that belongs in the change log. -->
 
 
-| Theme | Initiative | Outcome it serves | Success measure | Target period | Confidence | Dependencies | Status |
-|---|---|---|---|---|---|---|---|
-| | | | [the number that moves, and to what] | [quarter] | [%] | | Shaping / Shaped |
+| ID | Theme | Initiative | Owner | Outcome it serves | Success measure | Target period | Confidence | Dependencies | Status |
+|---|---|---|---|---|---|---|---|---|---|
+| [R-n] | [theme] | [initiative] | [one name] | [objective ref] | [the number that moves, and to what] | [quarter] | [%] | [DEP-n, or none] | [Shaping / Shaped] |
 
 ## Later (directional themes only)
 
@@ -79,6 +79,109 @@ Filled example: [Expense Copilot (ledgerline-roadmap.md)](../../examples/ledgerl
 | Theme | Problem it addresses | Earliest it could enter Next | Signal that would promote it |
 |---|---|---|---|
 | | | [quarter] | [what evidence moves it up] |
+
+## Initiative records
+
+<!-- The public tables above stay compact so a reader can see the plan at a
+     glance. The decisions that make a Now row a commitment do not fit in a
+     table cell, and putting them in one turns the roadmap into a spreadsheet
+     nobody reads. They live here instead: one record per initiative, so a
+     commitment resolves to one owner, one capacity reservation, the
+     dependencies it rests on and the decision that chose it over the options
+     it beat. -->
+
+- **ID:** [R-n]
+- **Owner:** [one name, not a team]
+- **Outcome (objective ref):** [the objective this serves, by its ref in the OKR sheet]
+- **Strategy or OKR ref:** [okrs.md copy, or the strategy statement this follows]
+- **Evidence ref:** [discovery note, evidence ledger row or metric that justifies it]
+- **Appetite:** [n] weeks, worth it because [reason]
+- **Dependency IDs:** [DEP-1, DEP-2, or none]
+- **Score sheet:** [where the RICE or WSJF arithmetic for this item is written]
+- **Capacity reservation:** [n] [unit] on [team], reserved in [capacity-plan.md copy]
+- **Commitment type:** [committed / shaped / directional]
+- **Entry rule:** [what must be true before this starts]
+- **Exit rule:** [the number that says it is done, not a demo]
+- **Rejected options and override decision:** [decision-log.md or decision-memo.md row]
+
+*Every row in Now carries exactly one record here. The ID is stable for the life
+of the initiative and is never reused, because the capacity plan, the dependency
+register and the change log all refer back to it. Entry and exit rules have to be
+checkable by someone who was not in the planning meeting: the exit rule is a
+number, not a demo.*
+
+The record below fills the form for the ILLUSTRATIVE row in Now. Delete it with that row.
+
+- **ID:** R-1
+- **Owner:** Dana Okafor
+- **Outcome (objective ref):** O1: submission time cut in half
+- **Strategy or OKR ref:** [okrs.md](okrs.md) copy for this product, objective O1
+- **Evidence ref:** ILLUSTRATIVE: the time-and-motion study behind O1
+- **Appetite:** 6 weeks, worth it because a longer bet on extraction outruns the evidence for it
+- **Dependency IDs:** DEP-1
+- **Score sheet:** ILLUSTRATIVE: the RICE sheet for this planning round
+- **Capacity reservation:** 40 person-days on extraction squad, reserved in [capacity plan](capacity-plan.md)
+- **Commitment type:** committed
+- **Entry rule:** the storage service upgrade is delivered and in production
+- **Exit rule:** median submission time at or below 7 minutes for two consecutive weeks
+- **Rejected options and override decision:** [decision log](../execution/decision-log.md) row for this planning round
+
+## Capacity line
+
+<!-- Committed work is planned to no more than 80 percent of net available
+     capacity. The line does not move; the initiative does. The figures here are
+     copied from the linked capacity plan, not re-estimated in this file. -->
+
+| Team | Period | Plannable (80 percent of net) | Unit | Reserved by Now records | Capacity plan |
+|---|---|---|---|---|---|
+| [team] | [period] | [n] | [person-days or person-weeks] | [n] | [capacity-plan.md copy] |
+| *extraction squad* | *2026 Q3* | *240* | *person-days* | *40* | *[capacity plan](capacity-plan.md)* |
+
+The reserved figure is the sum of the capacity reservations in the Now records above, for that team and in that unit. When it exceeds the plannable figure the roadmap is over capacity and the surplus initiative moves to Next.
+
+## Dependency index
+
+<!-- The Now records cite dependencies by ID, and this is where each ID resolves
+     to a named deliverable and to its row in the dependency register. An ID that
+     is not listed here is not a dependency anybody is governing. -->
+
+| Dependency ID | Deliverable (not a team name) | Owning team | Register row |
+|---|---|---|---|
+| [DEP-n] | [deliverable] | [team] | [dependency-register.md copy, row n] |
+| *DEP-1* | *storage service upgrade in production* | *platform* | *[dependency register](../execution/dependency-register.md), row 1* |
+
+An initiative may carry no dependency, in which case its record says none.
+
+## Quarterly gates
+
+<!-- A roadmap without gates is a wish list with dates. Entry says what must be
+     true to start; exit says what must be demonstrably true to call it done, and
+     exit is a number rather than a demo. -->
+
+| Period | Entry gate (what must be true to start) | Exit gate (a number, not a demo) | Top risks (owner, trigger) |
+|---|---|---|---|
+| [period] | [what must be true to start] | [the number] | [risk, owner, trigger] |
+| *2026 Q3* | *storage service upgrade in production; extraction eval set signed off* | *median submission time at or below 7 minutes for two consecutive weeks* | *extraction accuracy below the eval threshold (Dana Okafor, first weekly eval run)* |
+
+Every period named in the Now table needs a row here.
+
+## Defence page
+
+<!-- The page that survives the executive review. Each heading answers one
+     objection that is asked every time, so answering it in writing first is
+     cheaper than answering it in the room. -->
+
+### Highest-scored items not funded
+
+[The five highest-scored items that did not make the cut, each with one line of reason]
+
+### Funded despite a lower score
+
+[The items pinned by a mandate or a dependency, each with the mandate or dependency that pinned it]
+
+### What would change this sequence
+
+[The two assumptions doing the most work, and what evidence would overturn each]
 
 ## Parked and killed
 
@@ -115,6 +218,8 @@ Filled example: [Expense Copilot (ledgerline-roadmap.md)](../../examples/ledgerl
 | Nothing moves | The same items sit in Now for months while work happens elsewhere | Anything in Now for more than two cycles is flagged: kill it, or re-commit with a new target period and a change-log row |
 | Killed work vanishes | An item disappears and three months later somebody asks what happened to it | Killed items move to the parked and killed table with one line of reason |
 | Confidence set once | The confidence column was filled at planning and never touched again | Confidence is re-entered every cycle. A carried-over value is not a confidence |
+| Committed beyond capacity | Now holds more work than the team can carry, and the overflow is discovered in month two | Every Now record reserves capacity by team and unit, and the capacity line fails when the reservations exceed the plannable figure |
+| Nobody owns it | A row names a team, or two names, so when it slips there is no one to ask | Exactly one named owner per row, carried into that initiative's record |
 
 ## Exit gate
 
@@ -123,10 +228,13 @@ Filled example: [Expense Copilot (ledgerline-roadmap.md)](../../examples/ledgerl
 
 This roadmap is fit to share when:
 
+- [ ] Every Now and Next initiative carries a stable ID and exactly one accountable owner, not a team
+- [ ] Every Now initiative has one record under Initiative records, with its appetite, capacity reservation, commitment type, entry and exit rules and the decision that chose it over the options it beat
 - [ ] Every Now and Next initiative names the objective it serves, and that objective exists in the OKR sheet
 - [ ] Confidence is stated per row, and nothing under 70% sits in Now
 - [ ] Later contains themes, not dated features
-- [ ] Dependencies are named, and each appears in the [dependency register](../execution/dependency-register.md)
+- [ ] Dependencies are named by ID, each ID resolves in the dependency index, and each appears in the [dependency register](../execution/dependency-register.md)
+- [ ] The capacity line holds: reservations for Now sit at or below the plannable figure, and every period in Now has an entry and an exit gate
 - [ ] At least one thing has been parked or killed since the last review, or the owner has written why not
 - [ ] The change log shows the roadmap is alive, not laminated
 

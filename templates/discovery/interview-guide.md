@@ -100,6 +100,13 @@ Filled example: [Sahulat Bill Pay](../../examples/sahulat-interview-guide.md)
 
 ### Block E: priority and commitment (RQ: [ids], [n] minutes)
 
+<!-- The one exemption to the past-behaviour rule, and why it is safe: the
+     closing probe asks what they would do next, not whether they like the
+     idea. The answer is a step they could take this week, so it is checkable
+     against what they actually do afterwards; "sounds great" is not one of the
+     answers. Keep it last, and keep the idea itself out of the session until
+     the close. The exit gate names this exemption in the same words. -->
+
 | Question | Probes | Listening for |
 |---|---|---|
 | Of everything we discussed, what would you fix first, and why that one? | What would you do with the time or money back? | ranked pain |
@@ -135,7 +142,7 @@ Filled example: [Sahulat Bill Pay](../../examples/sahulat-interview-guide.md)
 Sessions run with this guide are recorded in [interview-notes.md](interview-notes.md) and synthesized in [user-research-plan.md](user-research-plan.md) section 6, toward [Gate 1](../../os/STAGE-GATES.md).
 
 - [ ] Every block serves a named research question, and every research question has a block
-- [ ] No question asks about the idea, the future, or a price; every question asks about a specific past event or its cost
+- [ ] No question asks about the idea or a price, and every question asks about a specific past event or its cost, with one exemption: the final commitment probe in Block E, which asks what the participant would do next
 - [ ] The commitment probe is present and sits last
 - [ ] The guide was piloted and the revision log has at least one row
 - [ ] Time budgets sum to the session length, with slack for the close

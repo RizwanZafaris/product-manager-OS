@@ -70,12 +70,26 @@ before anyone read the data.
 - Labeling method and who labeled: [method, names]
 - Versioned alongside the model version: [yes or no]
 - Refresh cadence, and who adds production failures back in: [cadence, name]
+- Held-out set version and content hash each recorded result was measured on: [version identifier, SHA-256]
+- Cases per segment, and the smallest segment's count: [segment: n; segment: n; smallest: [segment], n]
+- Floor below which a segment is reported as a count rather than a rate: [20 cases, ILLUSTRATIVE]
+
+<!-- Two results are comparable only when they were measured on the same cut, and a
+     dataset keeps its name while rows are added, relabelled and dropped. A pass rate
+     carrying no version and no hash therefore cannot be reproduced and cannot be
+     contested: "0.91 on the golden set" names a number, not an experiment. The segment
+     counts are the second half of the same problem. A rate over a handful of cases is a
+     count wearing a percentage sign, and it moves a whole point per case, so a segment
+     below the floor above is written "x of n" and never as a rate. The smallest segment
+     is named because it is the number a reader should see first, and it is the one a
+     table of rounded percentages hides best. -->
 
 ### In-product feedback signal
 
 <!-- The rating control a user sees (thumbs, stars) feeds this dataset; it
      never substitutes for it. See
-     ../architecture/ai-interaction-spec.md for the control's own spec. -->
+     [ai-interaction-spec.md](./ai-interaction-spec.md), which sits beside this
+     file, for the control's own spec. -->
 
 - **Rating schema:** [rating value, reason code from a fixed list, optional free text, model and prompt version at time of rating, trace id]
 - **Who may rate:** [end user / internal reviewer / both, and whether an anonymous session may rate]
@@ -159,6 +173,8 @@ never averaged into one flattering number.
 - [ ] Every model-graded row that gates a release cites its validation against held-out human labels: precision, recall, and false-accept rate
 - [ ] Agentic checks verify external state, and each definition states pass@k or pass^k
 - [ ] The dataset location, size, and labeling method are stated, not implied
+- [ ] Every recorded result names the held-out set version and content hash it was measured on
+- [ ] Segment counts are stated, the smallest is named, and a segment below the stated floor is reported as "x of n" rather than as a rate
 - [ ] Someone is named for feeding production failures back into the dataset
 - [ ] The upgrade re-run rule is written and owned
 - [ ] Re-run triggers independent of model or prompt changes (new population, drift threshold) are written and owned
