@@ -34,6 +34,7 @@ import sys
 import tempfile
 import unittest
 import unittest.mock
+from dataclasses import replace
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -63,6 +64,11 @@ from tools.docs_contract import (check as check_docs,  # noqa: E402
                                  READINESS_CLAIMS)
 from tools import exec_surface  # noqa: E402
 from tools.graph import check_unique_ids, node_id  # noqa: E402
+from tools.approval_gate import (CASES, EXAMPLE, EXECUTABLE_STATE,  # noqa: E402
+                                 NOW, NULLIFIERS, OUTCOMES, PARAMS, POSITIVE,
+                                 RECORD_FIELDS, RULES, RULE_TERMS, STATES,
+                                 TEMPLATE, TERM_NAMES, Attempt,
+                                 check as check_approvals, decide, revision)
 
 
 def copy_tree(tmp):
@@ -3217,6 +3223,7 @@ class ReadinessCategoryExitTests(unittest.TestCase):
 
 
 <<<<<<< ours
+<<<<<<< ours
 class ExampleAvailabilityGateTests(unittest.TestCase):
     """tools/example_availability.py --check: a domain card's statement about
     which of its templates have filled examples is generated from the declared
@@ -4072,6 +4079,741 @@ class RoadmapReversionTests(unittest.TestCase):
         self.assertEqual(set(), pinned - reported,
                          "reversion rows for a guard the check no longer reports: %s"
                          % sorted(pinned - reported))
+>>>>>>> theirs
+=======
+class ApprovalGateTests(unittest.TestCase):
+    """F13. The human-approval template used to stop at trigger, timeout and
+    logging: nothing bound the yes to the bytes the approver saw, so an edited
+    payload, an expired approval, a revoked one and one already spent all
+    executed like a fresh one, and a send whose outcome was never established
+    could be retried into a second real send. The template now carries R1 to R6
+    and NAC-1 to NAC-6; these tests are what stops that being prose. Each
+    negative fixture must be refused for its own rule, both positive controls
+    must execute, and the document check must fail when a rule, a record field
+    or a negative criterion is dropped from the template."""
+
+    def test_every_rule_has_a_negative_fixture_and_a_criterion(self):
+        self.assertEqual({criterion for _id, _name, _reason, criterion in RULES},
+                         set(CASES))
+        self.assertEqual(len(RULES), 6)
+
+    def test_each_negative_case_is_refused_for_its_own_rule(self):
+        reason_of = {criterion: (rule, reason)
+                     for rule, _name, reason, criterion in RULES}
+        for criterion, (approval, attempt, allowed, reason) in CASES.items():
+            with self.subTest(criterion=criterion):
+                self.assertFalse(allowed, "a negative fixture must expect a refusal")
+                verdict = decide(approval, attempt)
+                self.assertFalse(verdict.allowed,
+                                 "%s executed; it must be refused" % criterion)
+                self.assertEqual(reason, verdict.reason)
+                rule, expected = reason_of[criterion]
+                self.assertEqual(expected, verdict.reason)
+                self.assertEqual(rule, verdict.rule)
+
+    def test_the_positive_controls_execute(self):
+        # Without these a decide() that refused everything would satisfy all
+        # six negative fixtures, which is the way this guard fails open.
+        for name, (approval, attempt, allowed, reason) in POSITIVE.items():
+            with self.subTest(control=name):
+                self.assertTrue(allowed)
+                verdict = decide(approval, attempt)
+                self.assertTrue(verdict.allowed,
+                                "%s was refused: %s" % (name, verdict.reason))
+                self.assertEqual(reason, verdict.reason)
+
+    def test_an_unknown_outcome_blocks_the_retry_until_it_is_reconciled(self):
+        # R6 read as one pair: the same approval and the same parameters, with
+        # and without the reconciliation. The refusal has to come from the
+        # reconciliation and nothing else.
+        approval, blocked, _allowed, _reason = CASES["NAC-6"]
+        self.assertEqual("unreconciled", decide(approval, blocked).reason)
+        reconciled = Attempt(blocked.parameters, blocked.execution_token,
+                             blocked.at, prior_outcome="unknown",
+                             reconciled=True)
+        self.assertEqual("replay", decide(approval, reconciled).reason)
+
+    def test_the_shipped_documents_carry_the_whole_contract(self):
+        self.assertEqual([], check_approvals(REPO))
+
+    def test_dropping_a_rule_a_field_or_a_criterion_fails_the_check(self):
+        # Every rule and every negative criterion, in BOTH documents, and every
+        # record field in the template. Erosion takes one row at a time, and
+        # the row someone drops next will not be the one a review happened to
+        # try: proving R5 is caught in the template says nothing about R2 in
+        # the example. The loops are driven by RULES and RECORD_FIELDS, so a
+        # rule or field added later is swept without anyone remembering to.
+        removals = []
+        for rule_id, name, _reason, criterion in RULES:
+            for relative in (TEMPLATE, EXAMPLE):
+                removals.append((relative, "**%s %s.**" % (rule_id, name),
+                                 "rule %s" % rule_id))
+                removals.append((relative, "| %s |" % criterion,
+                                 "negative criterion %s" % criterion))
+        for field_name in RECORD_FIELDS:
+            removals.append((TEMPLATE, "| %s |" % field_name,
+                             "%r is not stated" % field_name))
+        removals.append((TEMPLATE, "| State |", "State row"))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            for relative, marker, expected in removals:
+                with self.subTest(document=relative, marker=marker):
+                    path = root / relative
+                    text = path.read_text(encoding="utf-8")
+                    self.assertEqual(1, text.count(marker),
+                                     "%r is not a unique row in %s"
+                                     % (marker, relative))
+                    kept = [line for line in text.splitlines(True)
+                            if marker not in line]
+                    path.write_text("".join(kept), encoding="utf-8")
+                    issues = check_approvals(root)
+                    path.write_text(text, encoding="utf-8")
+                    self.assertTrue(issues, "removing %r from %s was not caught"
+                                    % (marker, relative))
+                    self.assertTrue(any(expected in issue and relative in issue
+                                        for issue in issues),
+                                    "%s was reported as %r" % (expected, issues))
+            self.assertEqual([], check_approvals(root),
+                             "the copy was not restored")
+    def test_dropping_a_state_from_the_vocabulary_fails_the_check(self):
+        # Erosion, not deletion: the State row survives with one state quietly
+        # gone, which is how an executor stops recognising "revoked". All seven
+        # states, driven by STATES, because the one dropped next will not be
+        # the one review happened to try.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            path = root / TEMPLATE
+            text = path.read_text(encoding="utf-8")
+            rows = [line for line in text.splitlines(True)
+                    if line.startswith("| State |")]
+            self.assertEqual(1, len(rows), "the template has no single State row")
+            row = rows[0]
+            for state in STATES:
+                with self.subTest(state=state):
+                    eroded = row.replace(state, "", 1)
+                    self.assertNotEqual(row, eroded)
+                    path.write_text(text.replace(row, eroded, 1),
+                                    encoding="utf-8")
+                    issues = check_approvals(root)
+                    path.write_text(text, encoding="utf-8")
+                    self.assertTrue(any("%r is not in the State row" % state
+                                        in issue for issue in issues), issues)
+            self.assertEqual([], check_approvals(root),
+                             "the copy was not restored")
+    def test_the_record_fields_and_states_are_the_ones_the_template_names(self):
+        text = (REPO / "templates" / "ai"
+                / "human-approval-gates.md").read_text(encoding="utf-8")
+        self.assertEqual(7, len(RECORD_FIELDS))
+        for name in RECORD_FIELDS:
+            self.assertIn("| %s |" % name, text)
+        for state in STATES:
+            self.assertIn(state, text)
+
+    # --- the guards below had no fixture of their own until review said so ---
+    # Each one exists because reverting that single guard, alone, produced no
+    # test failure at all. Two of the five were fail-opens: a forged execution
+    # token executed, and an approval carrying no authority scope executed.
+
+    def test_a_forged_execution_token_is_refused(self):
+        # R5's own sentence promises "the same approval ID or execution token".
+        # Every fixture presented the right token, so the comparison could be
+        # deleted and a bogus token would execute.
+        approval, attempt, _allowed, _reason = POSITIVE["clean"]
+        forged = Attempt(attempt.parameters, "tok-FORGED", attempt.at)
+        verdict = decide(approval, forged)
+        self.assertFalse(verdict.allowed, "a forged token executed")
+        self.assertEqual("replay", verdict.reason)
+        self.assertEqual("R5", verdict.rule)
+
+    def test_an_empty_authority_scope_is_not_a_blank_cheque(self):
+        # An approval whose authority scope answers nothing authorises nothing.
+        # The default was deliberate and had no fixture, so flipping it to
+        # `return True` let it through silently.
+        approval, attempt, _allowed, _reason = POSITIVE["clean"]
+        unscoped = replace(approval, authority_scope={})
+        verdict = decide(unscoped, attempt)
+        self.assertFalse(verdict.allowed, "an empty scope authorised the send")
+        self.assertEqual("out-of-scope", verdict.reason)
+        self.assertEqual("R2", verdict.rule)
+
+    def test_a_superseded_approval_is_refused_as_superseded(self):
+        # It failed closed either way, but as "not-approved" under a different
+        # branch, so the state that R1 exists to produce was never exercised.
+        approval, attempt, _allowed, _reason = POSITIVE["clean"]
+        verdict = decide(replace(approval, state="superseded"), attempt)
+        self.assertFalse(verdict.allowed)
+        self.assertEqual("superseded", verdict.reason)
+        self.assertEqual("R1", verdict.rule)
+
+    def test_an_unrecognised_prior_outcome_is_rejected(self):
+        # The live defect this round found. prior_outcome was unvalidated while
+        # the approval's state was enforced, so prior_outcome="Unknown" was
+        # allowed=True: a capitalisation typo turned off R6 and half of R5,
+        # which is exactly the silent non-firing F13 exists to close.
+        for bad in ("Unknown", "UNKNOWN", "ok", "", "timeout"):
+            with self.subTest(prior_outcome=bad):
+                with self.assertRaises(ValueError):
+                    Attempt(PARAMS, "tok-1", NOW, prior_outcome=bad)
+        for good in OUTCOMES:
+            with self.subTest(prior_outcome=good):
+                Attempt(PARAMS, "tok-1", NOW, prior_outcome=good)
+
+    def test_a_limit_on_something_unmeasurable_is_refused_not_raised(self):
+        # A ceiling on a non-numeric parameter used to raise TypeError out of
+        # decide(). An exception is not one of the documented refusal paths, so
+        # a caller wrapping decide() in a try/except could read a crash as
+        # anything it liked.
+        approval, attempt, _allowed, _reason = POSITIVE["clean"]
+        for scope in ({"action": "send", "max_recipient": 500},
+                      {"action": "send", "max_amount": "lots"}):
+            with self.subTest(scope=scope):
+                verdict = decide(replace(approval, authority_scope=scope),
+                                 attempt)
+                self.assertFalse(verdict.allowed)
+                self.assertEqual("out-of-scope", verdict.reason)
+                self.assertEqual("R2", verdict.rule)
+        # A bool is an int in Python, so True < 500 and a scope ceiling would
+        # pass an amount of True. The approval below is bound to exactly those
+        # parameters, so R1 cannot be what refuses it: only the scope check is
+        # left to catch it.
+        booleans = {**PARAMS, "amount": True}
+        bound = replace(approval, action_revision=revision(booleans))
+        verdict = decide(bound, Attempt(booleans, attempt.execution_token,
+                                        attempt.at))
+        self.assertFalse(verdict.allowed, "an amount of True was authorised")
+        self.assertEqual("out-of-scope", verdict.reason)
+        self.assertEqual("R2", verdict.rule)
+
+    def test_the_expiry_boundary_is_the_one_the_rule_states(self):
+        # R3 says "past its expires-at", so the last moment of the window still
+        # executes and the next one does not. Pinned so the boundary cannot
+        # drift by a character without a test saying so.
+        approval, attempt, _allowed, _reason = POSITIVE["clean"]
+        at_the_edge = Attempt(attempt.parameters, attempt.execution_token,
+                              approval.expires_at)
+        self.assertTrue(decide(approval, at_the_edge).allowed,
+                        "the last moment of the window was refused")
+        past_it = Attempt(attempt.parameters, attempt.execution_token,
+                          approval.expires_at + 1)
+        verdict = decide(approval, past_it)
+        self.assertFalse(verdict.allowed)
+        self.assertEqual("expired", verdict.reason)
+        self.assertEqual("R3", verdict.rule)
+
+    def test_a_missing_document_is_reported_not_passed(self):
+        # Deleting the template is the cheapest way past a check that only
+        # reads documents it finds. One copy, restored between subtests.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            for relative in ("templates/ai/human-approval-gates.md",
+                             "examples/ledgerline-human-approval-gates.md"):
+                with self.subTest(document=relative):
+                    path = root / relative
+                    kept = path.read_text(encoding="utf-8")
+                    path.unlink()
+                    issues = check_approvals(root)
+                    path.write_text(kept, encoding="utf-8")
+                    self.assertIn("%s: missing" % relative, issues)
+            self.assertEqual([], check_approvals(root),
+                             "the copy was not restored")
+
+    def test_a_field_named_only_in_prose_is_not_a_record_field(self):
+        # _field_row is anchored to the table row on purpose. Weakening it to a
+        # bare substring produced no failure, because each field name happens
+        # to appear exactly once; this fixture makes the anchoring load-bearing
+        # rather than lucky.
+        template = "templates/ai/human-approval-gates.md"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            path = root / template
+            text = path.read_text(encoding="utf-8")
+            prosed = text.replace(
+                "| Single-use execution token | [token",
+                "The Single-use execution token is mentioned here. [token", 1)
+            self.assertNotEqual(text, prosed)
+            path.write_text(prosed, encoding="utf-8")
+            issues = check_approvals(root)
+            self.assertTrue(
+                any("'Single-use execution token' is not stated" in issue
+                    for issue in issues), issues)
+
+    # --- hollowing the document out without deleting a heading ---------------
+
+    def test_commenting_the_rules_out_fails_the_check(self):
+        # The lines survive inside <!-- ... --> and still satisfy a line-
+        # anchored regex, while the rendered document says nothing at all.
+        template = "templates/ai/human-approval-gates.md"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            path = root / template
+            text = path.read_text(encoding="utf-8")
+            start = text.index("1. **R1 binding.**")
+            end = text.index("## 6. Negative")
+            hidden = text[:start] + "<!--\n" + text[start:end] + "\n-->\n" \
+                + text[end:]
+            path.write_text(hidden, encoding="utf-8")
+            issues = check_approvals(root)
+            self.assertTrue(issues, "commenting the rules out was not caught")
+            self.assertTrue(any("rule R1" in issue for issue in issues), issues)
+
+    def test_gutting_a_rule_sentence_under_its_heading_fails_the_check(self):
+        # The heading stays, the sentence stops saying the rule. Structure
+        # alone cannot see this, which is why RULE_TERMS exists. All six rules
+        # in both documents: a term list that is load-bearing for R5 and R6 and
+        # decorative for the other four is not a term list.
+        neutral = " This is left to the team's discretion.\n"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            for relative in (TEMPLATE, EXAMPLE):
+                path = root / relative
+                text = path.read_text(encoding="utf-8")
+                for rule_id, name, _reason, _criterion in RULES:
+                    with self.subTest(document=relative, rule=rule_id):
+                        heading = "**%s %s.**" % (rule_id, name)
+                        gutted = []
+                        for line in text.splitlines(True):
+                            if heading in line:
+                                line = line[:line.index(heading)] + heading \
+                                    + neutral
+                            gutted.append(line)
+                        self.assertNotEqual(text, "".join(gutted))
+                        path.write_text("".join(gutted), encoding="utf-8")
+                        issues = check_approvals(root)
+                        path.write_text(text, encoding="utf-8")
+                        self.assertTrue(
+                            any("rule %s (%s) no longer says" % (rule_id, name)
+                                in issue and relative in issue
+                                for issue in issues), issues)
+            self.assertEqual([], check_approvals(root),
+                             "the copy was not restored")
+    def test_marking_the_contract_historical_fails_the_check(self):
+        # Every structural match still passes; the reader is simply told to
+        # ignore the section. One sentence per phrase in NULLIFIERS, in both
+        # documents, plus the HTML-comment form -- the scan reads the raw
+        # bytes precisely so a comment cannot hide the notice.
+        sentences = {
+            r"no longer required": "These rules are no longer required.\n",
+            r"no longer appl": "This contract no longer applies.\n",
+            r"\bhistorical\b": "This section is historical.\n",
+            r"\bdeprecated\b": "This section is deprecated.\n",
+            r"\bobsolete\b": "This section is obsolete.\n",
+            r"not enforced": "These rules are not enforced.\n",
+            r"for reference only": "This section is for reference only.\n",
+            r"informational only": "This section is informational only.\n",
+            r"does not apply": "This section does not apply.\n",
+        }
+        # A phrase added to NULLIFIERS without a fixture here would be
+        # untested, so the inventory is closed rather than sampled.
+        self.assertEqual(set(NULLIFIERS), set(sentences))
+        markers = list(sentences.values()) + [
+            "<!-- HISTORICAL, NO LONGER REQUIRED -->\n"]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            for relative in (TEMPLATE, EXAMPLE):
+                path = root / relative
+                text = path.read_text(encoding="utf-8")
+                head = text.index("## 5. Invalidation")
+                for marker in markers:
+                    with self.subTest(document=relative, marker=marker):
+                        path.write_text(text[:head] + marker + text[head:],
+                                        encoding="utf-8")
+                        issues = check_approvals(root)
+                        path.write_text(text, encoding="utf-8")
+                        self.assertTrue(
+                            any("marked dead" in issue and relative in issue
+                                for issue in issues), issues)
+            self.assertEqual([], check_approvals(root),
+                             "the copy was not restored")
+    def test_dropping_a_record_field_from_the_example_fails_the_check(self):
+        # The same hole one layer out: the fields were checked in the template
+        # and not in the filled copy that a reader actually copies from.
+        example = "examples/ledgerline-human-approval-gates.md"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            path = root / example
+            text = path.read_text(encoding="utf-8")
+            for name in RECORD_FIELDS:
+                with self.subTest(field=name):
+                    marker = "| %s |" % name
+                    self.assertIn(marker, text)
+                    kept = [line for line in text.splitlines(True)
+                            if not line.startswith(marker)]
+                    path.write_text("".join(kept), encoding="utf-8")
+                    issues = check_approvals(root)
+                    path.write_text(text, encoding="utf-8")
+                    self.assertTrue(
+                        any("%r is not stated" % name in issue
+                            and example in issue for issue in issues), issues)
+            self.assertEqual([], check_approvals(root),
+                             "the copy was not restored")
+
+
+    # --- the guards review found with no fixture of their own ---------------
+    # Each of the four below was reverted ALONE, by an independent reviewer,
+    # with the whole suite still green. Three were fail-opens: a denied
+    # approval executed, a completed action ran a second time, and an action
+    # outside the approver's authority executed. The other two in this block
+    # are the neighbours of those three, found by asking what the same mistake
+    # one column over would look like.
+
+    def test_a_denied_or_pending_approval_is_not_approved(self):
+        # decide()'s catch-all for every state that is not "approved". Deleting
+        # it is invisible unless a fixture reaches a state no earlier branch
+        # claims, and pending and denied were reached by no fixture at all: on
+        # the reverted tree a DENIED approval executed.
+        approval, attempt, _allowed, _reason = POSITIVE["clean"]
+        for state in ("pending", "denied"):
+            with self.subTest(state=state):
+                verdict = decide(replace(approval, state=state), attempt)
+                self.assertFalse(verdict.allowed,
+                                 "a %s approval executed" % state)
+                self.assertEqual("not-approved", verdict.reason)
+                self.assertEqual("R1", verdict.rule)
+
+    def test_the_expired_state_is_refused_as_expired_not_as_not_approved(self):
+        # R3 is two halves: the clock, and the state the clock or an operator
+        # already wrote. Every fixture used the clock, so the state half could
+        # be deleted and the refusal would silently move to the catch-all with
+        # the wrong reason and the wrong rule id -- the audit log would then
+        # say "not-approved" about an approval that expired.
+        approval, attempt, _allowed, _reason = POSITIVE["clean"]
+        inside_the_window = Attempt(attempt.parameters, attempt.execution_token,
+                                    NOW)
+        verdict = decide(replace(approval, state="expired"), inside_the_window)
+        self.assertFalse(verdict.allowed, "an expired approval executed")
+        self.assertEqual("expired", verdict.reason)
+        self.assertEqual("R3", verdict.rule)
+
+    def test_every_documented_state_gets_the_verdict_the_rules_state(self):
+        # The state vocabulary is closed, so the verdicts are too: a state
+        # added to STATES without a decision here fails this test rather than
+        # inheriting whatever branch it happens to fall through to.
+        expected = {
+            "pending": (False, "not-approved", "R1"),
+            "approved": (True, "executed", ""),
+            "denied": (False, "not-approved", "R1"),
+            "expired": (False, "expired", "R3"),
+            "revoked": (False, "revoked", "R4"),
+            "superseded": (False, "superseded", "R1"),
+            "consumed": (False, "replay", "R5"),
+        }
+        self.assertEqual(set(STATES), set(expected))
+        approval, attempt, _allowed, _reason = POSITIVE["clean"]
+        allowed_states = [state for state, (ok, _r, _id) in expected.items()
+                          if ok]
+        self.assertEqual([EXECUTABLE_STATE], allowed_states,
+                         "more than one state executes")
+        for state, (ok, reason, rule) in expected.items():
+            with self.subTest(state=state):
+                verdict = decide(replace(approval, state=state), attempt)
+                self.assertEqual(ok, verdict.allowed,
+                                 "%s: %s" % (state, verdict.reason))
+                self.assertEqual(reason, verdict.reason)
+                self.assertEqual(rule, verdict.rule)
+
+    def test_a_recorded_completion_is_a_replay_even_if_the_state_did_not_move(
+            self):
+        # R5 has two independent halves and NAC-5 sets both at once, so either
+        # could be deleted with every test still green. This is the half the
+        # module docstring's declared limit leans on: a caller that persists
+        # the attempt's outcome but not the move to consumed still has replay
+        # protection. On the reverted tree a completed send ran twice.
+        approval, attempt, _allowed, _reason = POSITIVE["clean"]
+        self.assertEqual(EXECUTABLE_STATE, approval.state)
+        replayed = Attempt(attempt.parameters, attempt.execution_token,
+                           attempt.at, prior_outcome="done")
+        verdict = decide(approval, replayed)
+        self.assertFalse(verdict.allowed,
+                         "a completed action ran a second time")
+        self.assertEqual("replay", verdict.reason)
+        self.assertEqual("R5", verdict.rule)
+
+    def test_authority_scope_binds_the_action_not_only_its_ceilings(self):
+        # NAC-2 moves the max_amount ceiling, so the branch that binds the
+        # approver's authority to the action ITSELF had no fixture: on the
+        # reverted tree an approval for a transfer executed against a scope
+        # that only ever authorised a send. The approval is rebound to the
+        # edited parameters first, so R1 cannot be what refuses it.
+        approval, _attempt, _allowed, _reason = POSITIVE["clean"]
+        for key, value in (("action", "transfer"), ("recipient", "acct-0001")):
+            with self.subTest(parameter=key):
+                parameters = dict(PARAMS, **{key: value})
+                bound = replace(approval, action_revision=revision(parameters))
+                verdict = decide(bound, Attempt(parameters, "tok-1", NOW))
+                if key in approval.authority_scope:
+                    self.assertFalse(verdict.allowed,
+                                     "%s=%r executed outside the scope"
+                                     % (key, value))
+                    self.assertEqual("out-of-scope", verdict.reason)
+                    self.assertEqual("R2", verdict.rule)
+                else:
+                    # The control: a parameter the scope says nothing about is
+                    # not what R2 is for, so this one must still execute.
+                    self.assertTrue(verdict.allowed,
+                                    "%s=%r was refused as %s"
+                                    % (key, value, verdict.reason))
+
+    def test_an_unrecognised_approval_state_is_rejected(self):
+        # The mirror of the prior-outcome check. Review found it uncovered and
+        # called it cosmetic because every typo it tried failed closed, which
+        # is true of the branch order as it stands today and is not a property
+        # anything was holding in place. A state of "Revoked" is a revocation
+        # that silently reads as not-approved; it should not construct at all.
+        approval, _attempt, _allowed, _reason = POSITIVE["clean"]
+        for bad in ("Revoked", "Approved", "consumedd", "", "approved ",
+                    "REVOKED"):
+            with self.subTest(state=bad):
+                with self.assertRaises(ValueError):
+                    replace(approval, state=bad)
+        for good in STATES:
+            with self.subTest(state=good):
+                self.assertEqual(good, replace(approval, state=good).state)
+
+    def test_the_action_revision_ignores_key_order_but_not_values(self):
+        # The binding in R1 is a hash of the parameters, and the sort is what
+        # makes it a hash of the parameters rather than of one serialisation of
+        # them. Without the sort the same approved payload, rebuilt in another
+        # order by any caller that round-trips it, is refused as superseded --
+        # the failure that teaches a team to stop trusting the gate.
+        approval, attempt, _allowed, _reason = POSITIVE["clean"]
+        reordered = {key: PARAMS[key] for key in reversed(list(PARAMS))}
+        self.assertEqual(list(reversed(list(PARAMS))), list(reordered))
+        self.assertEqual(revision(PARAMS), revision(reordered))
+        verdict = decide(approval, Attempt(reordered, attempt.execution_token,
+                                           attempt.at))
+        self.assertTrue(verdict.allowed,
+                        "the same payload in another key order was refused "
+                        "as %s" % verdict.reason)
+        edited = dict(PARAMS, amount=121)
+        self.assertNotEqual(revision(PARAMS), revision(edited))
+        verdict = decide(approval, Attempt(edited, attempt.execution_token,
+                                           attempt.at))
+        self.assertFalse(verdict.allowed, "an edited amount executed")
+        self.assertEqual("superseded", verdict.reason)
+        self.assertEqual("R1", verdict.rule)
+
+    def test_the_term_and_outcome_inventories_are_the_ones_named_here(self):
+        # The sweeps below are driven by RULE_TERMS and OUTCOMES, so a term or
+        # an outcome deleted from the tool would simply stop being swept: an
+        # inventory that certifies itself certifies nothing. Both are written
+        # out here as well, so narrowing either one fails a test rather than
+        # quietly narrowing the check.
+        refuses = r"refus|never|must not|is not|does not|denied"
+        self.assertEqual({
+            "R1": (r"supersed", r"revision"),
+            "R2": (r"executor", r"approver"),
+            "R3": (r"expir", refuses),
+            "R4": (r"revok", refuses),
+            "R5": (r"second", refuses),
+            "R6": (r"idempotency", r"retry", refuses),
+        }, dict(RULE_TERMS))
+        self.assertEqual((None, "done", "refused", "unknown"), tuple(OUTCOMES))
+
+    def test_each_rule_term_is_load_bearing_on_its_own(self):
+        # RULE_TERMS is the part of the check that reads what a rule still
+        # says, and a term nothing exercises is decoration. Each term is
+        # removed from the shipped sentence one at a time, in both documents,
+        # leaving the heading and the rule's other terms in place: the check
+        # has to name that term. Driven by RULE_TERMS, so a term added later
+        # is swept with the rest.
+        import re as _re                      # local: the module needs no more
+        self.assertEqual({rule_id for rule_id, _n, _r, _c in RULES},
+                         set(RULE_TERMS))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            for relative in (TEMPLATE, EXAMPLE):
+                path = root / relative
+                text = path.read_text(encoding="utf-8")
+                for rule_id, name, _reason, _criterion in RULES:
+                    heading = "**%s %s.**" % (rule_id, name)
+                    for term in RULE_TERMS[rule_id]:
+                        label = TERM_NAMES.get(term, repr(term))
+                        with self.subTest(document=relative, rule=rule_id,
+                                          term=label):
+                            stripped = []
+                            for line in text.splitlines(True):
+                                if heading in line:
+                                    head, sentence = line.split(heading, 1)
+                                    sentence = _re.sub(term, "", sentence,
+                                                       flags=_re.I)
+                                    line = head + heading + sentence
+                                stripped.append(line)
+                            self.assertNotEqual(text, "".join(stripped),
+                                                "%s %s was not in the sentence"
+                                                % (rule_id, label))
+                            path.write_text("".join(stripped),
+                                            encoding="utf-8")
+                            issues = check_approvals(root)
+                            path.write_text(text, encoding="utf-8")
+                            self.assertTrue(
+                                any("rule %s (%s) no longer says" %
+                                    (rule_id, name) in issue and label in issue
+                                    and relative in issue for issue in issues),
+                                issues)
+            self.assertEqual([], check_approvals(root),
+                             "the copy was not restored")
+
+    # --- a row somewhere else in the document is not that row ---------------
+    # Structural matching on the whole file says only that the string exists
+    # somewhere. Review showed that as a decoy row; the same hole is open to
+    # anyone who moves a table instead of copying one, so each lookup is now
+    # scoped to the section that owns it and these are what hold that.
+
+    def test_a_row_outside_its_own_section_does_not_count(self):
+        # Every rule, criterion and record field, in both documents, moved out
+        # of its section to the end of the file. Nothing is deleted: the string
+        # is still in the document, and the document is still wrong.
+        moves = []
+        for rule_id, name, _reason, criterion in RULES:
+            moves.append(("**%s %s.**" % (rule_id, name), "rule %s" % rule_id))
+            moves.append(("| %s |" % criterion,
+                          "negative criterion %s" % criterion))
+        for field_name in RECORD_FIELDS:
+            moves.append(("| %s |" % field_name, "%r is not stated"
+                          % field_name))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            for relative in (TEMPLATE, EXAMPLE):
+                path = root / relative
+                text = path.read_text(encoding="utf-8")
+                for marker, expected in moves:
+                    with self.subTest(document=relative, marker=marker):
+                        lines = text.splitlines(True)
+                        row = [line for line in lines if marker in line]
+                        self.assertEqual(1, len(row), marker)
+                        moved = [line for line in lines if marker not in line]
+                        path.write_text("".join(moved) + "\n" + row[0],
+                                        encoding="utf-8")
+                        issues = check_approvals(root)
+                        path.write_text(text, encoding="utf-8")
+                        self.assertTrue(
+                            any(expected in issue and relative in issue
+                                for issue in issues),
+                            "%s moved out of its section was not caught: %r"
+                            % (marker, issues))
+            self.assertEqual([], check_approvals(root),
+                             "the copy was not restored")
+
+    def test_a_state_row_outside_section_four_is_not_the_state_row(self):
+        # The row moved out of the record is not the record's row, and the
+        # answer is that the record has no State row -- not that the vocabulary
+        # was found somewhere else in the document.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            path = root / TEMPLATE
+            text = path.read_text(encoding="utf-8")
+            rows = [line for line in text.splitlines(True)
+                    if line.startswith("| State |")]
+            self.assertEqual(1, len(rows))
+            moved = [line for line in text.splitlines(True)
+                     if not line.startswith("| State |")]
+            path.write_text("".join(moved) + "\n" + rows[0], encoding="utf-8")
+            issues = check_approvals(root)
+            path.write_text(text, encoding="utf-8")
+            self.assertTrue(any("the approval record has no State row" in issue
+                                for issue in issues), issues)
+            self.assertEqual([], check_approvals(root),
+                             "the copy was not restored")
+
+    def test_a_missing_numbered_section_is_reported(self):
+        # The scoping has to fail closed. A document that dropped the number
+        # from a heading has no section 4, 5 or 6 to look in, and the answer to
+        # that is a finding, not a search of the rest of the file.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            for relative in (TEMPLATE, EXAMPLE):
+                path = root / relative
+                text = path.read_text(encoding="utf-8")
+                for number in (4, 5, 6):
+                    with self.subTest(document=relative, section=number):
+                        heading = [line for line in text.splitlines(True)
+                                   if line.startswith("## %d." % number)]
+                        self.assertEqual(1, len(heading))
+                        unnumbered = heading[0].replace("## %d." % number,
+                                                        "##", 1)
+                        path.write_text(text.replace(heading[0], unnumbered, 1),
+                                        encoding="utf-8")
+                        issues = check_approvals(root)
+                        path.write_text(text, encoding="utf-8")
+                        self.assertTrue(
+                            any("section %d is not there" % number in issue
+                                and relative in issue for issue in issues),
+                            issues)
+            self.assertEqual([], check_approvals(root),
+                             "the copy was not restored")
+
+    def test_a_decoy_state_row_does_not_cover_a_gutted_one(self):
+        # The vocabulary lookup used to take the first State row it found, so
+        # a full decoy row above a gutted real one passed. Every State row in
+        # section 4 has to carry the vocabulary now.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            path = root / TEMPLATE
+            text = path.read_text(encoding="utf-8")
+            rows = [line for line in text.splitlines(True)
+                    if line.startswith("| State |")]
+            self.assertEqual(1, len(rows))
+            for state in STATES:
+                with self.subTest(state=state):
+                    gutted = rows[0].replace(state, "", 1)
+                    self.assertNotEqual(rows[0], gutted)
+                    path.write_text(text.replace(rows[0], rows[0] + gutted, 1),
+                                    encoding="utf-8")
+                    issues = check_approvals(root)
+                    path.write_text(text, encoding="utf-8")
+                    self.assertTrue(any("%r is not in the State row" % state
+                                        in issue for issue in issues), issues)
+            self.assertEqual([], check_approvals(root),
+                             "the copy was not restored")
+
+    def test_a_second_filled_copy_is_checked_too(self):
+        # The next document kind: not this example, the one the second product
+        # writes. A checker that names one file would never look at it, so the
+        # examples are discovered rather than listed -- and the named example
+        # stays required, so discovering others is not a way to lose it.
+        second = "examples/northwind-human-approval-gates.md"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            good = (root / EXAMPLE).read_text(encoding="utf-8")
+            (root / second).write_text(good, encoding="utf-8")
+            self.assertEqual([], check_approvals(root),
+                             "a compliant second copy was reported")
+            for rule_id, name, _reason, criterion in RULES:
+                with self.subTest(rule=rule_id):
+                    heading = "**%s %s.**" % (rule_id, name)
+                    kept = [line for line in good.splitlines(True)
+                            if heading not in line]
+                    (root / second).write_text("".join(kept), encoding="utf-8")
+                    issues = check_approvals(root)
+                    self.assertTrue(any("rule %s" % rule_id in issue
+                                        and second in issue
+                                        for issue in issues), issues)
+            (root / second).write_text(good, encoding="utf-8")
+            kept = (root / EXAMPLE)
+            (root / EXAMPLE).unlink()
+            self.assertIn("%s: missing" % EXAMPLE, check_approvals(root),
+                          "the named example stopped being required")
+            kept.write_text(good, encoding="utf-8")
+            (root / second).unlink()
+            self.assertEqual([], check_approvals(root),
+                             "the copy was not restored")
+
+    def test_an_unknown_outcome_outranks_every_other_refusal(self):
+        # The order in decide() is a decision, not an accident: an attempt
+        # whose outcome nobody established is not a fresh start, so it is
+        # reported as unreconciled whatever else is wrong with the approval.
+        # Reported as replay or revoked instead, a caller that treats those as
+        # a duplicate no-op would retry a send that may already have landed.
+        approval, attempt, _allowed, _reason = POSITIVE["clean"]
+        for state in ("consumed", "revoked", "superseded", "expired"):
+            with self.subTest(state=state):
+                verdict = decide(replace(approval, state=state),
+                                 Attempt(attempt.parameters,
+                                         attempt.execution_token, attempt.at,
+                                         prior_outcome="unknown"))
+                self.assertFalse(verdict.allowed)
+                self.assertEqual("unreconciled", verdict.reason)
+                self.assertEqual("R6", verdict.rule)
 >>>>>>> theirs
 
 

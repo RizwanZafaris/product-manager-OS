@@ -168,6 +168,7 @@
    "VerifierExecutionTests"
   ],
   "test_tools_gates": [
+   "ApprovalGateTests",
    "CiGateVerdictTests",
 <<<<<<< ours
    "ExampleAvailabilityGateTests",
