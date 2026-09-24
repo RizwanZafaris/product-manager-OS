@@ -15,9 +15,13 @@ Fills [templates/discovery/evidence-note.md](../templates/discovery/evidence-not
 
 A weekend due date turns into a surcharge because the physical payment channel that exists on the due date is closed or charges a fee, and neither removes the fine.
 
-**Verbatim quote:**
+**Evidence kind:** text quotation
+
+**A. Text quotation** (interview, ticket, document, public page)
 
 > "The bill was due on a Sunday. The bank was shut, the shop man charged me fifty, and the office still put the fine on the next bill."
+
+- **Where in the source:** INT-004 section 8, at timestamp 02:10 in the session recording
 
 **Evidence class:** interview claim (a real person said it, cited by source and date; timestamp 02:10 within the session recording)
 
@@ -32,7 +36,7 @@ A weekend due date turns into a surcharge because the physical payment channel t
 
 Copy this row, filled, into the evidence ledger in the product's STATE.md:
 
-| E# | Claim | Verbatim quote | Source | Source date | Retrieved | Confidence |
+| E# | Claim | Evidence (quote, measure or observation) | Source | Source date | Retrieved | Confidence |
 |---|---|---|---|---|---|---|
 | E1 | Weekend due dates produce a surcharge because the open channel charges a fee and the fine posts anyway | "The bill was due on a Sunday. The bank was shut, the shop man charged me fifty, and the office still put the fine on the next bill." | INT-004, interview notes section 8, 02:10 | 2026-02-02 | 2026-02-03 | single-source |
 
@@ -41,6 +45,7 @@ Copy this row, filled, into the evidence ledger in the product's STATE.md:
 | Failure mode | What it looks like | The rule that stops it |
 |---|---|---|
 | Paraphrase presented as a quote | Quotation marks around a tidied version of what was said | Quotation marks are reserved for verbatim text. Paraphrase goes outside them, always |
+| A quote invented for a count or a behaviour | A sentence in quotation marks under a metric export or a watched session, because the form asked for a quote | A count is recorded as a measure and a behaviour as an observation. Neither field accepts words nobody said |
 | No source or no date | "Research shows", with nothing attached | Author or speaker, document or session, and the date. A note without them cannot be checked |
 | Only what we already believed | Sources selected because they agreed, and the disagreement went unrecorded | Record what contradicts the position too. Finding no counter-evidence is itself a finding |
 | Context stripped | A sentence lifted from a paragraph that qualifies or reverses it | Carry enough surrounding text that the meaning survives the extraction |
@@ -50,7 +55,10 @@ Copy this row, filled, into the evidence ledger in the product's STATE.md:
 
 ## Exit gate
 
-- [x] The quote is verbatim, and everything outside the quotation marks is marked as inference. The quote is carried unchanged from INT-004 section 8 at 02:10; the claim line and the "cannot support" line are labelled as ours
+- [x] The evidence kind is declared, and the block that matches it is the one that is filled. This note declares kind text quotation and fills block A; blocks B and C are deleted
+- [x] A text quotation carries the sentence verbatim, and everything outside the quotation marks is marked as inference. The quote is carried unchanged from INT-004 section 8 at 02:10; the claim line and the "cannot support" line are labelled as ours
+- [x] A quantitative note carries its snapshot or query, filters, denominator, period and timezone, and calculation, and someone else could run it and land on the same figure. This does not apply here, because this note is a text quotation; were it quantitative, the query as run, its filters, its denominator, its period with timezone and its calculation would all be required
+- [x] An observation carries its session or timecode and its context, and is written in plain words rather than as words in quotation marks that nobody said. This does not apply here, because this note is a text quotation; were it an observation, the session and timecode and the surrounding context would be required, written in plain words
 - [x] Source, source date and retrieval date are all present and locatable by someone else. Session INT-004, dated 2026-02-02, filed at the path above and published as [sahulat-interview-notes.md](sahulat-interview-notes.md); retrieved 2026-02-03
 - [x] The confidence class is one of the four in Weight, and the reason for it is stated. Single-source: this wording stands alone, and T5 and N24 corroborate the pattern without restating the sentence
 - [x] Contradicting evidence was looked for, and either recorded or explicitly reported as absent. None found against this quote; the absence is recorded in Weight rather than left silent

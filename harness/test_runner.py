@@ -219,7 +219,7 @@ class StructureTests(unittest.TestCase):
         # the model reached the ledger table, emitted a header row, and
         # stopped. finish_reason said nothing was wrong.
         produced = (self.template.split("| E# |")[0]
-                    + "| E# | Claim | Verbatim quote |\n")
+                    + "| E# | Claim | Evidence |\n")
         problems = runner.structure_report(self.template, produced)
         self.assertTrue(problems, "the truncated ledger table was accepted")
         self.assertTrue(any("complete table" in p or "table(s)" in p
@@ -227,7 +227,8 @@ class StructureTests(unittest.TestCase):
 
     def test_header_only_table_with_a_delimiter_is_caught(self):
         produced = self.template.replace(
-            '| E[n] | [claim, short] | "[quote]" | [locator] | '
+            '| E[n] | [claim, short] | ["quote" / measure with denominator and '
+            'period / observed behaviour] | [locator] | '
             "[YYYY-MM-DD] | [YYYY-MM-DD] | [confidence] |", "")
         problems = runner.structure_report(self.template, produced)
         self.assertTrue(any("bare header" in p or "complete table" in p
@@ -239,10 +240,11 @@ class StructureTests(unittest.TestCase):
         self.assertTrue(any("missing" in p for p in problems), problems)
 
     def test_dropped_table_column_is_caught(self):
-        produced = self.template.replace("| E# | Claim | Verbatim quote | "
+        produced = self.template.replace("| E# | Claim | Evidence (quote, "
+                                         "measure or observation) | "
                                          "Source | Source date | Retrieved | "
                                          "Confidence |",
-                                         "| E# | Claim | Verbatim quote |")
+                                         "| E# | Claim | Evidence |")
         problems = runner.structure_report(self.template, produced)
         self.assertTrue(problems, "a table that lost columns was accepted")
 
@@ -915,7 +917,7 @@ class RunTaskTests(unittest.TestCase):
 
     def test_a_truncated_document_is_not_written(self):
         truncated = (self.template_text.split("| E# |")[0]
-                     + "| E# | Claim | Verbatim quote |\n")
+                     + "| E# | Claim | Evidence |\n")
         self._stub_body(truncated)
         with self.assertRaises(runner.RunnerError) as caught:
             _quiet_run(self._args(), self.cfg, self.tasks)

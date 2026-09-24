@@ -20,10 +20,17 @@ Filled example: [INT-004, C-04, 2026-02-02](../../examples/sahulat-evidence-note
      source supports three claims, write three claim blocks in one note; if one
      claim needs three sources, that is three notes that cite each other.
 
-     The verbatim quote is the point of this file. A paraphrase drifts a little
-     with every retelling, and six weeks later nobody can check it without
-     re-reading the source. A quote is checkable in ten seconds. If no single
-     sentence in the source carries your claim, your claim is not in the source.
+     A checkable record is the point of this file, and what makes a record
+     checkable depends on what the source is. For a person's words it is the
+     verbatim quote: a paraphrase drifts a little with every retelling, and six
+     weeks later nobody can check it without re-reading the source, while a
+     quote is checkable in ten seconds. If no single sentence in the source
+     carries your claim, your claim is not in that source. For a metric export
+     or a dataset it is the query, the filters and the denominator, because a
+     count no one else can reproduce is a rumour with a number in it. For a
+     watched behaviour it is the session and the timecode. Fill the block that
+     matches the source. Never write a sentence in quotation marks that nobody
+     said in order to satisfy a field.
 
      The ledger row at the bottom is copied unchanged into the product's
      STATE.md evidence ledger. Keep it to one line; the note above it holds
@@ -43,9 +50,33 @@ Filled example: [INT-004, C-04, 2026-02-02](../../examples/sahulat-evidence-note
 
 [One sentence, your words, stating what this source supports. If the source supports several distinct claims, repeat this section and the two below it per claim.]
 
-**Verbatim quote:**
+**Evidence kind:** [text quotation / quantitative / observation]
+
+<!-- Fill exactly one of the three blocks below and delete the other two. The
+     kind follows the source, not your preference: an interview, a ticket, a
+     document or a public page is a text quotation; a metric export, a dataset
+     or a query result is quantitative; a watched session or a usability run is
+     an observation. Only a text quotation requires a quote. -->
+
+**A. Text quotation** (interview, ticket, document, public page)
 
 > "[The load-bearing sentence, unchanged, in quotation marks. Ellipses only for true omissions, never to bend meaning.]"
+
+- **Where in the source:** [section, page or timestamp a reader could open to land on this sentence]
+
+**B. Quantitative** (metric export, dataset, query result)
+
+- **Snapshot or query:** [the query as run, or the export file and the rows it covers, so someone else can run it again]
+- **Filters:** [every condition applied, including the ones that look obvious; an unstated filter is how two people get two numbers]
+- **Denominator:** [what the figure is out of, named as a population and counted the same way as the numerator]
+- **Period and timezone:** [the window the data covers, and the timezone its boundaries were cut in]
+- **Calculation:** [how the figure comes out of the rows: the aggregation, the deduplication rule, and what was excluded]
+
+**C. Observation** (watched behaviour, session recording, usability run)
+
+- **Session or timecode:** [session ID and the timecode or step where it happened, locatable by someone else]
+- **What was observed:** [what the person did, in plain words and outside quotation marks, because nobody said it]
+- **Context:** [the task they were on and what surrounded the moment, so the behaviour is not read backwards]
 
 **Evidence class:** [observed behavior / artifact / named commitment / interview claim / team belief]
 
@@ -70,11 +101,15 @@ Filled example: [INT-004, C-04, 2026-02-02](../../examples/sahulat-evidence-note
 
 ## Ledger row
 
-Copy this row, filled, into the evidence ledger in the product's STATE.md:
+Copy this row, filled, into the evidence ledger in the product's STATE.md.
+The evidence column carries whichever block you filled: the quote, the measure
+with its denominator and period, or the observed behaviour. Quotation marks in
+that column mean verbatim words and nothing else, so a measure and an
+observation go in without them.
 
-| E# | Claim | Verbatim quote | Source | Source date | Retrieved | Confidence |
+| E# | Claim | Evidence (quote, measure or observation) | Source | Source date | Retrieved | Confidence |
 |---|---|---|---|---|---|---|
-| E[n] | [claim, short] | "[quote]" | [locator] | [YYYY-MM-DD] | [YYYY-MM-DD] | [confidence] |
+| E[n] | [claim, short] | ["quote" / measure with denominator and period / observed behaviour] | [locator] | [YYYY-MM-DD] | [YYYY-MM-DD] | [confidence] |
 
 ## How an evidence note fails
 
@@ -86,6 +121,7 @@ Copy this row, filled, into the evidence ledger in the product's STATE.md:
 | Failure mode | What it looks like | The rule that stops it |
 |---|---|---|
 | Paraphrase presented as a quote | Quotation marks around a tidied version of what was said | Quotation marks are reserved for verbatim text. Paraphrase goes outside them, always |
+| A quote invented for a count or a behaviour | A sentence in quotation marks under a metric export or a watched session, because the form asked for a quote | A count is recorded as a measure and a behaviour as an observation. Neither field accepts words nobody said |
 | No source or no date | "Research shows", with nothing attached | Author or speaker, document or session, and the date. A note without them cannot be checked |
 | Only what we already believed | Sources selected because they agreed, and the disagreement went unrecorded | Record what contradicts the position too. Finding no counter-evidence is itself a finding |
 | Context stripped | A sentence lifted from a paragraph that qualifies or reverses it | Carry enough surrounding text that the meaning survives the extraction |
@@ -94,19 +130,25 @@ Copy this row, filled, into the evidence ledger in the product's STATE.md:
 ### Worked micro-example (ILLUSTRATIVE, invented)
 
 <!-- Shows the one thing this template exists to protect: the boundary between
-     what was said and what we concluded. Delete once real notes exist. -->
+     what the source carried and what we concluded, across all three kinds.
+     Delete once real notes exist. -->
 
-| E# | Claim | Verbatim quote | Source | Source date | Retrieved | Confidence |
+| E# | Claim | Evidence (quote, measure or observation) | Source | Source date | Retrieved | Confidence |
 |---|---|---|---|---|---|---|
 | *E7* | *Rural postcodes are rejected by validation, and reps abandon rather than retry* | *"I put the postcode in three times, then I just gave up and did it at home"* | *Interview, field rep, session 4* | *2026-03-11* | *2026-03-12* | *single-source* |
+| *E8* | *Address entry is abandoned more often from rural postcodes than from urban ones* | *Abandon rate 31 of 402 rural sessions against 44 of 2,910 urban, one session per device per day, 1 to 31 March, Europe/London* | *Warehouse query `address_step_abandon.sql`, run 2026-04-02* | *2026-03-31* | *2026-04-02* | *single-source* |
+| *E9* | *Reps retype the postcode rather than reading the error text* | *Rep retyped the same postcode twice without the inline error entering the viewport, then switched to the desktop tool* | *Usability session U-12, 00:07:20 to 00:08:05* | *2026-03-18* | *2026-03-19* | *single-source* |
 
-*Note what is outside the quotation marks. The rep did not say validation was the cause, and did not say others do the same. Both are our inference, and both are why the confidence is single-source rather than verified.*
+*Note what is outside the quotation marks. The rep in E7 did not say validation was the cause, and did not say others do the same. Both are our inference, and both are why the confidence is single-source rather than verified. E8 carries no quote because a query has no voice, and E9 carries none because watching is not hearing. Neither is weaker for it: E8 is reproducible by anyone with the query, and E9 is re-watchable at its timecode.*
 
 ## Exit gate
 
 <!-- Checkable by someone who was not in the session. -->
 
-- [ ] The quote is verbatim, and everything outside the quotation marks is marked as inference
+- [ ] The evidence kind is declared, and the block that matches it is the one that is filled
+- [ ] A text quotation carries the sentence verbatim, and everything outside the quotation marks is marked as inference
+- [ ] A quantitative note carries its snapshot or query, filters, denominator, period and timezone, and calculation, and someone else could run it and land on the same figure
+- [ ] An observation carries its session or timecode and its context, and is written in plain words rather than as words in quotation marks that nobody said
 - [ ] Source, source date and retrieval date are all present and locatable by someone else
 - [ ] The confidence class is one of the four in Weight, and the reason for it is stated
 - [ ] Contradicting evidence was looked for, and either recorded or explicitly reported as absent

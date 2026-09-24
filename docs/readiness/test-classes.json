@@ -169,6 +169,7 @@
   ],
   "test_tools_gates": [
    "CiGateVerdictTests",
+   "EvidenceNoteContractTests",
    "ExamplesInventoryGateTests",
    "FrontmatterInitGateTests",
    "GateCountGateTests",

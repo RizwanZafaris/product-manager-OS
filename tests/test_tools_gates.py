@@ -50,8 +50,10 @@ import readiness_probe  # noqa: E402
 import template_rubric  # noqa: E402
 from tools.docs_contract import (check as check_docs,  # noqa: E402
                                  _example_families,
+                                 check_evidence_contract,
                                  check_examples_inventory, check_gate_count,
                                  check_inventory, check_readiness_claims,
+                                 evidence_note_issues,
                                  main as docs_contract_main, README_READINESS,
                                  READINESS_CLAIMS)
 from tools.graph import check_unique_ids, node_id  # noqa: E402
@@ -1519,6 +1521,255 @@ class ExamplesInventoryGateTests(unittest.TestCase):
             self.assertEqual([(self.INDEX, 1, "the examples index is missing, "
                                "so nothing states the inventory it is the "
                                "front door for")], self.findings(root))
+
+
+# Three filled evidence notes, one per kind, written as fixtures rather than
+# shipped as examples: they exist to prove that an interview, a query result
+# and a watched session can each pass the note contract on their own evidence.
+# Everything in them is invented. Fennix Logistics is not a company.
+INTERVIEW_NOTE = """# Evidence Note: P-1147 (ILLUSTRATIVE)
+
+## Source
+
+- **Name:** Payroll interview with Clara Morwen, payroll administrator, Fennix Logistics
+- **Locator:** Interview P-1147, transcript section 3
+- **Source date:** 2026-03-12
+- **Type:** interview
+
+## Claim
+
+Payroll administrators retype an approved timesheet line when the legacy import writes an impossible start date.
+
+**Evidence kind:** text quotation
+
+**A. Text quotation** (interview, ticket, document, public page)
+
+> "The system flags the row as approved even when the start date reads 02/30, so I have to retype the whole line."
+
+- **Where in the source:** transcript section 3, 00:14:22 to 00:14:35
+
+**Evidence class:** interview claim
+
+## Weight
+
+- **Confidence:** single-source
+- **Agrees with:** E2, on the pattern rather than on this wording
+- **Disagrees with:** none found
+- **What this note cannot support:** how often this happens, or that the import is the only cause
+
+## Ledger row
+
+| E# | Claim | Evidence (quote, measure or observation) | Source | Source date | Retrieved | Confidence |
+|---|---|---|---|---|---|---|
+| E1 | Administrators retype an approved line when the import writes an impossible start date | "The system flags the row as approved even when the start date reads 02/30, so I have to retype the whole line." | Interview P-1147, section 3 | 2026-03-12 | 2026-03-13 | single-source |
+"""
+
+METRIC_NOTE = """# Evidence Note: timesheet_edit_within_24h (ILLUSTRATIVE)
+
+## Source
+
+- **Name:** Warehouse query run by data operations, Fennix Logistics
+- **Locator:** `timesheet_edit_within_24h.sql`, warehouse dataset march_2026
+- **Source date:** 2026-03-31
+- **Type:** metric export
+
+## Claim
+
+A small recurring share of approved timesheets is edited again within a day of approval.
+
+**Evidence kind:** quantitative
+
+**B. Quantitative** (metric export, dataset, query result)
+
+- **Snapshot or query:** `timesheet_edit_within_24h.sql`, run 2026-04-01 against dataset march_2026
+- **Filters:** approval status approved, edit timestamp within 24 hours of the approval timestamp, tenants flagged as test excluded
+- **Denominator:** every timesheet approved in the period, 1,204 rows, counted the same way as the numerator
+- **Period and timezone:** 2026-03-01 to 2026-03-31 inclusive, boundaries cut in UTC
+- **Calculation:** 58 of 1,204 approved timesheets, deduplicated by timesheet ID so a row edited twice counts once
+
+**Evidence class:** artifact
+
+## Weight
+
+- **Confidence:** single-source
+- **Agrees with:** E1, on the pattern
+- **Disagrees with:** none found
+- **What this note cannot support:** whether the edits are corrections or mistakes
+
+## Ledger row
+
+| E# | Claim | Evidence (quote, measure or observation) | Source | Source date | Retrieved | Confidence |
+|---|---|---|---|---|---|---|
+| E2 | A small recurring share of approved timesheets is edited again within a day | 58 of 1,204 approved timesheets edited within 24 hours, deduplicated by timesheet ID, March 2026 UTC | `timesheet_edit_within_24h.sql` | 2026-03-31 | 2026-04-01 | single-source |
+"""
+
+OBSERVATION_NOTE = """# Evidence Note: S-0922 (ILLUSTRATIVE)
+
+## Source
+
+- **Name:** Usability session with an approver, Fennix Logistics
+- **Locator:** Session S-0922, recording `usab_0922.mp4`
+- **Source date:** 2026-03-10
+- **Type:** observation
+
+## Claim
+
+An approver clears a batch without opening any line detail.
+
+**Evidence kind:** observation
+
+**C. Observation** (watched behaviour, session recording, usability run)
+
+- **Session or timecode:** S-0922, 00:04:10 to 00:07:45
+- **What was observed:** the approver approved the batch from the summary screen and expanded no individual timesheet row
+- **Context:** a batch view holding 14 pending items, reached from the daily approvals task
+
+**Evidence class:** observed behavior
+
+## Weight
+
+- **Confidence:** single-source
+- **Agrees with:** none found
+- **Disagrees with:** none found
+- **What this note cannot support:** that skipping line detail produces errors
+
+## Ledger row
+
+| E# | Claim | Evidence (quote, measure or observation) | Source | Source date | Retrieved | Confidence |
+|---|---|---|---|---|---|---|
+| E3 | An approver clears a batch without opening any line detail | approved the batch from the summary screen and expanded no timesheet row, S-0922 at 00:04:10 to 00:07:45 | Session S-0922 | 2026-03-10 | 2026-03-11 | single-source |
+"""
+
+
+class EvidenceNoteContractTests(unittest.TestCase):
+    """F12: an evidence note that is a count does not have to invent prose.
+
+    The note's source types have always included metric exports, datasets and
+    observations, while the claim block, the ledger row and the exit gate each
+    demanded a verbatim quote. The three fixtures below are the closure proof:
+    one interview, one query result and one watched session, each passing on
+    the evidence it actually has. The mutations underneath are the old form,
+    put back one piece at a time.
+    """
+
+    NOTES = {"text quotation": INTERVIEW_NOTE, "quantitative": METRIC_NOTE,
+             "observation": OBSERVATION_NOTE}
+
+    def issues(self, text, name="fixture.md"):
+        return [(item.code, item.message)
+                for item in evidence_note_issues(text, name, filled=True)]
+
+    def docs_codes(self, root):
+        return {item.code for item in check_docs(root) if item.severity == "error"}
+
+    def test_the_tree_as_it_stands_meets_the_evidence_contract(self):
+        self.assertEqual([], check_evidence_contract(REPO))
+
+    def test_each_kind_passes_on_the_evidence_it_actually_has(self):
+        for kind, note in self.NOTES.items():
+            with self.subTest(kind=kind):
+                self.assertEqual([], self.issues(note))
+
+    def test_neither_the_measure_nor_the_observation_invents_a_quote(self):
+        """The defect this finding names: prose written because a field asked
+        for it. Neither fixture contains a quotation, and adding one is
+        reported rather than accepted as evidence."""
+        for kind in ("quantitative", "observation"):
+            with self.subTest(kind=kind):
+                note = self.NOTES[kind]
+                self.assertNotIn('> "', note)
+                forged = note.replace(
+                    "**Evidence class:**",
+                    '> "We edit those all the time."\n\n**Evidence class:**', 1)
+                self.assertIn(("evidence-quote",
+                               "a %s note quotes a sentence nobody said" % kind),
+                              self.issues(forged))
+
+    def test_an_interview_note_with_no_quote_is_still_reported(self):
+        stripped = "\n".join(line for line in INTERVIEW_NOTE.splitlines()
+                              if not line.startswith('> "'))
+        self.assertIn(("evidence-quote",
+                       "a text quotation note needs the sentence verbatim"),
+                      self.issues(stripped))
+
+    def test_a_missing_or_unanswered_field_is_reported_per_kind(self):
+        cases = {
+            "quantitative": ("- **Denominator:**", "Denominator"),
+            "observation": ("- **Session or timecode:**", "Session or timecode"),
+            "text quotation": ("- **Where in the source:**", "Where in the source"),
+        }
+        for kind, (line_start, label) in cases.items():
+            note = self.NOTES[kind]
+            dropped = "\n".join(line for line in note.splitlines()
+                                 if not line.startswith(line_start))
+            with self.subTest(kind=kind, mutation="dropped"):
+                self.assertIn(("evidence-field",
+                               "a %s note needs its '%s' field" % (kind, label)),
+                              self.issues(dropped))
+            blanked = "\n".join(
+                (line_start + " [not yet answered]") if line.startswith(line_start)
+                else line for line in note.splitlines())
+            with self.subTest(kind=kind, mutation="left blank"):
+                self.assertIn(("evidence-field",
+                               "'%s' is still the blank instruction" % label),
+                              self.issues(blanked))
+
+    def test_an_undeclared_or_invented_kind_is_reported(self):
+        self.assertIn(("evidence-kind",
+                       "the claim block declares no '**Evidence kind:**'"),
+                      self.issues(INTERVIEW_NOTE.replace(
+                          "**Evidence kind:** text quotation", "")))
+        self.assertTrue(any(code == "evidence-kind" and message.startswith("'vibes'")
+                            for code, message in self.issues(
+                                INTERVIEW_NOTE.replace("text quotation", "vibes", 1))))
+
+    def test_a_template_that_demands_a_quote_of_every_note_is_reported(self):
+        """The form as it stood at the audit: one quote block, no kinds."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            path = root / "templates" / "discovery" / "evidence-note.md"
+            text = path.read_text(encoding="utf-8")
+            start = text.index("**Evidence kind:**")
+            end = text.index("**Evidence class:**")
+            path.write_text(text[:start] + "**Verbatim quote:**\n\n"
+                            + '> "[the load-bearing sentence]"\n\n'
+                            + text[end:], encoding="utf-8")
+            self.assertIn("evidence-kind", self.docs_codes(root))
+
+    def test_a_ledger_column_that_only_takes_a_quote_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            for name in ("templates/discovery/evidence-note.md",
+                         "templates/execution/state.md",
+                         "examples/sahulat-evidence-note.md"):
+                path = root / name
+                path.write_text(path.read_text(encoding="utf-8").replace(
+                    "| E# | Claim | Evidence (quote, measure or observation) |",
+                    "| E# | Claim | Verbatim quote |"), encoding="utf-8")
+            codes = self.docs_codes(root)
+            self.assertIn("evidence-ledger", codes)
+
+    def test_a_state_ledger_that_drifts_from_the_note_row_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            path = root / "templates" / "execution" / "state.md"
+            path.write_text(path.read_text(encoding="utf-8").replace(
+                "| E# | Claim | Evidence (quote, measure or observation) |",
+                "| E# | Claim | Verbatim quote only |"), encoding="utf-8")
+            self.assertIn(("templates/execution/state.md",
+                           "the evidence ledger does not carry the note's row, "
+                           "which is copied unchanged"),
+                          [(item.path, item.message)
+                           for item in check_evidence_contract(root)])
+
+    def test_a_theme_that_must_carry_a_quote_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(tmp)
+            path = root / "templates" / "discovery" / "discovery-synthesis.md"
+            path.write_text(path.read_text(encoding="utf-8").replace(
+                "- **Load-bearing evidence:**", "- **Load-bearing quote:**"),
+                encoding="utf-8")
+            self.assertIn("evidence-kind", self.docs_codes(root))
 
 
 class ReadinessProbeMutationAnchorTests(unittest.TestCase):

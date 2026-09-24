@@ -63,7 +63,7 @@ Domain: <knowledge/domains/ card or none>
 
 ## Evidence ledger
 
-| E# | Claim | Verbatim quote | Source | Source date | Retrieved | Confidence |
+| E# | Claim | Evidence (quote, measure or observation) | Source | Source date | Retrieved | Confidence |
 |---|---|---|---|---|---|---|
 | | | | | | | |
 

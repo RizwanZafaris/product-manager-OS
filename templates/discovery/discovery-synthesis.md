@@ -43,17 +43,27 @@ Filled example: [Ledgerline commercial pass](../../examples/ledgerline-discovery
 ## 2. Sources synthesized
 
 <!-- Count them, date them, link them. Each source should have an
-     [evidence note](evidence-note.md); rows without one are hearsay until it exists. -->
+     [evidence note](evidence-note.md); rows without one are hearsay until it
+     exists. Count participants by distinct person or account rather than by
+     artifact: someone who filed four tickets and sat one interview is five
+     rows and one participant, and a theme weighted on those five rows is one
+     voice wearing five hats. A system export is a source with no participant
+     behind it, so it is counted on its own. -->
 
-| Source | Type (interview / ticket / review / analytics) | Date | Evidence note |
+| Source | Type (interview / ticket / review / analytics / metric export / dataset / observation) | Date | Evidence note |
 |---|---|---|---|
 | | | | [linked] |
-| **Totals** | [n sources, n of them interviews] | [date range] | |
+| **Totals** | [n sources, n distinct participants, n of them interviews] | [date range] | |
 
 ## 3. Themes
 
-<!-- One block per theme, strongest support first. The quote is verbatim from a
-     source, chosen because it carries the theme's weight, not because it is vivid.
+<!-- One block per theme, strongest support first. The support is a quote, a
+     measure or an observed behaviour carried from an evidence note, chosen
+     because it carries the theme's weight and not because it is vivid, and
+     quotation marks are used only for words somebody actually said. A theme
+     supported by a metric export or a watched session states the measure or
+     the behaviour; it does not borrow a sentence from an interview to look
+     quotable.
      The contradiction line is mandatory: write "none observed" only if it is true.
      A trap: inventing a theme from one vivid quote and giving it a source count of
      one to look rigorous. This fails when the loudest interview sets the theme names
@@ -66,14 +76,14 @@ Filled example: [Ledgerline commercial pass](../../examples/ledgerline-discovery
 ### Theme 1: [name the theme in the customers' terms]
 
 - **Seen in:** [n] of [total] sources
-- **Load-bearing quote:** "[verbatim, with source ID]"
+- **Load-bearing evidence:** ["[verbatim quote]" / the measure with its denominator and period / the observed behaviour], from evidence note [E#]
 - **What it means:** [one or two sentences of interpretation, clearly separated from the data above]
 - **Contradicting evidence:** [source and what it said, or "none observed"]
 
 ### Theme 2: [name]
 
 - **Seen in:** [n] of [total] sources
-- **Load-bearing quote:** "[verbatim, with source ID]"
+- **Load-bearing evidence:** ["[verbatim quote]" / the measure with its denominator and period / the observed behaviour], from evidence note [E#]
 - **What it means:** []
 - **Contradicting evidence:** []
 
@@ -104,8 +114,8 @@ Filled example: [Ledgerline commercial pass](../../examples/ledgerline-discovery
 
 This synthesis is fit to frame problems from when:
 
-- [ ] Every theme states its source count against the total, and totals are in section 2
-- [ ] Every theme carries a verbatim quote with a source ID, and every source an evidence note
+- [ ] Every theme states its source count against the total, and totals are in section 2, counted by distinct participant rather than by artifact
+- [ ] Every theme carries its load-bearing evidence, a quote, a measure or an observed behaviour, with a source ID, and every source an evidence note
 - [ ] Interpretation is visibly separated from what sources actually said
 - [ ] Contradicting evidence is recorded per theme, or "none observed" is honestly true
 - [ ] Confidence is stated with reasons and the next cheapest evidence named
