@@ -147,15 +147,29 @@ class DuplicateHeadingGateTests(unittest.TestCase):
             document = root / "templates" / "discovery" / "discovery-synthesis.md"
             text = document.read_text(encoding="utf-8")
             self.assertIn(self.SINGLE, text)
-            document.write_text(text.replace(self.SINGLE, self.DUPLICATE, 1),
-                                encoding="utf-8")
+            seeded = text.replace(self.SINGLE, self.DUPLICATE, 1)
+            document.write_text(seeded, encoding="utf-8")
+            # The two line numbers are read out of the seeded document rather
+            # than written down here. What this pins is that the repeat is
+            # reported where it sits and that the message names the sibling it
+            # repeats. The coordinates are not the claim: they move whenever a
+            # change edits anything above the themes section, as F12's evidence
+            # blocks did, and a hard-coded 66 turned that edit into a false
+            # failure of a rule that was still working.
+            heading = self.SINGLE.rstrip("\n")
+            lines = seeded.split("\n")
+            first = lines.index(heading) + 1
+            second = lines.index(heading, first) + 1
+            self.assertEqual(first + 2, second,
+                             "the seed writes the repeat two lines below the "
+                             "original; if that changes, so does this test")
             reported = [(path, line) for path, line, _message in self.findings(root)]
-            self.assertIn(("templates/discovery/discovery-synthesis.md", 66),
+            self.assertIn(("templates/discovery/discovery-synthesis.md", second),
                           reported)
             message = dict(((path, line), message)
                            for path, line, message in self.findings(root))[
-                               ("templates/discovery/discovery-synthesis.md", 66)]
-            self.assertIn("line 64", message)
+                               ("templates/discovery/discovery-synthesis.md", second)]
+            self.assertIn("line %d" % first, message)
 
     def test_a_repeat_under_another_parent_is_not_a_duplicate(self):
         """The changelog shape: one "### Fixed" per release is not a defect,
