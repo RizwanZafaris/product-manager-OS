@@ -1421,7 +1421,202 @@ def os_check(root, pins=None):
 # the ones that judge a file for being a template, a layer file, or a shipped
 # part of the repository. A user's draft is none of those.
 WORKSPACE_CHECKS = ("links", "secrets", "placeholders", "dashes",
-                    "banned metric strings", "artifact contract")
+                    "banned metric strings", "artifact contract",
+                    "NFR closure")
+
+
+# ---------------------------------------------------------------------------
+# The NFR closure gate. Finding F11 of the 2026-09-23 review: functional
+# requirements and acceptance criteria carry IDs, and the non-functional
+# requirements template identified its rows by prose, so a document with four
+# latency rows and three authorization rows had no way to say which one a
+# waiver excused or which one a test result closed. Two things follow from an
+# ID that prose cannot give: a waiver names exactly one requirement, and a
+# result names the revision of the requirement it was run against, so moving a
+# target from r1 to r2 drops the old pass instead of inheriting it.
+#
+# What this cannot do. It reads what is typed. A revision left at r1 through a
+# rewritten target is a person not bumping it, and no check here can tell a
+# substantive edit from a typo fix. Status is a typed word: a row that says Met
+# with a current result beside it is a claim, not a measurement. The gate binds
+# claims to rows; the people who sign Gate 2 still decide whether the claims
+# are true.
+# ---------------------------------------------------------------------------
+
+NFR_TEMPLATE = "templates/definition/nfr.md"
+NFR_ID = r"NFR-[A-Za-z0-9][A-Za-z0-9._-]*"
+NFR_ID_RE = re.compile(r"\b%s" % NFR_ID)
+NFR_ROW_ID_RE = re.compile(r"^(%s)\s+r(\d+)$" % NFR_ID)
+WAIVER_ID_RE = re.compile(r"\bWV-[A-Za-z0-9][A-Za-z0-9._-]*")
+TESTED_RE = re.compile(r"\btested\s+(%s)\s+r(\d+)\b" % NFR_ID, re.I)
+# The template's own menu of Status words. Only two of them are read: a row
+# that calls itself Waived has to name the waiver, and a row that calls itself
+# Met has to name a result that is current. The rest are states this check has
+# nothing to say about.
+STATUS_WAIVED_RE = re.compile(r"\bwaived\b", re.I)
+# The two Status words that claim a result was produced. Verified by is the
+# artifact that will prove the row, which is a plan until one of these is
+# typed; a plan has no revision to name, so the revision is required here and
+# checked wherever it appears.
+STATUS_RESULT_RE = re.compile(r"^\W*(?:met|not met)\b", re.I)
+
+
+def is_nfr_document(raw, rel_path=""):
+    """Whether this file is a filled copy of templates/definition/nfr.md.
+
+    Two ways, because a workspace copy may not have been stamped yet: the
+    artifact block tools/workspace.py writes names the template it came from,
+    and the standard layout puts the copy at <stage folder>/nfr.md.
+    """
+    head = raw.split("\n---", 1)[0] if raw.startswith("---") else ""
+    if re.search(r"^template:\s*[\"\']?%s[\"\']?\s*$" % re.escape(NFR_TEMPLATE),
+                 head, re.M):
+        return True
+    return str(rel_path).replace("\\", "/").endswith("definition/nfr.md")
+
+
+def _filled(value):
+    """A cell a person answered, rather than one the template shipped."""
+    return unanswered(value) is None
+
+
+def _cell(row, index):
+    return row[index].strip() if index is not None and index < len(row) else ""
+
+
+def _column(header, *words):
+    lower = [h.strip().lower() for h in header]
+    for i, cell in enumerate(lower):
+        if any(word in cell for word in words):
+            return i
+    return None
+
+
+def nfr_closure(raw):
+    """Every closure defect in one NFR document, as sorted (line, code, text).
+
+    Reads the numbered requirement sections and the waivers section. A row
+    whose subject cell is still the template's placeholder is not a row anyone
+    filled, so nothing is required of it.
+    """
+    lines = mask(raw)
+    _heads, spans = headings(lines)
+    problems = []
+    fail = lambda n, m: problems.append((n, "NFR", m))  # noqa: E731
+
+    requirement_spans, waiver_spans = [], []
+    for heading, span in spans.items():
+        if not re.match(r"^##\s*\d+\.", heading.strip()):
+            continue
+        (waiver_spans if "waiver" in heading.lower()
+         else requirement_spans).append((heading.strip(), span))
+
+    rows_by_id, order = {}, []
+    for heading, span in sorted(requirement_spans, key=lambda x: x[1]):
+        for header, rows in tables(lines, *span):
+            subject = 1 if header and header[0].strip().lower() == "id" else 0
+            filled = [(n, r) for n, r in rows if _filled(_cell(r, subject))]
+            if not filled:
+                continue
+            if subject == 0:
+                fail(span[0] + 1,
+                     'section "%s" has a filled table with no ID column. A '
+                     "requirement named only in prose cannot be bound to the "
+                     "waiver that excuses it or the result that closes it: "
+                     "give each row an ID and a revision, NFR-01 r1."
+                     % heading[:60])
+                continue
+            verified = _column(header, "verified")
+            status = _column(header, "status")
+            for line_no, row in filled:
+                ident = _cell(row, 0)
+                match = NFR_ROW_ID_RE.match(ident)
+                if not _filled(ident):
+                    fail(line_no, "requirement %r has no NFR ID."
+                         % _cell(row, subject)[:60])
+                    continue
+                if not match:
+                    fail(line_no, "ID %r is not of the form NFR-<id> r<n>. The "
+                         "revision is what stops a changed requirement "
+                         "inheriting an old passing result." % ident[:60])
+                    continue
+                key, revision = match.group(1), int(match.group(2))
+                if key in rows_by_id:
+                    fail(line_no, "%s is used twice. An ID that names two rows "
+                         "names neither." % key)
+                    continue
+                rows_by_id[key] = (line_no, revision, _cell(row, verified),
+                                   _cell(row, status))
+                order.append(key)
+
+    waived_by = {}
+    for heading, span in sorted(waiver_spans, key=lambda x: x[1]):
+        for header, rows in tables(lines, *span):
+            waiver = _column(header, "waiver id")
+            names = _column(header, "nfr id")
+            filled = [(n, r) for n, r in rows if any(_filled(c) for c in r)]
+            if not filled:
+                continue
+            if waiver is None or names is None:
+                fail(span[0] + 1,
+                     'section "%s" has a filled table without a Waiver ID and '
+                     "an NFR ID column. A waiver that names its requirement in "
+                     "prose cannot be revoked against one row." % heading[:60])
+                continue
+            for line_no, row in filled:
+                wid = _cell(row, waiver)
+                ids = NFR_ID_RE.findall(_cell(row, names))
+                if not WAIVER_ID_RE.match(wid):
+                    fail(line_no, "waiver row has no waiver ID of the form "
+                                  "WV-01.")
+                elif wid in waived_by:
+                    fail(line_no, "waiver ID %s is used twice." % wid)
+                if len(ids) != 1:
+                    fail(line_no, "waiver %s names %d NFR IDs. One waiver "
+                         "excuses exactly one requirement: a waiver naming two "
+                         "cannot be revoked by half." % (wid or "?", len(ids)))
+                    continue
+                if ids[0] not in rows_by_id:
+                    fail(line_no, "waiver %s names %s, which no requirement row "
+                         "in this document defines." % (wid or "?", ids[0]))
+                    continue
+                if WAIVER_ID_RE.match(wid):
+                    waived_by.setdefault(ids[0], wid)
+
+    for key in order:
+        line_no, revision, verified, status = rows_by_id[key]
+        claims_result = _filled(status) and STATUS_RESULT_RE.match(status)
+        match = TESTED_RE.search(verified) if _filled(verified) else None
+        if match is None:
+            if claims_result:
+                fail(line_no, "%s says it is %r and nothing in its Verified by "
+                     "cell names the revision that was tested. Write \"tested "
+                     "%s r%d\" there, so the next revision of this row cannot "
+                     "inherit this result."
+                     % (key, status[:30], key, revision))
+        elif match.group(1) != key:
+            fail(line_no, "%s is verified by a result that says it tested %s. "
+                 "A result closes the row it names." % (key, match.group(1)))
+        elif int(match.group(2)) < revision:
+            fail(line_no, "%s is at r%d and its result tested r%s. The "
+                 "requirement changed after that result was produced: re-run "
+                 "it, or waive the change in the waivers section."
+                 % (key, revision, match.group(2)))
+        elif int(match.group(2)) > revision:
+            fail(line_no, "%s is at r%d and its result claims to have tested "
+                 "r%s, a revision this row does not have."
+                 % (key, revision, match.group(2)))
+        if _filled(status) and STATUS_WAIVED_RE.search(status):
+            named = WAIVER_ID_RE.findall(status)
+            if waived_by.get(key) is None:
+                fail(line_no, "%s says it is waived and the waivers section "
+                     "carries no waiver against it." % key)
+            elif named and waived_by[key] not in named:
+                fail(line_no, "%s says it is waived under %s and the waivers "
+                     "section records %s against it."
+                     % (key, ", ".join(named), waived_by[key]))
+
+    return sorted(problems)
 
 
 def workspace_files(workspace):
@@ -1529,6 +1724,9 @@ def workspace_check(workspace, root=None):
             for i, code, message in link_problems(path, mask(raw, False),
                                                   root, None, anchor_cache):
                 fail(rp, i, code, message)
+            if is_nfr_document(raw, rp):
+                for i, code, message in nfr_closure(raw):
+                    fail(rp, i, code, message)
 
     _artifact_pass(workspace, root, fail)
 

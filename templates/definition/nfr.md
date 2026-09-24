@@ -16,6 +16,7 @@ Skill: [write-prd](../../skills/write-prd/SKILL.md)
 
 Filled example: [Harbourgate Checkout (Quay)](../../examples/harbourgate-nfr.md)
 Filled example: [Pre-Trade Risk Gateway, Tallyhouse Markets](../../examples/domain-capital-markets-nfr.md)
+Both filled examples predate the ID, Surface and workload, and Status columns below, and identify their requirements in prose. Read them for how a number, an owner and a waiver get written, not for the identifiers.
 
 <!-- Non-functional requirements are where products quietly fail: nobody writes
      "must fall over at month three" but plenty of teams ship it by leaving this
@@ -29,7 +30,29 @@ Filled example: [Pre-Trade Risk Gateway, Tallyhouse Markets](../../examples/doma
 
      Every number is ILLUSTRATIVE until the named owner has agreed it; label
      accordingly. Verification lands later: each row names the artifact that will
-     prove it at Gate 4 or 5. -->
+     prove it at Gate 4 or 5.
+
+     The second rule: every requirement carries an ID and a revision, written
+     in the ID column as "NFR-01 r1". Functional requirements and acceptance
+     criteria have IDs; requirements here need them for the same reason.
+     "The latency one" is not a reference when the document holds four latency
+     rows, and a waiver or a test result that names a requirement in prose
+     cannot be bound to the row it meant.
+
+     The revision is what stops a changed requirement inheriting an old pass.
+     Bump it, r1 to r2, whenever the target, the surface and workload, or the
+     way the row is measured changes. Verified by names the artifact that will
+     prove the row, which is a plan until there is a result; once Status says
+     Met or Not met there is one, and the cell then records which revision it
+     tested, written as "tested NFR-01 r1". Move the row to r2 and that result
+     no longer closes it: the row is unverified again until it is re-run, or
+     until the change is waived below.
+
+     Status is the row's own state, one of: Proposed, Agreed, Met, Not met,
+     Waived WV-nn, or the deferral this template has always allowed, written
+     "Owner: name, by date". Nothing here makes a person honest: a Status cell
+     says what someone typed. What the ID and the revision buy is that the
+     claim is attached to one row rather than to a sentence. -->
 
 **Owner:** [name] · **Date:** [YYYY-MM-DD] · **Status:** Draft / In review / Approved
 **Parent PRD:** [prd.md](prd.md)
@@ -42,40 +65,40 @@ Filled example: [Pre-Trade Risk Gateway, Tallyhouse Markets](../../examples/doma
      [knowledge/design/ux-laws-evidence.md](../../knowledge/design/ux-laws-evidence.md)
      before quoting one as if it always holds. -->
 
-| Requirement | Target (number) or owner for the number | Measured how and where | Verified by |
-|---|---|---|---|
-| [interaction] completes in | [n ms at p95, or "owner: name, by date"] | [APM, synthetic check] | [test or artifact] |
-| [batch or background job] completes in | | | |
+| ID | Requirement | Surface and workload | Target (number) or owner for the number | Measured how and where | Status | Verified by |
+|---|---|---|---|---|---|---|
+| NFR-01 r1 | [interaction] completes in | [which surface, under what load and conditions] | [n ms at p95, or "owner: name, by date"] | [APM, synthetic check] | [Proposed] | [test or artifact, date, tested NFR-01 r1] |
+| NFR-02 r1 | [batch or background job] completes in | | | | | |
 
 ## 2. Availability and reliability
 
-| Requirement | Target or owner | Measured how | Verified by |
-|---|---|---|---|
-| Availability of [surface] | [n% monthly, e.g. 99.9% ILLUSTRATIVE] | [uptime monitor] | |
-| Recovery time after failure (RTO) | [n minutes] | [restore drill] | |
-| Tolerable data loss window (RPO) | [n minutes] | [backup cadence] | |
+| ID | Requirement | Surface and workload | Target or owner | Measured how | Status | Verified by |
+|---|---|---|---|---|---|---|
+| NFR-03 r1 | Availability of [surface] | [which surface, over what window] | [n% monthly, e.g. 99.9% ILLUSTRATIVE] | [uptime monitor] | [Proposed] | [artifact, date, tested NFR-03 r1] |
+| NFR-04 r1 | Recovery time after failure (RTO) | [which surface, from what kind of failure] | [n minutes] | [restore drill] | [Proposed] | [artifact, date, tested NFR-04 r1] |
+| NFR-05 r1 | Tolerable data loss window (RPO) | [which data, which store] | [n minutes] | [backup cadence] | [Proposed] | [artifact, date, tested NFR-05 r1] |
 
 <!-- An availability target implies a maintenance and on-call answer; if none
      exists, say so here and route it to ../operate/operational-readiness-review.md. -->
 
 ## 3. Scale and capacity
 
-| Dimension | Launch assumption | 12-month projection | Breaks at | Source of estimate |
-|---|---|---|---|---|
-| [users, requests/s, records, storage] | | | [the number where the current design fails] | |
+| ID | Dimension | Surface and workload | Launch assumption | 12-month projection | Breaks at | Source of estimate | Status |
+|---|---|---|---|---|---|---|---|
+| NFR-06 r1 | [users, requests/s, records, storage] | [which surface, which path] | | | [the number where the current design fails] | | [Proposed] |
 
 <!-- "Breaks at" forces the honest conversation with engineering now instead of
      during the incident. -->
 
 ## 4. Security and privacy
 
-| Requirement | Target or owner | Verified by |
-|---|---|---|
-| Authentication and session policy | [statement or owner] | |
-| Authorization model (who can do what) | [statement or owner] | |
-| Data classes handled, and their handling rule | [list; PII classification lives in [../architecture/data-model.md](../architecture/data-model.md)] | |
-| Encryption in transit and at rest | [standard, or owner] | |
-| Audit logging of sensitive actions | [what is logged, retention] | |
+| ID | Requirement | Surface and workload | Target or owner | Status | Verified by |
+|---|---|---|---|---|---|
+| NFR-07 r1 | Authentication and session policy | [which surface, which caller] | [statement or owner] | [Proposed] | [artifact, date, tested NFR-07 r1] |
+| NFR-08 r1 | Authorization model (who can do what) | [which surface, which action] | [statement or owner] | [Proposed] | [artifact, date, tested NFR-08 r1] |
+| NFR-09 r1 | Data classes handled, and their handling rule | [which store, which path] | [list; PII classification lives in [../architecture/data-model.md](../architecture/data-model.md)] | [Proposed] | [artifact, date, tested NFR-09 r1] |
+| NFR-10 r1 | Encryption in transit and at rest | [which link, which store] | [standard, or owner] | [Proposed] | [artifact, date, tested NFR-10 r1] |
+| NFR-11 r1 | Audit logging of sensitive actions | [which actions, which log] | [what is logged, retention] | [Proposed] | [artifact, date, tested NFR-11 r1] |
 
 <!-- If a regulator governs any data class here and the product contains an AI
      or machine-learning feature, the regulated overlay applies: see
@@ -87,17 +110,17 @@ Filled example: [Pre-Trade Risk Gateway, Tallyhouse Markets](../../examples/doma
 
 ## 5. Accessibility
 
-| Requirement | Target or owner | Verified by |
-|---|---|---|
-| Conformance level | [e.g. WCAG 2.2 AA, or owner and date] | [audit artifact: [accessibility-checklist.md](../architecture/accessibility-checklist.md)] |
-| Keyboard-only operation of core flows | [yes / no per flow] | |
-| Localization and language support | [languages, or "single language, revisit at [date]"] | |
-| Colour-scheme support | [light only / dark only / follows OS / user toggle; if toggled, whether the choice persists and what the default is; whether a first-load flash of the wrong scheme is acceptable] | |
-| Text direction | [LTR only / RTL only / bidirectional; see [localisation-rtl-checklist.md](../architecture/localisation-rtl-checklist.md)] | |
-| Reduced motion honoured | [yes / no; which animations are cut when the OS setting is on] | |
-| Focus visible required | [yes / no per surface; a custom focus style, if any, and its contrast] | |
-| Minimum target size | [size and the authority it is measured against, for example WCAG 2.5.8 at 24 by 24 CSS px] | |
-| Density | [comfortable / compact, and who may switch it] | |
+| ID | Requirement | Surface and workload | Target or owner | Status | Verified by |
+|---|---|---|---|---|---|
+| NFR-12 r1 | Conformance level | [which surfaces are in scope] | [e.g. WCAG 2.2 AA, or owner and date] | [Proposed] | [audit artifact: [accessibility-checklist.md](../architecture/accessibility-checklist.md), date, tested NFR-12 r1] |
+| NFR-13 r1 | Keyboard-only operation of core flows | [which surface] | [yes / no per flow] | [Proposed] | [artifact, date, tested NFR-13 r1] |
+| NFR-14 r1 | Localization and language support | [which surface] | [languages, or "single language, revisit at [date]"] | [Proposed] | [artifact, date, tested NFR-14 r1] |
+| NFR-15 r1 | Colour-scheme support | [which surface] | [light only / dark only / follows OS / user toggle; if toggled, whether the choice persists and what the default is; whether a first-load flash of the wrong scheme is acceptable] | [Proposed] | [artifact, date, tested NFR-15 r1] |
+| NFR-16 r1 | Text direction | [which surface] | [LTR only / RTL only / bidirectional; see [localisation-rtl-checklist.md](../architecture/localisation-rtl-checklist.md)] | [Proposed] | [artifact, date, tested NFR-16 r1] |
+| NFR-17 r1 | Reduced motion honoured | [which surface] | [yes / no; which animations are cut when the OS setting is on] | [Proposed] | [artifact, date, tested NFR-17 r1] |
+| NFR-18 r1 | Focus visible required | [which surface] | [yes / no per surface; a custom focus style, if any, and its contrast] | [Proposed] | [artifact, date, tested NFR-18 r1] |
+| NFR-19 r1 | Minimum target size | [which surface] | [size and the authority it is measured against, for example WCAG 2.5.8 at 24 by 24 CSS px] | [Proposed] | [artifact, date, tested NFR-19 r1] |
+| NFR-20 r1 | Density | [which surface] | [comfortable / compact, and who may switch it] | [Proposed] | [artifact, date, tested NFR-20 r1] |
 
 <!-- A buyer or agency asking for a VPAT/ACR wants the Accessibility Conformance
      Report per Section508.gov; that is a compliance-team output built from this
@@ -111,35 +134,44 @@ Filled example: [Pre-Trade Risk Gateway, Tallyhouse Markets](../../examples/doma
 
 ## 6. Data retention
 
-| Data class | Retention period | Deletion behavior | Driven by (policy, regulation, choice) | Owner |
-|---|---|---|---|---|
-| | | | | |
+| ID | Data class | Retention period | Deletion behavior | Driven by (policy, regulation, choice) | Owner | Status |
+|---|---|---|---|---|---|---|
+| NFR-21 r1 | | | | | | [Proposed] |
 
 ## 7. Operability
 
-| Requirement | Target or owner | Verified by |
-|---|---|---|
-| Observability: logs, metrics, traces for core flows | [what exists at launch; detail in [../architecture/observability.md](../architecture/observability.md)] | |
-| Feature kill or rollback path | [mechanism, time to disable] | |
-| Support handover | [runbook location, or owner and date] | |
+| ID | Requirement | Surface and workload | Target or owner | Status | Verified by |
+|---|---|---|---|---|---|
+| NFR-22 r1 | Observability: logs, metrics, traces for core flows | [which flows] | [what exists at launch; detail in [../architecture/observability.md](../architecture/observability.md)] | [Proposed] | [artifact, date, tested NFR-22 r1] |
+| NFR-23 r1 | Feature kill or rollback path | [which feature, which surface] | [mechanism, time to disable] | [Proposed] | [artifact, date, tested NFR-23 r1] |
+| NFR-24 r1 | Support handover | [which surface, which team] | [runbook location, or owner and date] | [Proposed] | [artifact, date, tested NFR-24 r1] |
 
 ## 8. Waivers
 
 <!-- A target can be waived only by its owner, in writing, with a revisit date.
-     Waivers hide here rather than in meeting minutes. -->
+     Waivers hide here rather than in meeting minutes.
 
-| Requirement waived | Waived by | Reason | Revisit date |
-|---|---|---|---|
-| | | | |
+     One waiver, one NFR ID. Two requirements waived for the same reason are
+     two rows: a waiver that names two is a waiver nobody can revoke by half.
+     A waiver is the other way a row closes, so the gate it is granted at is
+     part of the record. -->
+
+| Waiver ID | NFR ID (exactly one) | Requirement waived | Waived by | Reason | Gate waived at | Revisit date |
+|---|---|---|---|---|---|---|
+| [WV-01] | [NFR-01] | | | | [Gate n] | |
 
 ---
 
 ## Exit gate (feeds Gate 2: requirements signed off)
 
 - [ ] Every row has a number or a named owner and date for the number
+- [ ] Every row carries an NFR ID and a revision, and no ID appears twice
+- [ ] Every row names the surface and workload its target binds
 - [ ] No adjective survives without a measurement ("fast", "secure", "scalable" all resolved)
 - [ ] Unagreed numbers are labeled ILLUSTRATIVE
 - [ ] Every row names its verification artifact
+- [ ] Every verification result names one NFR ID and the revision it tested, and that revision is the row's current one
 - [ ] Scale table includes a "breaks at" estimate from engineering
 - [ ] Retention table covers every data class in the data model
-- [ ] All waivers are recorded here with a revisit date
+- [ ] All waivers are recorded here with a waiver ID, exactly one NFR ID, the gate they were granted at, and a revisit date
+- [ ] Every row is closed before the gate this document feeds: Met against a current result, Waived under a waiver ID here, or carrying the named owner and date this template has always allowed for a number still to be agreed
