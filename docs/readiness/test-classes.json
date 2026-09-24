@@ -5,6 +5,7 @@
  "modules": {
   "test_contract_gates": [
    "ModelIdGateTests",
+   "PrdLineageTraceTests",
    "SeverityCrosswalkTests",
    "WorkspaceContractGateTests"
   ],
