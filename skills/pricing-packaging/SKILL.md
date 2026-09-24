@@ -14,6 +14,7 @@ Pricing fails in three familiar ways. The price is copied from the leader. The t
 - [../../templates/operate/experiment-brief.md](../../templates/operate/experiment-brief.md), for a price test before commitment, designed with [../../skills/experiment-designer/SKILL.md](../../skills/experiment-designer/SKILL.md)
 - [../../templates/definition/assumptions-register.md](../../templates/definition/assumptions-register.md), one row per guess inside the price
 - [../../templates/execution/decision-log.md](../../templates/execution/decision-log.md), where the price decision and every exception to the discount rules land
+- Routed from the template's section 9 when a change reaches customers: [../../templates/definition/business-rules.md](../../templates/definition/business-rules.md) for the billing rules the system enforces, [../../templates/delivery/launch-comms-plan.md](../../templates/delivery/launch-comms-plan.md) and [../../templates/delivery/customer-comms.md](../../templates/delivery/customer-comms.md) for the notice, [../../templates/delivery/migration-cutover-plan.md](../../templates/delivery/migration-cutover-plan.md) when customers or billing records move between systems, [../../templates/execution/change-request.md](../../templates/execution/change-request.md) when a contracted price is inside the change, and [../../templates/delivery/support-runbook.md](../../templates/delivery/support-runbook.md) for the first changed invoice
 - Read first: [../../templates/planning/positioning.md](../../templates/planning/positioning.md) for the segment and the category's price assumptions, [../../templates/planning/north-star-metric.md](../../templates/planning/north-star-metric.md) for the value metric tie
 - Method background: [../../knowledge/roles/pmm-boundary.md](../../knowledge/roles/pmm-boundary.md), which makes pricing a shared call with one named owner
 
@@ -51,7 +52,7 @@ Good, better, best. Each tier aims at a named segment and answers one upgrade qu
 
 ### 5. Write the migration rules
 
-Map every existing customer to a new tier from billing data and compute the distribution of bill changes; the revenue impact is a range from that distribution, not a guess. Set the treatment per cohort: grandfathered for a stated period, price-protected, or moved with notice. Rule: no bill moves without a notice date, a path, and a support macro. Any cohort losing a capability it uses gets a named decision in the decision log.
+Map every existing customer to a new tier from billing data and compute the distribution of bill changes; the revenue impact is a range from that distribution, not a guess. Set the treatment per cohort: grandfathered for a stated period, price-protected, or moved with notice. Rule: no bill moves without a notice date, a path, and a support macro. Any cohort losing a capability it uses gets a named decision in the decision log. The rules land in the template's section 7 (the standing terms: trial, overage, upgrade, downgrade, proration, refunds, grandfathering) and section 8 (one row per moving cohort: who moves, what they pay, the notice, the effective date, the reversal and the evidence), and section 9 routes the parts this document does not own, the billing rules, the customer messages and the migration itself, to the documents that do.
 
 ### 6. Test when reversible, then publish
 
@@ -80,7 +81,7 @@ A change that can be exposed to a slice of new customers runs as a price test th
 
 ## Exit gate
 
-The decision feeds the pricing template's exit gate and Gate 5 in [../../os/STAGE-GATES.md](../../os/STAGE-GATES.md), where a published price is part of release readiness. Do not report it done until the value metric is tied or the mismatch is accepted in writing, every tier names its segment and trigger, the migration table covers every existing customer, and the decision is logged with one named owner.
+The decision feeds the pricing template's exit gate and Gate 5 in [../../os/STAGE-GATES.md](../../os/STAGE-GATES.md), where a published price is part of release readiness. Do not report it done until the value metric is tied or the mismatch is accepted in writing, every tier names its segment and trigger and carries dated price evidence and a cost-to-serve floor, every standing term in section 7 is answered including the ones answered "not offered", the section 8 change record covers every existing customer with a reversal beside each row, and the decision is logged with one named owner.
 
 ## What checks this
 

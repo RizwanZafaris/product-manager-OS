@@ -26,7 +26,14 @@ Filled example: [Expense Copilot Add-on](../../examples/ledgerline-pricing-packa
 
      This file records the decision and its reasoning. It does not do the research;
      willingness-to-pay evidence comes from discovery and lands in the evidence
-     column, or the row admits it is a guess. -->
+     column, or the row admits it is a guess.
+
+     Sections 1 to 6 decide the price. Sections 7 to 9 are the part a price
+     document usually leaves out and a support queue finds out: what a customer is
+     owed between changes, what happens to each cohort on the day a change lands,
+     and which other documents have to move with it. A price that cannot say who
+     moves, what they pay, what notice they get, when it takes effect and what
+     undoes it is a number, not a decision. -->
 
 **Owner:** [name, the one person who can approve a price change] · **Last updated:** [YYYY-MM-DD]
 **Positioning doc:** [this product's positioning](positioning.md), which sets the category's pricing assumptions
@@ -56,10 +63,20 @@ Filled example: [Expense Copilot Add-on](../../examples/ledgerline-pricing-packa
      runs out, or what appears, that moves a customer up. A tier without a named
      segment is a price point looking for a justification. -->
 
-| Tier | Price | Aimed at | What is included | What moves them to the next tier |
+| Tier | Price | Aimed at | What is included | What moves them to the next tier | Price evidence |
+|---|---|---|---|---|---|
+| | [amount / period] | | | | [linked and dated, or the word "assumption"] |
+| *Team, $290 per month (ILLUSTRATIVE)* | *$290/mo* | *ops teams of 5 to 20* | *core workflow, 3 integrations* | *audit log and SSO appear in the tier above* | *van Westendorp range $240 to $310, n=28 ops buyers, fielded 2026-04-11 (ILLUSTRATIVE)* |
+
+Price evidence is a link, not a recollection: the acceptable range from the [van Westendorp sheet](../../frameworks/pricing/van-westendorp.md), the revenue-maximizing point from [Gabor-Granger](../../frameworks/pricing/gabor-granger.md), pilot invoices actually paid, or the dated benchmark in section 4. A row with none of those writes the word "assumption" and earns a row in the [assumptions register](../definition/assumptions-register.md).
+
+### 3a. Economic floor per tier
+
+A price is not defensible because a survey liked it. It also has to clear the cost of serving the unit it is charged on, computed in the [unit economics sheet](../../frameworks/metrics/unit-economics.md): line B is the variable cost to serve, line C the contribution margin, line D the ratio. One row per tier above. A price under the floor is a decision somebody signs, with an end date, not a finding.
+
+| Tier | Variable cost to serve, per unit per period | Contribution margin at list | Margin floor, and who set it | If the price lands under the floor |
 |---|---|---|---|---|
-| | [amount / period] | | | |
-| *Team, $290 per month (ILLUSTRATIVE)* | *$290/mo* | *ops teams of 5 to 20* | *core workflow, 3 integrations* | *audit log and SSO appear in the tier above* |
+| | [amount, and what it includes] | [amount and ratio, from unit economics line C and line D] | [percentage; name of the person who set it] | [who signs the exception, until when, and what is given up; or "does not apply"] |
 
 ## 4. Competitive benchmark
 
@@ -89,6 +106,65 @@ Filled example: [Expense Copilot Add-on](../../examples/ledgerline-pricing-packa
 
 A price change worth testing before committing runs as a pricing experiment through [experiment-brief.md](../operate/experiment-brief.md), decision rule and all, before it lands in section 2.
 
+Sections 7 to 9 are the commercial half of the same decision: what a customer is
+owed between price changes, and what happens on the day one lands. They sit after
+the review section rather than beside the price because other documents in this
+tree cite sections 1 to 6 of this file by number, and renumbering them would
+silently repoint every one of those citations.
+
+## 7. Standing commercial terms
+
+<!-- The terms that apply between price changes. Answer every row, including the
+     rows where the answer is "we do not offer this": a term nobody wrote down is
+     a term support invents at the first angry ticket, and finance discovers in
+     the next close. Each row that the system has to enforce gets an atomic rule
+     with a permanent id in the [business rules register](../definition/business-rules.md);
+     this table holds the decision, that register holds the enforceable form. -->
+
+| Term | What we offer | Where the rule is enforced | If we do not offer it, say so |
+|---|---|---|---|
+| Trial or free allowance (a period or quantity at no charge) | [length or quantity, who qualifies, what happens at the end] | [business rule id] | [say "not offered", and what a prospect gets instead] |
+| Overage above what the tier includes (usage past the included amount) | [rate per unit, cap, and whether service continues] | [business rule id] | [say "not offered", and what happens when the included amount runs out] |
+| Upgrade mid-term (a move to a higher tier before renewal) | [when it takes effect, and what is charged] | [business rule id] | [say "not offered", and when a move is possible] |
+| Downgrade mid-term (a move to a lower tier before renewal) | [when it takes effect, and what is charged or credited] | [business rule id] | [say "not offered", and when a move is possible] |
+| Proration (part-period charges when something changes mid-cycle) | [the rule, and the unit it is computed on] | [business rule id] | [say "not offered", and what is charged instead] |
+| Refunds and credits (money returned, or credit issued) | [what qualifies, the window, and who approves] | [business rule id] | [say "not offered", and what the contract says instead] |
+| Grandfathering (an existing customer keeps an old price) | [which cohorts, at which price, for how long] | [business rule id] | [say "not offered", so every customer moves together] |
+
+## 8. The change record
+
+<!-- One row per cohort whose bill, tier or terms move, filled before the change
+     is announced rather than after. Cohort counts come from billing, not from
+     memory; the skill's rule is that no bill moves without a notice date, a path
+     and a support macro. A row leaves none of its answers to be inferred from how
+     billing happens to behave: who moves, how many of them, what they pay now and
+     after, what notice they get, when it takes effect, what undoes it, and what
+     evidence says the new price is right. "Reversal" is the honest half: name what puts
+     the cohort back, who decides, and the date after which nothing does. -->
+
+**Change:** [what is changing, in one sentence] · **Decision:** [decision log id and date] · **Migration applicability:** [either the cutover plan this change runs under, or the reason no customer or data moves and no cutover plan is needed]
+
+| Cohort | Count (from billing) | Pays now | Pays after | Notice: date and channel | Effective date | Reversal: what undoes it, who decides, and by when | Evidence for the new price |
+|---|---|---|---|---|---|---|---|
+| | [number, and the date the count was taken] | [amount / period] | [amount / period] | [date; the channel and the message live in customer comms] | [date the first changed invoice is issued] | [the condition, the decider, and the last date it can be used] | [linked, as in section 3] |
+
+## 9. Commercial-change checklist
+
+<!-- A price change is not finished when the number changes. Each row either names
+     the document that carries that part of the change, or records why that part
+     does not apply. An empty right-hand column is an unfinished change, not a
+     tidy one. -->
+
+| What the change touches | Where it is written down | Required when | Done, or why not |
+|---|---|---|---|
+| Billing rules the system must enforce | [business rules register](../definition/business-rules.md) | Any section 7 or section 8 row the system charges on | [date and owner, or the reason it is not needed] |
+| What customers are told, and when | [launch comms plan](../delivery/launch-comms-plan.md) | Any cohort in section 8 with a notice date | [date and owner, or the reason it is not needed] |
+| The messages themselves | [customer comms](../delivery/customer-comms.md) | Any notice that reaches a customer, in any channel | [date and owner, or the reason it is not needed] |
+| Moving customers between plans or systems | [migration cutover plan](../delivery/migration-cutover-plan.md) | Customers, entitlements or billing records move between systems | [date and owner, or the reason it is not needed] |
+| Contracts already signed | [change request](../execution/change-request.md) | A contracted price or term is inside the change | [date and owner, or the reason it is not needed] |
+| What support says and does | [support runbook](../delivery/support-runbook.md) | The first changed invoice can produce a ticket | [date and owner, or the reason it is not needed] |
+| The decision and any exception to it | [decision log](../execution/decision-log.md) | Always, including a change that is decided and then reversed | [date and owner, or the reason it is not needed] |
+
 ## Exit gate
 
 This pricing is fit to publish when:
@@ -98,6 +174,10 @@ This pricing is fit to publish when:
 - [ ] Every tier aims at a named segment and names its upgrade trigger
 - [ ] The benchmark includes the customer's real alternative, dated and sourced
 - [ ] Discount rules exist, with named approvers, before the first negotiation
+- [ ] Every tier row carries dated, linked price evidence or the word "assumption", and a cost-to-serve floor in section 3a
+- [ ] Every section 7 term is answered, including the ones answered "not offered"
+- [ ] Any change in flight names, per cohort, who moves, what they pay, the notice, the effective date, the reversal and the evidence, with no billing behaviour left to be inferred
+- [ ] Section 9 routes billing rules, customer communication and migration, or records why each is not needed
 - [ ] One owner is named who can approve changes, and a review date is on a calendar
 
 Signed: [name], [role], [YYYY-MM-DD]

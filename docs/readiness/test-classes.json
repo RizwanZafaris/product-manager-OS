@@ -189,6 +189,7 @@
    "GateCountGateTests",
    "GraphFreshnessGateTests",
    "PmWorkingSetGateTests",
+   "PricingContractGateTests",
    "ProseMetricsTests",
    "ReadinessCategoryExitTests",
    "ReadinessChangelogTests",

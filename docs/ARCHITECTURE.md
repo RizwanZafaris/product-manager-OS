@@ -114,7 +114,7 @@ product-manager-OS/
 │   ├── phase_index.py  Reads the template, framework and example declarations and renders docs/PHASE-INDEX.md; --check fails on drift
 │   ├── frontmatter_init.py  Seeds a declaration from what a file already states; never overwrites a value a human edited
 │   ├── security_gate.py  Source and configuration gate: fails on committed credential-shaped values and unsafe execution primitives; a source gate, not a penetration test
-│   ├── docs_contract.py  Holds the five operator documents to heading order, image alt text, descriptive link text, local link resolution, banned overclaim phrases, and the evidence-boundary vocabulary; and holds the whole tree to four counted or repeated claims: sibling headings, relative paths declared under templates/, the generated script inventory and the counts stated around it, and an interview guide that bans the question its own commitment probe asks
+│   ├── docs_contract.py  Holds the five operator documents to heading order, image alt text, descriptive link text, local link resolution, banned overclaim phrases, and the evidence-boundary vocabulary; and holds the whole tree to four counted or repeated claims: sibling headings, relative paths declared under templates/, the generated script inventory and the counts stated around it, and an interview guide that bans the question its own commitment probe asks; also holds the pricing blank's commercial contract, its evidence column and the filled example's change record
 │   ├── exec_surface.py  Generates the executable-surface inventory in SECURITY.md from the tree: how many scripts tools/ holds and which of them name an environment variable or a network primitive, read from each script's syntax; --check fails when the committed block is stale
 │   ├── review_gate.py  Validates a local review record against the exact tree digest it reviewed; it binds a record to content and never attests to a reviewer's identity
 │   ├── ext_ai_probe.py  Collects the evidence the EXT-AI external gate owes, through the OpenRouter adapter or a loopback OmniRoute gateway, and nothing else; run by hand, no gate runs it
@@ -298,7 +298,7 @@ product-manager-OS/
 │   │   ├── product-strategy.md  Strategic context, where-to-play bets, differentiation, sequencing, key risks
 │   │   ├── north-star-metric.md  NSM definition, input-metric tree with owners, guardrails, review cadence
 │   │   ├── positioning.md  The Dunford chain: competitive alternatives, unique attributes, value and proof, target customer, market category
-│   │   ├── pricing-packaging.md  Pricing model, tiers, value metric, competitive benchmark, discount rules, owner
+│   │   ├── pricing-packaging.md  Pricing model, tiers with price evidence and an economic floor, value metric, competitive benchmark, discount rules, standing commercial terms, the per-cohort change record, the commercial-change checklist, owner
 │   │   ├── partner-integration-brief.md  One lean go/no-go file per partnership: the exchange, the evidenced user problem, the integration surface with owners on both sides, commercial shape and exit terms, dependency and data-sharing risks
 │   │   ├── business-case.md  Options in money over time, including do nothing, with payback or NPV, sensitivities, and one recommendation
 │   │   ├── program-charter.md  The one-page agreement: what the program changes, who decides, governance, RACI, cadence

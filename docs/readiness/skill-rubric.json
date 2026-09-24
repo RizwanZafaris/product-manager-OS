@@ -209,10 +209,10 @@
       "aliased": {},
       "workflow_steps": 6,
       "exit_gate_boxes": 0,
-      "exit_gate_words": 65,
+      "exit_gate_words": 96,
       "failure_modes": 9,
-      "links": 16,
-      "lines": 91
+      "links": 22,
+      "lines": 92
     },
     {
       "path": "skills/product-analyst/SKILL.md",
