@@ -34,7 +34,7 @@ Filled example: [Harbourgate Quay payment service](../../examples/harbourgate-ua
 UAT starts only when all of these hold:
 
 - [ ] QA exit criteria from the [testing strategy](testing-strategy.md) are met
-- [ ] No open S1 or S2 defects on the flows in scope
+- [ ] No open S1 or S2 defects on the flows in scope, using the canonical severity ladder in that document
 - [ ] The UAT environment is seeded with realistic, non-production data: [environment name]
 - [ ] Testers below are confirmed and have access
 - [ ] [add product-specific entry conditions]
@@ -61,11 +61,19 @@ UAT starts only when all of these hold:
 
 ## 5. Defect handling during UAT
 
-| Severity | Meaning during UAT | Action |
-|---|---|---|
-| S1 | Tester cannot complete a scoped job at all | UAT pauses, fix before resuming |
-| S2 | Scoped job completes only with a workaround | Fix inside the window or sponsor accepts in writing |
-| S3 / S4 | Friction or cosmetic | Logged, prioritized after launch |
+<!-- UAT does not get its own severity scale. It used to, and the two scales
+     disagreed: a job a tester could not finish was S1 here and S2 in QA, so the
+     same defect blocked or did not block depending on which document the reader
+     had open. The table below is a crosswalk, not a definition. -->
+
+Severity is not redefined here. The canonical ladder is [testing strategy](testing-strategy.md) section 6, and the table below only maps UAT business wording onto those IDs.
+
+| Canonical severity | What it looks like in UAT | Action inside the UAT window | Release rule (from the canonical ladder) |
+|---|---|---|---|
+| S1 | A tester loses work, or data or privacy is exposed, or the environment is unusable for everyone | UAT pauses, fix before resuming | Always blocks |
+| S2 | A tester cannot complete a scoped job at all and there is no workaround | Fix inside the window, or the business sponsor accepts it in writing against the defect id | Blocks unless a named approver records who accepted it and why |
+| S3 | A tester completes the scoped job only by working around the product, or a job outside the charter set is broken | Logged with a fix owner and date, UAT continues | Ships with a named fix owner and a fix date |
+| S4 | Cosmetic friction that changes nothing about whether the job gets done | Logged, UAT continues | Ships, tracked |
 
 - Defects logged in: [tracker link or location] · Triage cadence during the window: [daily]
 
@@ -74,7 +82,7 @@ UAT starts only when all of these hold:
 UAT passes when:
 
 - [ ] Every charter has run, and none is Blocked
-- [ ] No open S1; every accepted S2 has the sponsor's written acceptance attached
+- [ ] No open S1. No open S2 unless the business sponsor's written acceptance is attached to that defect id, and the same acceptance is the one the release-readiness known-issues row cites
 - [ ] Testers answered "would you use this over the current way?" and the answers are recorded: [location]
 
 **Sign-off form**

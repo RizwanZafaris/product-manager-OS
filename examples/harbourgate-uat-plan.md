@@ -15,7 +15,7 @@ Fills [templates/delivery/uat-plan.md](../templates/delivery/uat-plan.md). Every
 UAT starts only when all of these hold:
 
 - [x] QA exit criteria from the [testing strategy](harbourgate-testing-strategy.md) are met
-- [x] No open S1 or S2 defects on the flows in scope
+- [x] No open S1 or S2 defects on the flows in scope, using the canonical severity ladder in that document
 - [x] The UAT environment is seeded with realistic, non-production data: pre-production, with production-shaped schemas, synthetic card tokens and its own settlement-file drop under HC8 and A2
 - [x] Testers below are confirmed and have access
 - [x] Rehearsal 3 has passed with no issues, and the rollback timing has been rehearsed: rehearsal 3 took 4 h 45 min on 2026-07-04, with flag flip to legacy in 3 min 50 s and restore after flag removal in 22 minutes, under N39 and N40
@@ -45,11 +45,14 @@ Kiosk flows are not UAT charters. They remain with the store cohorts.
 
 ## 5. Defect handling during UAT
 
-| Severity | Meaning during UAT | Action |
-|---|---|---|
-| S1 | Tester cannot complete a scoped job at all | UAT pauses, fix before resuming |
-| S2 | Scoped job completes only with a workaround | Fix inside the window or sponsor accepts in writing |
-| S3 / S4 | Friction or cosmetic | Logged, prioritized after launch |
+Severity is not redefined here. The canonical ladder is [testing strategy](harbourgate-testing-strategy.md) section 6, and the table below only maps UAT business wording onto those IDs.
+
+| Canonical severity | What it looks like in UAT | Action inside the UAT window | Release rule (from the canonical ladder) |
+|---|---|---|---|
+| S1 | A tester loses work, or data or privacy is exposed, or the environment is unusable for everyone | UAT pauses, fix before resuming | Always blocks |
+| S2 | A tester cannot complete a scoped job at all and there is no workaround | Fix inside the window, or the business sponsor accepts it in writing against the defect id | Blocks unless a named approver records who accepted it and why |
+| S3 | A tester completes the scoped job only by working around the product, or a job outside the charter set is broken | Logged with a fix owner and date, UAT continues | Ships with a named fix owner and a fix date |
+| S4 | Cosmetic friction that changes nothing about whether the job gets done | Logged, UAT continues | Ships, tracked |
 
 - Defects logged in: the UAT log · Triage cadence during the window: recorded in the UAT log as issues were reviewed
 
@@ -60,7 +63,7 @@ The outcome was 0 S1, 0 S2, 1 S3 and 1 S4. The S3 was the known N62 issue, reaso
 UAT passes when:
 
 - [x] Every charter has run, and none is Blocked: 5 of 5 passed
-- [x] No open S1; every accepted S2 has the sponsor's written acceptance attached: 0 S1 and 0 S2
+- [x] No open S1. No open S2 unless the business sponsor's written acceptance is attached to that defect id, and the same acceptance is the one the release-readiness known-issues row cites: 0 S1 and 0 S2, so no acceptance was needed
 - [x] Testers answered "would you use this over the current way?" and the answers are recorded: UAT log, 4 of 4 testers answered yes
 
 **Sign-off form**

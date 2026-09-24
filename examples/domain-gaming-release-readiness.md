@@ -17,7 +17,7 @@ Fills [templates/delivery/release-readiness.md](../templates/delivery/release-re
 ## 2. Tests
 
 - [x] Every blocking level in the [testing strategy](../templates/delivery/testing-strategy.md) ran and passed
-- [ ] The [edge-case register](../templates/delivery/edge-cases.md) has no open rows (Exception: Row #42, "Crate opening animation stutters on Android 12 devices with low RAM," moved to Known Issues table with severity Low and owner J. Chen)
+- [ ] The [edge-case register](../templates/delivery/edge-cases.md) has no open rows (Exception: Row #42, "Crate opening animation stutters on Android 12 devices with low RAM," moved to Known Issues table as S4, owner J. Chen)
 - [x] [UAT](../templates/delivery/uat-plan.md) is signed off, conditions listed below if any (Condition: UAT sign-off includes a caveat that the new odds disclosure text must be verified in German and Japanese localizations before store submission; verification completed 2026-11-04)
 - [x] For AI features: eval thresholds met per the [eval spec](../templates/ai/eval-spec.md), and the [red-team review](../templates/ai/red-team-review.md) is closed (Note: v4.2.1 contains no generative AI features; the matchmaking algorithm update was tested against fairness metrics but does not require red-team review under current internal policy as it is deterministic based on player skill rating)
 
@@ -25,9 +25,9 @@ Fills [templates/delivery/release-readiness.md](../templates/delivery/release-re
 
 | # | Issue | Severity | Why it is acceptable to ship | Fix owner | Fix date |
 |---|---|---|---|---|---|
-| 1 | Platform certification: build 4.2.1 passes Apple App Store review and Google Play policy review, including the drop-rate disclosure for the Tactician Crate paid loot mechanic. Apple accepted 2026-11-03; Google's review flagged the crate's odds disclosure as not visible pre-purchase on the storefront listing (not the in-app screen, which already discloses it); resubmission queued for 2026-11-10, launch date held 2026-11-14 pending that pass, with a same-week resubmission slot reserved | High | This is a condition, not an issue that may ship open. The release cannot proceed until Google Play accepts the updated storefront metadata. Launch is held until 2026-11-14 to accommodate the resubmission queue. If Google rejects again, launch slips to 2026-11-21. | Noor Bashir, Release Manager | 2026-11-10 |
-| 2 | Crate opening animation stutters on Android 12 devices with <4GB RAM | Low | The stutter is visual only and does not affect the random outcome or the transaction. It affects approximately 3% of the active device base. A fix is scheduled for v4.2.2. | J. Chen, Client Lead | 2026-11-20 |
-| 3 | Localized string for "Tactician Crate" in French is 12 characters longer than the button width allows, causing truncation on iPhone SE | Medium | Truncation renders as "Tactic..." which is still recognizable to users who have seen the English version. A hotfix for string length adjustment is ready but requires a separate binary upload, delaying the iOS build slightly. We will ship with truncation and patch in v4.2.2 to avoid holding the entire release for one locale. | M. Dubois, Localization Lead | 2026-11-20 |
+| 1 | Platform certification: build 4.2.1 passes Apple App Store review and Google Play policy review, including the drop-rate disclosure for the Tactician Crate paid loot mechanic. Apple accepted 2026-11-03; Google's review flagged the crate's odds disclosure as not visible pre-purchase on the storefront listing (not the in-app screen, which already discloses it); resubmission queued for 2026-11-10, launch date held 2026-11-14 pending that pass, with a same-week resubmission slot reserved | not a defect: external approval pending | This is a condition, not an issue that may ship open. The release cannot proceed until Google Play accepts the updated storefront metadata. Launch is held until 2026-11-14 to accommodate the resubmission queue. If Google rejects again, launch slips to 2026-11-21. | Noor Bashir, Release Manager | 2026-11-10 |
+| 2 | Crate opening animation stutters on Android 12 devices with <4GB RAM | S4 | The stutter is visual only and does not affect the random outcome or the transaction. It affects approximately 3% of the active device base. A fix is scheduled for v4.2.2. | J. Chen, Client Lead | 2026-11-20 |
+| 3 | Localized string for "Tactician Crate" in French is 12 characters longer than the button width allows, causing truncation on iPhone SE | S4 | Truncation renders as "Tactic..." which is still recognizable to users who have seen the English version. A hotfix for string length adjustment is ready but requires a separate binary upload, delaying the iOS build slightly. We will ship with truncation and patch in v4.2.2 to avoid holding the entire release for one locale. | M. Dubois, Localization Lead | 2026-11-20 |
 
 ## 4. Rollback
 
@@ -80,7 +80,7 @@ Fills [templates/delivery/release-readiness.md](../templates/delivery/release-re
 |---|---|---|---|---|
 | Product | Elena Vance, Product Director | GO WITH CONDITIONS | Launch held until Google Play acceptance on 2026-11-10. If rejected, slip to 2026-11-21. | 2026-11-05 |
 | Engineering | Raj Patel, Eng Lead | GO | None. | 2026-11-05 |
-| QA | Chris O'Malley, QA Manager | GO | Known issue #2 (Android stutter) accepted as Low severity. | 2026-11-05 |
+| QA | Chris O'Malley, QA Manager | GO | Known issue #2 (Android stutter) accepted as S4. | 2026-11-05 |
 | Design | Yuki Tanaka, Design Lead | GO | Verified odds disclosure UI meets accessibility contrast standards. | 2026-11-05 |
 | Support | Sarah Jenkins, Head of Support | GO | Scripts for refund and complaint handling briefed to team. | 2026-11-05 |
 | Data | Priya Singh, Data Scientist | GO | Payer concentration dashboard live and alerting configured. | 2026-11-05 |
@@ -107,8 +107,8 @@ Fills [templates/delivery/release-readiness.md](../templates/delivery/release-re
 
 | # | Issue | Severity | Why it is acceptable to ship | Fix owner | Fix date |
 |---|---|---|---|---|---|
-| *1* | *Extraction fails on receipts photographed in low light, and falls back to manual entry without telling the user why* | *medium* | *The fallback is correct and loses no data. The silence is confusing, not harmful, and affects a minority of submissions* | *S. Kaur* | *2026-06-12* |
-| *2* | *Support runbook does not cover the fallback path* | *high* | *Not acceptable to ship. This is a condition, not a known issue* | *Support lead* | *before rollout* |
+| *1* | *Extraction fails on receipts photographed in low light, and falls back to manual entry without telling the user why* | *S3* | *The fallback is correct and loses no data. The silence is confusing, not harmful, and affects a minority of submissions* | *S. Kaur* | *2026-06-12* |
+| *2* | *Support runbook does not cover the fallback path* | *not a defect: missing runbook* | *Not acceptable to ship. This is a condition, not a known issue* | *Support lead* | *before rollout* |
 
 *Conditions recorded in the sign-off row: support runbook published and the support team briefed, both before the flag is enabled for any customer. Rollback trigger agreed in advance: manual-entry fallback rate above the pre-launch baseline for two consecutive hours, called by the on-call engineer without further discussion.*
 
@@ -121,6 +121,8 @@ Gate 5 is green when:
 - [x] Every checklist box above is checked, or its exception sits in the known-issues table with an owner and a date (Edge-case register row #42 is in Known Issues #2)
 - [x] The known-issues table is not empty, or the emptiness is explained (Populated with 3 items)
 - [x] Every known issue distinguishes itself from a condition: an issue may ship open, a condition may not (Issue #1 is explicitly marked as a condition blocking launch; Issues #2 and #3 are shippable defects)
+- [x] Every Severity cell is a canonical id from the testing strategy ladder, or `not a defect:` followed by one of the four gap classes named in section 3 (#1 is external approval pending; #2 and #3 are S4)
+- [x] No known-issues row is S1, and every S2 row names the approver who accepted it and why, or it has moved to a condition (no S1 and no S2 rows; #1 is a condition and holds launch)
 - [x] The rollback trigger is a condition a dashboard can show, not a feeling, and the procedure was executed on a dated environment (Triggers defined as % error rate and regulator inquiry; tested 2026-11-02)
 - [x] Every sign-off row has a name and a date, and every conditional verdict has its condition written in the row (Product and Legal have conditions written)
 - [x] The decider recorded GO, NO-GO, or GO WITH CONDITIONS, with conditions in writing (GO WITH CONDITIONS recorded in header and section 1)

@@ -74,15 +74,22 @@ Filled example: [Harbourgate payment tickets](../../examples/harbourgate-support
 
 ## 4. Escalation
 
-<!-- Severity definitions belong to your org; copy them here so nobody looks
-     them up mid-call. Response expectations are fields agreed with the team
-     that will be paged, never assumed. Names, not teams. -->
+<!-- Severity is not redefined here. It used to be: this section told you to
+     paste your org's own three-tier support scale in, while section 5
+     was fed known-issues rows carrying S1 to S4 from the readiness document, so
+     the same defect had two names in one folder. The canonical ladder is
+     testing-strategy.md section 6 and the table below is a crosswalk onto it.
+     Response expectations are fields agreed with the team that will be paged,
+     never assumed. Names, not teams. -->
 
-| Severity | Definition for this feature | Escalate to (name) | How (channel, pager) | Expected first response | What to include |
+Severity is not redefined here. The canonical ladder is [testing strategy](testing-strategy.md) section 6, and the table below only maps those IDs onto what support sees and does.
+
+| Canonical severity | What it looks like on a support call | Escalate to (name) | How (channel, pager) | Expected first response | What to include |
 |---|---|---|---|---|---|
-| Sev 1 | [e.g. no customer can submit] | | | [agreed time] | [section 3 evidence plus customer count] |
-| Sev 2 | | | | [agreed time] | |
-| Sev 3 | | | | [agreed time] | |
+| S1 | [e.g. customer data is exposed or the product is unusable] | | | [agreed time] | [section 3 evidence plus customer count] |
+| S2 | [e.g. no customer can submit, and there is no workaround] | | | [agreed time] | |
+| S3 | [e.g. customers can submit only by working around the product] | | | [agreed time] | |
+| S4 | [e.g. a cosmetic label problem, no job affected] | | | none, log it | |
 
 **After hours:** [what changes, who is reachable]
 **Product owner for "bug or design choice" questions:** [name, channel]
