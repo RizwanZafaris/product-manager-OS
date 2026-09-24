@@ -37,7 +37,7 @@ Domain: [mobile money and wallets](../knowledge/domains/mobile-money-wallets.md)
 
 ## Evidence ledger
 
-| E# | Claim | Verbatim quote | Source | Source date | Retrieved | Confidence |
+| E# | Claim | Evidence (quote, measure or observation) | Source | Source date | Retrieved | Confidence |
 |---|---|---|---|---|---|---|
 | E1 | Weekend due dates produce surcharges even when the customer tries to pay | "The bill was due on a Sunday. The bank was shut, the shop man charged me fifty, and the office still put the fine on the next bill." | INT-004 (C-04), interview notes section 8 | 2026-02-02 | 2026-02-16 | measured, shown |
 | E2 | Customers do not hold a balance between transactions | "I only put money in the phone when I need to send it that day. Why would I leave it there?" | INT-004 (C-04), interview notes section 8 | 2026-02-02 | 2026-02-16 | measured, told |

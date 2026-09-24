@@ -209,7 +209,7 @@ product-manager-OS/
 │   │   ├── personas.md  Archetype fields plus a mandatory evidence section: minimum five interviews cited or the persona is marked assumption
 │   │   ├── journey-map.md  Stages, actions, emotions, current vs future, opportunity areas
 │   │   ├── competitive-analysis.md  Decision-to-inform as the one mandatory field, job and current alternatives, dated evidence per claim, axes that can move the decision
-│   │   ├── evidence-note.md  One note per source: claim, verbatim load-bearing quote, source, dates, confidence; rows feed the STATE.md evidence ledger
+│   │   ├── evidence-note.md  One note per source: claim, load-bearing evidence (quote, measure or observation), source, dates, confidence; rows feed the STATE.md evidence ledger
 │   │   ├── opportunity-assessment.md  The Cagan ten-question go/no-go before an idea earns discovery time
 │   │   ├── discovery-synthesis.md  Research question, themes with verbatim quotes, confidence, implications; sits between the research plan and problem framing
 │   │   ├── jtbd-spec.md  Job statement, four forces, tools hired and fired, switch barriers

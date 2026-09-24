@@ -149,13 +149,13 @@ Overlays active: <AI: yes/no> <regulated: yes/no> <decided at: date, logged wher
 | ID | Answer offered | Why not accepted | Pushes used (n of 2) | Parked to |
 
 ## Evidence ledger
-| E# | Claim | Verbatim quote | Source | Source date | Retrieved | Confidence |
+| E# | Claim | Evidence (quote, measure or observation) | Source | Source date | Retrieved | Confidence |
 
 ## Journal
 <one line per session: date, runtime, questions covered, artifacts touched>
 ```
 
-Rules: the `Landed in` column is a workspace-relative path plus a section, so every answer is auditable against the artifact it produced. The evidence ledger holds the load-bearing sentence of each source verbatim, in quotation marks, because paraphrase drifts across sessions and a quote is checkable later. Confidence is one of: verified (two or more independent sources), single-source, contested, unverified. Contested rows name what disagrees.
+Rules: the `Landed in` column is a workspace-relative path plus a section, so every answer is auditable against the artifact it produced. The evidence ledger holds each source's load-bearing evidence in the form that source has: a verbatim sentence in quotation marks where somebody spoke, because paraphrase drifts across sessions and a quote is checkable later; the measure with its denominator and period where the source is a query or an export; the observed behaviour with its session and timecode where the source is a watched session. Quotation marks are reserved for words that were actually said. Confidence is one of: verified (two or more independent sources), single-source, contested, unverified. Contested rows name what disagrees.
 
 ## 6. The resume protocol
 
@@ -184,7 +184,7 @@ Queue when the judgment tier is capped; never downgrade a cross-examination to t
 
 ## 8. The product-analyst skill
 
-`skills/product-analyst` is the DISCOVER and OPERATE research engine, a single-analyst distillation of a staged research pipeline. Its method, in order: decompose the question into sub-claims and named entities with a coverage check against the original ask; plan searches across three lenses (breadth, canonical primary sources, adversarial, meaning a deliberate hunt for who disagrees); write one evidence note per source carrying a verbatim load-bearing quote; name cross-source tensions in writing before drafting anything; commit a position per sub-question with a confidence label and a stated "what would change my mind"; run one adversarial pass against its own draft before handoff. The evidence-note format ships as `templates/discovery/evidence-note.md` and its rows feed the STATE.md evidence ledger directly.
+`skills/product-analyst` is the DISCOVER and OPERATE research engine, a single-analyst distillation of a staged research pipeline. Its method, in order: decompose the question into sub-claims and named entities with a coverage check against the original ask; plan searches across three lenses (breadth, canonical primary sources, adversarial, meaning a deliberate hunt for who disagrees); write one evidence note per source carrying its load-bearing evidence, a verbatim quote where the source is words and a reproducible measure or a timecoded observation where it is not; name cross-source tensions in writing before drafting anything; commit a position per sub-question with a confidence label and a stated "what would change my mind"; run one adversarial pass against its own draft before handoff. The evidence-note format ships as `templates/discovery/evidence-note.md` and its rows feed the STATE.md evidence ledger directly.
 
 [../agents/research-agent.md](../agents/research-agent.md) is upgraded in place rather than duplicated, since it already owns discovery evidence and the gap is additive: it gains the decomposition step at the top of its operating rules, the three-lens search plan, a verbatim-quote field in its output shape, a committed position per question, and one new section, "Reconcile before handoff," that plays sources against each other before findings reach any template. Per-source findings, however well cited individually, do not force their tensions into the open on their own; that step exists because nothing else in the chain does it.
 

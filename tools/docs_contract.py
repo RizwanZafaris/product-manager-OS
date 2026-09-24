@@ -1225,6 +1225,152 @@ def _section(lines: list, heading: str):
     return 0, 0
 
 
+# ---------------------------------------------------------------------------
+# Evidence notes (F12). The note's source types have always included metric
+# exports, datasets and observations, while its claim block, its ledger row and
+# its exit gate all demanded a verbatim quote. A measured count has no spoken
+# sentence in it, so the form left an honest analyst two options: invent prose
+# and put it in quotation marks, or fail the gate. The shipped
+# examples/ledgerline-discovery-synthesis.md took the third option and wrote a
+# bracketed apology inside the quotation marks. What is checked here is the
+# contract, not the analysis: that the template offers a block per kind of
+# source, that only the text kind requires a quote, and that a filled note
+# fills the block it declared. Whether the number is right is read by the
+# people who sign the gate.
+EVIDENCE_NOTE = "templates/discovery/evidence-note.md"
+EVIDENCE_SYNTHESIS = "templates/discovery/discovery-synthesis.md"
+EVIDENCE_STATE = "templates/execution/state.md"
+EVIDENCE_FILLED = ("examples/sahulat-evidence-note.md",)
+EVIDENCE_KINDS = {
+    "text quotation": ("Where in the source",),
+    "quantitative": ("Snapshot or query", "Filters", "Denominator",
+                     "Period and timezone", "Calculation"),
+    "observation": ("Session or timecode", "What was observed", "Context"),
+}
+KIND_LINE = re.compile(r"^\*\*Evidence kind:\*\*[ \t]*(.+?)[ \t]*$", re.M)
+FIELD_LINE = re.compile(r"^-[ \t]+\*\*(?P<label>[^*]+?):\*\*[ \t]*(?P<value>.*)$", re.M)
+LEDGER_HEADER = re.compile(r"^\|[ \t]*E#[ \t]*\|(?P<rest>.+)\|[ \t]*$", re.M)
+QUOTE_LINE = re.compile(r'^>[ \t]*"', re.M)
+
+
+def _claim_sections(text: str) -> list[tuple[int, str]]:
+    """(first line number, body) for every `## Claim` section in the note."""
+    lines = text.splitlines()
+    found, start = [], None
+    for number, raw in enumerate(lines, 1):
+        if raw.strip() == "## Claim":
+            start = number
+        elif start is not None and raw.startswith("## "):
+            found.append((start, "\n".join(lines[start:number - 1])))
+            start = None
+    if start is not None:
+        found.append((start, "\n".join(lines[start:])))
+    return found
+
+
+def _unfilled(value: str) -> bool:
+    """A bracketed instruction, which is what an unfilled field looks like."""
+    value = value.strip()
+    return not value or (value.startswith("[") and value.endswith("]"))
+
+
+def evidence_note_issues(text: str, name: str, filled: bool) -> list[Issue]:
+    """One evidence note against the kind contract.
+
+    ``filled=False`` reads the blank template, where every field is a bracketed
+    instruction and all three blocks are present at once. ``filled=True`` reads
+    a note somebody wrote: exactly one kind, its own fields answered, and a
+    quote only where somebody actually spoke.
+    """
+    issues: list[Issue] = []
+    sections = _claim_sections(text)
+    if not sections:
+        return [Issue("error", "evidence-kind", name, 1,
+                      "an evidence note needs a '## Claim' section")]
+    for line, body in sections:
+        declared = KIND_LINE.search(body)
+        if declared is None:
+            issues.append(Issue("error", "evidence-kind", name, line,
+                                "the claim block declares no '**Evidence kind:**'"))
+            continue
+        stated = declared.group(1).strip()
+        fields = {match.group("label").strip(): match.group("value")
+                  for match in FIELD_LINE.finditer(body)}
+        if not filled:
+            for kind, labels in EVIDENCE_KINDS.items():
+                if kind not in stated:
+                    issues.append(Issue("error", "evidence-kind", name, line,
+                                        "the kind selector does not offer '%s'" % kind))
+                for label in labels:
+                    if label not in fields:
+                        issues.append(Issue("error", "evidence-kind", name, line,
+                                            "the %s block has no '%s' field" % (kind, label)))
+            continue
+        if stated not in EVIDENCE_KINDS:
+            issues.append(Issue("error", "evidence-kind", name, line,
+                                "'%s' is not one of: %s" % (stated,
+                                ", ".join(sorted(EVIDENCE_KINDS)))))
+            continue
+        for label in EVIDENCE_KINDS[stated]:
+            if label not in fields:
+                issues.append(Issue("error", "evidence-field", name, line,
+                                    "a %s note needs its '%s' field" % (stated, label)))
+            elif _unfilled(fields[label]):
+                issues.append(Issue("error", "evidence-field", name, line,
+                                    "'%s' is still the blank instruction" % label))
+        quoted = QUOTE_LINE.search(body)
+        if stated == "text quotation" and quoted is None:
+            issues.append(Issue("error", "evidence-quote", name, line,
+                                "a text quotation note needs the sentence verbatim"))
+        if stated != "text quotation" and quoted is not None:
+            issues.append(Issue("error", "evidence-quote", name,
+                                line + body[:quoted.start()].count("\n"),
+                                "a %s note quotes a sentence nobody said" % stated))
+    return issues
+
+
+def check_evidence_contract(root: Path) -> list[Issue]:
+    """The evidence-note contract, and the two documents that copy its row."""
+    issues: list[Issue] = []
+    template = root / EVIDENCE_NOTE
+    if not template.is_file():
+        return issues
+    text = template.read_text(encoding="utf-8")
+    issues.extend(evidence_note_issues(text, EVIDENCE_NOTE, filled=False))
+    header = LEDGER_HEADER.search(text)
+    if header is None:
+        issues.append(Issue("error", "evidence-ledger", EVIDENCE_NOTE, 1,
+                            "the note states no ledger row for STATE.md"))
+    else:
+        evidence_column = header.group("rest").split("|")[1].strip()
+        if "quote" == evidence_column.lower().replace("verbatim ", ""):
+            issues.append(Issue("error", "evidence-ledger", EVIDENCE_NOTE,
+                                _line(text, header.start()),
+                                "the ledger column '%s' accepts no measure or "
+                                "observation" % evidence_column))
+        row = header.group(0).strip()
+        for name in (EVIDENCE_STATE,) + EVIDENCE_FILLED:
+            other = root / name
+            if other.is_file() and row not in other.read_text(encoding="utf-8"):
+                issues.append(Issue("error", "evidence-ledger", name, 1,
+                                    "the evidence ledger does not carry the "
+                                    "note's row, which is copied unchanged"))
+    synthesis = root / EVIDENCE_SYNTHESIS
+    if synthesis.is_file():
+        body = synthesis.read_text(encoding="utf-8")
+        for match in re.finditer(r"^-[ \t]+\*\*Load-bearing quote:\*\*", body, re.M):
+            issues.append(Issue("error", "evidence-kind", EVIDENCE_SYNTHESIS,
+                                _line(body, match.start()),
+                                "a theme supported by a measure or an "
+                                "observation cannot carry a quote"))
+    for name in EVIDENCE_FILLED:
+        path = root / name
+        if path.is_file():
+            issues.extend(evidence_note_issues(
+                path.read_text(encoding="utf-8"), name, filled=True))
+    return issues
+
+
 def check_readiness_claims(root: Path) -> list[Issue]:
     """The three statements of what readiness leaves uncertified, and README's mirror.
 
@@ -1967,6 +2113,7 @@ def check(root: Path) -> list[Issue]:
     issues.extend(check_examples_inventory(root))
     issues.extend(check_readiness_claims(root))
     issues.extend(check_roadmaps(root))
+    issues.extend(check_evidence_contract(root))
     return sorted(issues, key=lambda item: (item.severity, item.path, item.line,
                                              item.code, item.message))
 

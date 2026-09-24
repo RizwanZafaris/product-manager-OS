@@ -180,6 +180,7 @@
    "CommitmentProbeGateTests",
    "DeclaredPathGateTests",
    "DuplicateHeadingGateTests",
+   "EvidenceNoteContractTests",
    "ExampleAvailabilityGateTests",
    "ExamplesInventoryGateTests",
    "ExecutableSurfaceGateTests",
