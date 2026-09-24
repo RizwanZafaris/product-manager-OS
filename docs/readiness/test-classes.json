@@ -5,6 +5,7 @@
  "modules": {
   "test_contract_gates": [
    "ModelIdGateTests",
+   "PrdLineageTraceTests",
    "WorkspaceContractGateTests"
   ],
   "test_journey_chain": [
