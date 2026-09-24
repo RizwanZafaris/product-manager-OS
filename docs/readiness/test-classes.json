@@ -26,6 +26,7 @@
    "SecretGateTests",
    "SkillDeclarationTests",
    "TrackedDotUnderscoreFileIsLinted",
+   "UatAcceptanceTests",
    "WikilinkTests",
    "WorkflowTests",
    "WorkspaceExclusion",
