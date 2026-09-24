@@ -108,7 +108,7 @@ Blended CAC. The blended $7,438 above hides a $9,500 channel that scales and a $
 ## Feeds
 
 - [Business case](../../templates/planning/business-case.md), the costs and benefits lines and the sensitivities
-- [Pricing and packaging](../../templates/planning/pricing-packaging.md), section 2, the pricing model
+- [Pricing and packaging](../../templates/planning/pricing-packaging.md), section 2, the pricing model; section 3a, where line B is the cost to serve per tier and lines C and D are the contribution margin held against the floor
 - [Growth plan](../../templates/planning/growth-plan.md), section 2, whether the chosen channel or loop pays back
 - [Assumptions register](../../templates/definition/assumptions-register.md), one row per low-confidence line
 - [QBR and board update](../../templates/operate/qbr-board-update.md), the unit economics slide

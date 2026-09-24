@@ -1421,7 +1421,1053 @@ def os_check(root, pins=None):
 # the ones that judge a file for being a template, a layer file, or a shipped
 # part of the repository. A user's draft is none of those.
 WORKSPACE_CHECKS = ("links", "secrets", "placeholders", "dashes",
-                    "banned metric strings", "artifact contract")
+                    "banned metric strings", "artifact contract",
+                    "UAT acceptance", "NFR closure")
+
+
+# ---------------------------------------------------------------------------
+# The UAT acceptance contract, the seventh workspace check.
+#
+# templates/delivery/uat-plan.md used to pass its own exit criteria with a
+# charter whose Result was Fail: the checklist asked only that every charter
+# had run and that none was Blocked. Nothing tied a failed charter to a defect
+# record or to an accepted exception, and no tester result named the build it
+# was produced against, so a plan could accept a release that no charter had
+# ever been run against. The template now states the contract and this is the
+# check that holds a filled copy to it.
+#
+# Scope, stated rather than assumed: this fires only once the copy claims UAT
+# is finished (claims_uat_complete below). A blank copy stamped into a fresh
+# workspace, and a plan still being filled in, are not making the claim, and
+# tools/readiness_probe.py installs every shipped template into a workspace and
+# lints it. What the check refuses is a document that asserts acceptance while
+# its own charters do not support the assertion.
+UAT_TEMPLATE = "templates/delivery/uat-plan.md"
+UAT_TEMPLATE_FIELD_RE = re.compile(
+    r"^[ \t]*template:[ \t]*[\"']?%s[\"']?[ \t]*$" % re.escape(UAT_TEMPLATE),
+    re.M)
+# The charter columns this check reads, as (index key, human name, accepted
+# header names).
+#
+# A column binds by NAME, not by keyword. A header cell binds a column when its
+# normalised name (_header_name below) is the column's expected name or one of
+# the synonyms listed beside it. Exactly one match binds. More than one is an
+# ambiguity this check reports and refuses to resolve. None at all means this
+# is not a charter table this check can read, which is reported too: a UAT
+# plan whose result column carries a spelling not listed here is REFUSED, not
+# passed in silence.
+#
+# Two earlier rules are recorded here because each failed in a way the next had
+# to fix. Taking the FIRST header cell containing the keyword bound "Expected
+# result" to the result contract and read a failed charter as a pass. Refusing
+# whenever MORE THAN ONE cell contained the keyword closed that pair, but only
+# while both spellings carried the word: on a table headed "Expected result |
+# Outcome" the bare substring "result" matched exactly once, bound the
+# expectation, and the failed charter in "Outcome" went unseen. Names are what
+# an author writes and what a reader reads, so names are what this binds on.
+#
+# Stated limits. Each is a refusal rather than a silence except where said:
+#   - A spelling no list below carries binds nothing. Every table this check
+#     reads as a charter table is then refused with that column named, wherever
+#     in the document it sits, because _charter_shape decides what a charter
+#     table is from the columns it carries and the values it holds rather than
+#     from any one header word. Widening a list is the fix; guessing is not.
+#     The limit is what _charter_shape cannot see, and it is a silence: a table
+#     carrying fewer than CHARTER_SHAPE_MINIMUM of the columns below under the
+#     names below, AND recording its results in some vocabulary other than
+#     Pass, Fail and Blocked, shares no structure with a charter table and is
+#     read by nobody.
+#   - A value in an expected-class column (UAT_EXPECTED_NAMES) is read as an
+#     expectation and never as a result, so "Expected result: Fail" beside a
+#     bound result of Pass raises nothing. That is what those columns mean.
+#   - A SECOND build-shaped column whose header this check does not accept is
+#     not read, so it cannot contradict the bound build column. Build IDs are
+#     not a closed vocabulary and nothing here can tell a contradicting build
+#     column from an ordinary one. Pass, Fail and Blocked are a closed
+#     vocabulary, so the result column is guarded that way instead, by
+#     _contradicting_result_columns.
+UAT_COLUMNS = (
+    ("number", "charter number",
+     ("number", "charter number", "charter no", "no", "charter id")),
+    ("ac", "acceptance-criterion",
+     ("ac", "acs", "ac id", "ac ids", "ac ref", "ac refs", "ac reference",
+      "ac references", "ac requirement", "ac requirement id",
+      "ac requirement ids", "ac req id", "ac req ids", "acceptance criteria",
+      "acceptance criterion", "acceptance criteria id",
+      "acceptance criteria ids", "acceptance criterion id", "requirement",
+      "requirements", "requirement id", "requirement ids", "req id",
+      "req ids")),
+    ("tester", "tester",
+     ("tester", "testers", "tester name", "tested by", "run by")),
+    ("build", "build",
+     ("build", "builds", "build id", "build no", "build number", "build ref",
+      "build version", "build under test", "build tested", "tested on build",
+      "candidate", "candidate build", "release candidate", "rc")),
+    ("evidence", "evidence",
+     ("evidence", "evidence ref", "evidence reference", "evidence link",
+      "evidence location", "evidence log", "proof", "artefact", "artifact")),
+    ("result", "result",
+     ("result", "results", "actual", "actual result", "actual results",
+      "actual outcome", "actual outcomes", "outcome", "outcomes",
+      "charter result", "charter outcome", "test result", "test results",
+      "final result", "recorded result", "recorded outcome", "run result")),
+    ("defect", "defect",
+     ("defect", "defects", "defect id", "defect ids", "defect record",
+      "defect ref", "defect reference", "bug", "bug id", "issue", "issue id",
+      "ticket", "ticket id")),
+    ("exception", "exception",
+     ("exception", "exceptions", "exception id", "exception ids",
+      "accepted exception", "accepted exception id", "exception ref",
+      "waiver", "waiver id")))
+# Names that mean the value someone expected rather than the value someone
+# recorded. They bind nothing, and _contradicting_result_columns passes over
+# them, because "Expected result: Pass" beside "Outcome: Fail" is a charter
+# that failed against its expectation, which is what the pair is for.
+UAT_EXPECTED_NAMES = frozenset((
+    "expected", "expectation", "expected result", "expected results",
+    "expected outcome", "expected outcomes", "expected status",
+    "planned result", "planned outcome", "target result", "target outcome",
+    "intended result", "intended outcome", "done looks like"))
+# The accepted-exceptions register's columns, same shape and same rule. A
+# register is as shadowable as a charter table: an "Approved date" cell beside
+# an "Approved by" cell leaves no one column that is the approver.
+UAT_EXCEPTION_COLUMNS = (
+    ("exception", "exception id",
+     ("exception", "exceptions", "exception id", "exception ids",
+      "exception ref", "waiver", "waiver id")),
+    ("charter", "charter number",
+     ("charter", "charter number", "charter no", "charter id",
+      "charter ref")),
+    ("defect", "defect id",
+     ("defect", "defects", "defect id", "defect ids", "defect record",
+      "defect ref", "bug id", "issue id")),
+    ("approved", "approver",
+     ("approved", "approved by", "approver", "approver name", "accepted by",
+      "approval by", "sponsor")),
+    ("date", "approval date",
+     ("date", "approval date", "approved date", "date approved",
+      "accepted date", "date accepted", "approved on")),
+    ("retest", "retest result",
+     ("retest", "retest result", "retest outcome", "retest status",
+      "retest verdict", "re test result")))
+UAT_RESULTS = ("pass", "fail", "blocked")
+# How many of the charter table's seven non-result columns a table has to carry,
+# under names this check accepts, before _charter_shape reads it as a charter
+# table wherever it sits. Four is a majority of the seven, and it is a majority
+# rather than one or two because tables that share a column or two with the
+# charter table are ordinary in a UAT plan: a defect log carries a defect id and
+# a charter number, and it is not a charter table.
+CHARTER_SHAPE_MINIMUM = 4
+UAT_SIGNOFF_LABEL = "Sign-off is bound to candidate build"
+# Emphasis marks around a cell's value. A tester who writes *Pass* means Pass,
+# and the template's own worked-example row is written in italics.
+EMPHASIS = "*_ \t"
+
+# Which headings can carry the charters, and which can carry the claim that
+# UAT finished. Keyed on the number AND on the words, because the section
+# number is the weakest part of a markdown document: renaming "## 6. Exit
+# criteria and sign-off" to "## Exit criteria" used to turn this whole check
+# off in silence, which is a worse outcome than a false positive. Every
+# matching span is read, not the first, so a second section cannot hide behind
+# a first one that looks clean.
+UAT_NUMBERED_RE = r"^#{2,3}[ \t]*%s[.)\s]"
+UAT_CHARTER_WORDS_RE = re.compile(r"charter", re.I)
+UAT_VERDICT_WORDS_RE = re.compile(
+    r"exit criteria|sign[- ]?off|exit gate", re.I)
+# The line every template ends with. A plan signed only there is still signed,
+# so it claims completion even when section 6 is untouched.
+SIGNED_RE = re.compile(r"^[ \t]*Signed:[ \t]*(.+)$")
+
+
+def _bold_fields(text, label):
+    """Every value of a bold field line like "**Candidate build:** RC-14".
+
+    Several fields share one line, separated by a middle dot, so a value ends
+    at the next "**" on that line or at the end of the line, whichever comes
+    first, and any separator left on the end is trimmed. Every occurrence is
+    returned, in document order: reading only the first let a decoy line at the
+    top of a document answer for a contradicting one further down.
+    """
+    return [m.group(1).strip().strip("\u00b7\u2022|").strip()
+            for m in re.finditer(
+                r"\*\*[ \t]*%s[ \t]*:[ \t]*\*\*(.*?)(?=\*\*|$)"
+                % re.escape(label), text, re.I | re.M)]
+
+
+def _bold_field(text, label):
+    """The first value of a bold field line, or None when there is none."""
+    values = _bold_fields(text, label)
+    return values[0] if values else None
+
+
+def _plain(value):
+    """One cell with markdown emphasis and a link's target taken off."""
+    return MD_LINK_RE.sub(r"\1", value or "").strip().strip(EMPHASIS).strip()
+
+
+HEADER_GLOSS_RE = re.compile(r"\([^)]*\)")
+HEADER_JUNK_RE = re.compile(r"[^a-z0-9 ]+")
+
+
+def _header_name(cell):
+    """One header cell reduced to the name a reader would call the column.
+
+    Lowercased, with a parenthesised gloss dropped, "#" read as the word it
+    stands for, every other punctuation mark read as a space and runs of
+    spaces collapsed. So "AC / requirement IDs" is "ac requirement ids",
+    "Charter #" is "charter number", and "Approved by (name, role)" is
+    "approved by".
+    """
+    name = MD_LINK_RE.sub(r"\1", cell or "").strip().strip(EMPHASIS)
+    name = HEADER_GLOSS_RE.sub(" ", name).lower().replace("#", " number ")
+    return " ".join(HEADER_JUNK_RE.sub(" ", name).split())
+
+
+def _named_columns(header, names):
+    """Every index whose header cell is one of these names, in document order."""
+    return [i for i, cell in enumerate(header) if _header_name(cell) in names]
+
+
+def _names(items):
+    """A human list: "the result", "the build and the result"."""
+    items = ["the %s" % item for item in items]
+    if len(items) < 2:
+        return items[0] if items else "columns it reads"
+    return "%s and %s" % (", ".join(items[:-1]), items[-1])
+
+
+def _column_indexes(header, pattern):
+    """Every index of a header cell matching pattern, in document order.
+
+    The loose reader, kept for the detectors: which table looks like it holds
+    results, and which column looks like a verdict. Binding uses names.
+    """
+    return [i for i, name in enumerate(header)
+            if re.search(pattern, name.strip().lower())]
+
+
+def _bind_columns(header, columns, line_no, what, add):
+    """{key: index or None} for one table header, refusing an ambiguous column.
+
+    Exactly one matching header cell binds. None binds None, as a missing
+    column always has. More than one is reported at the header's line and binds
+    nothing, so every row of that table then reads the column as missing and
+    the document fails closed rather than quietly reading a column its author
+    did not mean.
+    """
+    index = {}
+    for key, human, names in columns:
+        found = _named_columns(header, names)
+        if len(found) > 1:
+            add(line_no, "the %s carries more than one column that could be "
+                "its %s column (%s). This check will not guess which one you "
+                "mean, because reading the wrong column in silence is worse "
+                "than saying it cannot tell. Rename all but one." %
+                (what, human, ", ".join("%r" % header[i].strip()
+                                        for i in found)))
+        index[key] = found[0] if len(found) == 1 else None
+    return index
+
+
+def _is_charter_table(header):
+    """True when a header offers a cell for every charter column.
+
+    One matching cell is enough here, on purpose: a table whose result column
+    is ambiguous is still a charter table, and it has to be read and refused
+    rather than skipped as some other table the check does not care about.
+    """
+    return all(_named_columns(header, names)
+               for _key, _human, names in UAT_COLUMNS)
+
+
+def _is_exception_register(header):
+    """True when a header offers a cell for every accepted-exceptions column."""
+    return all(_named_columns(header, names)
+               for _key, _human, names in UAT_EXCEPTION_COLUMNS)
+
+
+def _unreadable_columns(header, columns=UAT_COLUMNS):
+    """Human names of the columns no cell of this header offers.
+
+    What the refusal says out loud. A table whose result column is headed with
+    a spelling this check does not accept binds nothing for it, and the reader
+    is told which column could not be read rather than being left with a
+    document that passed without one.
+    """
+    return [human for _key, human, names in columns
+            if not _named_columns(header, names)]
+
+
+def _result_shaped_column(rows, pos):
+    """True when every answered cell of this column is Pass, Fail or Blocked.
+
+    The test for "this column holds charter results", used on the columns this
+    check did NOT bind. Pass, Fail and Blocked are a closed vocabulary, which
+    is what makes a second results column recognisable at all.
+    """
+    values = [_plain(row[pos]).lower() for _line_no, row in rows
+              if pos < len(row) and _plain(row[pos])]
+    return bool(values) and all(value in UAT_RESULTS for value in values)
+
+
+def _contradicting_result_columns(header, rows, bound, add):
+    """Report a second results column that disagrees with the bound one.
+
+    The hole the name rule leaves on its own: a decoy headed with a name this
+    check accepts, holding Pass on every row, beside the real results in a
+    column headed with a spelling it does not know, which binds nothing and is
+    read by nobody. The values give it away. A column of nothing but Pass, Fail
+    and Blocked that disagrees with the bound column, row for row, is either
+    the real result or a contradiction of it, and this check will not pick.
+
+    Expected-class columns are passed over by name: an expectation that
+    disagrees with the recorded result is the normal state of a failed
+    charter, not a finding. Reported once per column, at the first row that
+    disagrees.
+
+    Stated limit, and it is a silence. This reads the closed vocabulary
+    exactly, because the finding quotes both values back at the author, so one
+    annotated cell in the decoy column ("Pass (note 4)") takes the whole
+    column out of its sight. It is a backstop and not the contract: the column
+    this check binds is named for the result and says what it says, and the
+    class this guard used to be asked to close, a charter recorded in a table
+    this check does not read, is closed by _charter_shape instead.
+    """
+    if bound is None:
+        return
+    for pos in range(len(header)):
+        if pos == bound or _header_name(header[pos]) in UAT_EXPECTED_NAMES:
+            continue
+        if not _result_shaped_column(rows, pos):
+            continue
+        for line_no, row in rows:
+            other = _plain(row[pos]).lower() if pos < len(row) else ""
+            mine = _plain(row[bound]).lower() if bound < len(row) else ""
+            if other and mine and other != mine:
+                add(line_no, "the charter table records %s in its %r column "
+                    "and %s in %r, which is the column this check reads as "
+                    "the result. Two columns of Pass, Fail and Blocked that "
+                    "disagree leave the reader to pick which one the charter "
+                    "did. Give the results column one of the names this check "
+                    "reads, and the other column a name that is not a result."
+                    % (other.title(), header[pos].strip(), mine.title(),
+                       header[bound].strip()))
+                break
+
+
+def _reads_as_result(value):
+    """The charter result this cell records, or "" when it records none.
+
+    The detector's reader, and deliberately looser than the binder's. A bound
+    charter table is held to the closed vocabulary exactly, because a finding
+    there quotes the cell back at its author; a detector only has to notice
+    that a column holds results, so it reads the cell's first word and lets an
+    annotation follow it. "Fail (see log entry 40)", and a Fail with a cross
+    drawn in front of it, are a Fail to every reader, and a table whose
+    results are written that way is a table this check should have read.
+    """
+    text = re.sub(r"^[^a-z0-9]+", "", _plain(value).lower())
+    word = re.match(r"[a-z]+", text)
+    return word.group(0) if word and word.group(0) in UAT_RESULTS else ""
+
+
+NOT_APPLICABLE_RE = re.compile(r"(n/?a|not applicable)\b", re.I)
+
+
+def _results_column(rows, pos):
+    """True when every answered cell of this column reads as a charter result.
+
+    Two kinds of cell are skipped rather than counted against the column, so
+    that a part-filled column of results is still a column of results. One is
+    a cell that is not an answer at all, which unanswered() already names: a
+    blank, a dash, a bare "none". The other is a cell saying in terms that
+    there is no result to record, "N/A because the charter was dropped",
+    which is an answer and is not a result. Requiring every remaining cell to
+    read as Pass, Fail or Blocked is what keeps an ordinary prose column from
+    being read as results; letting one of these two through was a way past it.
+    """
+    values = [cell for cell in
+              (row[pos] if pos < len(row) else "" for _line_no, row in rows)
+              if unanswered(cell) is None
+              and not NOT_APPLICABLE_RE.match(_plain(cell))]
+    return bool(values) and all(_reads_as_result(cell) for cell in values)
+
+
+def _charter_shape(header, rows):
+    """Why this table is a charter table, or None when it is not one.
+
+    What makes a table a charter table is its own shape: the columns it
+    carries and the values it holds. The heading above it is not one of the
+    routes in, because the heading is the weakest thing in a markdown
+    document and an author renames it without meaning anything by it.
+
+    Two ways in. A table that carries CHARTER_SHAPE_MINIMUM or more of the
+    charter table's non-result columns under names this check accepts is a
+    charter table whatever its results column is called; and a table holding a
+    column whose answered cells all read as Pass, Fail or Blocked is a charter
+    table whatever its other columns are called. The first exists because the
+    second missed a charter table whose results carry an annotation; the
+    second exists because the first missed a four-column table that is plainly
+    recording results.
+
+    The rule this replaced picked candidate columns with the keyword
+    "result|outcome|status|verdict", which is the same first-substring-on-a-
+    keyword technique the binder was rewritten to abandon, one layer down: a
+    second charter table of the shipped shape, parked outside a charter-worded
+    heading with its results column headed "Pass/Fail", was looked at by
+    nobody and its failed charter passed in silence.
+
+    The limit is stated above UAT_COLUMNS and it is a silence: a table that
+    carries fewer than CHARTER_SHAPE_MINIMUM of the named columns and records
+    its results in some other vocabulary ("OK", "Passed", a tick) shares no
+    structure with a charter table, and nothing here can tell it from any
+    other table in the document.
+
+    The accepted-exceptions register is excluded from the second way in and
+    not from the first. Its "Retest result" column holds the same three words,
+    which would make every register a charter table, and _exception_register
+    reads that column already. Its columns are a different matter: a register
+    carries at most three of the charter table's columns (the exception, the
+    defect and the charter number), so the count below leaves it alone on its
+    own. A register that carries a fourth of them, a tester or a build or
+    evidence or an acceptance criterion per row, is recording charter runs,
+    and reading it
+    as a charter table is the point: hiding a failed charter behind a
+    register's header is otherwise free.
+    """
+    named = [human for key, human, names in UAT_COLUMNS
+             if key != "result" and _named_columns(header, names)]
+    if len(named) >= CHARTER_SHAPE_MINIMUM:
+        return ("it carries %d of the charter table's columns under names "
+                "this check reads (%s)" % (len(named), _names(named)))
+    if _is_exception_register(header):
+        return None
+    for pos in range(len(header)):
+        if _results_column(rows, pos):
+            return ("its %r column records Pass, Fail or Blocked on every row "
+                    "that answers" % (header[pos].strip() or "unnamed"))
+    return None
+
+
+def is_uat_plan(inside, raw):
+    """True when this workspace file is a filled copy of the UAT plan template.
+
+    Three ways in, because the first two are both conventions a user can walk
+    out of. The filename is the usual one and the template: frontmatter field
+    is the declared one, but a copy renamed out of both used to be invisible
+    here: outside a stage folder it collected no finding of any kind. So the
+    sign-off binding counts as well. No other template carries that label, and
+    a document that says its sign-off is bound to a candidate build is a UAT
+    plan whatever its author called the file.
+    """
+    if inside.rsplit("/", 1)[-1] == "uat-plan.md":
+        return True
+    front = FRONTMATTER_RE.match(raw or "")
+    if front and UAT_TEMPLATE_FIELD_RE.search(front.group(1)):
+        return True
+    return bool(_bold_fields(raw or "", UAT_SIGNOFF_LABEL))
+
+
+def _uat_spans(spans, number, words):
+    """Every heading span carrying a section number or one of a set of words.
+
+    Returned in document order, de-duplicated by position. A document with two
+    charter sections, or one that renumbered the section it signs in, is read
+    whole: the old single-span lookup let either one hide a failing charter.
+    """
+    found, seen = [], set()
+    for head, span in spans.items():
+        if not (re.match(UAT_NUMBERED_RE % number, head) or words.search(head)):
+            continue
+        if span in seen:
+            continue
+        seen.add(span)
+        found.append(span)
+    return found
+
+
+def _charter_spans(spans):
+    """Every section that can hold test charters."""
+    return _uat_spans(spans, "4", UAT_CHARTER_WORDS_RE)
+
+
+def _verdict_spans(spans):
+    """Every section that can carry the claim that UAT finished."""
+    return _uat_spans(spans, "6", UAT_VERDICT_WORDS_RE)
+
+
+def claims_uat_complete(lines, spans):
+    """True when the document asserts UAT is finished, so its contract binds."""
+    verdict_spans = _verdict_spans(spans)
+    for start, end in verdict_spans:
+        for i in range(start, min(end, len(lines))):
+            if TICKED_RE.match(lines[i]):
+                return True
+    for start, end in verdict_spans:
+        for header, rows in tables(lines, start, end):
+            # Every verdict-shaped column, not the first: a blank decoy
+            # verdict column ahead of the answered one used to mean this
+            # document never claimed completion, which turned the whole
+            # check off. An answered verdict anywhere is a claim.
+            for verdict in _column_indexes(header, r"verdict"):
+                for _line_no, row in rows:
+                    if verdict < len(row) \
+                            and unanswered(row[verdict]) is None:
+                        return True
+    # The signature line every template ends with. A plan whose section 6 is
+    # untouched but whose exit gate is signed is still a plan that says it is
+    # done, and that is the state this check exists to read.
+    for line in lines:
+        signed = SIGNED_RE.match(line)
+        if signed is not None and unanswered(signed.group(1)) is None:
+            return True
+    return False
+
+
+def _exception_register(lines, add):
+    """Every Accepted exceptions table, merged, as {exception id: entry}.
+
+    Merged rather than first-wins, and read across the whole document rather
+    than inside one numbered section, because both of those narrowings were
+    escapes: a fully approved decoy register above the real one answered for
+    it, and renumbering the heading it sat under dropped it entirely. An id
+    that appears twice is reported wherever the second row is, so a decoy is a
+    finding rather than a shadow.
+    """
+    register = {}
+    for header, rows in tables(lines, 0, len(lines)):
+        if not _is_exception_register(header):
+            continue
+        # tables() hands back rows, not the header's line; the header is the
+        # two lines above the first row (itself and the separator under it).
+        head_line = rows[0][0] - 2 if rows else 1
+        where = _bind_columns(header, UAT_EXCEPTION_COLUMNS, head_line,
+                              "accepted-exceptions register", add)
+        for line_no, row in rows:
+            def cell(key, _where=where, _row=row):
+                pos = _where[key]
+                return _row[pos] if pos is not None and pos < len(_row) else ""
+            exception_id = _plain(cell("exception")).lower()
+            if unanswered(cell("exception")):
+                continue
+            if exception_id in register:
+                add(line_no, "exception id %s is used by more than one row of "
+                    "the accepted-exceptions register. Give each exception its "
+                    "own id, so a charter names exactly one of them."
+                    % exception_id)
+                continue
+            register[exception_id] = {
+                "id": _plain(cell("exception")),
+                "charter": cell("charter"), "defect": cell("defect"),
+                "approver": cell("approved"), "date": cell("date"),
+                "retest": cell("retest"), "line": line_no}
+    return register
+
+
+def _charter_runs(lines, start, end, complete):
+    """Yield (kind, first line, header, rows) for every run of table lines.
+
+    A run is a maximal block of consecutive lines whose stripped text starts
+    with "|". That is the unit this check has to read, because it is the unit
+    markdown renders: one blank line or one sentence between two charter rows
+    starts a new run, and the rows below the break used to be invisible here
+    while still rendering as a table row to every human reader.
+
+    Three kinds. "table" is a run that opens with a header, a separator under
+    it and every column this check reads. "other" is a well-formed table that
+    is not a charter table, which is only a problem where charters live.
+    "loose" is a run with no separator at all: rows with no header above them,
+    which is what a charter row cut off from its table leaves behind, and
+    which markdown renders as text rather than as the row its author meant.
+    """
+    i = start
+    end = min(end, len(lines))
+    while i < end:
+        if not lines[i].strip().startswith("|"):
+            i += 1
+            continue
+        first = i
+        while i < end and lines[i].strip().startswith("|"):
+            i += 1
+        run = lines[first:i]
+        header = cells(run[0])
+        separator = run[1].strip() if len(run) > 1 else ""
+        if len(run) > 1 and SEPARATOR_RE.match(separator) and "-" in separator:
+            rows = [(first + j + 1, cells(run[j])) for j in range(2, len(run))]
+            yield ("table" if complete(header) else "other"), first + 1, \
+                header, rows
+        else:
+            yield "loose", first + 1, header, []
+
+
+def _charter_findings(line_no, row, index, candidate, register, add):
+    """Check one charter row of a filled UAT plan through add(line_no, message)."""
+
+    def cell(name):
+        pos = index.get(name)
+        return row[pos] if pos is not None and pos < len(row) else ""
+
+    label = _plain(cell("number")) or "?"
+    for name, human in (("ac", "acceptance-criterion reference"),
+                        ("tester", "tester"), ("build", "build"),
+                        ("evidence", "evidence"), ("result", "result")):
+        why = unanswered(cell(name))
+        if why:
+            add(line_no, "charter %s %s %s. A charter with no %s is not a "
+                "result anyone can check." % (label, human, why, human))
+
+    result = _plain(cell("result")).lower()
+    if result not in UAT_RESULTS:
+        add(line_no, "charter %s result %r is not Pass, Fail or Blocked."
+            % (label, _plain(cell("result"))))
+
+    build = _plain(cell("build"))
+    if build and candidate and build.lower() != candidate.lower():
+        add(line_no, "charter %s was run against build %s, and the candidate "
+            "build is %s. Re-run it against the candidate, or the sign-off "
+            "accepts a build this charter never touched."
+            % (label, build, candidate))
+
+    if result == "blocked":
+        add(line_no, "charter %s is Blocked, which is not a result. Clear the "
+            "blocker and run it, or drop the charter from scope and say so."
+            % label)
+
+    if result != "fail":
+        return
+
+    defect, exception = cell("defect"), cell("exception")
+    why = unanswered(defect)
+    if why or _plain(defect).lower() in ("none", "n/a", "na"):
+        add(line_no, "charter %s failed and names no defect record. A failed "
+            "charter is a defect; record it and put its id here." % label)
+    why = unanswered(exception)
+    if why or _plain(exception).lower() in ("none", "n/a", "na"):
+        add(line_no, "charter %s failed and names no accepted exception. UAT "
+            "passes on Pass, or on an exception approved for this charter. "
+            "Add one to the register, or UAT has not passed." % label)
+        return
+    named = _plain(exception)
+    entry = register.get(named.lower())
+    if entry is None:
+        add(line_no, "charter %s names exception %s and the accepted-exceptions "
+            "register has no such row. An exception nobody approved is not an "
+            "exception." % (label, named))
+        return
+    if _plain(entry["charter"]) != label:
+        add(line_no, "charter %s names exception %s, which the register records "
+            "against charter %s. An exception is approved for one charter, not "
+            "for the document." % (label, named, _plain(entry["charter"])
+                                   or "nothing"))
+    for key, human in (("approver", "approver"), ("date", "approval date"),
+                       ("retest", "retest result")):
+        why = unanswered(entry[key])
+        if why:
+            add(entry["line"], "exception %s %s %s. An exception with no %s is "
+                "a note, not an approval." % (entry["id"], human, why, human))
+
+
+def _identity_field(text, label, add):
+    """The one answered value of a document-identity field, or "".
+
+    Every occurrence is read. A field that is missing, unanswered, or answered
+    two different ways names nothing in particular, and a sign-off that accepts
+    nothing in particular is the state this check exists to refuse.
+    """
+    values = _bold_fields(text, label)
+    if not values:
+        add(1, "claims UAT is complete and carries no %s field. Name what "
+            "was tested: without it the sign-off accepts nothing in "
+            "particular." % label)
+        return ""
+    answered, seen = [], set()
+    for value in values:
+        why = unanswered(value)
+        if why:
+            add(1, "%s %s. Name what was tested." % (label, why))
+            return ""
+        if value.lower() not in seen:
+            seen.add(value.lower())
+            answered.append(value)
+    if len(answered) > 1:
+        add(1, "names more than one %s (%s). One document describes one test "
+            "run, so a second answer leaves the reader to pick."
+            % (label, ", ".join(answered)))
+        return ""
+    return answered[0]
+
+
+def _charter_section_findings(lines, spans, candidate, register, add):
+    """Read every charter in the document, wherever the author put it.
+
+    Charter tables are looked for across the whole document, not inside one
+    numbered section, because a charter table under a heading this check does
+    not recognise is still a charter table its readers read. Two further
+    shapes are reported rather than skipped: a run of table rows with no
+    header above it, anywhere in the document, which is what a charter cut off
+    from its table by a blank line or a sentence leaves behind; and a table
+    that does not carry every column but is a charter table all the same,
+    which is the old five-column charter table this finding exists to reject.
+    Inside a charter section every incomplete table is that; outside one,
+    _charter_shape decides, from the table's own columns and values rather
+    than from the heading above it.
+    """
+    charters = _charter_spans(spans)
+    if not charters:
+        add(1, "claims UAT is complete and has no test-charter section.")
+
+    seen_table = seen_row = False
+    for kind, first, header, rows in _charter_runs(lines, 0, len(lines),
+                                                   _is_charter_table):
+        if kind == "loose":
+            add(first, "holds table rows with no header above them. A charter "
+                "row cut off from its table by a blank line or a sentence is "
+                "not read by this check and is not rendered as part of the "
+                "table it was written under. Keep every charter in one table.")
+            continue
+        if kind == "other":
+            if any(start <= first - 1 < end for start, end in charters):
+                add(first, "the test-charter section holds a table that does "
+                    "not carry a column for the acceptance criteria, the "
+                    "tester, the build, the evidence, the result, the defect "
+                    "and the exception. No column of it is named for %s. "
+                    "A charter recorded there is a charter this check cannot "
+                    "read. Re-copy the table from %s."
+                    % (_names(_unreadable_columns(header)), UAT_TEMPLATE))
+                continue
+            shape = _charter_shape(header, rows)
+            if shape:
+                add(first, "holds a table that does not carry every column a "
+                    "charter table carries, and that this check reads as a "
+                    "charter table all the same: %s. A charter parked under "
+                    "another heading is still a charter, and this one is "
+                    "recorded in a shape this check cannot read: no column of "
+                    "it is named for %s. Move it into the charter table from "
+                    "%s." % (shape, _names(_unreadable_columns(header)),
+                             UAT_TEMPLATE))
+            continue
+        seen_table = True
+        index = _bind_columns(header, UAT_COLUMNS, first, "charter table", add)
+        _contradicting_result_columns(header, rows, index["result"], add)
+        for line_no, row in rows:
+            seen_row = True
+            _charter_findings(line_no, row, index, candidate, register, add)
+
+    where = charters[0][0] + 1 if charters else 1
+    if not seen_table:
+        add(where, "the charter table must carry a column for the acceptance "
+            "criteria, the tester, the build, the evidence, the result, the "
+            "defect and the exception. Re-copy the table from %s."
+            % UAT_TEMPLATE)
+    elif not seen_row:
+        add(where, "the charter table has no rows. A UAT plan with no "
+            "charters accepts nothing.")
+
+
+def uat_problems(rp, raw):
+    """Findings for one filled UAT plan, as sorted (rp, line, "UAT", message).
+
+    Every read below is of mask()ed text. The identity fields used to be read
+    from the raw document, so a candidate build inside an HTML comment or a
+    code fence satisfied a field that no reader of the rendered page can see.
+    """
+    lines = mask(raw)
+    text = "\n".join(lines)
+    _heads, spans = headings(lines)
+    if not claims_uat_complete(lines, spans):
+        return []
+    found = []
+    add = lambda n, m: found.append((rp, n, "UAT", m))          # noqa: E731
+
+    values = {label: _identity_field(text, label, add) for label in
+              ("Candidate build", "Environment", "Fixture set")}
+    candidate = values["Candidate build"]
+
+    register = _exception_register(lines, add)
+    _charter_section_findings(lines, spans, candidate, register, add)
+
+    bindings = _bold_fields(text, UAT_SIGNOFF_LABEL)
+    if not bindings:
+        add(1, "the sign-off does not name the candidate build it accepts. "
+            'Add "**%s:** <build>", or the verdict is not bound to anything.'
+            % UAT_SIGNOFF_LABEL)
+    for binding in bindings:
+        if candidate and binding.lower() != candidate.lower():
+            add(1, "the sign-off is bound to build %s and the charters were "
+                "run against candidate build %s. Changing the candidate after "
+                "UAT voids the verdict: re-run every charter against %s and "
+                "sign again." % (binding, candidate, binding))
+    return sorted(set(found))
+
+
+# ---------------------------------------------------------------------------
+# The NFR closure gate. Finding F11 of the 2026-09-23 review: functional
+# requirements and acceptance criteria carry IDs, and the non-functional
+# requirements template identified its rows by prose, so a document with four
+# latency rows and three authorization rows had no way to say which one a
+# waiver excused or which one a test result closed. Two things follow from an
+# ID that prose cannot give: a waiver names exactly one requirement, and a
+# result names the revision of the requirement it was run against, so moving a
+# target from r1 to r2 drops the old pass instead of inheriting it.
+#
+# What this cannot do. It reads what is typed. A revision left at r1 through a
+# rewritten target is a person not bumping it, and no check here can tell a
+# substantive edit from a typo fix. Status is a typed word: a row that says Met
+# with a current result beside it is a claim, not a measurement. The gate binds
+# claims to rows; the people who sign Gate 2 still decide whether the claims
+# are true.
+# ---------------------------------------------------------------------------
+
+NFR_TEMPLATE = "templates/definition/nfr.md"
+NFR_ID = r"NFR-[A-Za-z0-9][A-Za-z0-9._-]*"
+NFR_ID_RE = re.compile(r"\b%s" % NFR_ID)
+NFR_ROW_ID_RE = re.compile(r"^(%s)\s+r(\d+)$" % NFR_ID)
+WAIVER_ID_RE = re.compile(r"\bWV-[A-Za-z0-9][A-Za-z0-9._-]*")
+TESTED_RE = re.compile(r"\btested\s+(%s)\s+r(\d+)\b" % NFR_ID, re.I)
+# The template's own menu of Status words. Only two of them are read: a row
+# that calls itself Waived has to name the waiver, and a row that calls itself
+# Met has to name a result that is current. The rest are states this check has
+# nothing to say about.
+STATUS_WAIVED_RE = re.compile(r"\bwaived\b", re.I)
+# The two Status words that claim a result was produced. Verified by is the
+# artifact that will prove the row, which is a plan until one of these is
+# typed; a plan has no revision to name, so the revision is required here and
+# checked wherever it appears.
+STATUS_RESULT_RE = re.compile(r"^\W*(?:met|not met)\b", re.I)
+
+
+def is_nfr_document(raw, rel_path=""):
+    """Whether this file is a filled copy of templates/definition/nfr.md.
+
+    Two ways, because a workspace copy may not have been stamped yet: the
+    artifact block tools/workspace.py writes names the template it came from,
+    and the standard layout puts the copy at <stage folder>/nfr.md.
+    """
+    head = raw.split("\n---", 1)[0] if raw.startswith("---") else ""
+    if re.search(r"^template:\s*[\"\']?%s[\"\']?\s*$" % re.escape(NFR_TEMPLATE),
+                 head, re.M):
+        return True
+    return str(rel_path).replace("\\", "/").endswith("definition/nfr.md")
+
+
+def _filled(value):
+    """A cell a person answered, rather than one the template shipped."""
+    return unanswered(value) is None
+
+
+def _cell(row, index):
+    return row[index].strip() if index is not None and index < len(row) else ""
+
+
+# Which header cells bind which column, in the shape finding F02 settled on
+# for the UAT tables: a key, the human name a refusal uses, and the exact names
+# that bind it. Exact names rather than a keyword found anywhere inside a
+# header, because a substring reader binds the first header that CONTAINS the
+# word: "Expected waiver ID" carries "waiver id", so a decoy column, or a
+# column that merely discusses the real one, answered for the column the author
+# meant, and a table missing the real column read the decoy and passed. That
+# was F02's defect twice over, and this is F02's fix: one exactly-named cell
+# binds, more than one is refused by name at the header's line and binds
+# nothing, and none binds nothing either, so the document fails closed rather
+# than reading a column its author did not mean. Nothing here is a blocklist of
+# decoy words: a header that is not one of these names is not this column, and
+# "expected" needs no special case.
+NFR_STATUS_COLUMN = (
+    ("status", "Status",
+     ("status", "statuses", "state", "row status", "row state",
+      "requirement status", "nfr status", "current status",
+      "target status")),)
+# Verified by is optional: the scale table and the retention table of the
+# template carry a Status and no verification artifact, and a requirement whose
+# Status claims a result while no column of its table can name the revision
+# tested is already reported, row by row, by the closure loop below.
+NFR_VERIFIED_COLUMN = (
+    ("verified", "Verified by",
+     ("verified by", "verified", "verification", "verified how",
+      "verification artifact", "verification evidence", "verified by artifact",
+      "evidence", "evidence of verification", "proof")),)
+NFR_WAIVER_COLUMNS = (
+    ("waiver", "Waiver ID",
+     ("waiver id", "waiver ids", "waiver", "waivers", "waiver ref",
+      "waiver reference", "waiver number", "id")),
+    ("nfr", "NFR ID",
+     ("nfr id", "nfr ids", "nfr", "nfrs", "nfr ref", "nfr reference",
+      "requirement id", "requirement ids", "requirement ref", "req id",
+      "req ids")))
+
+
+def _header_line(rows, fallback):
+    """The line the header sits on: tables() hands back rows, not the header."""
+    return rows[0][0] - 2 if rows else fallback
+
+
+def _bind_nfr_columns(header, columns, line_no, what, fail):
+    """(index, missing): the bound columns, and the ones no cell offers.
+
+    _bind_columns already reports a column more than one cell could be and
+    binds it None. What is left to tell apart is None because the header is
+    ambiguous from None because the column is not there at all, which the
+    refusals below word differently.
+    """
+    index = _bind_columns(header, columns, line_no, what, fail)
+    missing = [human for key, human, names in columns
+               if index[key] is None and not _named_columns(header, names)]
+    return index, missing
+
+
+def nfr_closure(raw):
+    """Every closure defect in one NFR document, as sorted (line, code, text).
+
+    Reads the numbered requirement sections and the waivers section. A row
+    whose subject cell is still the template's placeholder is not a row anyone
+    filled, so nothing is required of it.
+    """
+    lines = mask(raw)
+    _heads, spans = headings(lines)
+    problems = []
+    fail = lambda n, m: problems.append((n, "NFR", m))  # noqa: E731
+
+    requirement_spans, waiver_spans = [], []
+    for heading, span in spans.items():
+        if not re.match(r"^##\s*\d+\.", heading.strip()):
+            continue
+        (waiver_spans if "waiver" in heading.lower()
+         else requirement_spans).append((heading.strip(), span))
+
+    rows_by_id, order = {}, []
+    for heading, span in sorted(requirement_spans, key=lambda x: x[1]):
+        for header, rows in tables(lines, *span):
+            subject = 1 if header and header[0].strip().lower() == "id" else 0
+            filled = [(n, r) for n, r in rows if _filled(_cell(r, subject))]
+            if not filled:
+                continue
+            if subject == 0:
+                fail(span[0] + 1,
+                     'section "%s" has a filled table with no ID column. A '
+                     "requirement named only in prose cannot be bound to the "
+                     "waiver that excuses it or the result that closes it: "
+                     "give each row an ID and a revision, NFR-01 r1."
+                     % heading[:60])
+                continue
+            head_line = _header_line(rows, span[0] + 1)
+            bound, missing = _bind_nfr_columns(
+                header, NFR_STATUS_COLUMN + NFR_VERIFIED_COLUMN, head_line,
+                "requirement table", fail)
+            if "Status" in missing:
+                fail(head_line,
+                     'section "%s" has a filled requirement table with no '
+                     "Status column. A row that never says whether it is Met, "
+                     "Not met or Waived closes against nothing: re-copy the "
+                     "table from %s." % (heading[:60], NFR_TEMPLATE))
+            verified, status = bound["verified"], bound["status"]
+            for line_no, row in filled:
+                ident = _cell(row, 0)
+                match = NFR_ROW_ID_RE.match(ident)
+                if not _filled(ident):
+                    fail(line_no, "requirement %r has no NFR ID."
+                         % _cell(row, subject)[:60])
+                    continue
+                if not match:
+                    fail(line_no, "ID %r is not of the form NFR-<id> r<n>. The "
+                         "revision is what stops a changed requirement "
+                         "inheriting an old passing result." % ident[:60])
+                    continue
+                key, revision = match.group(1), int(match.group(2))
+                if key in rows_by_id:
+                    fail(line_no, "%s is used twice. An ID that names two rows "
+                         "names neither." % key)
+                    continue
+                rows_by_id[key] = (line_no, revision, _cell(row, verified),
+                                   _cell(row, status))
+                order.append(key)
+
+    # Every waiver recorded against a requirement, in document order, rather
+    # than the first one: a requirement waived once, revisited and waived again
+    # carries two waiver rows, and a row naming the second of them reconciles
+    # against it. Keeping only the first reported a mismatch against a document
+    # that said exactly what it meant. The waiver IDs already seen are a
+    # separate set, keyed by waiver ID rather than by requirement, because the
+    # duplicate-ID check asked the requirement map whether it held a WV- key,
+    # which it never does, and so never fired.
+    waived_by, waiver_ids = {}, set()
+    for heading, span in sorted(waiver_spans, key=lambda x: x[1]):
+        for header, rows in tables(lines, *span):
+            filled = [(n, r) for n, r in rows if any(_filled(c) for c in r)]
+            if not filled:
+                continue
+            head_line = _header_line(rows, span[0] + 1)
+            bound, missing = _bind_nfr_columns(
+                header, NFR_WAIVER_COLUMNS, head_line, "waivers table", fail)
+            waiver, names = bound["waiver"], bound["nfr"]
+            if missing:
+                fail(head_line,
+                     'section "%s" has a filled table without a Waiver ID and '
+                     "an NFR ID column. A waiver that names its requirement in "
+                     "prose cannot be revoked against one row." % heading[:60])
+            if waiver is None or names is None:
+                # Missing, or named by more than one cell and refused above.
+                # Either way nothing here binds, and no row of this table is
+                # read as a waiver of anything.
+                continue
+            for line_no, row in filled:
+                wid = _cell(row, waiver)
+                ids = NFR_ID_RE.findall(_cell(row, names))
+                if not WAIVER_ID_RE.match(wid):
+                    fail(line_no, "waiver row has no waiver ID of the form "
+                                  "WV-01.")
+                elif wid in waiver_ids:
+                    fail(line_no, "waiver ID %s is used twice." % wid)
+                else:
+                    waiver_ids.add(wid)
+                if len(ids) != 1:
+                    fail(line_no, "waiver %s names %d NFR IDs. One waiver "
+                         "excuses exactly one requirement: a waiver naming two "
+                         "cannot be revoked by half." % (wid or "?", len(ids)))
+                    continue
+                if ids[0] not in rows_by_id:
+                    fail(line_no, "waiver %s names %s, which no requirement row "
+                         "in this document defines." % (wid or "?", ids[0]))
+                    continue
+                if WAIVER_ID_RE.match(wid):
+                    against = waived_by.setdefault(ids[0], [])
+                    if wid not in against:
+                        against.append(wid)
+
+    for key in order:
+        line_no, revision, verified, status = rows_by_id[key]
+        claims_result = _filled(status) and STATUS_RESULT_RE.match(status)
+        match = TESTED_RE.search(verified) if _filled(verified) else None
+        if match is None:
+            if claims_result:
+                fail(line_no, "%s says it is %r and nothing in its Verified by "
+                     "cell names the revision that was tested. Write \"tested "
+                     "%s r%d\" there, so the next revision of this row cannot "
+                     "inherit this result."
+                     % (key, status[:30], key, revision))
+        elif match.group(1) != key:
+            fail(line_no, "%s is verified by a result that says it tested %s. "
+                 "A result closes the row it names." % (key, match.group(1)))
+        elif int(match.group(2)) < revision:
+            fail(line_no, "%s is at r%d and its result tested r%s. The "
+                 "requirement changed after that result was produced: re-run "
+                 "it, or waive the change in the waivers section."
+                 % (key, revision, match.group(2)))
+        elif int(match.group(2)) > revision:
+            fail(line_no, "%s is at r%d and its result claims to have tested "
+                 "r%s, a revision this row does not have."
+                 % (key, revision, match.group(2)))
+        if _filled(status) and STATUS_WAIVED_RE.search(status):
+            named = WAIVER_ID_RE.findall(status)
+            recorded = waived_by.get(key, [])
+            if not recorded:
+                fail(line_no, "%s says it is waived and the waivers section "
+                     "carries no waiver against it." % key)
+            elif named and not set(named) & set(recorded):
+                fail(line_no, "%s says it is waived under %s and the waivers "
+                     "section records %s against it."
+                     % (key, ", ".join(named), ", ".join(recorded)))
+
+    return sorted(problems)
 
 
 def workspace_files(workspace):
@@ -1529,6 +2575,13 @@ def workspace_check(workspace, root=None):
             for i, code, message in link_problems(path, mask(raw, False),
                                                   root, None, anchor_cache):
                 fail(rp, i, code, message)
+            inside = path.relative_to(workspace).as_posix()
+            if is_uat_plan(inside, raw):
+                for row in uat_problems(rp, raw):
+                    problems.append(row)
+            if is_nfr_document(raw, rp):
+                for i, code, message in nfr_closure(raw):
+                    fail(rp, i, code, message)
 
     _artifact_pass(workspace, root, fail)
 

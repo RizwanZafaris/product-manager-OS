@@ -98,7 +98,7 @@ A pretty chart from people who will never sign the invoice. The survey goes to f
 
 ## Feeds
 
-- [Pricing and packaging](../../templates/planning/pricing-packaging.md): section 1 (value metric evidence) and section 3 (tiers), the range as the evidence column
+- [Pricing and packaging](../../templates/planning/pricing-packaging.md): section 1 (value metric evidence), and section 3's tier table, where the range goes in the Price evidence column, quoted as an interval with its n and its fielding date
 - [Gabor-Granger](gabor-granger.md): the ladder
 - [Good-better-best packaging](packaging-good-better-best.md): non-overlapping segment ranges become tier boundaries
 - PLANNING track, feeding [Gate 5: release readiness green](../../os/STAGE-GATES.md) through the pricing document

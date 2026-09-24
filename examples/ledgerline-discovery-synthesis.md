@@ -11,41 +11,41 @@ Fills [templates/discovery/discovery-synthesis.md](../templates/discovery/discov
 
 ## 2. Sources synthesized
 
-| Source | Type (interview / ticket / review / analytics) | Date | Evidence note |
+| Source | Type (interview / ticket / review / analytics / metric export / dataset / observation) | Date | Evidence note |
 |---|---|---|---|
 | EV-C01 to EV-C06, six design-partner interviews | interview | 2026-10-19 to 2026-10-28 | [Journey data sheet](ledgerline-journey.md), [coverage sheet](ledgerline-coverage-sheet.md), LC1 and LC2 |
 | EV-C07, platform data pull | analytics | 2026-10-22 | [Journey data sheet](ledgerline-journey.md), N32 to N36 |
 | EV-C08, Q3 win-loss batch | review | Q3 | [Journey data sheet](ledgerline-journey.md), N37 |
 | EV-C09, Q3 Expenses ticket pull | ticket | Q3 | [Journey data sheet](ledgerline-journey.md), N38 |
-| **Totals** | **9 sources, 6 of them interviews** | **Q3 to 2026-10-28** | **EV-C01 to EV-C09** |
+| **Totals** | **9 sources, 6 distinct participants (the six design partners; EV-C07 and EV-C09 are system pulls and EV-C08 is a rep-recorded batch, none naming a participant), 6 of them interviews** | **Q3 to 2026-10-28** | **EV-C01 to EV-C09** |
 
 ## 3. Themes
 
 ### Theme 1: TH-1, reviewers re-check what filers typed
 
 - **Seen in:** 8 of 9 sources
-- **Load-bearing quote:** "[No verbatim quote retained. EV-C01 to EV-C06 are paraphrased notes, not transcripts.]" (EV-C01 to EV-C06)
+- **Load-bearing evidence:** no verbatim quote exists. EV-C01 to EV-C06 are paraphrased notes rather than transcripts, so the support is the recorded pattern across those notes (EV-C01 to EV-C06)
 - **What it means:** All six interviews described a bounce or re-check problem, and the platform pull shows a 66% median first-submission approval rate across S-1. The ticket pull also contains 610 Q3 Expenses tickets tagged category or receipt. This supports positioning the add-on around reducing repeated mechanical review inside the existing Expenses workflow, while leaving the size of the improvement unproven.
 - **Contradicting evidence:** EV-C07 shows that the problem is not universal failure: S-1 has a measured 66% median first-submission approval rate, so the positioning should not claim that every report bounces.
 
 ### Theme 2: TH-2, a shadow spreadsheet helps finance manage the gaps
 
 - **Seen in:** 4 of 9 sources
-- **Load-bearing quote:** "[No verbatim quote retained. EV-C01 to EV-C06 are paraphrased notes, not transcripts.]" (EV-C01, EV-C02, EV-C04 and EV-C06)
+- **Load-bearing evidence:** no verbatim quote exists. EV-C01 to EV-C06 are paraphrased notes rather than transcripts, so the support is the recorded pattern across those notes (EV-C01, EV-C02, EV-C04 and EV-C06)
 - **What it means:** Four of six interviewees keep a spreadsheet, making it a concrete alternative to name in positioning rather than an abstract competitor. The spreadsheet appears to compensate for gaps in the form and gives finance a familiar review surface. It is evidence of a workaround, not proof that those accounts will replace it with Ledgerline.
 - **Contradicting evidence:** EV-C03 and EV-C05 did not record a spreadsheet workaround. The absence of that workaround in 2 of 6 interviews means it should not be presented as universal customer behaviour.
 
 ### Theme 3: TH-3, a separate receipt tool creates another vendor relationship
 
 - **Seen in:** 3 of 9 sources
-- **Load-bearing quote:** "[No verbatim quote retained. EV-C01 to EV-C06 are paraphrased notes, not transcripts.]" (EV-C02 and EV-C03)
+- **Load-bearing evidence:** no verbatim quote exists. EV-C01 to EV-C06 are paraphrased notes rather than transcripts, so the support is the recorded pattern across those notes (EV-C02 and EV-C03)
 - **What it means:** Two interviewees had trialled Cinderwick, and the Q3 win-loss batch records that 9 of 31 lost Business-plan deals named receipt capture as the primary reason, with 7 of those 9 choosing Cinderwick. Positioning can therefore contrast the existing Ledgerline workflow with a separate receipt-capture vendor, while keeping the claim tied to the observed sources.
 - **Contradicting evidence:** EV-C08 is rep-sourced and does not establish that every lost deal had the same buyer motivation. EV-C01, EV-C04, EV-C05 and EV-C06 did not record a Cinderwick trial.
 
 ### Theme 4: TH-4, buyers may pay something, but price evidence is absent
 
 - **Seen in:** 5 of 9 sources
-- **Load-bearing quote:** "[No verbatim quote retained. EV-C01 to EV-C06 are paraphrased notes, not transcripts.]" (EV-C01 to EV-C06)
+- **Load-bearing evidence:** no verbatim quote exists. EV-C01 to EV-C06 are paraphrased notes rather than transcripts, so the support is the recorded pattern across those notes (EV-C01 to EV-C06)
 - **What it means:** Five of six interviewees were recorded as willing to pay "something". This is a weak commercial signal only. The theme cannot support a price, a conversion forecast or a willingness-to-pay conclusion because none of the six was asked a price.
 - **Contradicting evidence:** The same row is contradicted by the missing price test: 0 of 6 were asked a price, and EV-C05 did not record willingness to pay "something". In addition, 1,660 S-1 accounts sit outside S-5, calculated as 2,900 minus 1,240. The interview signal therefore cannot be generalized to all S-1 accounts or treated as evidence of a viable price.
 

@@ -54,7 +54,7 @@ Filled example: [Emberfall Tactics v4.2.1](../../examples/domain-gaming-release-
 
 - [ ] Every blocking level in the [testing strategy](testing-strategy.md) ran and passed
 - [ ] The [edge-case register](edge-cases.md) has no open rows
-- [ ] [UAT](uat-plan.md) is signed off, conditions listed below if any
+- [ ] [UAT](uat-plan.md) is signed off against the build being released, [release-candidate or build ID], and its conditions are listed below if any. A UAT sign-off bound to an earlier candidate is void: re-run the charters
 - [ ] For AI features: eval thresholds met per the [eval spec](../ai/eval-spec.md), and the [red-team review](../ai/red-team-review.md) is closed
 - [ ] For any consent, decline, downgrade, or cancel flow in this release: the [choice-symmetry audit](../../frameworks/design/choice-symmetry-audit.md) result is recorded, checked against [knowledge/design/deceptive-design.md](../../knowledge/design/deceptive-design.md)
 
@@ -72,6 +72,20 @@ Filled example: [Emberfall Tactics v4.2.1](../../examples/domain-gaming-release-
 | # | Issue | Severity | Why it is acceptable to ship | Fix owner | Fix date |
 |---|---|---|---|---|---|
 | | | | | | |
+
+The Severity cell takes one canonical ID from the [testing strategy](testing-strategy.md) severity ladder, S1 to S4, and no other vocabulary: not low, not medium, not high. A row that is a gap in readiness rather than something the product does wrong writes one of exactly four markers, spelled as shown: `not a defect: untested path`, `not a defect: missing runbook`, `not a defect: unstaffed support`, `not a defect: external approval pending`. A row that describes what the product does to a user takes an S id instead, whatever the room prefers to call it; naming the gap class is what stops a defect being relabelled out of the ladder. An S1 row, or an S2 row with no named approver recorded against it, is a condition and may not ship open, whatever else the table calls it. The release rule for an ID is the one in the ladder, and it is not restated here.
+
+### What each Severity cell means for the release
+
+This table decides whether the release may proceed while a row is open. It is the rule this document applies, and it is read from here, not inferred from the ladder.
+
+| Severity cell | May the release proceed while this row is open? |
+|---|---|
+| S1 | No, it is a condition, not a known issue |
+| S2 | Only if the row records the named approver who accepted it and why |
+| S3 | Yes, with a named fix owner and a fix date |
+| S4 | Yes, tracked, with a fix owner |
+| not a defect: [gap class] | Only if the named gap class is closed, or it is written into the sign-off row as a condition with a date |
 
 ## 4. Rollback
 
@@ -151,6 +165,7 @@ Filled example: [Emberfall Tactics v4.2.1](../../examples/domain-gaming-release-
 |---|---|---|
 | Rubber-stamp under date pressure | "We are fine, ship it", five times in five minutes, and nobody opens the runbook | Go criterion by criterion, pass or fail, recorded live rather than written up later |
 | Empty known-issues table | A blank table presented as a clean result, with the real risks in direct messages | Do not accept the gate until the table is populated with severity, owner and mitigation |
+| Severity invented at the meeting | Rows marked high, medium or low, and nobody in the room can say which of them blocks | The Severity cell holds a canonical S1 to S4 id from the severity ladder, or `not a defect:` followed by one of the four named gap classes; section 3 then says what blocks |
 | Rollback nobody tested | "We have a rollback plan" on a slide, no rehearsal, no timing | Require a rehearsal in a real environment, recently, with the elapsed time recorded |
 | Sign-off by team, not person | "Engineering approves", written by whoever had the document open | Named sign-offs with role and date. A team cannot be paged or asked what it meant |
 | Conditions agreed aloud | Everyone nods at "we will fix X first", and nothing is written | Conditions go in the sign-off row before the meeting ends, or the verdict is not conditional |
@@ -167,8 +182,8 @@ Filled example: [Emberfall Tactics v4.2.1](../../examples/domain-gaming-release-
 
 | # | Issue | Severity | Why it is acceptable to ship | Fix owner | Fix date |
 |---|---|---|---|---|---|
-| *1* | *Extraction fails on receipts photographed in low light, and falls back to manual entry without telling the user why* | *medium* | *The fallback is correct and loses no data. The silence is confusing, not harmful, and affects a minority of submissions* | *S. Kaur* | *2026-06-12* |
-| *2* | *Support runbook does not cover the fallback path* | *high* | *Not acceptable to ship. This is a condition, not a known issue* | *Support lead* | *before rollout* |
+| *1* | *Extraction fails on receipts photographed in low light, and falls back to manual entry without telling the user why* | *S3* | *The fallback is correct and loses no data. The silence is confusing, not harmful, and affects a minority of submissions* | *S. Kaur* | *2026-06-12* |
+| *2* | *Support runbook does not cover the fallback path* | *not a defect: missing runbook* | *Not acceptable to ship. This is a condition, not a known issue* | *Support lead* | *before rollout* |
 
 *Conditions recorded in the sign-off row: support runbook published and the support team briefed, both before the flag is enabled for any customer. Rollback trigger agreed in advance: manual-entry fallback rate above the pre-launch baseline for two consecutive hours, called by the on-call engineer without further discussion.*
 
@@ -184,6 +199,8 @@ Gate 5 is green when:
 - [ ] Every checklist box above is checked, or its exception sits in the known-issues table with an owner and a date
 - [ ] The known-issues table is not empty, or the emptiness is explained
 - [ ] Every known issue distinguishes itself from a condition: an issue may ship open, a condition may not
+- [ ] Every Severity cell is a canonical id from the testing strategy ladder, or `not a defect:` followed by one of the four gap classes named in section 3
+- [ ] No known-issues row is S1, and every S2 row names the approver who accepted it and why, or it has moved to a condition
 - [ ] The rollback trigger is a condition a dashboard can show, not a feeling, and the procedure was executed on a dated environment
 - [ ] Every sign-off row has a name and a date, and every conditional verdict has its condition written in the row
 - [ ] The decider recorded GO, NO-GO, or GO WITH CONDITIONS, with conditions in writing

@@ -59,7 +59,7 @@ This is a silent release. Nothing changes for you because the payment step keeps
 - **What happens to a refund for an order authorised by a legacy provider?** Route it to the provider that authorised the order while the legacy refund capability remains available.
 - **Who handles a Marlowe provider question?** Marlowe support handles it through the ticket queue. Escalate internally to Bea Lindqvist with the order id and provider ticket.
 
-**Escalation path for this release:** Sev 1 pages the payment-path on-call. The squad's five engineers rotate on call, with acknowledgement within 5 minutes, escalation to Bea Lindqvist at 15 minutes and to Tomasz Wierzbicki at 30 minutes. Sev 2 covers one provider cohort or a group of shops, and Sev 3 covers one customer. Support owner: Callum Fraser.
+**Escalation path for this release:** S1 pages the payment-path on-call. The squad's five engineers rotate on call, with acknowledgement within 5 minutes, escalation to Bea Lindqvist at 15 minutes and to Tomasz Wierzbicki at 30 minutes. S2 covers one provider cohort or a group of shops, and S3 covers one customer. The ids are the canonical ladder's, not a support scale of their own. Support owner: Callum Fraser.
 
 **Where the runbook lives:** [harbourgate-support-runbook.md](harbourgate-support-runbook.md)
 

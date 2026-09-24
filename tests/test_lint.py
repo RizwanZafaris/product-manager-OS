@@ -1860,5 +1860,994 @@ class IntegrityPinCoverageTests(unittest.TestCase):
                         "STAGE-GATES.md does not state the AND condition")
 
 
+# The UAT acceptance contract. templates/delivery/uat-plan.md used to pass its
+# own exit criteria with a charter whose Result was Fail, because the checklist
+# asked only that every charter had run and that none was Blocked. Every case
+# below is a whole workspace run through the real gate, not a call into the
+# checking function, so a change that leaves the function in place and stops
+# calling it fails here too.
+CHARTER_SEP = "|---|---|---|---|---|---|---|---|---|---|"
+
+UAT_HEAD = """%s# UAT Plan: Ledgerline payouts
+
+**Owner:** Ana Ruiz · **Business sponsor:** Tom Bell · **Window:** 2026-08-01 to 2026-08-08
+
+**Candidate build:** %s · **Environment:** pre-production · **Fixture set:** seed-2026-08
+
+## 4. Test charters
+
+| # | Charter (the job to attempt) | Done looks like | AC / requirement IDs | Tester | Build | Evidence | Result | Defect | Exception |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | Run the daily close | AC-8 passes | AC-8 | Ana Ruiz | %s | UAT log entry 11 | Pass | none | none |
+| 2 | Refund a legacy order | AC-7 passes | AC-7 | Tom Bell | %s | UAT log entry 12 | %s | %s | %s |
+
+## 6. Exit criteria and sign-off
+
+- [x] Every charter has run against the candidate build named at the top, and none is Blocked
+- [x] Every charter's Result is Pass, or that charter names a defect record and an approved exception in the register below whose retest result is recorded
+
+**Accepted exceptions**
+
+| Exception ID | Charter # | Defect ID | Severity | Business impact accepted | Approved by (name, role) | Date | Retest result |
+|---|---|---|---|---|---|---|---|
+%s
+
+**Sign-off form**
+
+| Name | Role | Verdict (Accept / Accept with conditions / Reject) | Conditions, if any | Date |
+|---|---|---|---|---|
+| Tom Bell | Business sponsor | Accept | none | 2026-08-08 |
+
+**Sign-off is bound to candidate build:** %s
+"""
+
+
+class UatAcceptanceTests(unittest.TestCase):
+    """F02. A completed UAT plan has to account for every charter it ran."""
+
+    def _block(self):
+        import importlib
+        import sys
+        sys.path.insert(0, str(REPO / "tools"))
+        try:
+            workspace = importlib.import_module("workspace")
+        finally:
+            sys.path.pop(0)
+        return workspace.render_artifact_block({
+            "artifact_id": "demo/delivery/uat-plan",
+            "phase": "DELIVER",
+            "gate": 5,
+            "status": "approved",
+            "depends_on": [],
+            "template": "templates/delivery/uat-plan.md",
+        })
+
+    def _plan(self, result="Pass", defect="none", exception="none",
+              register="| | | | | | | | |", candidate="RC-14",
+              charter_build=None, signoff=None, complete=True):
+        text = UAT_HEAD % (self._block(), candidate,
+                           charter_build or candidate,
+                           charter_build or candidate,
+                           result, defect, exception, register,
+                           candidate if signoff is None else signoff)
+        if not complete:
+            text = text.replace("- [x]", "- [ ]").replace("| Accept |", "| |")
+        return text
+
+    def _run(self, **kwargs):
+        codes, messages = ws_run(
+            {"products/demo/delivery/uat-plan.md": self._plan(**kwargs)})
+        return codes, messages
+
+    APPROVED = ("| EX-1 | 2 | DEF-91 | S2 | Support refunds by hand for two "
+                "weeks | Tom Bell, sponsor | 2026-08-08 | Retested on RC-14, "
+                "still fails, accepted |")
+
+    def test_a_complete_plan_with_every_charter_passing_is_accepted(self):
+        codes, messages = self._run()
+        self.assertNotIn("UAT", codes, messages)
+
+    def test_a_failed_charter_with_no_defect_and_no_exception_fails(self):
+        codes, messages = self._run(result="Fail")
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("names no defect record", messages)
+        self.assertIn("names no accepted exception", messages)
+
+    def test_a_failed_charter_with_an_approved_exception_is_accepted(self):
+        codes, messages = self._run(result="Fail", defect="DEF-91",
+                                    exception="EX-1", register=self.APPROVED)
+        self.assertNotIn("UAT", codes, messages)
+
+    def test_an_exception_the_register_does_not_carry_fails(self):
+        codes, messages = self._run(result="Fail", defect="DEF-91",
+                                    exception="EX-9", register=self.APPROVED)
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("register has no such row", messages)
+
+    def test_an_exception_approved_for_another_charter_fails(self):
+        codes, messages = self._run(
+            result="Fail", defect="DEF-91", exception="EX-1",
+            register=self.APPROVED.replace("| EX-1 | 2 |", "| EX-1 | 1 |"))
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("records against charter 1", messages)
+
+    def test_an_exception_with_no_retest_result_fails(self):
+        codes, messages = self._run(
+            result="Fail", defect="DEF-91", exception="EX-1",
+            register=self.APPROVED.replace(
+                "Retested on RC-14, still fails, accepted |", "|"))
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("retest result is blank", messages)
+
+    def test_a_blocked_charter_is_not_a_result(self):
+        codes, messages = self._run(result="Blocked")
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("is Blocked, which is not a result", messages)
+
+    def test_moving_the_candidate_build_after_uat_demands_a_re_run(self):
+        codes, messages = self._run(candidate="RC-15", charter_build="RC-14")
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("was run against build RC-14", messages)
+
+    def test_a_sign_off_bound_to_another_build_demands_revalidation(self):
+        codes, messages = self._run(signoff="RC-15")
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("voids the verdict", messages)
+
+    def test_a_plan_that_does_not_claim_completion_is_left_alone(self):
+        codes, messages = self._run(result="Fail", complete=False)
+        self.assertNotIn("UAT", codes, messages)
+
+    def _two_result_columns_plan(self, first="Expected result",
+                                 second="Actual result",
+                                 firsts=("Pass", "Pass"), **kwargs):
+        """A plan whose charter table carries two result-shaped columns.
+
+        The pair is what every earlier binding rule broke on. "Expected result"
+        beside "Actual result" is the most common one in testing: reading the
+        first cell whose name contained "result" bound the contract to the
+        expectation, and refusing whenever two cells contained the word bound
+        nothing at all on "Expected result | Outcome", where the word appears
+        once. Both spellings are exercised below.
+        """
+        result = kwargs.get("result", "Pass")
+        text = self._plan(**kwargs)
+        text = text.replace(
+            "| Evidence | Result | Defect | Exception |",
+            "| Evidence | %s | %s | Defect | Exception |" % (first, second))
+        text = text.replace("%s\n" % CHARTER_SEP, "%s---|\n" % CHARTER_SEP)
+        text = text.replace("| UAT log entry 11 | Pass |",
+                            "| UAT log entry 11 | %s | Pass |" % firsts[0])
+        text = text.replace("| UAT log entry 12 | %s |" % result,
+                            "| UAT log entry 12 | %s | %s |"
+                            % (firsts[1], result))
+        return text
+
+    def test_an_expected_result_column_does_not_answer_for_the_actual_one(self):
+        # "Expected result" is not a name for the recorded result, so the
+        # recorded one binds and charter 2's Fail is read. Under the keyword
+        # rule this document passed clean with a failed, unaccounted charter.
+        codes, messages = ws_run(
+            {"products/demo/delivery/uat-plan.md":
+             self._two_result_columns_plan(result="Fail")})
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("charter 2 failed and names no defect record", messages)
+
+    def test_an_expected_result_beside_an_outcome_column_is_still_read(self):
+        # The spelling that defeated the keyword-count rule: only "Outcome"
+        # holds the word once, so the count saw no ambiguity, bound the
+        # expectation and read a failed charter as a pass.
+        codes, messages = ws_run(
+            {"products/demo/delivery/uat-plan.md":
+             self._two_result_columns_plan(second="Outcome", result="Fail")})
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("charter 2 failed and names no defect record", messages)
+
+    def test_two_names_for_the_result_column_are_refused(self):
+        # Two columns this check would accept as the result is a genuine
+        # ambiguity, and it says so rather than picking one.
+        codes, messages = ws_run(
+            {"products/demo/delivery/uat-plan.md":
+             self._two_result_columns_plan(first="Result", second="Outcome",
+                                           result="Fail")})
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("more than one column that could be its result column",
+                      messages)
+
+    def test_a_shadowed_result_column_fails_closed_on_every_row(self):
+        # The refusal binds nothing, so every row reads the column as missing
+        # rather than reading it out of the cell next door.
+        codes, messages = ws_run(
+            {"products/demo/delivery/uat-plan.md":
+             self._two_result_columns_plan(first="Result", second="Outcome",
+                                           result="Fail")})
+        self.assertIn("charter 1 result is blank", messages)
+        self.assertIn("charter 2 result is blank", messages)
+
+    def test_a_result_column_this_check_cannot_name_is_refused(self):
+        # No cell of the header is a name for the result, so nothing binds.
+        # A charter table this check cannot read is an error: the alternative
+        # is a document that passes because its results were unreadable.
+        text = self._plan(result="Fail").replace(
+            "| Evidence | Result | Defect", "| Evidence | Tally | Defect")
+        codes, messages = ws_run({"products/demo/delivery/uat-plan.md": text})
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("No column of it is named for the result", messages)
+        self.assertIn("the charter table must carry a column", messages)
+
+    def test_a_second_results_column_that_disagrees_is_refused(self):
+        # The next spelling along: park the real results in a column this
+        # check does not know, headed with a name no list carries, and leave a
+        # column it does know holding Pass on every row. The values give it
+        # away, because Pass, Fail and Blocked are a closed vocabulary.
+        text = self._two_result_columns_plan(first="Result",
+                                             second="Sign-off tally",
+                                             firsts=("Pass", "Pass"))
+        text = text.replace("| Pass | Pass | none | none |",
+                            "| Pass | Fail | none | none |")
+        codes, messages = ws_run({"products/demo/delivery/uat-plan.md": text})
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("which is the column this check reads as the result",
+                      messages)
+
+    def test_an_expected_result_that_disagrees_is_left_alone(self):
+        # The reverse guard. An expectation that disagrees with the recorded
+        # result is a failed charter, not a contradiction, so a plan that
+        # accounts for the failure passes with both columns in place.
+        codes, messages = ws_run(
+            {"products/demo/delivery/uat-plan.md":
+             self._two_result_columns_plan(
+                 result="Fail", defect="DEF-91", exception="EX-1",
+                 register=self.APPROVED)})
+        self.assertNotIn("UAT", codes, messages)
+
+    def test_two_columns_that_could_be_the_approver_column_are_refused(self):
+        # The register is as shadowable as the charter table: two columns it
+        # would accept as the approver leave no one column that is the one.
+        text = self._plan(result="Fail", defect="DEF-91", exception="EX-1",
+                          register=self.APPROVED)
+        text = text.replace(
+            "| Approved by (name, role) | Date | Retest result |",
+            "| Approved by (name, role) | Approver | Date | Retest result |")
+        text = text.replace("|---|---|---|---|---|---|---|---|\n",
+                            "|---|---|---|---|---|---|---|---|---|\n")
+        text = text.replace("| Tom Bell, sponsor |",
+                            "| Tom Bell, sponsor | Tom Bell |")
+        codes, messages = ws_run({"products/demo/delivery/uat-plan.md": text})
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("more than one column that could be its approver column",
+                      messages)
+
+    def test_a_blank_decoy_verdict_column_does_not_turn_the_check_off(self):
+        # Reading only the first verdict-shaped column let a blank decoy mean
+        # the document never claimed completion, which turned the check off.
+        text = self._plan(result="Fail").replace("- [x]", "- [ ]")
+        text = text.replace(
+            "| Name | Role | Verdict (Accept",
+            "| Name | Role | Verdict (draft) | Verdict (Accept")
+        text = text.replace("|---|---|---|---|---|\n",
+                            "|---|---|---|---|---|---|\n")
+        text = text.replace("| Tom Bell | Business sponsor | Accept |",
+                            "| Tom Bell | Business sponsor |  | Accept |")
+        codes, messages = ws_run({"products/demo/delivery/uat-plan.md": text})
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("names no defect record", messages)
+
+    def test_a_charter_table_parked_under_another_heading_is_still_read(self):
+        # Reporting incomplete charter tables only inside a charter-worded or
+        # numbered section let one carrying a Fail sit under any other heading
+        # in silence.
+        text = self._plan() + (
+            "\n## 9. Notes\n\n"
+            "| # | Charter | AC | Tester | Build | Evidence | Result |\n"
+            "|---|---|---|---|---|---|---|\n"
+            "| 9 | Late regression sweep | AC-12 | Ana Ruiz | RC-14 | "
+            "UAT log entry 40 | Fail |\n")
+        codes, messages = ws_run({"products/demo/delivery/uat-plan.md": text})
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("charter parked under another heading is still a "
+                      "charter", messages)
+
+    def test_a_charter_table_renamed_out_of_the_result_names_is_read(self):
+        # The defeat this round exists to close. The detector that decides
+        # whether a table the binder cannot read is even looked at used to
+        # pick candidate columns with the keyword "result|outcome|status|
+        # verdict", so a second charter table of the shipped shape, parked
+        # outside a charter-worded heading with its results column headed
+        # "Pass/Fail", was read by nobody and its failed charter passed in
+        # silence. The columns it carries say what it is.
+        text = self._plan() + (
+            "\n## 9. Notes\n\n"
+            "| # | Charter | AC | Tester | Build | Evidence | Pass/Fail | "
+            "Defect | Exception |\n"
+            "|---|---|---|---|---|---|---|---|---|\n"
+            "| 9 | Late regression sweep | AC-12 | Ana Ruiz | RC-14 | "
+            "UAT log entry 40 | Fail | none | none |\n")
+        codes, messages = ws_run({"products/demo/delivery/uat-plan.md": text})
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("no column of it is named for the result", messages)
+
+    def test_a_parked_charter_table_with_no_result_word_is_read(self):
+        # The next shape along: the same table with nothing in it that reads
+        # as Pass, Fail or Blocked, so no rule keyed on the values can see it.
+        # It carries five of the charter table's columns, which is what it is.
+        text = self._plan() + (
+            "\n## 9. Notes\n\n"
+            "| # | Charter | AC | Tester | Build | Evidence | Result |\n"
+            "|---|---|---|---|---|---|---|\n"
+            "| 9 | Late regression sweep | AC-12 | Ana Ruiz | RC-14 | "
+            "UAT log entry 40 | retested and cleared |\n")
+        codes, messages = ws_run({"products/demo/delivery/uat-plan.md": text})
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("carries 5 of the charter table's columns", messages)
+
+    def test_a_parked_table_of_results_under_no_charter_name_is_read(self):
+        # And the shape from the other side: too few of the charter table's
+        # columns to be recognised by its columns, and a column of results
+        # under a name no list carries. The values say what it is.
+        text = self._plan() + (
+            "\n## 9. Notes\n\n"
+            "| Ref | Scenario | Who | Pass/Fail |\n"
+            "|---|---|---|---|\n"
+            "| 9 | Late regression sweep | Ana Ruiz | Fail |\n")
+        codes, messages = ws_run({"products/demo/delivery/uat-plan.md": text})
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("records Pass, Fail or Blocked on every row", messages)
+
+    def test_a_parked_table_of_annotated_results_is_read(self):
+        # The same table with the result annotated. The binder holds a bound
+        # charter table to the closed vocabulary exactly; the detector reads
+        # the cell's first word, because "Fail (see log entry 40)" is a Fail
+        # to every reader of the document.
+        text = self._plan() + (
+            "\n## 9. Notes\n\n"
+            "| Ref | Scenario | Who | Pass/Fail |\n"
+            "|---|---|---|---|\n"
+            "| 8 | Refund rehearsal | Ana Ruiz | Pass |\n"
+            "| 9 | Late regression sweep | Ana Ruiz | "
+            "Fail (see UAT log entry 40) |\n")
+        codes, messages = ws_run({"products/demo/delivery/uat-plan.md": text})
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("records Pass, Fail or Blocked on every row", messages)
+
+    def test_a_parked_results_column_with_one_n_a_row_is_read(self):
+        # A column of results with one row saying there is no result to
+        # record is still a column of results. Counting that row against the
+        # column was a way past the value rule, on a table too thin for the
+        # column rule to see.
+        text = self._plan() + (
+            "\n## 9. Notes\n\n"
+            "| Ref | Scenario | Who | Pass/Fail |\n"
+            "|---|---|---|---|\n"
+            "| 8 | Late regression sweep | Ana Ruiz | Fail |\n"
+            "| 9 | Dropped charter | Ana Ruiz | N/A because out of scope |\n")
+        codes, messages = ws_run({"products/demo/delivery/uat-plan.md": text})
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("records Pass, Fail or Blocked on every row", messages)
+
+    def test_a_parked_column_of_prose_is_not_a_results_column(self):
+        # The reverse guard for that. Skipping the unanswered and the
+        # not-applicable cells must not turn an ordinary column into results.
+        text = self._plan() + (
+            "\n## 9. Notes\n\n"
+            "| Ref | Scenario | Who | Note |\n"
+            "|---|---|---|---|\n"
+            "| 8 | Late regression sweep | Ana Ruiz | reran and cleared |\n"
+            "| 9 | Dropped charter | Ana Ruiz | N/A because out of scope |\n")
+        codes, messages = ws_run({"products/demo/delivery/uat-plan.md": text})
+        self.assertNotIn("UAT", codes, messages)
+
+    def test_a_charter_table_wearing_a_registers_header_is_read(self):
+        # The accepted-exceptions register is the one table whose cells hold
+        # Pass, Fail and Blocked legitimately, so it is exempt from the value
+        # rule. Wearing its header is therefore a place to hide a charter, and
+        # the columns rule is what takes it away: a register that also carries
+        # a tester, a build and evidence is recording charter runs.
+        text = self._plan() + (
+            "\n## 9. Notes\n\n"
+            "| Exception ID | Charter # | Defect ID | Approved by | Date | "
+            "Retest result | Tester | Build | Evidence | Pass/Fail |\n"
+            "|---|---|---|---|---|---|---|---|---|---|\n"
+            "| | 9 | | | | | Ana Ruiz | RC-14 | UAT log entry 40 | Fail |\n")
+        codes, messages = ws_run({"products/demo/delivery/uat-plan.md": text})
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("carries 6 of the charter table's columns", messages)
+
+    def test_a_register_whose_retest_result_is_pass_is_left_alone(self):
+        # The reverse guard for that exemption. An ordinary register carries
+        # three of the charter table's columns and a column of Pass, so
+        # without the exemption every completed plan would report its own
+        # register as a charter table this check cannot read.
+        register = ("| EX-1 | 2 | DEF-91 | S2 | Support refunds by hand for "
+                    "two weeks | Tom Bell, sponsor | 2026-08-08 | Pass |")
+        codes, messages = self._run(result="Fail", defect="DEF-91",
+                                    exception="EX-1", register=register)
+        self.assertNotIn("UAT", codes, messages)
+
+    def test_an_ordinary_table_under_another_heading_is_left_alone(self):
+        # The reverse guard, and the limit stated in the open. A defect log
+        # shares a column or two with the charter table and holds no result
+        # word, so neither rule reads it, and it collects no finding.
+        text = self._plan() + (
+            "\n## 9. Notes\n\n"
+            "| Defect ID | Charter # | Severity | Owner | Status |\n"
+            "|---|---|---|---|---|\n"
+            "| DEF-91 | 2 | S3 | Ana Ruiz | open, prioritized after launch |\n")
+        codes, messages = ws_run({"products/demo/delivery/uat-plan.md": text})
+        self.assertNotIn("UAT", codes, messages)
+
+    def test_a_uat_plan_renamed_out_of_every_convention_is_still_read(self):
+        # Renamed out of both the filename and the frontmatter convention, and
+        # out of a stage folder, this document used to collect no finding of
+        # any kind. The sign-off binding is the third way in, so the artifact
+        # block is stripped here: with it the frontmatter convention answers.
+        text = self._plan(result="Fail")
+        text = text[text.index("# UAT Plan:"):]
+        self.assertNotIn("template:", text)
+        codes, messages = ws_run(
+            {"products/demo/notes/acceptance-record.md": text})
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("names no defect record", messages)
+
+    def test_the_shipped_template_carries_the_contract_this_check_reads(self):
+        text = (REPO / "templates/delivery/uat-plan.md").read_text(
+            encoding="utf-8")
+        self.assertTrue(lint.is_uat_plan("delivery/uat-plan.md", text))
+        for label in ("Candidate build", "Environment", "Fixture set",
+                      lint.UAT_SIGNOFF_LABEL):
+            self.assertIsNotNone(lint._bold_field(text, label),
+                                 "the template has no %s field" % label)
+        lines = lint.mask(text)
+        _heads, spans = lint.headings(lines)
+        span = lint.span_for(spans, r"^##\s*4\.")
+        self.assertIsNotNone(span, "the template has no test-charter section")
+        headers = [header for header, _rows in lint.tables(lines, *span)]
+        self.assertTrue(any(lint._is_charter_table(header)
+                            for header in headers),
+                        "the template's charter table does not carry the "
+                        "columns the workspace check reads")
+        # And carries exactly one cell for each of them: a shipped table that
+        # offered two candidates for a column would be refused as ambiguous by
+        # the very check it is the model for.
+        for header in headers:
+            if not lint._is_charter_table(header):
+                continue
+            for _key, human, names in lint.UAT_COLUMNS:
+                found = lint._named_columns(header, names)
+                self.assertEqual(len(found), 1,
+                                 "the template's charter table offers %d "
+                                 "cells for its %s column" % (len(found),
+                                                              human))
+
+    def test_the_shipped_template_names_the_check_that_reads_a_filled_copy(self):
+        # The generated "What checks this" paragraph says no tool checks
+        # whether what you write is right. That is true of the two paths it
+        # names and not of the opt-in third one, so the generator names it.
+        text = (REPO / "templates/delivery/uat-plan.md").read_text(
+            encoding="utf-8")
+        line = next(l for l in text.split("\n")
+                    if l.startswith("**What checks this.**"))
+        self.assertIn("lint.py --workspace", line)
+        self.assertIn("no defect record and no approved exception", line)
+
+    def test_the_shipped_worked_example_satisfies_the_contract(self):
+        path = REPO / "examples/harbourgate-uat-plan.md"
+        raw = path.read_text(encoding="utf-8")
+        lines = lint.mask(raw)
+        _heads, spans = lint.headings(lines)
+        self.assertTrue(lint.claims_uat_complete(lines, spans),
+                        "the worked example no longer claims UAT is complete, "
+                        "so this test proves nothing")
+        self.assertEqual([], lint.uat_problems(path.name, raw))
+
+    # Every case below was a working escape before this round: the check read
+    # only the first charter table, only the first register, only a section 6
+    # that kept its number, and read the identity fields out of the raw bytes
+    # rather than the rendered document.
+
+    ROW3_FAIL = ("| 3 | Late addition | AC-9 passes | AC-9 | Ana Ruiz | RC-14 "
+                 "| UAT log entry 13 | Fail | none | none |")
+    CHARTER_HEADER = ("| # | Charter (the job to attempt) | Done looks like "
+                      "| AC / requirement IDs | Tester | Build | Evidence "
+                      "| Result | Defect | Exception |")
+    REGISTER_HEADER = ("| Exception ID | Charter # | Defect ID | Severity "
+                       "| Business impact accepted | Approved by (name, role) "
+                       "| Date | Retest result |")
+    IDENTITY = ("**Candidate build:** RC-14 · **Environment:** "
+                "pre-production · **Fixture set:** seed-2026-08")
+
+    def _ws(self, text):
+        return ws_run({"products/demo/delivery/uat-plan.md": text})
+
+    def test_a_failure_in_a_second_charter_table_is_not_hidden(self):
+        second = ("\n" + self.CHARTER_HEADER +
+                  "\n|---|---|---|---|---|---|---|---|---|---|\n" +
+                  self.ROW3_FAIL + "\n")
+        codes, messages = self._ws(self._plan().replace(
+            "\n## 6. Exit criteria", second + "\n## 6. Exit criteria"))
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("charter 3 failed and names no defect record", messages)
+
+    def test_a_blank_line_between_charter_rows_does_not_hide_the_rows_below(self):
+        codes, messages = self._ws(self._plan(result="Fail").replace(
+            "| 2 | Refund a legacy order", "\n| 2 | Refund a legacy order"))
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("table rows with no header above them", messages)
+
+    def test_a_sentence_between_charter_rows_does_not_hide_the_rows_below(self):
+        codes, messages = self._ws(self._plan(result="Fail").replace(
+            "| 2 | Refund a legacy order",
+            "The second cohort ran these:\n\n| 2 | Refund a legacy order"))
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("table rows with no header above them", messages)
+
+    def test_an_old_shape_charter_table_beside_the_new_one_is_reported(self):
+        # The five-column table this finding exists to reject, kept beside the
+        # ten-column one. It is narrower than a charter row, so only the rule
+        # that reads the charter section itself catches it.
+        old = ("\n| # | Charter | Tester | Result | Notes |\n"
+               "|---|---|---|---|---|\n"
+               "| 3 | Late addition | Ana Ruiz | Fail | none |\n")
+        codes, messages = self._ws(self._plan().replace(
+            "\n## 6. Exit criteria", old + "\n## 6. Exit criteria"))
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("section holds a table that does not carry a column",
+                      messages)
+
+    def test_a_charter_row_outside_the_charter_section_is_reported(self):
+        codes, messages = self._ws(self._plan().replace(
+            "\n## 6. Exit criteria",
+            "\n## 5. Notes\n\n" + self.ROW3_FAIL +
+            "\n\n## 6. Exit criteria"))
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("table rows with no header above them", messages)
+
+    def test_a_decoy_exceptions_register_does_not_answer_for_the_real_one(self):
+        real = ("\n\nAnd the real register:\n\n" + self.REGISTER_HEADER +
+                "\n|---|---|---|---|---|---|---|---|\n"
+                "| EX-1 | 2 | DEF-91 | S2 | Support refunds by hand | | | |")
+        plan = self._plan(result="Fail", defect="DEF-91", exception="EX-1",
+                          register=self.APPROVED)
+        codes, messages = self._ws(
+            plan.replace(self.APPROVED, self.APPROVED + real))
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("used by more than one row", messages)
+
+    def test_one_exception_id_used_twice_is_reported(self):
+        codes, messages = self._run(
+            result="Fail", defect="DEF-91", exception="EX-1",
+            register=self.APPROVED + "\n" + self.APPROVED)
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("used by more than one row", messages)
+
+    def test_renaming_the_sign_off_heading_does_not_turn_the_check_off(self):
+        codes, messages = self._ws(self._plan(result="Fail").replace(
+            "## 6. Exit criteria and sign-off",
+            "## Exit criteria and sign-off"))
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("names no defect record", messages)
+
+    def test_renumbering_the_sign_off_heading_does_not_turn_the_check_off(self):
+        codes, messages = self._ws(self._plan(result="Fail").replace(
+            "## 6. Exit criteria and sign-off", "## 6. Wrap-up"))
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("names no defect record", messages)
+
+    def test_a_plan_signed_only_at_the_exit_gate_still_claims_completion(self):
+        codes, messages = self._ws(
+            self._plan(result="Fail", complete=False) +
+            "\n## Exit gate\n\nSigned: Ana Ruiz, QA lead, 2026-08-08\n")
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("names no defect record", messages)
+
+    def test_identity_fields_inside_an_html_comment_are_not_live_content(self):
+        codes, messages = self._ws(self._plan().replace(
+            self.IDENTITY, "<!-- " + self.IDENTITY + " -->"))
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("carries no Candidate build field", messages)
+
+    def test_two_contradicting_candidate_build_lines_are_refused(self):
+        codes, messages = self._ws(self._plan().replace(
+            self.IDENTITY, self.IDENTITY + "\n\n**Candidate build:** RC-99"))
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("names more than one Candidate build", messages)
+
+    def test_a_charter_that_names_no_tester_or_evidence_is_not_a_result(self):
+        codes, messages = self._ws(self._plan().replace(
+            "| 2 | Refund a legacy order | AC-7 passes | AC-7 | Tom Bell | "
+            "RC-14 | UAT log entry 12 | Pass | none | none |",
+            "| 2 | Refund a legacy order | AC-7 passes | | | RC-14 | | Pass | "
+            "none | none |"))
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("acceptance-criterion reference is blank", messages)
+        self.assertIn("tester is blank", messages)
+        self.assertIn("evidence is blank", messages)
+
+    def test_a_second_sign_off_binding_must_also_name_the_candidate(self):
+        binding = "**%s:** RC-14" % lint.UAT_SIGNOFF_LABEL
+        codes, messages = self._ws(self._plan().replace(
+            binding, binding + "\n\n**%s:** RC-99" % lint.UAT_SIGNOFF_LABEL))
+        self.assertIn("UAT", codes, messages)
+        self.assertIn("voids the verdict", messages)
+
+    def test_an_unnumbered_charter_heading_is_still_a_charter_section(self):
+        codes, messages = self._ws(
+            self._plan().replace("## 4. Test charters", "## Test charters"))
+        self.assertNotIn("UAT", codes, messages)
+
+    def test_the_blank_template_installed_into_a_workspace_is_not_failed(self):
+        blank = (REPO / "templates/delivery/uat-plan.md").read_text(
+            encoding="utf-8")
+        body = blank.split("---\n", 2)[-1]
+        codes, messages = ws_run(
+            {"products/demo/delivery/uat-plan.md": self._block() + body})
+        self.assertNotIn("UAT", codes, messages)
+
+
+class NfrClosureTests(unittest.TestCase):
+    """Finding F11 of the 2026-09-23 review. The NFR template identified its
+    rows in prose while functional requirements and acceptance criteria carried
+    IDs, so a document with two latency rows could not say which one a waiver
+    excused or which one a result closed, and a target could be rewritten while
+    an old passing result sat beside it.
+
+    Two fixtures carry the closure proof. CONFORMING is the document the rule
+    describes and must report nothing. stale_fixture is the same document with
+    one target moved from r1 to r2 and its result left where it was, which is
+    the case the IDs exist for. The rest of the class seeds one defect each.
+    """
+
+    CONFORMING = """---
+artifact_id: demo/definition/nfr
+phase: DEFINE
+gate: 2
+status: draft
+depends_on: []
+template: templates/definition/nfr.md
+---
+# Non-Functional Requirements: Demo
+
+## 1. Performance and latency
+
+| ID | Requirement | Surface and workload | Target or owner | Status | Verified by |
+|---|---|---|---|---|---|
+| NFR-01 r1 | Card authorisation completes in | Web and app, p95 at the measured peak | 900 ms | Met | Load test log, 2026-05-02, tested NFR-01 r1 |
+| NFR-02 r1 | Nightly settlement completes in | Batch job, full book | 20 minutes | Agreed | Batch run report |
+
+## 4. Security and privacy
+
+| ID | Requirement | Surface and workload | Target or owner | Status | Verified by |
+|---|---|---|---|---|---|
+| NFR-03 r1 | Authorization model | Refund action, support console | Two named approvers | Waived WV-01 | Security review |
+
+## 8. Waivers
+
+| Waiver ID | NFR ID (exactly one) | Requirement waived | Waived by | Reason | Gate waived at | Revisit date |
+|---|---|---|---|---|---|---|
+| WV-01 | NFR-03 | Two-approver refunds | Ada Bell, Head of Support | Single approver until the console ships | Gate 2 | 2027-01-31 |
+"""
+
+    def findings(self, text):
+        return [message for _line, _code, message in lint.nfr_closure(text)]
+
+    def rewrite(self, old, new, text=None):
+        text = self.CONFORMING if text is None else text
+        self.assertEqual(1, text.count(old), old)
+        return text.replace(old, new)
+
+    def stale_fixture(self):
+        """The target moves from 900 ms to 600 ms and the row to r2. The result
+        beside it was run against r1 and is no longer a pass of this row."""
+        return self.rewrite(
+            "| NFR-01 r1 | Card authorisation completes in | Web and app, p95 "
+            "at the measured peak | 900 ms |",
+            "| NFR-01 r2 | Card authorisation completes in | Web and app, p95 "
+            "at the measured peak | 600 ms |")
+
+    # --- the two fixtures the closure proof names -------------------------
+
+    def test_the_conforming_fixture_reports_nothing(self):
+        self.assertEqual([], self.findings(self.CONFORMING))
+
+    def test_a_changed_requirement_does_not_inherit_its_old_result(self):
+        self.assertEqual(
+            ["NFR-01 is at r2 and its result tested r1. The requirement "
+             "changed after that result was produced: re-run it, or waive the "
+             "change in the waivers section."],
+            self.findings(self.stale_fixture()))
+
+    # --- every waiver names exactly one requirement -----------------------
+
+    def test_a_waiver_that_names_no_nfr_id_is_reported(self):
+        text = self.rewrite("| WV-01 | NFR-03 | Two-approver refunds |",
+                            "| WV-01 | the authorization one | "
+                            "Two-approver refunds |")
+        self.assertIn("waiver WV-01 names 0 NFR IDs. One waiver excuses "
+                      "exactly one requirement: a waiver naming two cannot be "
+                      "revoked by half.", self.findings(text))
+
+    def test_a_waiver_that_names_two_nfr_ids_is_reported(self):
+        text = self.rewrite("| WV-01 | NFR-03 | Two-approver refunds |",
+                            "| WV-01 | NFR-02 and NFR-03 | "
+                            "Two-approver refunds |")
+        self.assertIn("waiver WV-01 names 2 NFR IDs. One waiver excuses "
+                      "exactly one requirement: a waiver naming two cannot be "
+                      "revoked by half.", self.findings(text))
+
+    def test_a_waiver_naming_a_requirement_that_is_not_here_is_reported(self):
+        text = self.rewrite("| WV-01 | NFR-03 | Two-approver refunds |",
+                            "| WV-01 | NFR-42 | Two-approver refunds |")
+        self.assertIn("waiver WV-01 names NFR-42, which no requirement row in "
+                      "this document defines.", self.findings(text))
+
+    def test_a_waiver_with_no_waiver_id_is_reported(self):
+        text = self.rewrite("| WV-01 | NFR-03 | Two-approver refunds |",
+                            "|  | NFR-03 | Two-approver refunds |")
+        self.assertIn("waiver row has no waiver ID of the form WV-01.",
+                      self.findings(text))
+
+    def test_a_waivers_table_with_no_nfr_id_column_is_reported(self):
+        text = self.rewrite(
+            "| Waiver ID | NFR ID (exactly one) | Requirement waived |",
+            "| Requirement waived |")
+        text = self.rewrite("|---|---|---|---|---|---|---|\n| WV-01 | NFR-03 | ",
+                            "|---|---|---|---|---|\n| ", text)
+        self.assertIn('section "## 8. Waivers" has a filled table without a '
+                      "Waiver ID and an NFR ID column. A waiver that names its "
+                      "requirement in prose cannot be revoked against one row.",
+                      self.findings(text))
+
+    def test_a_row_that_says_it_is_waived_with_no_waiver_recorded(self):
+        text = self.rewrite("Batch job, full book | 20 minutes | Agreed |",
+                            "Batch job, full book | 20 minutes | Waived |")
+        self.assertIn("NFR-02 says it is waived and the waivers section "
+                      "carries no waiver against it.", self.findings(text))
+
+    def test_a_row_waived_under_another_waiver_than_the_one_recorded(self):
+        text = self.rewrite("| Waived WV-01 |", "| Waived WV-07 |")
+        self.assertIn("NFR-03 says it is waived under WV-07 and the waivers "
+                      "section records WV-01 against it.", self.findings(text))
+
+    # --- the columns this gate reads are bound by name --------------------
+    #
+    # The third round of the independent review of this change, P1 and P2.
+    # The binder read a column whose header CONTAINED a keyword, and kept only
+    # the first waiver recorded against a requirement. Both are F02's defect
+    # again: bind by a bare keyword, and take the first match rather than
+    # refusing an ambiguous one.
+
+    def decoy_waiver_fixture(self):
+        """The waivers table grows two columns that discuss the real ones.
+
+        "Expected waiver ID" contains "waiver id", so a reader that looks for
+        the keyword anywhere in a header binds the decoy, reads WV-99 against
+        NFR-01, and reports that NFR-03 is waived by nothing.
+        """
+        text = self.rewrite(
+            "| Waiver ID | NFR ID (exactly one) | Requirement waived |",
+            "| Expected waiver ID | Expected NFR ID | Waiver ID | "
+            "NFR ID (exactly one) | Requirement waived |")
+        text = self.rewrite("|---|---|---|---|---|---|---|",
+                            "|---|---|---|---|---|---|---|---|---|", text)
+        return self.rewrite("| WV-01 | NFR-03 | Two-approver refunds |",
+                            "| WV-99 | NFR-01 | WV-01 | NFR-03 | "
+                            "Two-approver refunds |", text)
+
+    def test_a_decoy_column_does_not_answer_for_the_real_waiver_column(self):
+        self.assertEqual([], self.findings(self.decoy_waiver_fixture()))
+
+    def test_a_waivers_table_with_only_decoy_columns_is_refused(self):
+        """The real headers are renamed away and only the decoys are left.
+
+        Nothing binds, so nothing in the table is read as a waiver of anything,
+        and the table is refused by name. A reader that matched the keyword
+        inside the header would have bound the decoys and passed the document
+        on a waiver its author never wrote.
+        """
+        text = self.rewrite("| Waiver ID | NFR ID (exactly one) |",
+                            "| Expected waiver ID | Expected NFR ID |")
+        self.assertIn('section "## 8. Waivers" has a filled table without a '
+                      "Waiver ID and an NFR ID column. A waiver that names its "
+                      "requirement in prose cannot be revoked against one row.",
+                      self.findings(text))
+
+    def test_two_columns_that_could_be_the_waiver_id_are_refused(self):
+        text = self.rewrite("| Requirement waived | Waived by |",
+                            "| Waiver | Waived by |")
+        self.assertIn("the waivers table carries more than one column that "
+                      "could be its Waiver ID column ('Waiver ID', 'Waiver'). "
+                      "This check will not guess which one you mean, because "
+                      "reading the wrong column in silence is worse than "
+                      "saying it cannot tell. Rename all but one.",
+                      self.findings(text))
+
+    def test_a_decoy_column_does_not_answer_for_the_real_status_column(self):
+        """The same defect on the requirement side, and there it failed OPEN.
+
+        An "Expected status" column carries "status". The row still says Met in
+        the column its author meant, and its Verified by cell names no revision
+        tested, which is exactly what this gate exists to catch; a reader bound
+        to the decoy asked nothing of the row and the document passed.
+        """
+        text = self.rewrite(
+            "| ID | Requirement | Surface and workload | Target or owner | "
+            "Status | Verified by |\n|---|---|---|---|---|---|\n| NFR-01 r1 |",
+            "| ID | Requirement | Expected status | Target or owner | "
+            "Status | Verified by |\n|---|---|---|---|---|---|\n| NFR-01 r1 |")
+        text = self.rewrite("Load test log, 2026-05-02, tested NFR-01 r1",
+                            "Load test log, 2026-05-02", text)
+        self.assertIn("NFR-01 says it is 'Met' and nothing in its Verified by "
+                      'cell names the revision that was tested. Write "tested '
+                      'NFR-01 r1" there, so the next revision of this row '
+                      "cannot inherit this result.", self.findings(text))
+
+    def test_a_requirement_table_with_no_status_column_is_reported(self):
+        text = self.rewrite(
+            "| ID | Requirement | Surface and workload | Target or owner | "
+            "Status | Verified by |\n|---|---|---|---|---|---|\n| NFR-01 r1 |",
+            "| ID | Requirement | Surface and workload | Target or owner | "
+            "Progress | Verified by |\n|---|---|---|---|---|---|\n"
+            "| NFR-01 r1 |")
+        self.assertIn('section "## 1. Performance and latency" has a filled '
+                      "requirement table with no Status column. A row that "
+                      "never says whether it is Met, Not met or Waived closes "
+                      "against nothing: re-copy the table from "
+                      "templates/definition/nfr.md.", self.findings(text))
+
+    # --- a requirement waived twice reconciles against either waiver ------
+
+    def second_waiver_fixture(self):
+        """NFR-03 is waived, revisited, and waived again under WV-02.
+
+        Nothing in this gate says a requirement may be waived only once: a
+        waiver carries a revisit date, and the row that revisits it is a second
+        waiver row naming the same requirement. The requirement row names the
+        waiver it is living under now, which is the second one.
+        """
+        text = self.rewrite(
+            "| WV-01 | NFR-03 | Two-approver refunds | Ada Bell, Head of "
+            "Support | Single approver until the console ships | Gate 2 | "
+            "2027-01-31 |",
+            "| WV-01 | NFR-03 | Two-approver refunds | Ada Bell, Head of "
+            "Support | Single approver until the console ships | Gate 2 | "
+            "2026-07-31 |\n| WV-02 | NFR-03 | Two-approver refunds, extended "
+            "| Ada Bell, Head of Support | The console still has not shipped "
+            "| Gate 2 | 2027-01-31 |")
+        return self.rewrite("| Waived WV-01 |", "| Waived WV-02 |", text)
+
+    def test_a_row_naming_the_second_waiver_against_it_reconciles(self):
+        self.assertEqual([], self.findings(self.second_waiver_fixture()))
+
+    def test_a_row_naming_a_waiver_recorded_against_no_one_is_reported(self):
+        """Every waiver against the row is offered, and WV-07 is not one of
+        them, so the mismatch still fires and names both that were."""
+        text = self.rewrite("| Waived WV-02 |", "| Waived WV-07 |",
+                            self.second_waiver_fixture())
+        self.assertIn("NFR-03 says it is waived under WV-07 and the waivers "
+                      "section records WV-01, WV-02 against it.",
+                      self.findings(text))
+
+    def test_one_waiver_id_used_by_two_rows_is_reported(self):
+        """The duplicate check asked the requirement map whether it held a WV-
+        key, which it never does, so it never fired."""
+        text = self.rewrite(
+            "| WV-01 | NFR-03 | Two-approver refunds | Ada Bell, Head of "
+            "Support | Single approver until the console ships | Gate 2 | "
+            "2027-01-31 |",
+            "| WV-01 | NFR-03 | Two-approver refunds | Ada Bell, Head of "
+            "Support | Single approver until the console ships | Gate 2 | "
+            "2027-01-31 |\n| WV-01 | NFR-02 | Settlement window | Ada Bell, "
+            "Head of Support | Batch window under review | Gate 2 | "
+            "2027-01-31 |")
+        self.assertIn("waiver ID WV-01 is used twice.", self.findings(text))
+
+    # --- every result names one requirement, at one revision --------------
+
+    def test_a_result_that_names_no_revision_is_reported(self):
+        text = self.rewrite("Load test log, 2026-05-02, tested NFR-01 r1",
+                            "Load test log, 2026-05-02")
+        self.assertIn("NFR-01 says it is 'Met' and nothing in its Verified by "
+                      'cell names the revision that was tested. Write "tested '
+                      'NFR-01 r1" there, so the next revision of this row '
+                      "cannot inherit this result.", self.findings(text))
+
+    def test_a_result_that_names_another_row_is_reported(self):
+        text = self.rewrite("tested NFR-01 r1", "tested NFR-02 r1")
+        self.assertIn("NFR-01 is verified by a result that says it tested "
+                      "NFR-02. A result closes the row it names.",
+                      self.findings(text))
+
+    def test_a_result_claiming_a_revision_the_row_does_not_have(self):
+        text = self.rewrite("tested NFR-01 r1", "tested NFR-01 r4")
+        self.assertIn("NFR-01 is at r1 and its result claims to have tested "
+                      "r4, a revision this row does not have.",
+                      self.findings(text))
+
+    def test_a_planned_verification_claiming_no_result_needs_no_revision(self):
+        """NFR-02's Verified by names the artifact that will prove it and its
+        Status claims nothing. Requiring a revision there would make every
+        planned verification read as a result, which is the opposite of the
+        distinction this check exists to keep."""
+        self.assertEqual([], self.findings(self.CONFORMING))
+        proposed = self.rewrite("| 20 minutes | Agreed | Batch run report |",
+                                "| 20 minutes | Proposed | Batch run report |")
+        self.assertEqual([], self.findings(proposed))
+
+    # --- every requirement carries an ID ----------------------------------
+
+    def test_a_filled_requirement_with_no_id_is_reported(self):
+        text = self.rewrite("| NFR-02 r1 | Nightly settlement completes in |",
+                            "|  | Nightly settlement completes in |")
+        self.assertIn("requirement 'Nightly settlement completes in' has no "
+                      "NFR ID.", self.findings(text))
+
+    def test_an_id_with_no_revision_is_reported(self):
+        text = self.rewrite("| NFR-02 r1 |", "| NFR-02 |")
+        self.assertIn("ID 'NFR-02' is not of the form NFR-<id> r<n>. The "
+                      "revision is what stops a changed requirement inheriting "
+                      "an old passing result.", self.findings(text))
+
+    def test_one_id_used_twice_is_reported(self):
+        text = self.rewrite("| NFR-02 r1 |", "| NFR-01 r1 |")
+        self.assertIn("NFR-01 is used twice. An ID that names two rows names "
+                      "neither.", self.findings(text))
+
+    def test_a_requirement_table_with_no_id_column_is_reported(self):
+        text = self.rewrite(
+            "| ID | Requirement | Surface and workload | Target or owner | "
+            "Status | Verified by |\n|---|---|---|---|---|---|\n"
+            "| NFR-03 r1 | Authorization model | Refund action, support "
+            "console | Two named approvers | Waived WV-01 | Security review |",
+            "| Requirement | Target or owner | Verified by |\n|---|---|---|\n"
+            "| Authorization model | Two named approvers | Security review |")
+        self.assertIn('section "## 4. Security and privacy" has a filled table '
+                      "with no ID column. A requirement named only in prose "
+                      "cannot be bound to the waiver that excuses it or the "
+                      "result that closes it: give each row an ID and a "
+                      "revision, NFR-01 r1.", self.findings(text))
+
+    # --- what the gate runs over ------------------------------------------
+
+    def test_the_shipped_template_reports_nothing(self):
+        """Every row of the template is either a placeholder or an unfilled
+        cell, so the document a user starts from does not fail on its first
+        day. The IDs it ships with are real rather than bracketed, because a
+        bracketed one teaches the reader that the ID is optional."""
+        text = (REPO / "templates/definition/nfr.md").read_text(
+            encoding="utf-8")
+        self.assertEqual([], self.findings(text))
+        self.assertIn("| NFR-01 r1 |", text)
+
+    def test_the_document_is_recognised_by_its_stamp_and_by_its_path(self):
+        self.assertTrue(lint.is_nfr_document(self.CONFORMING, "x/y.md"))
+        body = self.CONFORMING.split("---", 2)[2]
+        self.assertFalse(lint.is_nfr_document(body, "products/demo/x.md"))
+        self.assertTrue(lint.is_nfr_document(
+            body, "products/demo/definition/nfr.md"))
+
+    def test_another_template_is_not_read_as_an_nfr_document(self):
+        other = self.CONFORMING.replace("templates/definition/nfr.md",
+                                        "templates/definition/prd.md")
+        other = other.replace("| NFR-01 r1 |", "|  |")
+        codes, _messages = ws_run({"products/demo/definition/prd.md": other})
+        self.assertNotIn("NFR", codes)
+
+    def test_the_workspace_gate_reports_the_stale_result(self):
+        """Through lint.workspace_check, not through nfr_closure alone: a check
+        no mode calls is a check nothing runs."""
+        codes, messages = ws_run(
+            {"products/demo/definition/nfr.md": self.stale_fixture()})
+        self.assertIn("NFR", codes)
+        self.assertIn("NFR-01 is at r2 and its result tested r1", messages)
+
+    def test_the_conforming_fixture_passes_the_workspace_gate(self):
+        codes, messages = ws_run(
+            {"products/demo/definition/nfr.md": self.CONFORMING})
+        self.assertNotIn("NFR", codes, messages)
+
+    def test_the_mode_names_the_check_it_runs(self):
+        self.assertIn("NFR closure", lint.WORKSPACE_CHECKS)
+
+
 if __name__ == "__main__":
     unittest.main()

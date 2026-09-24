@@ -70,22 +70,28 @@ Filled example: [Ledgerline Expense Copilot Receipt Draft](../../examples/ledger
 
 ## 4. Termination
 
-<!-- Three ways every run ends, all written down. -->
+<!-- Three ways every run ends, all written down. Moving to a cheaper route is not a
+     fourth way: it belongs in section 5, below a ceiling, and it cannot rescue a run
+     that has already reached one. -->
 
 - Success: [the condition that means done, checkable by code]
 - Failure: [conditions that end the run as failed, and what the requester is told]
-- Budget stop: the run halts when it hits any of the caps in section 5, preserving state for human review, never silently retrying past a cap
+- Budget stop, at a cap: the run halts the moment it reaches any ceiling in section 5. Nothing further is scheduled after that point, on any model or tool, and a cheaper model is not an exception; the run state is preserved, the work queues, and the requester is told it stopped on budget. It resumes only when [role who may authorise, with a rota] raises the cap or grants new budget, recorded with the date. This is the `fail-closed` rule in [AGENTS.md](../../AGENTS.md): at a cap, halt and queue
+- Restart after a budget stop: [the step the run resumes from once budget is authorised, and how a replayed handoff avoids a second non-idempotent effect; or: the run is not resumed and a new run starts at the entry point]
+- Not a termination path: the pre-authorised route degradation in section 5. It fires below a ceiling, at a threshold written down in advance, and never at or after one
 
 ## 5. Cost cap
 
 <!-- Every cap here turns a runaway loop into a bounded, budgeted event instead of
      an open-ended bill. A trap: setting the per-run ceiling and leaving the
      per-day ceiling blank, because a workflow that respects one cap can still run
-     often enough to blow through the other. This fails when every ceiling
-     escalates to a human with no cheaper degrade path, so an ordinary volume
-     spike pages someone instead of costing a little more. Never leave a cap as a
-     round guess; derive it from the worked micro-example below or a measured
-     baseline, and name who actually reads the spend report. -->
+     often enough to blow through the other. A cheaper degrade path belongs
+     below the ceiling, with the threshold that triggers it written down, so an
+     ordinary volume spike costs a little more instead of paging someone; a
+     ceiling reached is a different event, and the only answer there is to stop
+     and queue. Never leave a cap as a round guess; derive it from the worked
+     micro-example below or a measured baseline, and name who actually reads
+     the spend report. -->
 
 | Cap | Value |
 |---|---|
@@ -93,12 +99,13 @@ Filled example: [Ledgerline Expense Copilot Receipt Draft](../../examples/ledger
 | Per-day ceiling for the whole workflow | [n] |
 | Max steps per run (loop guard) | [n] |
 | Max retries per step | [n] |
-| At any ceiling | [halt and escalate / degrade to the cheap tier per ../../routing/README.md; state which] |
+| Pre-authorised route degradation, below a ceiling | [the threshold that triggers it, the cheaper route per ../../routing/README.md, who authorised it and when; or none] |
+| At a ceiling | Halt, preserve state, queue for [role, with a rota], and wait for a raised cap or new authorisation. Degrading to a cheaper tier at this point is not an option |
 | Who reads the spend report, on what cadence | [name, cadence] |
 
 ## Worked micro-example
 
-A two-agent research-and-draft flow: step 1, researcher gathers sources and writes a findings file (its only write permission); step 2, drafter reads findings and fills one template; step 3, validator checks required fields and either terminates with success or bounces once to the drafter; a second bounce escalates to the duty editor. Caps: 40 steps, one retry per step, per-run spend ceiling ILLUSTRATIVE. Every run ends in one of three written ways.
+A two-agent research-and-draft flow: step 1, researcher gathers sources and writes a findings file (its only write permission); step 2, drafter reads findings and fills one template; step 3, validator checks required fields and either terminates with success or bounces once to the drafter; a second bounce escalates to the duty editor. Caps: 40 steps, one retry per step, per-run spend ceiling ILLUSTRATIVE, no pre-authorised degradation, and at the ceiling the run halts and queues for the duty editor rather than finishing on a cheaper model. Every run ends in one of three written ways.
 
 ## Exit gate
 
@@ -107,3 +114,4 @@ A two-agent research-and-draft flow: step 1, researcher gathers sources and writ
 - [ ] Escalation conditions are testable and route to a role with a rota
 - [ ] All three termination paths are written, including the budget stop
 - [ ] Every cap has a number and a named reader of the spend report
+- [ ] Any route degradation is pre-authorised, carries its trigger threshold and sits below the ceiling; at a ceiling the document says halt, preserve state and queue, and names who may authorise a resume, the step a resumed run restarts from, and how a replayed handoff avoids a duplicate effect

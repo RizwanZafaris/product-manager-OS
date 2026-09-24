@@ -57,7 +57,7 @@ Related: [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md) for the beliefs behind these m
 - **Evaluator effect.** The finding that different evaluators running the same heuristic evaluation catch substantially different problem sets, which argues for more than one evaluator rather than for abandoning the method. See [frameworks/design/heuristic-evaluation.md](frameworks/design/heuristic-evaluation.md).
 - **Evidence class.** The minimum strength of evidence a given question accepts, from the five-class ladder: observed behavior, artifact, named commitment, interview claim, team belief. Class five is a filing instruction, not a failure.
 - **Evidence ladder.** The five classes above, strongest first, used by every question bank and by the gate rendering that maps checklist lines to accepted answers. See [os/CONDUCTOR.md](os/CONDUCTOR.md).
-- **Evidence note.** One note per source: the claim, a verbatim load-bearing quote, the source, dates, and confidence. Rows feed the STATE.md evidence ledger. See [templates/discovery/evidence-note.md](templates/discovery/evidence-note.md).
+- **Evidence note.** One note per source: the claim, the load-bearing evidence in the form the source has it (a verbatim quote, a reproducible measure, or a timecoded observation), the source, dates, and confidence. Rows feed the STATE.md evidence ledger. See [templates/discovery/evidence-note.md](templates/discovery/evidence-note.md).
 
 ## F
 

@@ -82,15 +82,16 @@ This runbook covers customer payment tickets. It is separate from the finance cl
 
 ## 4. Escalation
 
-Support severities are from HC18.
+Severity is not redefined here. The canonical ladder is [testing strategy](harbourgate-testing-strategy.md) section 6, the table below maps those IDs onto what support sees and does, and the escalation times and routes are from HC18.
 
-| Severity | Definition for this feature | Escalate to (name) | How (channel, pager) | Expected first response | What to include |
+| Canonical severity | What it looks like on a support call | Escalate to (name) | How (channel, pager) | Expected first response | What to include |
 |---|---|---|---|---|---|
-| Sev 1 | No customer can pay on a surface | Payment on-call, then Bea Lindqvist at 15 minutes and Tomasz Wierzbicki at 30 minutes | Page the payment on-call | 15 minutes | Section 3 evidence, affected surface, customer or shop scope, and whether the issue is web, app or kiosk |
-| Sev 2 | One provider's cohort or a group of shops is affected | Bea Lindqvist, with Tomasz Wierzbicki if the issue needs a service decision | Payment on-call escalation | 1 hour | Section 3 evidence, affected provider or shops, start of impact and customer scope |
-| Sev 3 | One customer is affected | Callum Fraser for support triage, Bea Lindqvist for payment investigation | Support ticket escalation to the payment on-call route | Next working day | Section 3 evidence and the customer's exact symptom |
+| S1 | No customer can pay on a surface | Payment on-call, then Bea Lindqvist at 15 minutes and Tomasz Wierzbicki at 30 minutes | Page the payment on-call | 15 minutes | Section 3 evidence, affected surface, customer or shop scope, and whether the issue is web, app or kiosk |
+| S2 | One provider's cohort or a group of shops is affected | Bea Lindqvist, with Tomasz Wierzbicki if the issue needs a service decision | Payment on-call escalation | 1 hour | Section 3 evidence, affected provider or shops, start of impact and customer scope |
+| S3 | One customer is affected | Callum Fraser for support triage, Bea Lindqvist for payment investigation | Support ticket escalation to the payment on-call route | Next working day | Section 3 evidence and the customer's exact symptom |
+| S4 | A cosmetic issue on a payment screen with no effect on whether a payment completes | Callum Fraser | Support ticket, no escalation | None, logged to the backlog | Section 3 evidence and a screenshot |
 
-**After hours:** Sev 1 is paged to the payment on-call. The on-call rotation is the squad's five engineers. A page is acknowledged within 5 minutes, escalates to Bea Lindqvist at 15 minutes and to Tomasz Wierzbicki at 30 minutes. Sev 2 and Sev 3 follow the same named escalation path when their response expectation falls due.
+**After hours:** S1 is paged to the payment on-call. The on-call rotation is the squad's five engineers. A page is acknowledged within 5 minutes, escalates to Bea Lindqvist at 15 minutes and to Tomasz Wierzbicki at 30 minutes. S2 and S3 follow the same named escalation path when their response expectation falls due. S4 is never paged.
 
 **Product owner for "bug or design choice" questions:** Ife Adeyemi, Product Manager, through the product decision path. Support should not decide whether a new customer-facing rule is a bug fix or a design choice.
 

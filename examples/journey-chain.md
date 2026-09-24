@@ -55,12 +55,12 @@ The evidence class is the one each answer was submitted under. pmos accepts the 
 | DEFINE-1 | team_belief | execution/decision-log.md | 1. Index | c) a quarter: the log records a Gate 2 sitting that approved a PRD with |
 | DEFINE-2 | team_belief | execution/decision-log.md | D-4: Ship with an ILLUSTRATIVE accuracy threshold in the eval spec, not a finance-agreed number | Maya Chen, Priya Nair and Daniel Okafor, the three who signed the Gate 2 sitting: |
 | DEFINE-3 | artifact | execution/decision-log.md | 3. Decisions | Partly one-way: the log files the receipt pipeline, one model call per receipt, as a |
-| DEFINE-4 | artifact | definition/prd.md | Objectives | Objectives 1 and 2 trace to the Gate 1 problem statement, approval held at 62% |
+| DEFINE-4 | artifact | definition/prd.md | 2. Objectives | Objectives 1 and 2 trace to the Gate 1 problem statement, approval held at 62% |
 | DEFINE-5 | artifact | definition/acceptance-criteria.md | 1. Criteria | Every one of AC-1 to AC-10 is a GIVEN, WHEN and THEN with a binary |
-| DEFINE-6 | artifact (asks named_commitment) | definition/prd.md | Out of scope | Four exclusions are written: auto-submission, card-feed reconciliation with mileage and per-diem rules, filing on another |
-| DEFINE-7 | team_belief | lands_in target absent, cited definition/prd.md | Trade-offs accepted at Gate 2 | No assumptions register exists in this workspace. The nearest record is the trade-offs table, whose |
+| DEFINE-6 | artifact (asks named_commitment) | definition/prd.md | 7. Out of scope | Six exclusions are written: auto-submission, card-feed reconciliation, mileage and per-diem rules, filing on another person's |
+| DEFINE-7 | team_belief | lands_in target absent, cited definition/prd.md | 11. Assumptions | No separate assumptions register file exists in this workspace; the PRD's own assumptions section stands |
 | DEFINE-8 | team_belief | execution/decision-log.md | 1. Index | Yes to the model half: D-4, taken at the Gate 2 sitting, ships an eval |
-| DEFINE-9 | artifact | lands_in target absent, cited definition/prd.md | Functional scope | Yes: the functional scope puts a draft-and-edit surface in front of filers and a reviewer |
+| DEFINE-9 | artifact | lands_in target absent, cited definition/prd.md | 4. Functional scope | Yes: the functional scope puts a draft-and-edit surface in front of filers and a reviewer |
 | DEFINE-10 | artifact | planning/vision.md | 2. Who this is for | Ledgerline's own filers, who want a report that clears review the first time without re-typing |
 | DEFINE-11 | artifact | planning/product-strategy.md | 2. Where to play: the bets | It plays across all of Ledgerline's own filers as one internal rollout, bets v1 on |
 | DEFINE-12 | artifact | planning/roadmap.md | Next (planned, shaped, not yet committed) | Four Next initiatives follow the close of DEFINE: prove the receipt pipeline, the data and |
@@ -69,7 +69,7 @@ The evidence class is the one each answer was submitted under. pmos accepts the 
 | DESIGN-3 | artifact | architecture/data-model.md | 5. PII and classification summary | Personal data sits in two entities, the receipt and its line item, flagged provisionally rather |
 | DESIGN-4 | team_belief | execution/risk-register.md | 2. The register | Two distinct causes lead the register, both scored 6 with a mitigation and a trigger: |
 | DESIGN-5 | artifact (asks named_commitment) | execution/dependency-register.md | 1. The register | Four dependencies, each needed by Gate 5 except the contracted price, needed before volume outgrows |
-| DESIGN-6 | artifact | lands_in target absent, cited definition/prd.md | Success metrics | No observability document exists here, and none of the expense copilot documents names an SLO, |
+| DESIGN-6 | artifact | lands_in target absent, cited definition/prd.md | 6. Success metrics and instrumentation | No observability document exists here, and none of the expense copilot documents names an SLO, |
 | DESIGN-7 | artifact | lands_in target absent, cited execution/decision-log.md | D-6: Defer the AI overlay's guardrails, eval spec and red-team review to the PRD's existing Gate 5 launch criteria rather than duplicate them at Gate 3 | Not at this gate: D-6 defers the AI overlay's guardrails, eval spec and red-team review |
 | DESIGN-8 | artifact | lands_in target absent, cited definition/acceptance-criteria.md | AC-7 verifies REQ-5 (happy path) | Yes, the reviewer view is a user-facing surface: AC-7 requires low-confidence fields to stand out |
 

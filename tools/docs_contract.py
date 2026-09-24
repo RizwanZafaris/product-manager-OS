@@ -1225,6 +1225,152 @@ def _section(lines: list, heading: str):
     return 0, 0
 
 
+# ---------------------------------------------------------------------------
+# Evidence notes (F12). The note's source types have always included metric
+# exports, datasets and observations, while its claim block, its ledger row and
+# its exit gate all demanded a verbatim quote. A measured count has no spoken
+# sentence in it, so the form left an honest analyst two options: invent prose
+# and put it in quotation marks, or fail the gate. The shipped
+# examples/ledgerline-discovery-synthesis.md took the third option and wrote a
+# bracketed apology inside the quotation marks. What is checked here is the
+# contract, not the analysis: that the template offers a block per kind of
+# source, that only the text kind requires a quote, and that a filled note
+# fills the block it declared. Whether the number is right is read by the
+# people who sign the gate.
+EVIDENCE_NOTE = "templates/discovery/evidence-note.md"
+EVIDENCE_SYNTHESIS = "templates/discovery/discovery-synthesis.md"
+EVIDENCE_STATE = "templates/execution/state.md"
+EVIDENCE_FILLED = ("examples/sahulat-evidence-note.md",)
+EVIDENCE_KINDS = {
+    "text quotation": ("Where in the source",),
+    "quantitative": ("Snapshot or query", "Filters", "Denominator",
+                     "Period and timezone", "Calculation"),
+    "observation": ("Session or timecode", "What was observed", "Context"),
+}
+KIND_LINE = re.compile(r"^\*\*Evidence kind:\*\*[ \t]*(.+?)[ \t]*$", re.M)
+FIELD_LINE = re.compile(r"^-[ \t]+\*\*(?P<label>[^*]+?):\*\*[ \t]*(?P<value>.*)$", re.M)
+LEDGER_HEADER = re.compile(r"^\|[ \t]*E#[ \t]*\|(?P<rest>.+)\|[ \t]*$", re.M)
+QUOTE_LINE = re.compile(r'^>[ \t]*"', re.M)
+
+
+def _claim_sections(text: str) -> list[tuple[int, str]]:
+    """(first line number, body) for every `## Claim` section in the note."""
+    lines = text.splitlines()
+    found, start = [], None
+    for number, raw in enumerate(lines, 1):
+        if raw.strip() == "## Claim":
+            start = number
+        elif start is not None and raw.startswith("## "):
+            found.append((start, "\n".join(lines[start:number - 1])))
+            start = None
+    if start is not None:
+        found.append((start, "\n".join(lines[start:])))
+    return found
+
+
+def _unfilled(value: str) -> bool:
+    """A bracketed instruction, which is what an unfilled field looks like."""
+    value = value.strip()
+    return not value or (value.startswith("[") and value.endswith("]"))
+
+
+def evidence_note_issues(text: str, name: str, filled: bool) -> list[Issue]:
+    """One evidence note against the kind contract.
+
+    ``filled=False`` reads the blank template, where every field is a bracketed
+    instruction and all three blocks are present at once. ``filled=True`` reads
+    a note somebody wrote: exactly one kind, its own fields answered, and a
+    quote only where somebody actually spoke.
+    """
+    issues: list[Issue] = []
+    sections = _claim_sections(text)
+    if not sections:
+        return [Issue("error", "evidence-kind", name, 1,
+                      "an evidence note needs a '## Claim' section")]
+    for line, body in sections:
+        declared = KIND_LINE.search(body)
+        if declared is None:
+            issues.append(Issue("error", "evidence-kind", name, line,
+                                "the claim block declares no '**Evidence kind:**'"))
+            continue
+        stated = declared.group(1).strip()
+        fields = {match.group("label").strip(): match.group("value")
+                  for match in FIELD_LINE.finditer(body)}
+        if not filled:
+            for kind, labels in EVIDENCE_KINDS.items():
+                if kind not in stated:
+                    issues.append(Issue("error", "evidence-kind", name, line,
+                                        "the kind selector does not offer '%s'" % kind))
+                for label in labels:
+                    if label not in fields:
+                        issues.append(Issue("error", "evidence-kind", name, line,
+                                            "the %s block has no '%s' field" % (kind, label)))
+            continue
+        if stated not in EVIDENCE_KINDS:
+            issues.append(Issue("error", "evidence-kind", name, line,
+                                "'%s' is not one of: %s" % (stated,
+                                ", ".join(sorted(EVIDENCE_KINDS)))))
+            continue
+        for label in EVIDENCE_KINDS[stated]:
+            if label not in fields:
+                issues.append(Issue("error", "evidence-field", name, line,
+                                    "a %s note needs its '%s' field" % (stated, label)))
+            elif _unfilled(fields[label]):
+                issues.append(Issue("error", "evidence-field", name, line,
+                                    "'%s' is still the blank instruction" % label))
+        quoted = QUOTE_LINE.search(body)
+        if stated == "text quotation" and quoted is None:
+            issues.append(Issue("error", "evidence-quote", name, line,
+                                "a text quotation note needs the sentence verbatim"))
+        if stated != "text quotation" and quoted is not None:
+            issues.append(Issue("error", "evidence-quote", name,
+                                line + body[:quoted.start()].count("\n"),
+                                "a %s note quotes a sentence nobody said" % stated))
+    return issues
+
+
+def check_evidence_contract(root: Path) -> list[Issue]:
+    """The evidence-note contract, and the two documents that copy its row."""
+    issues: list[Issue] = []
+    template = root / EVIDENCE_NOTE
+    if not template.is_file():
+        return issues
+    text = template.read_text(encoding="utf-8")
+    issues.extend(evidence_note_issues(text, EVIDENCE_NOTE, filled=False))
+    header = LEDGER_HEADER.search(text)
+    if header is None:
+        issues.append(Issue("error", "evidence-ledger", EVIDENCE_NOTE, 1,
+                            "the note states no ledger row for STATE.md"))
+    else:
+        evidence_column = header.group("rest").split("|")[1].strip()
+        if "quote" == evidence_column.lower().replace("verbatim ", ""):
+            issues.append(Issue("error", "evidence-ledger", EVIDENCE_NOTE,
+                                _line(text, header.start()),
+                                "the ledger column '%s' accepts no measure or "
+                                "observation" % evidence_column))
+        row = header.group(0).strip()
+        for name in (EVIDENCE_STATE,) + EVIDENCE_FILLED:
+            other = root / name
+            if other.is_file() and row not in other.read_text(encoding="utf-8"):
+                issues.append(Issue("error", "evidence-ledger", name, 1,
+                                    "the evidence ledger does not carry the "
+                                    "note's row, which is copied unchanged"))
+    synthesis = root / EVIDENCE_SYNTHESIS
+    if synthesis.is_file():
+        body = synthesis.read_text(encoding="utf-8")
+        for match in re.finditer(r"^-[ \t]+\*\*Load-bearing quote:\*\*", body, re.M):
+            issues.append(Issue("error", "evidence-kind", EVIDENCE_SYNTHESIS,
+                                _line(body, match.start()),
+                                "a theme supported by a measure or an "
+                                "observation cannot carry a quote"))
+    for name in EVIDENCE_FILLED:
+        path = root / name
+        if path.is_file():
+            issues.extend(evidence_note_issues(
+                path.read_text(encoding="utf-8"), name, filled=True))
+    return issues
+
+
 def check_readiness_claims(root: Path) -> list[Issue]:
     """The three statements of what readiness leaves uncertified, and README's mirror.
 
@@ -1904,6 +2050,177 @@ def check_roadmaps(root: Path) -> list:
     return issues
 
 
+# The commercial half of a pricing decision, which the blank carried nowhere and
+# two worksheets promised anyway. The pricing template decided the number and
+# stopped: no trial, overage, upgrade, downgrade, proration, refund or
+# grandfathering terms, no per-tier evidence or cost floor, and no record of who
+# moves when a price changes. The worksheets said they fed "the evidence column"
+# of section 3, and section 3 had five columns, none of them evidence.
+#
+# Four things are read here, and only these four. The blank's own section 3
+# table has to carry the column both pricing worksheets send their reading to,
+# under the name they use, so neither side can be renamed alone; section 3a and
+# the unit economics sheet are pinned to each other the same way, because that
+# sheet now sends its cost to serve and its margin there. Section 7 has to ask
+# every standing term. And section 8 has to ask, and the filled example has to
+# answer, the things a price change is not a decision without. Everything is
+# read with the HTML comments taken out (see _shown), because guidance a reader
+# never sees is not a field anyone fills.
+#
+# Stated limits. This counts headings and column names; it does not read what is
+# written under them, so a section 8 row whose cells are all "TBD" passes here and
+# is caught by the person who signs Gate 5. Only the one filled example declared
+# below is read: another example filling this template is not found automatically,
+# because the declaration line is the only thing in the tree that says which
+# template an example fills, and a check that guessed would report the wrong file.
+# And that example is read for its change record only, because the change record is
+# what the finding asked an example to prove; an example that dropped its section 3a
+# or its section 7 is not reported here, only a blank that dropped them.
+# A tree without the pricing template makes no claim and is not checked, the same
+# posture the inventory and gate-count checks take toward fixture roots.
+PRICING_TEMPLATE = "templates/planning/pricing-packaging.md"
+PRICING_EXAMPLE = "examples/ledgerline-pricing-packaging.md"
+# The name of the column in the template's section 3 tier table, and the words
+# each worksheet uses to send its reading there. Pinned in one place so renaming
+# the column in the template alone, or in a worksheet alone, is a failure rather
+# than a silent promise of a place that does not exist.
+PRICING_EVIDENCE_COLUMN = "Price evidence"
+PRICING_EVIDENCE_SOURCES = ("frameworks/pricing/van-westendorp.md",
+                            "frameworks/pricing/gabor-granger.md")
+# The standing terms section 7 has to ask about. The list is the commercial
+# contract a buyer is owed between price changes; a term missing from the blank
+# is a term invented at the first ticket.
+PRICING_TERMS = ("Trial", "Overage", "Upgrade mid-term", "Downgrade mid-term",
+                 "Proration", "Refunds and credits", "Grandfathering")
+# What a price change has to say, in the template's section 8 and in the filled
+# example, before it is a decision rather than a number: who moves, what they
+# pay now, what they pay after, the notice, the effective date, the reversal and
+# the evidence. Matched as the opening words of a column heading, so a heading
+# may say more but not less.
+PRICING_CHANGE_FIELDS = ("Cohort", "Count", "Pays now", "Pays after", "Notice",
+                         "Effective date", "Reversal", "Evidence")
+# The heading of each section this check reads, and the templates section 9 has
+# to route to. A route whose file is not in the tree is a dead end, so each is
+# checked to exist.
+PRICING_SECTIONS = ("## 7. Standing commercial terms", "## 8. The change record",
+                    "## 9. Commercial-change checklist")
+# The per-tier economic floor, and the worksheet that feeds it. The unit economics
+# sheet sends its cost to serve and its contribution margin to section 3a of the
+# pricing blank; deleting that section leaves the worksheet promising a place that
+# does not exist, which is the defect this whole check was written for, one heading
+# over. Pinned on both sides so neither can be removed or renamed alone.
+PRICING_FLOOR_SECTION = "### 3a. Economic floor per tier"
+PRICING_FLOOR_SOURCE = "frameworks/metrics/unit-economics.md"
+PRICING_ROUTES = ("templates/definition/business-rules.md",
+                  "templates/delivery/launch-comms-plan.md",
+                  "templates/delivery/customer-comms.md",
+                  "templates/delivery/migration-cutover-plan.md",
+                  "templates/execution/change-request.md",
+                  "templates/delivery/support-runbook.md",
+                  "templates/execution/decision-log.md")
+
+
+def _table_headings(lines: list, start: int, end: int) -> list:
+    """Every cell of every table header row between two line indexes.
+
+    A header row is a line of pipe-separated cells whose next line is the
+    delimiter row. Cells are returned stripped of their markdown emphasis, since
+    the example marks illustrative rows with asterisks.
+    """
+    cells = []
+    for index in range(start, min(end, len(lines)) - 1):
+        raw, below = lines[index].strip(), lines[index + 1].strip()
+        if not raw.startswith("|") or not below.startswith("|"):
+            continue
+        if not re.fullmatch(r"\|(?:\s*:?-{3,}:?\s*\|)+", below):
+            continue
+        cells.extend(cell.strip().strip("*").strip() for cell in raw.strip("|").split("|"))
+    return cells
+
+
+def check_pricing_contract(root: Path) -> list[Issue]:
+    """The pricing blank's commercial contract, and the example that has to answer it."""
+    issues: list[Issue] = []
+    template = root / PRICING_TEMPLATE
+    if not template.is_file():
+        return issues
+    text = _shown(template.read_text(encoding="utf-8"))
+    lines = text.splitlines()
+    tiers = _section(lines, "## 3. Tiers and packaging")
+    if tiers == (0, 0):
+        issues.append(Issue("error", "pricing-contract", PRICING_TEMPLATE, 1,
+                            "section 3 (tiers and packaging) is gone, so the column "
+                            "the pricing worksheets feed has nowhere to be"))
+    elif PRICING_EVIDENCE_COLUMN not in _table_headings(lines, *tiers):
+        issues.append(Issue("error", "pricing-contract", PRICING_TEMPLATE, tiers[0],
+                            "section 3's tier table has no %r column; both pricing "
+                            "worksheets say they feed one" % PRICING_EVIDENCE_COLUMN))
+    for source in PRICING_EVIDENCE_SOURCES:
+        sheet = root / source
+        if not sheet.is_file():
+            issues.append(Issue("error", "pricing-contract", source, 1,
+                                "pricing worksheet is missing"))
+        elif PRICING_EVIDENCE_COLUMN not in _shown(sheet.read_text(encoding="utf-8")):
+            issues.append(Issue("error", "pricing-contract", source, 1,
+                                "this worksheet feeds the pricing template but no "
+                                "longer names the %r column it feeds"
+                                % PRICING_EVIDENCE_COLUMN))
+    for heading in PRICING_SECTIONS:
+        if _section(lines, heading) == (0, 0):
+            issues.append(Issue("error", "pricing-contract", PRICING_TEMPLATE, 1,
+                                "the pricing blank has lost %r" % heading))
+    if _section(lines, PRICING_FLOOR_SECTION) == (0, 0):
+        issues.append(Issue("error", "pricing-contract", PRICING_TEMPLATE, 1,
+                            "the pricing blank has lost the per-tier economic floor "
+                            "that the unit economics worksheet feeds"))
+    floor = root / PRICING_FLOOR_SOURCE
+    if not floor.is_file():
+        issues.append(Issue("error", "pricing-contract", PRICING_FLOOR_SOURCE, 1,
+                            "unit economics worksheet is missing"))
+    elif "section 3a" not in _shown(floor.read_text(encoding="utf-8")):
+        issues.append(Issue("error", "pricing-contract", PRICING_FLOOR_SOURCE, 1,
+                            "this worksheet feeds the pricing template's per-tier "
+                            "floor but no longer names the section it feeds"))
+    terms = _section(lines, PRICING_SECTIONS[0])
+    if terms != (0, 0):
+        asked = " ".join(_table_headings(lines, *terms)) + "\n" \
+            + "\n".join(lines[terms[0]:terms[1]])
+        for term in PRICING_TERMS:
+            if term not in asked:
+                issues.append(Issue("error", "pricing-contract", PRICING_TEMPLATE, terms[0],
+                                    "section 7 no longer asks for the %s term" % term))
+    routes = _section(lines, PRICING_SECTIONS[2])
+    if routes != (0, 0):
+        routed = "\n".join(lines[routes[0]:routes[1]])
+        for target in PRICING_ROUTES:
+            if Path(target).name not in routed:
+                issues.append(Issue("error", "pricing-contract", PRICING_TEMPLATE, routes[0],
+                                    "section 9 no longer routes the change to %s" % target))
+            elif not (root / target).is_file():
+                issues.append(Issue("error", "pricing-contract", PRICING_TEMPLATE, routes[0],
+                                    "section 9 routes the change to %s, which is not "
+                                    "in this tree" % target))
+    for name in (PRICING_TEMPLATE, PRICING_EXAMPLE):
+        path = root / name
+        if not path.is_file():
+            issues.append(Issue("error", "pricing-contract", name, 1,
+                                "the pricing %s is missing"
+                                % ("blank" if name == PRICING_TEMPLATE else "example")))
+            continue
+        body = _shown(path.read_text(encoding="utf-8")).splitlines()
+        record = _section(body, PRICING_SECTIONS[1])
+        if record == (0, 0):
+            continue
+        headings = _table_headings(body, *record)
+        for field in PRICING_CHANGE_FIELDS:
+            if not any(cell.startswith(field) for cell in headings):
+                issues.append(Issue("error", "pricing-contract", name, record[0],
+                                    "the change record no longer asks who moves, what "
+                                    "they pay, the notice, the effective date, the "
+                                    "reversal and the evidence: %r is gone" % field))
+    return issues
+
+
 def check(root: Path) -> list[Issue]:
     root = root.resolve()
     issues: list[Issue] = []
@@ -1967,6 +2284,8 @@ def check(root: Path) -> list[Issue]:
     issues.extend(check_examples_inventory(root))
     issues.extend(check_readiness_claims(root))
     issues.extend(check_roadmaps(root))
+    issues.extend(check_evidence_contract(root))
+    issues.extend(check_pricing_contract(root))
     return sorted(issues, key=lambda item: (item.severity, item.path, item.line,
                                              item.code, item.message))
 

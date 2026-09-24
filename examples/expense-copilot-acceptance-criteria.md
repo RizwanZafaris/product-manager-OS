@@ -3,7 +3,7 @@
 Fills [templates/definition/acceptance-criteria.md](../templates/definition/acceptance-criteria.md). Everything here is invented and ILLUSTRATIVE: Ledgerline, its people and every date, id and threshold below are fiction, drawn from [expense-copilot-journey.md](expense-copilot-journey.md)'s data sheet and [ledgerline-journey.md](ledgerline-journey.md)'s N-rows so this pass-or-fail contract agrees with the rest of the internal-v1 chain, not to describe any real expense tool or receipt-extraction model. See the [examples index](README.md).
 
 **Owner:** Maya Chen, Product Manager · **Date:** 2026-08-28 · **Status:** Approved at Gate 2, SIGNED (V7, V8)
-**Covers:** [PRD functional scope](expense-copilot-prd.md#functional-scope) and [user stories](expense-copilot-prd.md#user-stories) · REQ-1 to REQ-6 and AC-1 to AC-10 in [the journey's shared identifiers](expense-copilot-journey.md#shared-identifiers)
+**Covers:** [PRD functional scope](expense-copilot-prd.md#4-functional-scope) and [user stories](expense-copilot-prd.md#3-users-and-stories) · REQ-1 to REQ-6 and AC-1 to AC-10 in [the journey's shared identifiers](expense-copilot-journey.md#shared-identifiers)
 
 ## 1. Criteria
 

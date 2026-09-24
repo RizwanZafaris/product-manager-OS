@@ -282,5 +282,69 @@ class RegressionsReachHostedCI(unittest.TestCase):
                          "run the same root modules")
 
 
+class BudgetStopIsNotADowngrade(unittest.TestCase):
+    """F15, 360 audit 2026-09-23: templates/ai/multi-agent-workflow.md said in
+    section 4 that a cap halts the run and offered, in the same document's cap
+    table, "halt and escalate / degrade to the cheap tier" at the very same
+    ceiling. AGENTS.md's `fail-closed` rule and the runtime both say the cap is
+    terminal: harness/runner.py queues before any provider call
+    (harness/test_runner.py::test_the_cap_queues_before_any_model_call) and
+    pmos/routing.py stops admitting fallback candidates once the budget cannot
+    cover them (tests/test_pmos_routing.py::
+    test_budget_reserves_fallbacks_and_rejects_provider_overspend, whose second
+    half proves the second provider is never called). The defect class is a
+    document that presents a cheaper tier as an answer to a reached cap, so
+    this scans for the offer rather than pinning one line.
+    """
+
+    #: Where the cap-versus-degrade wording lives: the template and its example.
+    DOCUMENTS = ("templates/ai/multi-agent-workflow.md",
+                 "examples/ledgerline-multi-agent-workflow.md")
+
+    #: An offer to move to a cheaper tier, in any of the forms these documents
+    #: have used: "degrade to the cheap tier", "degrading to a cheaper tier".
+    OFFER = re.compile(r"degrad\w*\s+(?:to|into)\s+(?:the\s+|a\s+)?cheap", re.I)
+
+    #: The same sentence refusing the move rather than offering it.
+    REFUSED = re.compile(r"not an option|never|do not|cannot|is not allowed", re.I)
+
+    def test_no_document_offers_a_cheaper_tier_as_an_answer_to_a_cap(self):
+        for name in self.DOCUMENTS:
+            for number, line in enumerate(
+                    (REPO / name).read_text(encoding="utf-8").splitlines(), 1):
+                if self.OFFER.search(line) and not self.REFUSED.search(line):
+                    self.fail("%s:%d offers a cheaper tier without refusing "
+                              "it: %r" % (name, number, line.strip()))
+
+    def test_the_template_separates_degrading_below_a_cap_from_halting_at_one(self):
+        rows = [line for line
+                in (REPO / self.DOCUMENTS[0]).read_text(encoding="utf-8").splitlines()
+                if line.startswith("|")]
+        below = [r for r in rows if "below a ceiling" in r]
+        at = [r for r in rows if r.startswith("| At a ceiling |")]
+        self.assertEqual(len(below), 1,
+                         "the cap table needs exactly one pre-authorised "
+                         "degradation row, below the ceiling")
+        self.assertEqual(len(at), 1,
+                         "the cap table needs exactly one row for what happens "
+                         "at a ceiling")
+        value = at[0]
+        for word in ("Halt", "preserve state", "queue", "authorisation"):
+            self.assertIn(word, value,
+                          "the ceiling row must halt, preserve state, queue "
+                          "and name what authorises a resume: %r" % value)
+
+    def test_the_repository_rule_the_template_defers_to_still_says_halt(self):
+        """The template was made to agree with AGENTS.md, so a later edit that
+        made AGENTS.md agree with the template instead would close the gap the
+        wrong way round."""
+        agents = (REPO / "AGENTS.md").read_text(encoding="utf-8")
+        rule = next(line for line in agents.splitlines()
+                    if "`fail-closed`" in line)
+        self.assertIn("halt and queue", rule)
+        self.assertIn("cheaper tier", rule)
+        self.assertRegex(rule, r"[Nn]ever quietly route the work to a cheaper tier")
+
+
 if __name__ == "__main__":
     unittest.main()

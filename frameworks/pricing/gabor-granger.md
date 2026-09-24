@@ -81,7 +81,7 @@ The revenue peak on the top rung. The ladder stopped at the price the team could
 
 ## Feeds
 
-- [Pricing and packaging](../../templates/planning/pricing-packaging.md): section 3 (tiers), the price column; section 5 (discount rules), the drop column
+- [Pricing and packaging](../../templates/planning/pricing-packaging.md): section 3 (tiers), the price column, with the revenue-maximizing point and its date in the Price evidence column beside it; section 5 (discount rules), the drop column
 - [Good-better-best packaging](packaging-good-better-best.md): one plateau per tier
 - [Experiment brief](../../templates/operate/experiment-brief.md): the live price test that confirms the chosen rung
 - PLANNING track, feeding [Gate 5: release readiness green](../../os/STAGE-GATES.md) through the pricing document

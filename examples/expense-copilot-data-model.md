@@ -9,7 +9,7 @@ Skill: [architect agent](../agents/architect-agent.md)
 **Domain:** Expense Copilot, receipt capture and draft report assembly · **Data owner:** Maya Chen, Product Manager · **Reviewed by:** Priya Nair, Engineering Lead
 **Status:** Approved at Gate 3, 2026-09-11, with one item left open (see section 5) · **Date:** 2026-09-05
 
-Five entities carry the copilot's v1 scope (V10): Receipt, LineItem, DraftReport, CategoryMapping and CorrectionLogEntry, between them covering REQ-1 to REQ-6. Receipt and LineItem are flagged provisionally as carrying personal data, per the PRD's own [Launch criteria](expense-copilot-prd.md#launch-criteria) line that receipts carry personal data (V10); formal PII classification and sign-off wait for the compliance impact assessment at Gate 5, not this document, and section 5 below states that rather than leaving a blank.
+Five entities carry the copilot's v1 scope (V10): Receipt, LineItem, DraftReport, CategoryMapping and CorrectionLogEntry, between them covering REQ-1 to REQ-6. Receipt and LineItem are flagged provisionally as carrying personal data, per the PRD's own [Launch criteria](expense-copilot-prd.md#8-launch-criteria) line that receipts carry personal data (V10); formal PII classification and sign-off wait for the compliance impact assessment at Gate 5, not this document, and section 5 below states that rather than leaving a blank.
 
 ## 1. Entities and relationships
 
@@ -76,7 +76,7 @@ No many-to-many relationship exists in this v1 scope. RECEIPT to LINE_ITEM is on
 - Where that data is stored and processed, per market: not set on either data sheet.
 - Deletion path when a subject requests erasure: not yet defined; DEPV-2, the receipt image retention and deletion schedule (expense-copilot-dependency-register.md, not yet written), is open, owner the legal lead, needed before Gate 5.
 - Access model: not set on either data sheet.
-- Classification signed off by: not yet. Per V10, formal PII classification and sign-off wait for the compliance impact assessment at Gate 5, which the PRD's own [Launch criteria](expense-copilot-prd.md#launch-criteria) already names as a Gate 5 item, not this document.
+- Classification signed off by: not yet. Per V10, formal PII classification and sign-off wait for the compliance impact assessment at Gate 5, which the PRD's own [Launch criteria](expense-copilot-prd.md#8-launch-criteria) already names as a Gate 5 item, not this document.
 
 ## 6. Migration and versioning notes
 
