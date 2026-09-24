@@ -147,5 +147,85 @@ class WorkspaceContractGateTests(unittest.TestCase):
             self.assertIn("products/contract-check/STATE.md", moved.stdout)
 
 
+class OnePagerCostAndStopTests(unittest.TestCase):
+    """The one-pager's failure table demands that costs, risks and a kill
+    criterion appear on the same page, and that success carries one date.
+
+    Until F10 the demand had nowhere to land: the fillable structure carried no
+    appetite or cost field, no stop threshold and caller, no reversal line, and
+    the metric table had a target with no date beside it. A failure table that
+    asks for something the form cannot hold teaches the reader to skip it, and
+    nothing in the tree noticed. The template half of this class is the
+    contract; the example half is the proof that the fields can be answered,
+    because a field nobody has filled once is a heading, not a contract.
+
+    The limit, named rather than left silent: this reads the shipped template
+    and the one worked example, and nothing in this tree reads a user's filled
+    copy of either. An appetite with no number, a stop row with no caller and a
+    blank review date all still reach Gate 2, where the humans who sign it are
+    the check, exactly as the template's own "What checks this" paragraph says.
+    """
+
+    TEMPLATE = "templates/definition/one-pager.md"
+    EXAMPLE = "examples/sahulat-one-pager.md"
+    SECTION = "## 8. Cost, stop and reversal"
+    STOP_HEADER = ("| # | We stop, cut scope or roll back if | Threshold | "
+                   "Checked when | Who calls it |")
+
+    def read(self, relative_path):
+        return (REPO / relative_path).read_text(encoding="utf-8")
+
+    def starts_with(self, text, prefix):
+        return [line for line in text.splitlines() if line.startswith(prefix)]
+
+    def metric_header(self, text, where):
+        header = self.starts_with(text, "| Metric |")
+        self.assertTrue(header, "%s has no metric table to date" % where)
+        return header[0]
+
+    def test_the_template_carries_the_fields_its_failure_table_demands(self):
+        text = self.read(self.TEMPLATE)
+        self.assertIn(self.SECTION, text,
+                      "nowhere on the page to record cost, stopping or reversal")
+        self.assertTrue(self.starts_with(text, "**Appetite:**"),
+                        "no field for what the sponsor agreed to spend")
+        self.assertTrue(self.starts_with(text, "**Reversal:**"),
+                        "no field for how this is turned off, or what cannot be undone")
+        self.assertIn(self.STOP_HEADER, text,
+                      "no row holding a stop threshold and the person who calls it")
+
+    def test_the_metric_table_carries_the_date_the_failure_table_demands(self):
+        header = self.metric_header(self.read(self.TEMPLATE), self.TEMPLATE)
+        self.assertIn("Review date", header,
+                      "a target with no date cannot fail, and the failure table "
+                      "asks for one metric, one target number, one date")
+
+    def test_the_exit_gate_checks_the_new_fields(self):
+        checklist = self.starts_with(self.read(self.TEMPLATE), "- [ ] ")
+        for phrase, missing in (
+                ("appetite", "the appetite and its review date"),
+                ("date it is read", "the date each metric row is read"),
+                ("reversal line", "the stop caller and what cannot be undone")):
+            self.assertTrue(any(phrase in line for line in checklist),
+                            "the exit gate does not check %s, so a page that "
+                            "leaves it blank still passes" % missing)
+
+    def test_the_filled_example_answers_every_new_field(self):
+        text = self.read(self.EXAMPLE)
+        self.assertIn(self.SECTION, text, "the worked example skips section 8")
+        self.assertTrue(self.starts_with(text, "**Appetite:**"),
+                        "the worked example never answers what this costs")
+        self.assertTrue(self.starts_with(text, "**Reversal:**"),
+                        "the worked example never answers how this is reversed")
+        self.assertIn("Review date", self.metric_header(text, self.EXAMPLE),
+                      "the worked example's metrics carry no date they are read")
+        stop_rows = [line for line in text.splitlines()
+                     if re.match(r"\|\s*S\d+\s*\|", line)]
+        self.assertGreaterEqual(
+            len(stop_rows), 2,
+            "the worked example fills fewer than two stop rows, so the field is "
+            "demonstrated by its header alone")
+
+
 if __name__ == "__main__":
     unittest.main()

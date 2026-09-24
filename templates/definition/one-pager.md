@@ -74,16 +74,18 @@ Filled example: [Sahulat Bill Pay](../../examples/sahulat-one-pager.md)
 
 ## 4. How we will know it worked
 
-| Metric | Baseline | Target | Measured where | Owner |
-|---|---|---|---|---|
-| | | | | |
-| Guardrail: what this must not damage | | must not worsen by more than [number, with unit] | | |
+| Metric | Baseline | Target | Review date | Measured where | Owner |
+|---|---|---|---|---|---|
+| | | | [YYYY-MM-DD, the day this row is read] | | |
+| Guardrail: what this must not damage | | must not worsen by more than [number, with unit] | | | |
 
 <!-- One outcome metric and one guardrail is the floor. Targets nobody has agreed
      with the metric owner are labeled ILLUSTRATIVE until they are agreed. A
      guardrail written as "must not worsen" with no number attached never
      actually triggers, because nobody can say the day it crossed the line; the
-     tell is a floor with no digit in it. -->
+     tell is a floor with no digit in it. A target with no date cannot fail
+     either: the review date is the day the row is read, and a row whose date
+     keeps moving is a target nobody has agreed to be judged on. -->
 
 ## 5. Not doing
 
@@ -124,6 +126,25 @@ Filled example: [Sahulat Bill Pay](../../examples/sahulat-one-pager.md)
      ../../os/STAGE-GATES.md. A regulated product with no model does not
      activate that overlay. -->
 
+## 8. Cost, stop and reversal
+
+<!-- An appetite is what the sponsor agrees to spend before the review date,
+     not an estimate of what the work will take, and the two are argued
+     differently. A stop threshold with no named caller is never called,
+     because on the day it fires everyone waits for someone senior. Naming
+     what cannot be undone matters more than naming what can. Detail belongs
+     in the linked documents, not here, or this page stops being one page;
+     the tell is a threshold with no digit and no name against it. -->
+
+**Appetite:** [engineer-weeks or calendar weeks the business sponsor agrees to spend before the review date, plus any new money] · detail in [the business case](../planning/business-case.md), not here
+
+| # | We stop, cut scope or roll back if | Threshold | Checked when | Who calls it |
+|---|---|---|---|---|
+| S1 | [the outcome metric in section 4 does not move] | [number, with the unit and the baseline it is measured against] | [date or milestone] | [name] |
+| S2 | [the guardrail degrades, or the work runs past the appetite] | | | |
+
+**Reversal:** [how this is turned off, how long that takes and who does it, and what cannot be undone once it ships] · the rehearsed rollback is in [release readiness](../delivery/release-readiness.md)
+
 ---
 
 ## How this one-pager fails
@@ -138,7 +159,7 @@ Filled example: [Sahulat Bill Pay](../../examples/sahulat-one-pager.md)
 | Nothing excluded | Only the chosen approach appears, and scope is unbounded by omission | The not-doing list carries at least two real items somebody wanted |
 | No decider | It closes with "let us discuss" or "team to align" | One name, one role, and the date by which they decide |
 | The problem is never sized | No estimate of how many, how often, or what it costs | Size it, cite the source, and say how rough the number is |
-| A pitch, not a decision | Heavy on benefit, silent on cost, risk and reversal | Costs, risks and a kill criterion appear on the same page |
+| A pitch, not a decision | Heavy on benefit, silent on cost, risk and reversal | Costs, risks and a kill criterion appear on the same page: section 8 carries the appetite, the stop threshold and its caller, and the reversal; risks are section 7 |
 
 ## Exit gate (feeds Gate 2: requirements signed off)
 
@@ -148,8 +169,11 @@ Filled example: [Sahulat Bill Pay](../../examples/sahulat-one-pager.md)
 
 - [ ] The problem cites evidence with a source ID rather than asserting it
 - [ ] One outcome metric and one guardrail metric, each with a baseline and an owner
+- [ ] Every metric row carries the date it is read, not only a target
 - [ ] The not-doing list is written and the reviewers have read it
 - [ ] Every must has an acceptance criterion that can fail
 - [ ] Every risk and open question has an owner and a date
 - [ ] It still fits on one page, or it has been promoted to [prd.md](prd.md)
+- [ ] The appetite names a number the business sponsor agreed, and the review date is on the page
+- [ ] At least one stop row carries a threshold with a number and a named caller, and the reversal line says what cannot be undone
 - [ ] The business sponsor sign-off line names a real person and is dated

@@ -35,16 +35,16 @@ The outcome signal Gate 1 attempt 2 set on 2026-02-27, carried unchanged (the us
 
 Targets below are ILLUSTRATIVE, agreed with the metric owner named in each row; baselines are measured where stated, since this document predates launch and only M4's baseline reflects data collected before Rel-1.
 
-| Metric | Baseline | Target | Measured where | Owner |
-|---|---|---|---|---|
-| M1: bills paid per month | 0 bills a month; the feature does not exist yet | 40,000 bills paid in the four weeks ending launch plus six weeks (N42) | Core ledger, query BL-01 | Hira Baig |
-| M2: share of bill payments funded from a balance held more than 48 hours, the balance-first hypothesis | 0 percent; the feature does not exist yet | 50 percent of bill payments, same four-week window | Core ledger, query FP-01 | Hira Baig |
-| Guardrail: USSD bill-pay session completion (M3) | Not yet measured; no bill-pay session exists yet | Must not fall below 90 percent | Falak Telecom USSD gateway logs | Zainab Qureshi (halt-caller) |
-| Guardrail: pass-through share, cash-in fully cashed out within 48 hours (M4) | 61 percent, measured, Q4 2025, query PT-01 | Must not rise above 61 percent | Core ledger, query PT-01 | Hira Baig (halt-caller) |
+| Metric | Baseline | Target | Review date | Measured where | Owner |
+|---|---|---|---|---|---|
+| M1: bills paid per month | 0 bills a month; the feature does not exist yet | 40,000 bills paid in the four weeks ending launch plus six weeks (N42) | None at sign-off; the window was set at Gate 5 on 2026-07-01 and the row was read on 2026-08-21 | Core ledger, query BL-01 | Hira Baig |
+| M2: share of bill payments funded from a balance held more than 48 hours, the balance-first hypothesis | 0 percent; the feature does not exist yet | 50 percent of bill payments, same four-week window | None at sign-off; same window, read on 2026-08-21 | Core ledger, query FP-01 | Hira Baig |
+| Guardrail: USSD bill-pay session completion (M3) | Not yet measured; no bill-pay session exists yet | Must not fall below 90 percent | Daily from launch on dashboard LD-1 | Falak Telecom USSD gateway logs | Zainab Qureshi (halt-caller) |
+| Guardrail: pass-through share, cash-in fully cashed out within 48 hours (M4) | 61 percent, measured, Q4 2025, query PT-01 | Must not rise above 61 percent | At the post-launch review, 2026-08-21, from query PT-01 | Core ledger, query PT-01 | Hira Baig (halt-caller) |
 
 Annotation, 2026-07-01: Gate 5 set the review window as launch plus six weeks, closing 2026-08-17 (N55); M1 and M2 are measured over the last four full weeks inside it, 2026-07-20 to 2026-08-16.
 
-M2 is the balance-first assumption written as a number so it can fail: if fewer than half of bill payments are funded from a balance held more than two days, the design bet behind SAHULAT-S5, S10 and S11 does not hold. Fifty percent is double what the sample shows: 2 of 8 held a balance for more than two days (N26), and 6 of 8 moved money out the same day (T2). The target is set where the design bet has to be true, so the review can falsify it; a target the sample already cleared would prove nothing. If M2 is under 50 percent at review, the balance-first work (SAHULAT-S5, S10, S11) stops. Decider Faisal Mirza at Gate 6. That work draws against the squad's full BUILD capacity of 28 engineer-weeks (N8, estimate, noted at this amendment).
+M2 is the balance-first assumption written as a number so it can fail: if fewer than half of bill payments are funded from a balance held more than two days, the design bet behind SAHULAT-S5, S10 and S11 does not hold. Fifty percent is double what the sample shows: 2 of 8 held a balance for more than two days (N26), and 6 of 8 moved money out the same day (T2). The target is set where the design bet has to be true, so the review can falsify it; a target the sample already cleared would prove nothing. If M2 is under 50 percent at review, the balance-first work (SAHULAT-S5, S10, S11) stops. Decider Faisal Mirza at Gate 6; the same rule is row S1 of section 8. That work draws against the squad's full BUILD capacity of 28 engineer-weeks (N8, estimate, noted at this amendment).
 
 [The vision](sahulat-vision.md)'s non-goal against designing a flow that only pays off if customers hold a balance conditions that work on a later DISCOVER pass finding three of eight or more customers holding a balance, a bar N26 (2 of 8) does not clear. This document commits SAHULAT-S5, S10 and S11 as shoulds, not musts, against that unmet bar: M2 is the mechanism that makes the bet falsifiable rather than assumed, and the work stops at Gate 6 if the sample still does not support it. The gap between the vision's stated condition and scoping the work as should-priority ahead of it was not reconciled at sign-off; it is recorded here at this amendment rather than left silent.
 
@@ -88,6 +88,20 @@ All likelihood and impact scores below are ILLUSTRATIVE, on a 1-to-5 scale, from
 
 Rows 2 through 7 are the DESIGN-stage premortem's six risks, dated 2026-04-08, folded into this table at the 2026-05-21 amendment so a reader of the signed one-pager sees the risk picture the team carried into BUILD. Row 7 is flagged, not filed quietly: a likelihood of 2 of 5 rests on the same two interviews, INT-003 and INT-006, that Kamran's persona rests on, and M2's target exists precisely because that confidence is untested. Flagged at this amendment but not re-scored, and no balance-first story was paused pending the review. Annotation, 2026-08-21: that inaction is what the post-launch review names.
 
+## 8. Cost, stop and reversal
+
+**Appetite:** 28 engineer-weeks, 4 engineers by 7 weeks plus 1 QA and the PM (N8, estimate, capacity note 2026-04-16), which is what Faisal Mirza agreed to spend on Rel-1 before the review; the costing detail is not restated here, it belongs in [the business case](../templates/planning/business-case.md). Added at the 2026-05-21 amendment; the signed 2026-03-25 page carried no appetite line.
+
+| # | We stop, cut scope or roll back if | Threshold | Checked when | Who calls it |
+|---|---|---|---|---|
+| S1 | The balance-first bet does not hold, so SAHULAT-S5, S10 and S11 stop | M2 under 50 percent of bill payments funded from a balance held more than 48 hours | Gate 6, after the review window closes 2026-08-17 (N55) | Faisal Mirza |
+| S2 | USSD bill-pay sessions stop completing, so the rollout step pauses | M3 below 90 percent of sessions completed | Daily on dashboard LD-1 from launch | Zainab Qureshi |
+| S3 | Cash-in still passes straight through the wallet, so its named halt-caller stops the work | M4 above 61 percent, the Q4 2025 baseline, query PT-01 | At the post-launch review | Hira Baig |
+
+Annotation, 2026-08-21: S2 is the only one of the three that fired. Zainab Qureshi called it on 2026-07-10 on LD-1's daily reading and paused the nationwide step four days (D7) while the timeout fix shipped; nationwide followed on 2026-07-24. S1 and S3 were read at the review, not before it. The launch SMS campaign, PKR 480,000 for 400,000 messages at PKR 1.2, was never carried on the appetite line above, and nine of the 28 engineer-weeks went to the balance-first work S1 governs.
+
+**Reversal:** The rollout is staged under D6, so the reversal at this weight is pausing the current step, called by the halt-caller named in S2 or S3; the rollback wording Faisal Mirza approved goes out with Naveed Akhtar as designated sender. What cannot be undone: a bill BillBridge has already posted to a biller, since AC-9 reverses the wallet debit only when posting fails. How the feature is turned off outside a staged step, and how long that takes, was never fixed on this page. Open: Zainab Qureshi.
+
 ---
 
 ## How this one-pager fails
@@ -99,15 +113,18 @@ Rows 2 through 7 are the DESIGN-stage premortem's six risks, dated 2026-04-08, f
 | Nothing excluded | Only the chosen approach appears, and scope is unbounded by omission | The not-doing list carries at least two real items somebody wanted |
 | No decider | It closes with "let us discuss" or "team to align" | One name, one role, and the date by which they decide |
 | The problem is never sized | No estimate of how many, how often, or what it costs | Size it, cite the source, and say how rough the number is |
-| A pitch, not a decision | Heavy on benefit, silent on cost, risk and reversal | Costs, risks and a kill criterion appear on the same page |
+| A pitch, not a decision | Heavy on benefit, silent on cost, risk and reversal | Costs, risks and a kill criterion appear on the same page: section 8 carries the 28 engineer-week appetite, stop rows S1 to S3 with a threshold and a caller each, and the reversal; risks are section 7 |
 
 ## Exit gate (feeds Gate 2: requirements signed off)
 
 - [x] The problem cites evidence with a source ID rather than asserting it. Section 1 cites E1 and E2 by interview id and date.
 - [x] One outcome metric and one guardrail metric, each with a baseline and an owner. Section 4 carries M1 and M2 as outcomes and M3 and M4 as guardrails, each with a baseline, a target and an owner.
+- [ ] Every metric row carries the date it is read, not only a target. Every row carries one now, but M1 and M2 had none at sign-off: the window did not exist until Gate 5 set it on 2026-07-01, and both rows were read on 2026-08-21.
 - [x] The not-doing list is written and the reviewers have read it. Section 5 lists five items. Three were on the list at Gate 2 attempt 2, signed 2026-03-25 by Hira Baig, Zainab Qureshi, Faisal Mirza and Amna Rasheed. Water (D5) and the Darya rail (D3) were added at the 2026-05-21 amendment, which Faisal Mirza, Zainab Qureshi and Amna Rasheed re-reviewed.
 - [x] Every must has an acceptance criterion that can fail. SAHULAT-S1, S2, S3, S6 and S8 are the Rel-1 musts, each with a testable criterion in the AC-1 to AC-13 contract; three headline rows are sampled in section 6.
 - [ ] Every risk and open question has an owner and a date. Rows 2 and 7 (R1 and R6) carry an owner but a marked-Open date, since Gate 5 had not yet set the nationwide-rollout and review-window dates at this amendment; every other row carries both.
-- [ ] It still fits on one page, or it has been promoted to prd.md. No: about 1,970 words after the 2026-05-21 amendment and the post-Gate-5 annotations. Gate 2 accepted the one-pager weight under decision D2, over Amna Rasheed's objection, but that decision was about document weight, not page count. Not promoted to prd.md. Open: Hira Baig decides trim vs promote.
+- [ ] The appetite names a number the business sponsor agreed, and the review date is on the page. Section 8 names 28 engineer-weeks agreed by Faisal Mirza, but the line was added at the 2026-05-21 amendment; the page signed on 2026-03-25 answered neither.
+- [x] At least one stop row carries a threshold with a number and a named caller, and the reversal line says what cannot be undone. S1, S2 and S3 each carry a number and a name, S2 fired on 2026-07-10 (D7), and the reversal line names the bill BillBridge has already posted as the part AC-9 does not reverse.
+- [ ] It still fits on one page, or it has been promoted to prd.md. No: about 2,570 words after the 2026-05-21 amendment, its section 8, and the post-Gate-5 annotations. Gate 2 accepted the one-pager weight under decision D2, over Amna Rasheed's objection, but that decision was about document weight, not page count. Not promoted to prd.md. Open: Hira Baig decides trim vs promote.
 
 Signed at Gate 2 attempt 2, 2026-03-25: Hira Baig, product owner; Zainab Qureshi, engineering lead; Faisal Mirza, sponsor; Amna Rasheed, regulatory owner (per STAGE-GATES: regulated, no model), signed with her D2 objection noted. The 2026-05-21 amendment under D5 was re-reviewed by the same three reviewers named above rather than re-signed at a new gate attempt, since it removed scope rather than adding it.

@@ -5,6 +5,7 @@
  "modules": {
   "test_contract_gates": [
    "ModelIdGateTests",
+   "OnePagerCostAndStopTests",
    "WorkspaceContractGateTests"
   ],
   "test_journey_chain": [
