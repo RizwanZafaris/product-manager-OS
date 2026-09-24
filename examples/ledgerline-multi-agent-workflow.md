@@ -56,7 +56,9 @@ There are no two writers to one field. The agent output is retained as the origi
 
 - **Success:** the entitlement check is active, extraction has produced a complete or reviewer-accepted set of fields, policy match has produced an accepted category and policy line or the reviewer has explicitly resolved the abstention, and the draft record is marked `ready_for_filer`. Code can check that the draft has an active entitlement, a value or explicit reviewer resolution for each required field, a recorded policy outcome, and no unresolved confidence flag.
 - **Failure:** the run ends as failed when entitlement is inactive or cannot be verified, the receipt payload remains malformed after the permitted retry, the receipt cannot be processed, or the reviewer rejects the draft. The requester is told that no submission-ready draft was created and is given the reason, such as add-on not active, unreadable receipt, missing field, or policy match unavailable. The run state and audit record are retained for review.
-- **Budget stop:** the run halts when it hits any of the caps in section 5, preserving state for human review, never silently retrying past a cap. The filer gets a blank, flagged draft and a message that the draft needs reviewer attention. The entitlement result is never treated as active merely because the budget stop occurred.
+- **Budget stop, at a cap:** the run halts the moment it reaches any cap in section 5. No further model or tool call is scheduled after that point, on the drafting tier or any cheaper one, the shared draft record is preserved as it stands, and the work queues. The filer gets a blank, flagged draft and a message that the draft needs reviewer attention. The entitlement result is never treated as active merely because the budget stop occurred. The run resumes only when the finance lead raises the cap or authorises new budget for that day, recorded with the date in the spend report.
+- **Restart after a budget stop:** a resumed run restarts at step 1, the entitlement check, against the preserved draft record, because the entitlement result is never carried over a budget stop. Steps 2 and 3 write only their own fields on the existing record and create nothing outside it, so replaying them overwrites those fields rather than producing a second draft; no step submits, files or bills, so there is no non-idempotent effect to repeat.
+- **Not a termination path:** this workflow has no pre-authorised route degradation. Neither agent has a cheaper route to fall back to below the ceiling, so there is nothing to trigger, and a cap reached is always a halt.
 
 ## 5. Cost cap
 
@@ -64,7 +66,8 @@ There are no two writers to one field. The agent output is retained as the origi
 - **Per-day ceiling for the whole workflow:** $150 across all customer accounts. The measured review-window arithmetic was `555 drafted reports x $0.93 = $516.15`; `26 days`, so `$516.15 / 26 = $19.85`, about $20 a day, against the $150 ceiling.
 - **Max steps per run (loop guard):** 3 steps per receipt. The fixed sequence contains entitlement check, extraction, policy match, and draft assembly, with draft assembly as the state transition rather than another model step.
 - **Max retries per step:** 1 retry per step.
-- **At any ceiling:** halt and escalate. Do not degrade silently, continue past the cap, or retry after the cap. The filer receives a blank, flagged draft, and the state is preserved for the reviewer.
+- **Pre-authorised route degradation, below a ceiling:** none. No cheaper route is authorised for either agent, so no threshold below the ceiling changes the route.
+- **At a ceiling:** halt, preserve state, and queue for the finance reviewer on the account's rota; the engineering on-call role and the finance lead are notified. Do not degrade to a cheaper tier, continue past the cap, or retry after the cap. The filer receives a blank, flagged draft, and the run resumes only if Daniel Okafor, finance lead, raises the cap or authorises new budget.
 - **Who reads the spend report, on what cadence:** Daniel Okafor, finance lead, reads the spend report weekly. The report includes per-receipt spend, per-drafted-report spend, daily spend, cap events, retries, and the drafted count.
 
 The caps are the customer workflow's target controls agreed with Daniel Okafor on 2026-11-04. The measured $0.93 per drafted report and 555 drafted reports are from M-009 and the active add-on review window, not a forecast.
@@ -77,7 +80,7 @@ The Extraction agent writes `merchant`, `date`, `amount`, and `currency`. If the
 
 The orchestrator sends the extraction result and the account's policy excerpt to the Policy-match agent. The agent writes the suggested category, policy line, category confidence, and match status. If confidence is under 0.80, the field is flagged.
 
-The orchestrator assembles the draft without taking ownership of either agent's fields. A reviewer sees the blank amount and the low-confidence category flag, corrects or confirms them through the approval gate, and the filer reviews the complete report before submitting. If the account lacks the add-on, the run ends at entitlement check and no draft is produced. If cost reaches a cap, the run ends with a blank, flagged draft and preserved state.
+The orchestrator assembles the draft without taking ownership of either agent's fields. A reviewer sees the blank amount and the low-confidence category flag, corrects or confirms them through the approval gate, and the filer reviews the complete report before submitting. If the account lacks the add-on, the run ends at entitlement check and no draft is produced. If cost reaches a cap, the run ends with a blank, flagged draft and preserved state, and nothing is re-sent to a cheaper model to finish it.
 
 ## Exit gate
 
@@ -86,5 +89,6 @@ The orchestrator assembles the draft without taking ownership of either agent's 
 - [x] Escalation conditions are testable and route to a role with a rota. The 0.80 confidence threshold, 24-hour policy age, retry cap, malformed payload, disagreement, and entitlement conditions route to the finance reviewer or the relevant on-call role.
 - [x] All three termination paths are written, including the budget stop. Success, failure, and budget stop each state the condition, preserved state, and requester outcome.
 - [x] Every cap has a number and a named reader of the spend report. The caps are $0.30 per receipt, $1.05 per drafted report, $150 per day, 3 steps per receipt, and 1 retry per step. Daniel Okafor reads the report weekly.
+- [x] Any route degradation is pre-authorised, carries its trigger threshold and sits below the ceiling; at a ceiling the document says halt, preserve state and queue, and names who may authorise a resume, the step a resumed run restarts from, and how a replayed handoff avoids a duplicate effect. There is no pre-authorised degradation here; a cap reached halts, preserves the draft record, queues for the reviewer rota, and waits on Daniel Okafor, and a resumed run restarts at the entitlement check.
 
 Signed at AI overlay Gate 3, 2026-11-04: Priya Nair, engineering lead. Least-access review completed with Nadia Rahimi, application security lead, on 2026-11-04.

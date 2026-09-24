@@ -64,6 +64,7 @@
    "SedScriptScannerTests"
   ],
   "test_pmos_invariants": [
+   "BudgetStopIsNotADowngrade",
    "CostIsNeverManufactured",
    "ExfatSidecarsDoNotCrashTheToolsScan",
    "GitPathsKeepTheirBytes",
