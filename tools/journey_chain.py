@@ -212,13 +212,13 @@ ANSWERS = {
                  "same decision",
     },
     "DEFINE-4": {
-        "section": "Objectives",
+        "section": "2. Objectives",
         "answer": "Objectives 1 and 2 trace to the Gate 1 problem statement, approval held at 62% and time "
                   "lost re-typing receipts; objective 3, half of eligible reports through the draft flow "
                   "unmandated, traces to discovery's adoption signal rather than to that statement, and "
-                  "the section itself writes no trace down for any of them.",
-        "quote": "Raise first-submission approval rate for copilot-drafted reports from the 62% baseline "
-                 "toward 80% within one quarter of launch",
+                  "the section writes that difference down instead of blurring it.",
+        "quote": "O1 and O2 trace to the Gate 1 problem statement; O3 traces to discovery's second "
+                 "success signal",
     },
     "DEFINE-5": {
         "section": "1. Criteria",
@@ -228,21 +228,23 @@ ANSWERS = {
         "quote": "binary outcome, no field is populated without source text on the receipt",
     },
     "DEFINE-6": {
-        "section": "Out of scope", "class": "artifact",
-        "answer": "Four exclusions are written: auto-submission, card-feed reconciliation with mileage "
-                  "and per-diem rules, filing on another person's behalf, and any vendor training on "
-                  "expense data. The header records the Gate 2 approval, but nothing in the PRD records "
+        "section": "7. Out of scope", "class": "artifact",
+        "answer": "Six exclusions are written: auto-submission, card-feed reconciliation, mileage and "
+                  "per-diem rules, filing on another person's behalf, any vendor training on expense "
+                  "data, and multi-receipt capture in one photo. The header records the Gate 2 approval, "
+                  "but nothing in the PRD records "
                   "the sponsor reading the list: it names Daniel Okafor as the finance lead who agreed "
                   "the objective 1 baseline and as that metric's owner, never beside this list.",
         "quote": "The filer submits, always; this is a load-bearing guardrail, not a v2 candidate.",
     },
     "DEFINE-7": {
-        "section": "Trade-offs accepted at Gate 2",
-        "answer": "No assumptions register exists in this workspace. The nearest record is the "
-                  "trade-offs table, whose third row carries an open gap rather than a stated "
-                  "assumption: with no extraction baseline the accuracy bar stays ILLUSTRATIVE until "
-                  "four weeks of live data, with no confidence or validate-by date attached.",
-        "quote": "We had no baseline for machine extraction on our own receipt mix.",
+        "section": "11. Assumptions",
+        "answer": "No separate assumptions register file exists in this workspace; the PRD's own "
+                  "assumptions section stands in for one and says so, carrying four load-bearing guesses "
+                  "with a confidence, a validation method, a validate-by date and an owner each. The "
+                  "accuracy bar that still has no agreed number is handled as an open question rather "
+                  "than as one of those guesses.",
+        "quote": "Until it exists, this table is that register",
     },
     "DEFINE-8": {
         "section": "1. Index",
@@ -253,7 +255,7 @@ ANSWERS = {
                  "number",
     },
     "DEFINE-9": {
-        "section": "Functional scope",
+        "section": "4. Functional scope",
         "answer": "Yes: the functional scope puts a draft-and-edit surface in front of filers and a "
                   "reviewer view that marks low-confidence fields, but no UI state inventory exists in "
                   "this workspace, so no screen's states or owner are listed anywhere.",
@@ -330,14 +332,14 @@ ANSWERS = {
         "quote": "Only DEPV-4 is marked committed.",
     },
     "DESIGN-6": {
-        "section": "Success metrics",
+        "section": "6. Success metrics and instrumentation",
         "answer": "No observability document exists here, and none of the expense copilot documents "
                   "names an SLO, an alert or a dashboard; the one dashboard in this workspace, with alerts "
                   "agreed per metric owner, is the later commercial add-on's, described in the Ledgerline "
                   "journey sheet. The nearest thing for this build is the PRD's guardrail metric: "
-                  "reviewer-caught extraction errors held under 3 per 100 reports, owned by P. Nair and "
-                  "read from a reviewer flag button.",
-        "quote": "Guardrail: reviewer-caught extraction errors per 100 reports",
+                  "reviewer-caught extraction errors held under 3 per 100 drafted reports, owned by "
+                  "Priya Nair and read from a reviewer flag button.",
+        "quote": "Reviewer-caught extraction errors per 100 drafted reports",
     },
     "DESIGN-7": {
         "section": "D-6: Defer the AI overlay's guardrails, eval spec and red-team review to the PRD's "

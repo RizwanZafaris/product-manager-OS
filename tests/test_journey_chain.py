@@ -437,7 +437,7 @@ class JourneyChainTests(unittest.TestCase):
             prd = root / "definition" / "prd.md"
             yes = "Read and acknowledged by Daniel Okafor, business sponsor, on 2026-08-28"
             prd.write_text(prd.read_text(encoding="utf-8").replace(
-                "## Out of scope\n", "## Out of scope\n\n%s.\n" % yes), encoding="utf-8")
+                "## 7. Out of scope\n", "## 7. Out of scope\n\n%s.\n" % yes), encoding="utf-8")
             filed = {key: value for key, value in journey_chain.ANSWERS["DEFINE-6"].items()
                      if key != "class"}
             filed.update(person="Daniel Okafor", quote=yes)
@@ -549,6 +549,31 @@ class JourneyChainTests(unittest.TestCase):
         self.assertIn("Evidence the package reports, every bank counted: 12 quote_verified, "
                       "9 source_verified, 8 supplied_unverified.", record)
         self.assertIn("pmos recorded 12 of the 29 answers here quote_verified.", record)
+
+    def test_the_prd_example_fills_every_section_of_the_template_spine(self):
+        """F08: the flagship PRD's worked example carries the whole spine.
+
+        The template's spine is its numbered sections, 0 to 13, plus the
+        sign-off block and the exit gate. The example used to stop at launch
+        criteria, and the template's own pointer line said so: a reader was
+        sent to a partial fill as the model of a gate-surviving artifact.
+        Dropping a section from the example, or renumbering one in the
+        template without filling it, fails here instead of shipping a worked
+        example that teaches half the document.
+
+        Named limit: this counts headings, not answers. It cannot tell a
+        filled section from a heading over one honest sentence; what is
+        written under each heading is what review is for.
+        """
+        template = (REPO / "templates" / "definition" / "prd.md").read_text(encoding="utf-8")
+        example = (REPO / "examples" / "expense-copilot-prd.md").read_text(encoding="utf-8")
+        spine = re.findall(r"^## (\d+\. .+)$", template, re.M)
+        self.assertEqual(len(spine), 14,
+                         "the PRD template's numbered spine changed: %s" % spine)
+        for heading in spine + ["Sign-off",
+                                "Exit gate (feeds Gate 2: requirements signed off)"]:
+            self.assertIn("## %s\n" % heading, example,
+                          "examples/expense-copilot-prd.md has no '## %s' section" % heading)
 
 
 class JourneyRunRecordTests(unittest.TestCase):
