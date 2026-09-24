@@ -2484,5 +2484,237 @@ class UatAcceptanceTests(unittest.TestCase):
         self.assertNotIn("UAT", codes, messages)
 
 
+class NfrClosureTests(unittest.TestCase):
+    """Finding F11 of the 2026-09-23 review. The NFR template identified its
+    rows in prose while functional requirements and acceptance criteria carried
+    IDs, so a document with two latency rows could not say which one a waiver
+    excused or which one a result closed, and a target could be rewritten while
+    an old passing result sat beside it.
+
+    Two fixtures carry the closure proof. CONFORMING is the document the rule
+    describes and must report nothing. stale_fixture is the same document with
+    one target moved from r1 to r2 and its result left where it was, which is
+    the case the IDs exist for. The rest of the class seeds one defect each.
+    """
+
+    CONFORMING = """---
+artifact_id: demo/definition/nfr
+phase: DEFINE
+gate: 2
+status: draft
+depends_on: []
+template: templates/definition/nfr.md
+---
+# Non-Functional Requirements: Demo
+
+## 1. Performance and latency
+
+| ID | Requirement | Surface and workload | Target or owner | Status | Verified by |
+|---|---|---|---|---|---|
+| NFR-01 r1 | Card authorisation completes in | Web and app, p95 at the measured peak | 900 ms | Met | Load test log, 2026-05-02, tested NFR-01 r1 |
+| NFR-02 r1 | Nightly settlement completes in | Batch job, full book | 20 minutes | Agreed | Batch run report |
+
+## 4. Security and privacy
+
+| ID | Requirement | Surface and workload | Target or owner | Status | Verified by |
+|---|---|---|---|---|---|
+| NFR-03 r1 | Authorization model | Refund action, support console | Two named approvers | Waived WV-01 | Security review |
+
+## 8. Waivers
+
+| Waiver ID | NFR ID (exactly one) | Requirement waived | Waived by | Reason | Gate waived at | Revisit date |
+|---|---|---|---|---|---|---|
+| WV-01 | NFR-03 | Two-approver refunds | Ada Bell, Head of Support | Single approver until the console ships | Gate 2 | 2027-01-31 |
+"""
+
+    def findings(self, text):
+        return [message for _line, _code, message in lint.nfr_closure(text)]
+
+    def rewrite(self, old, new, text=None):
+        text = self.CONFORMING if text is None else text
+        self.assertEqual(1, text.count(old), old)
+        return text.replace(old, new)
+
+    def stale_fixture(self):
+        """The target moves from 900 ms to 600 ms and the row to r2. The result
+        beside it was run against r1 and is no longer a pass of this row."""
+        return self.rewrite(
+            "| NFR-01 r1 | Card authorisation completes in | Web and app, p95 "
+            "at the measured peak | 900 ms |",
+            "| NFR-01 r2 | Card authorisation completes in | Web and app, p95 "
+            "at the measured peak | 600 ms |")
+
+    # --- the two fixtures the closure proof names -------------------------
+
+    def test_the_conforming_fixture_reports_nothing(self):
+        self.assertEqual([], self.findings(self.CONFORMING))
+
+    def test_a_changed_requirement_does_not_inherit_its_old_result(self):
+        self.assertEqual(
+            ["NFR-01 is at r2 and its result tested r1. The requirement "
+             "changed after that result was produced: re-run it, or waive the "
+             "change in the waivers section."],
+            self.findings(self.stale_fixture()))
+
+    # --- every waiver names exactly one requirement -----------------------
+
+    def test_a_waiver_that_names_no_nfr_id_is_reported(self):
+        text = self.rewrite("| WV-01 | NFR-03 | Two-approver refunds |",
+                            "| WV-01 | the authorization one | "
+                            "Two-approver refunds |")
+        self.assertIn("waiver WV-01 names 0 NFR IDs. One waiver excuses "
+                      "exactly one requirement: a waiver naming two cannot be "
+                      "revoked by half.", self.findings(text))
+
+    def test_a_waiver_that_names_two_nfr_ids_is_reported(self):
+        text = self.rewrite("| WV-01 | NFR-03 | Two-approver refunds |",
+                            "| WV-01 | NFR-02 and NFR-03 | "
+                            "Two-approver refunds |")
+        self.assertIn("waiver WV-01 names 2 NFR IDs. One waiver excuses "
+                      "exactly one requirement: a waiver naming two cannot be "
+                      "revoked by half.", self.findings(text))
+
+    def test_a_waiver_naming_a_requirement_that_is_not_here_is_reported(self):
+        text = self.rewrite("| WV-01 | NFR-03 | Two-approver refunds |",
+                            "| WV-01 | NFR-42 | Two-approver refunds |")
+        self.assertIn("waiver WV-01 names NFR-42, which no requirement row in "
+                      "this document defines.", self.findings(text))
+
+    def test_a_waiver_with_no_waiver_id_is_reported(self):
+        text = self.rewrite("| WV-01 | NFR-03 | Two-approver refunds |",
+                            "|  | NFR-03 | Two-approver refunds |")
+        self.assertIn("waiver row has no waiver ID of the form WV-01.",
+                      self.findings(text))
+
+    def test_a_waivers_table_with_no_nfr_id_column_is_reported(self):
+        text = self.rewrite(
+            "| Waiver ID | NFR ID (exactly one) | Requirement waived |",
+            "| Requirement waived |")
+        text = self.rewrite("|---|---|---|---|---|---|---|\n| WV-01 | NFR-03 | ",
+                            "|---|---|---|---|---|\n| ", text)
+        self.assertIn('section "## 8. Waivers" has a filled table without a '
+                      "Waiver ID and an NFR ID column. A waiver that names its "
+                      "requirement in prose cannot be revoked against one row.",
+                      self.findings(text))
+
+    def test_a_row_that_says_it_is_waived_with_no_waiver_recorded(self):
+        text = self.rewrite("Batch job, full book | 20 minutes | Agreed |",
+                            "Batch job, full book | 20 minutes | Waived |")
+        self.assertIn("NFR-02 says it is waived and the waivers section "
+                      "carries no waiver against it.", self.findings(text))
+
+    def test_a_row_waived_under_another_waiver_than_the_one_recorded(self):
+        text = self.rewrite("| Waived WV-01 |", "| Waived WV-07 |")
+        self.assertIn("NFR-03 says it is waived under WV-07 and the waivers "
+                      "section records WV-01 against it.", self.findings(text))
+
+    # --- every result names one requirement, at one revision --------------
+
+    def test_a_result_that_names_no_revision_is_reported(self):
+        text = self.rewrite("Load test log, 2026-05-02, tested NFR-01 r1",
+                            "Load test log, 2026-05-02")
+        self.assertIn("NFR-01 says it is 'Met' and nothing in its Verified by "
+                      'cell names the revision that was tested. Write "tested '
+                      'NFR-01 r1" there, so the next revision of this row '
+                      "cannot inherit this result.", self.findings(text))
+
+    def test_a_result_that_names_another_row_is_reported(self):
+        text = self.rewrite("tested NFR-01 r1", "tested NFR-02 r1")
+        self.assertIn("NFR-01 is verified by a result that says it tested "
+                      "NFR-02. A result closes the row it names.",
+                      self.findings(text))
+
+    def test_a_result_claiming_a_revision_the_row_does_not_have(self):
+        text = self.rewrite("tested NFR-01 r1", "tested NFR-01 r4")
+        self.assertIn("NFR-01 is at r1 and its result claims to have tested "
+                      "r4, a revision this row does not have.",
+                      self.findings(text))
+
+    def test_a_planned_verification_claiming_no_result_needs_no_revision(self):
+        """NFR-02's Verified by names the artifact that will prove it and its
+        Status claims nothing. Requiring a revision there would make every
+        planned verification read as a result, which is the opposite of the
+        distinction this check exists to keep."""
+        self.assertEqual([], self.findings(self.CONFORMING))
+        proposed = self.rewrite("| 20 minutes | Agreed | Batch run report |",
+                                "| 20 minutes | Proposed | Batch run report |")
+        self.assertEqual([], self.findings(proposed))
+
+    # --- every requirement carries an ID ----------------------------------
+
+    def test_a_filled_requirement_with_no_id_is_reported(self):
+        text = self.rewrite("| NFR-02 r1 | Nightly settlement completes in |",
+                            "|  | Nightly settlement completes in |")
+        self.assertIn("requirement 'Nightly settlement completes in' has no "
+                      "NFR ID.", self.findings(text))
+
+    def test_an_id_with_no_revision_is_reported(self):
+        text = self.rewrite("| NFR-02 r1 |", "| NFR-02 |")
+        self.assertIn("ID 'NFR-02' is not of the form NFR-<id> r<n>. The "
+                      "revision is what stops a changed requirement inheriting "
+                      "an old passing result.", self.findings(text))
+
+    def test_one_id_used_twice_is_reported(self):
+        text = self.rewrite("| NFR-02 r1 |", "| NFR-01 r1 |")
+        self.assertIn("NFR-01 is used twice. An ID that names two rows names "
+                      "neither.", self.findings(text))
+
+    def test_a_requirement_table_with_no_id_column_is_reported(self):
+        text = self.rewrite(
+            "| ID | Requirement | Surface and workload | Target or owner | "
+            "Status | Verified by |\n|---|---|---|---|---|---|\n"
+            "| NFR-03 r1 | Authorization model | Refund action, support "
+            "console | Two named approvers | Waived WV-01 | Security review |",
+            "| Requirement | Target or owner | Verified by |\n|---|---|---|\n"
+            "| Authorization model | Two named approvers | Security review |")
+        self.assertIn('section "## 4. Security and privacy" has a filled table '
+                      "with no ID column. A requirement named only in prose "
+                      "cannot be bound to the waiver that excuses it or the "
+                      "result that closes it: give each row an ID and a "
+                      "revision, NFR-01 r1.", self.findings(text))
+
+    # --- what the gate runs over ------------------------------------------
+
+    def test_the_shipped_template_reports_nothing(self):
+        """Every row of the template is either a placeholder or an unfilled
+        cell, so the document a user starts from does not fail on its first
+        day. The IDs it ships with are real rather than bracketed, because a
+        bracketed one teaches the reader that the ID is optional."""
+        text = (REPO / "templates/definition/nfr.md").read_text(
+            encoding="utf-8")
+        self.assertEqual([], self.findings(text))
+        self.assertIn("| NFR-01 r1 |", text)
+
+    def test_the_document_is_recognised_by_its_stamp_and_by_its_path(self):
+        self.assertTrue(lint.is_nfr_document(self.CONFORMING, "x/y.md"))
+        body = self.CONFORMING.split("---", 2)[2]
+        self.assertFalse(lint.is_nfr_document(body, "products/demo/x.md"))
+        self.assertTrue(lint.is_nfr_document(
+            body, "products/demo/definition/nfr.md"))
+
+    def test_another_template_is_not_read_as_an_nfr_document(self):
+        other = self.CONFORMING.replace("templates/definition/nfr.md",
+                                        "templates/definition/prd.md")
+        other = other.replace("| NFR-01 r1 |", "|  |")
+        codes, _messages = ws_run({"products/demo/definition/prd.md": other})
+        self.assertNotIn("NFR", codes)
+
+    def test_the_workspace_gate_reports_the_stale_result(self):
+        """Through lint.workspace_check, not through nfr_closure alone: a check
+        no mode calls is a check nothing runs."""
+        codes, messages = ws_run(
+            {"products/demo/definition/nfr.md": self.stale_fixture()})
+        self.assertIn("NFR", codes)
+        self.assertIn("NFR-01 is at r2 and its result tested r1", messages)
+
+    def test_the_conforming_fixture_passes_the_workspace_gate(self):
+        codes, messages = ws_run(
+            {"products/demo/definition/nfr.md": self.CONFORMING})
+        self.assertNotIn("NFR", codes, messages)
+
+    def test_the_mode_names_the_check_it_runs(self):
+        self.assertIn("NFR closure", lint.WORKSPACE_CHECKS)
+
+
 if __name__ == "__main__":
     unittest.main()

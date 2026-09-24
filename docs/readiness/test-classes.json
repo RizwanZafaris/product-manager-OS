@@ -21,6 +21,7 @@
    "JsonSyntaxTests",
    "LinkFormatTests",
    "LinkTruthTests",
+   "NfrClosureTests",
    "OsTreeGateTests",
    "PathGateFenceTests",
    "RegulatedPrdDepthTests",
