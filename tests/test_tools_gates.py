@@ -51,9 +51,12 @@ import template_rubric  # noqa: E402
 from tools.docs_contract import (check as check_docs,  # noqa: E402
                                  _example_families,
                                  check_examples_inventory, check_gate_count,
-                                 check_inventory, check_readiness_claims,
-                                 main as docs_contract_main, README_READINESS,
-                                 READINESS_CLAIMS)
+                                 check_inventory, check_pricing_contract,
+                                 check_readiness_claims,
+                                 main as docs_contract_main, PRICING_EXAMPLE,
+                                 PRICING_EVIDENCE_COLUMN, PRICING_FLOOR_SECTION,
+                                 PRICING_FLOOR_SOURCE, PRICING_TEMPLATE,
+                                 README_READINESS, READINESS_CLAIMS)
 from tools.graph import check_unique_ids, node_id  # noqa: E402
 
 
@@ -2442,6 +2445,127 @@ class ReadinessCategoryExitTests(unittest.TestCase):
 
     def test_a_clean_category_passes_without_claiming_readiness(self):
         self.assertEqual(0, self.category(self.report()))
+
+
+class PricingContractGateTests(unittest.TestCase):
+    """F16: the pricing blank decided a number and nothing about changing it.
+
+    It had a value metric, tiers, a benchmark and discount rules, and no trial,
+    overage, grandfathering, upgrade, downgrade, proration, refund or migration
+    terms, no per-tier evidence or cost floor, and nowhere to say who moves when
+    a price changes. Both pricing worksheets meanwhile told their reader to put
+    the range in "the evidence column" of section 3, a column section 3 did not
+    have. Each test below removes one part of the contract from a copy of the
+    tree and asserts the check reports it; without them a later edit could take
+    any of it back out and every gate in this repository would still pass.
+
+    What these do not check: whether the fields are filled well. A change record
+    whose cells all read "TBD" passes here, and Gate 5's signers are the ones who
+    catch that. Nor do they check the example beyond its change record: the blank
+    is what carries the requirement, and the example is read only for the thing
+    the finding asked an example to prove.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = copy_tree(self.tmp.name)
+        self.template = self.root / PRICING_TEMPLATE
+        self.example = self.root / PRICING_EXAMPLE
+
+    def edit(self, path, old, new):
+        text = path.read_text(encoding="utf-8")
+        self.assertIn(old, text, "the text this test mutates is no longer there")
+        path.write_text(text.replace(old, new), encoding="utf-8")
+
+    def codes(self):
+        return [issue.message for issue in check_pricing_contract(self.root)]
+
+    def test_the_tree_as_it_stands_carries_the_whole_contract(self):
+        self.assertEqual(self.codes(), [])
+
+    def test_a_tree_without_the_pricing_blank_makes_no_claim(self):
+        self.template.unlink()
+        self.assertEqual(check_pricing_contract(self.root), [])
+
+    def test_dropping_the_evidence_column_the_worksheets_feed_is_reported(self):
+        self.edit(self.template, " | %s |" % PRICING_EVIDENCE_COLUMN, " |")
+        self.assertTrue(any(PRICING_EVIDENCE_COLUMN in message
+                            for message in self.codes()))
+
+    def test_renaming_the_column_in_a_worksheet_alone_is_reported(self):
+        sheet = self.root / "frameworks" / "pricing" / "van-westendorp.md"
+        self.edit(sheet, "%s column" % PRICING_EVIDENCE_COLUMN, "evidence column")
+        self.assertTrue(any("no longer names" in message for message in self.codes()))
+
+    def test_an_evidence_column_named_only_inside_a_comment_does_not_count(self):
+        self.edit(self.template, "| %s |" % PRICING_EVIDENCE_COLUMN,
+                  "|\n<!-- %s -->" % PRICING_EVIDENCE_COLUMN)
+        self.assertTrue(any(PRICING_EVIDENCE_COLUMN in message
+                            for message in self.codes()))
+
+    def test_losing_a_standing_term_is_reported_by_name(self):
+        self.edit(self.template, "| Grandfathering (an existing customer keeps an old price)",
+                  "| Legacy pricing")
+        self.assertIn("section 7 no longer asks for the Grandfathering term", self.codes())
+
+    def test_losing_the_standing_terms_section_is_reported(self):
+        self.edit(self.template, "## 7. Standing commercial terms", "## 7. Terms")
+        self.assertTrue(any("Standing commercial terms" in message
+                            for message in self.codes()))
+
+    def test_dropping_the_migration_route_is_reported(self):
+        self.edit(self.template, "[migration cutover plan](../delivery/migration-cutover-plan.md)",
+                  "ask someone")
+        self.assertTrue(any("migration-cutover-plan.md" in message
+                            for message in self.codes()))
+
+    def test_a_route_to_a_document_not_in_the_tree_is_reported(self):
+        (self.root / "templates" / "delivery" / "support-runbook.md").unlink()
+        self.assertTrue(any("which is not in this tree" in message
+                            for message in self.codes()))
+
+    def test_the_blank_losing_the_notice_and_the_reversal_is_reported(self):
+        self.edit(self.template,
+                  "| Notice: date and channel | Effective date "
+                  "| Reversal: what undoes it, who decides, and by when ",
+                  "| Effective date ")
+        reported = " ".join(self.codes())
+        self.assertIn("'Notice'", reported)
+        self.assertIn("'Reversal'", reported)
+
+    def test_the_filled_example_losing_the_reversal_is_reported(self):
+        self.edit(self.example,
+                  "| Reversal: what undoes it, who decides, and by when ", "| ")
+        self.assertTrue(any("'Reversal'" in message for message in self.codes()))
+
+    def test_the_example_is_read_as_well_as_the_blank(self):
+        self.edit(self.example, "## 8. The change record", "## 8. What changed")
+        self.assertEqual(self.codes(), [],
+                         "an example with no change record section is not read; the "
+                         "blank is what carries the requirement")
+        self.edit(self.example, "## 8. What changed", "## 8. The change record")
+        self.edit(self.example, "| Cohort |", "| Who |")
+        self.assertTrue(any(issue.path == PRICING_EXAMPLE
+                            for issue in check_pricing_contract(self.root)))
+
+    def test_losing_the_per_tier_economic_floor_is_reported(self):
+        """The same defect one heading over: unit economics feeds section 3a."""
+        self.edit(self.template, PRICING_FLOOR_SECTION, "### 3a. Costs")
+        self.assertTrue(any("per-tier economic floor" in message
+                            for message in self.codes()))
+
+    def test_the_floor_worksheet_dropping_the_section_it_feeds_is_reported(self):
+        sheet = self.root / PRICING_FLOOR_SOURCE
+        self.edit(sheet, "section 3a", "the tier table")
+        self.assertTrue(any("no longer names the section it feeds" in message
+                            for message in self.codes()))
+
+    def test_the_whole_docs_contract_reports_it_too(self):
+        self.edit(self.template, "| Proration (part-period charges when something changes mid-cycle)",
+                  "| Part periods")
+        self.assertTrue(any(issue.code == "pricing-contract"
+                            for issue in check_docs(self.root)))
 
 
 if __name__ == "__main__":
