@@ -97,14 +97,20 @@ Filled example: [Harbourgate](../../examples/harbourgate-testing-strategy.md)
 - [ ] The [edge-case register](edge-cases.md) has no unresolved rows
 - [ ] Results are recorded where the release-readiness reviewer can find them: [location]
 
-## 6. Defect severity ladder
+## 6. Defect severity ladder (canonical)
+
+This table is the single defect-severity dictionary for four documents: this testing strategy, the [UAT plan](uat-plan.md), the [release-readiness](release-readiness.md) checklist and the [support runbook](support-runbook.md). Those documents may use their own wording, but only alongside one of these IDs, and the release rule attached to an ID is the one stated here and is not restated differently in any of them. Other DELIVER documents score other things on their own scales, such as alert routing in the SLA/SLO definition and the observability plan, usability findings in a design review, and risk in an FMEA; those are not defect severities and do not use these IDs.
+
+A check reads these four documents and fails the build when one of them carries a second table that defines a severity, when one writes any other severity vocabulary at all, whether a Sev N style scale or a known issue labelled Low, and when one attaches a definition to an ID in prose: a sentence saying what SN means, or saying to treat some kind of defect as SN. It reads HTML comments and code blocks too, and it is strict enough that this paragraph cannot spell those IDs out. What it does not reach is prose that defines a defect class without naming an ID, such as "a job a tester cannot complete at all always blocks the release": that sentence contradicts nothing by ID, so nothing fails, and whoever reviews the document has to catch it.
 
 | Severity | Definition | Release rule |
 |---|---|---|
-| S1 | Data loss, security breach, or the product unusable | Always blocks |
-| S2 | A core flow broken with no workaround | Blocks unless the sign-off names who accepted it and why |
-| S3 | Broken with a workaround, or a non-core flow | Ships with a fix date and an owner |
-| S4 | Cosmetic | Ships, tracked |
+| S1 | Data loss, security or privacy breach, or the product unusable | Always blocks |
+| S2 | The job a user is trying to do cannot be completed and there is no workaround | Blocks unless a named approver records who accepted it and why |
+| S3 | The job a user is trying to do completes only with a workaround, or a non-core flow is broken | Ships with a named fix owner and a fix date |
+| S4 | Cosmetic, no job affected | Ships, tracked |
+
+A defect is classified once, against this table, and keeps that same ID in every document that mentions it.
 
 ## Exit gate
 
@@ -114,6 +120,6 @@ This document passes when:
 - [ ] Coverage targets are numbers with owners, not adjectives
 - [ ] Entry and exit criteria could be applied by someone who just joined the team
 - [ ] The environment table states the data policy for each environment
-- [ ] The severity ladder says exactly what blocks release
+- [ ] The severity ladder says exactly what blocks release, and none of the other three covered documents, the UAT plan, the release-readiness checklist and the support runbook, defines a defect severity of its own
 
 Signed: [name], [role], [YYYY-MM-DD]

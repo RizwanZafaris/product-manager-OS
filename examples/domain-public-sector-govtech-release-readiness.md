@@ -30,10 +30,10 @@ Accessibility testing under this gate is tested with assistive-technology users,
 
 | # | Issue | Severity | Why it is acceptable to ship | Fix owner | Fix date |
 |---|---|---|---|---|---|
-| 1 | Screen-reader users hit the payment-confirmation step: 6 of 8 tasks completed, two blocking findings (domain card row, 2026-08-14) | high | Not acceptable. This is a condition, not a known issue | Accessibility lead, name to be confirmed | Fixed and retested before any rollout |
-| 2 | No failover rehearsal has been held for the peak renewal-deadline day | high | Not acceptable. This is a condition, not a known issue | Engineering lead, name to be confirmed | Rehearsal held and timed before any rollout |
-| 3 | Caseworker notes field untested for freedom-of-information redaction | medium | The records export itself works and redaction is confirmed for three of four protected fields. The fourth is a gap with an owner and a dated fix, and no request has yet reached the live service because nothing is live | Records officer, name to be confirmed | Before the system carries any live record |
-| 4 | Assisted phone channel capacity is a separate go/no-go row, not yet staffed for launch week | high | Not acceptable. This is a condition, not a known issue | Service delivery lead, name to be confirmed | Staffing confirmed at 3x normal call volume before any rollout |
+| 1 | Screen-reader users hit the payment-confirmation step: 6 of 8 tasks completed, two blocking findings (domain card row, 2026-08-14) | S2 | Not acceptable. This is a condition, not a known issue | Accessibility lead, name to be confirmed | Fixed and retested before any rollout |
+| 2 | No failover rehearsal has been held for the peak renewal-deadline day | not a defect: untested path | Not acceptable. This is a condition, not a known issue | Engineering lead, name to be confirmed | Rehearsal held and timed before any rollout |
+| 3 | Caseworker notes field untested for freedom-of-information redaction | not a defect: untested path | The records export itself works and redaction is confirmed for three of four protected fields. The fourth is a gap with an owner and a dated fix, and no request has yet reached the live service because nothing is live | Records officer, name to be confirmed | Before the system carries any live record |
+| 4 | Assisted phone channel capacity is a separate go/no-go row, not yet staffed for launch week | not a defect: unstaffed support | Not acceptable. This is a condition, not a known issue | Service delivery lead, name to be confirmed | Staffing confirmed at 3x normal call volume before any rollout |
 
 ## 4. Rollback
 
@@ -109,6 +109,8 @@ Gate 5 is green when:
 - [ ] Every checklist box above is checked, or its exception sits in the known-issues table with an owner and a date: NOT yet. Four rows sit in section 3, three of them conditions rather than known issues, and the failover rehearsal, the operational readiness review, and the UAT sign-off all remain open
 - [x] The known-issues table is not empty, and its emptiness is not explained away: four rows, three of them conditions, one a dated gap
 - [x] Every known issue distinguishes itself from a condition: rows 1, 2 and 4 are conditions and may not ship open; row 3 is a dated gap with an owner and a fix date
+- [x] Every Severity cell is a canonical id from the testing strategy ladder, or `not a defect:` followed by one of the four gap classes named in section 3: row 1 is S2; rows 2 and 3 are untested paths and row 4 is unstaffed support
+- [x] No known-issues row is S1, and every S2 row names the approver who accepted it and why, or it has moved to a condition: row 1 is S2 with no approver named, so it is a condition and blocks rollout
 - [ ] The rollback trigger is a condition a dashboard can show, not a feeling, and the procedure was executed on a dated environment: NOT yet. The trigger is written, but the rehearsal has not run
 - [x] Every sign-off row has a name or a role with a date, and every conditional verdict has its condition written in the row
 - [x] The decider recorded GO, NO-GO, or GO WITH CONDITIONS, with conditions in writing: NO-GO at 2026-09-11

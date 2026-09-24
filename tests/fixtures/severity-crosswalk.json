@@ -1,0 +1,84 @@
+{
+ "schema": 1,
+ "note": "Three synthetic defects, one per outcome, so a test can prove that the QA severity ladder, the UAT crosswalk and the release-readiness known-issues rule reach the same blocking outcome for each of them. F03 of the 2026-09-23 360 audit: the QA ladder and the UAT table used to disagree about S1 and S2, so the same defect blocked or shipped depending on which document was open.",
+ "documents": {
+  "ladder": "templates/delivery/testing-strategy.md + examples/*testing-strategy*.md",
+  "crosswalk": "templates/delivery/uat-plan.md + examples/*uat-plan*.md",
+  "support": "templates/delivery/support-runbook.md + examples/*support-runbook*.md",
+  "release_record": "templates/delivery/release-readiness.md + examples/*release-readiness*.md"
+ },
+ "defects": [
+  {
+   "id": "D1",
+   "story": "Submitting an expense report fails silently once the report contains a foreign-currency receipt, and there is no other way to submit it.",
+   "canonical": "S2",
+   "qa_keywords": [
+    "cannot be completed",
+    "there is no workaround"
+   ],
+   "uat_keywords": [
+    "cannot complete a scoped job",
+    "no workaround"
+   ],
+   "approver_recorded": false,
+   "expected_outcome": "blocks"
+  },
+  {
+   "id": "D2",
+   "story": "The report can be submitted, but only by exporting it to CSV and re-uploading it, because the in-app submit step drops the receipt attachments.",
+   "canonical": "S3",
+   "qa_keywords": [
+    "completes only with a workaround"
+   ],
+   "uat_keywords": [
+    "working around the product"
+   ],
+   "approver_recorded": false,
+   "expected_outcome": "ships"
+  },
+  {
+   "id": "D3",
+   "story": "The Submit button label renders one size smaller than the rest of the form.",
+   "canonical": "S4",
+   "qa_keywords": [
+    "cosmetic",
+    "no job affected"
+   ],
+   "uat_keywords": [
+    "cosmetic friction",
+    "changes nothing"
+   ],
+   "approver_recorded": false,
+   "expected_outcome": "ships"
+  }
+ ],
+ "gap_classes": [
+  "untested path",
+  "missing runbook",
+  "unstaffed support",
+  "external approval pending"
+ ],
+ "gap_class_evidence": {
+  "untested path": [
+   "untested",
+   "not yet",
+   "has been held",
+   "not been",
+   "rehearsal"
+  ],
+  "missing runbook": [
+   "runbook"
+  ],
+  "unstaffed support": [
+   "staff",
+   "support"
+  ],
+  "external approval pending": [
+   "review",
+   "approval",
+   "approved",
+   "certification"
+  ]
+ },
+ "gap_class_note": "A known-issues row may leave the severity ladder only by naming which readiness gap it is, and its Issue cell must show that gap in its own words. The bare marker `not a defect` was an unguarded escape hatch: a real product defect could be relabelled with nothing failing. The words below are the evidence a row must carry for the class it claims."
+}
