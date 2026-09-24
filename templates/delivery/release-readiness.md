@@ -54,7 +54,7 @@ Filled example: [Emberfall Tactics v4.2.1](../../examples/domain-gaming-release-
 
 - [ ] Every blocking level in the [testing strategy](testing-strategy.md) ran and passed
 - [ ] The [edge-case register](edge-cases.md) has no open rows
-- [ ] [UAT](uat-plan.md) is signed off, conditions listed below if any
+- [ ] [UAT](uat-plan.md) is signed off against the build being released, [release-candidate or build ID], and its conditions are listed below if any. A UAT sign-off bound to an earlier candidate is void: re-run the charters
 - [ ] For AI features: eval thresholds met per the [eval spec](../ai/eval-spec.md), and the [red-team review](../ai/red-team-review.md) is closed
 - [ ] For any consent, decline, downgrade, or cancel flow in this release: the [choice-symmetry audit](../../frameworks/design/choice-symmetry-audit.md) result is recorded, checked against [knowledge/design/deceptive-design.md](../../knowledge/design/deceptive-design.md)
 

@@ -32,7 +32,7 @@ Addendum, 2026-08-26: rows 3 and 4 were both added to this table on this date, a
 
 - [x] Every blocking level ran and passed, with the honest exception named: unit and integration suites passed at Gate 4 attempt 2 (2026-06-09); rehearsal 1 (2026-06-13, N37) did not pass, aborted at 9 h 10 min with 1,529 of 1,742 Marlowe settlement lines unmatched, and caused HG-INC-14; rehearsal 2 (2026-06-27, N38) found and fixed two issues (legacy refunds returning 422, voided authorisations double-counted); rehearsal 3 (2026-07-04, N39) ran clean; the rollback rehearsal (N40) timed a flag flip at 3 min 50 s and a restore at 22 minutes, both 2026-07-04.
 - [ ] No open rows against a blocking defect for cohort 1's scope: not literally true, exceptions carried to section 3. A2 closed 2026-06-26: pre-production credentials can no longer read the production settlement drop, verified by a failed read attempt, which closes the root cause behind HG-INC-14. Three items remain open and are carried to section 3 as known issues rather than closed silently: the decline reason-class mapping (N62), the straddle set's first live settlement cycle, and Marlowe's support model (N69).
-- [x] UAT: signed off by Noor Haddad, QA Lead, against rehearsal 3's clean run and the rollback timing; no condition attached.
+- [x] UAT: signed off by Noor Haddad, QA Lead, on candidate build rc-2026-07-02.3, which is the build being released, against rehearsal 3's clean run and the rollback timing. The two conditions the sponsor attached are the N62 S3 and the S4 reconciliation column label, both carried to section 3.
 - [ ] For AI features: N/A. Quay contains no AI or machine-learning feature; see section 7.
 
 ## 3. Known issues shipping with this release
