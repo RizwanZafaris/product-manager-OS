@@ -2259,12 +2259,60 @@ def _cell(row, index):
     return row[index].strip() if index is not None and index < len(row) else ""
 
 
-def _column(header, *words):
-    lower = [h.strip().lower() for h in header]
-    for i, cell in enumerate(lower):
-        if any(word in cell for word in words):
-            return i
-    return None
+# Which header cells bind which column, in the shape finding F02 settled on
+# for the UAT tables: a key, the human name a refusal uses, and the exact names
+# that bind it. Exact names rather than a keyword found anywhere inside a
+# header, because a substring reader binds the first header that CONTAINS the
+# word: "Expected waiver ID" carries "waiver id", so a decoy column, or a
+# column that merely discusses the real one, answered for the column the author
+# meant, and a table missing the real column read the decoy and passed. That
+# was F02's defect twice over, and this is F02's fix: one exactly-named cell
+# binds, more than one is refused by name at the header's line and binds
+# nothing, and none binds nothing either, so the document fails closed rather
+# than reading a column its author did not mean. Nothing here is a blocklist of
+# decoy words: a header that is not one of these names is not this column, and
+# "expected" needs no special case.
+NFR_STATUS_COLUMN = (
+    ("status", "Status",
+     ("status", "statuses", "state", "row status", "row state",
+      "requirement status", "nfr status", "current status",
+      "target status")),)
+# Verified by is optional: the scale table and the retention table of the
+# template carry a Status and no verification artifact, and a requirement whose
+# Status claims a result while no column of its table can name the revision
+# tested is already reported, row by row, by the closure loop below.
+NFR_VERIFIED_COLUMN = (
+    ("verified", "Verified by",
+     ("verified by", "verified", "verification", "verified how",
+      "verification artifact", "verification evidence", "verified by artifact",
+      "evidence", "evidence of verification", "proof")),)
+NFR_WAIVER_COLUMNS = (
+    ("waiver", "Waiver ID",
+     ("waiver id", "waiver ids", "waiver", "waivers", "waiver ref",
+      "waiver reference", "waiver number", "id")),
+    ("nfr", "NFR ID",
+     ("nfr id", "nfr ids", "nfr", "nfrs", "nfr ref", "nfr reference",
+      "requirement id", "requirement ids", "requirement ref", "req id",
+      "req ids")))
+
+
+def _header_line(rows, fallback):
+    """The line the header sits on: tables() hands back rows, not the header."""
+    return rows[0][0] - 2 if rows else fallback
+
+
+def _bind_nfr_columns(header, columns, line_no, what, fail):
+    """(index, missing): the bound columns, and the ones no cell offers.
+
+    _bind_columns already reports a column more than one cell could be and
+    binds it None. What is left to tell apart is None because the header is
+    ambiguous from None because the column is not there at all, which the
+    refusals below word differently.
+    """
+    index = _bind_columns(header, columns, line_no, what, fail)
+    missing = [human for key, human, names in columns
+               if index[key] is None and not _named_columns(header, names)]
+    return index, missing
 
 
 def nfr_closure(raw):
@@ -2301,8 +2349,17 @@ def nfr_closure(raw):
                      "give each row an ID and a revision, NFR-01 r1."
                      % heading[:60])
                 continue
-            verified = _column(header, "verified")
-            status = _column(header, "status")
+            head_line = _header_line(rows, span[0] + 1)
+            bound, missing = _bind_nfr_columns(
+                header, NFR_STATUS_COLUMN + NFR_VERIFIED_COLUMN, head_line,
+                "requirement table", fail)
+            if "Status" in missing:
+                fail(head_line,
+                     'section "%s" has a filled requirement table with no '
+                     "Status column. A row that never says whether it is Met, "
+                     "Not met or Waived closes against nothing: re-copy the "
+                     "table from %s." % (heading[:60], NFR_TEMPLATE))
+            verified, status = bound["verified"], bound["status"]
             for line_no, row in filled:
                 ident = _cell(row, 0)
                 match = NFR_ROW_ID_RE.match(ident)
@@ -2324,19 +2381,33 @@ def nfr_closure(raw):
                                    _cell(row, status))
                 order.append(key)
 
-    waived_by = {}
+    # Every waiver recorded against a requirement, in document order, rather
+    # than the first one: a requirement waived once, revisited and waived again
+    # carries two waiver rows, and a row naming the second of them reconciles
+    # against it. Keeping only the first reported a mismatch against a document
+    # that said exactly what it meant. The waiver IDs already seen are a
+    # separate set, keyed by waiver ID rather than by requirement, because the
+    # duplicate-ID check asked the requirement map whether it held a WV- key,
+    # which it never does, and so never fired.
+    waived_by, waiver_ids = {}, set()
     for heading, span in sorted(waiver_spans, key=lambda x: x[1]):
         for header, rows in tables(lines, *span):
-            waiver = _column(header, "waiver id")
-            names = _column(header, "nfr id")
             filled = [(n, r) for n, r in rows if any(_filled(c) for c in r)]
             if not filled:
                 continue
-            if waiver is None or names is None:
-                fail(span[0] + 1,
+            head_line = _header_line(rows, span[0] + 1)
+            bound, missing = _bind_nfr_columns(
+                header, NFR_WAIVER_COLUMNS, head_line, "waivers table", fail)
+            waiver, names = bound["waiver"], bound["nfr"]
+            if missing:
+                fail(head_line,
                      'section "%s" has a filled table without a Waiver ID and '
                      "an NFR ID column. A waiver that names its requirement in "
                      "prose cannot be revoked against one row." % heading[:60])
+            if waiver is None or names is None:
+                # Missing, or named by more than one cell and refused above.
+                # Either way nothing here binds, and no row of this table is
+                # read as a waiver of anything.
                 continue
             for line_no, row in filled:
                 wid = _cell(row, waiver)
@@ -2344,8 +2415,10 @@ def nfr_closure(raw):
                 if not WAIVER_ID_RE.match(wid):
                     fail(line_no, "waiver row has no waiver ID of the form "
                                   "WV-01.")
-                elif wid in waived_by:
+                elif wid in waiver_ids:
                     fail(line_no, "waiver ID %s is used twice." % wid)
+                else:
+                    waiver_ids.add(wid)
                 if len(ids) != 1:
                     fail(line_no, "waiver %s names %d NFR IDs. One waiver "
                          "excuses exactly one requirement: a waiver naming two "
@@ -2356,7 +2429,9 @@ def nfr_closure(raw):
                          "in this document defines." % (wid or "?", ids[0]))
                     continue
                 if WAIVER_ID_RE.match(wid):
-                    waived_by.setdefault(ids[0], wid)
+                    against = waived_by.setdefault(ids[0], [])
+                    if wid not in against:
+                        against.append(wid)
 
     for key in order:
         line_no, revision, verified, status = rows_by_id[key]
@@ -2383,13 +2458,14 @@ def nfr_closure(raw):
                  % (key, revision, match.group(2)))
         if _filled(status) and STATUS_WAIVED_RE.search(status):
             named = WAIVER_ID_RE.findall(status)
-            if waived_by.get(key) is None:
+            recorded = waived_by.get(key, [])
+            if not recorded:
                 fail(line_no, "%s says it is waived and the waivers section "
                      "carries no waiver against it." % key)
-            elif named and waived_by[key] not in named:
+            elif named and not set(named) & set(recorded):
                 fail(line_no, "%s says it is waived under %s and the waivers "
                      "section records %s against it."
-                     % (key, ", ".join(named), waived_by[key]))
+                     % (key, ", ".join(named), ", ".join(recorded)))
 
     return sorted(problems)
 

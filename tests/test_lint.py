@@ -2608,6 +2608,139 @@ template: templates/definition/nfr.md
         self.assertIn("NFR-03 says it is waived under WV-07 and the waivers "
                       "section records WV-01 against it.", self.findings(text))
 
+    # --- the columns this gate reads are bound by name --------------------
+    #
+    # The third round of the independent review of this change, P1 and P2.
+    # The binder read a column whose header CONTAINED a keyword, and kept only
+    # the first waiver recorded against a requirement. Both are F02's defect
+    # again: bind by a bare keyword, and take the first match rather than
+    # refusing an ambiguous one.
+
+    def decoy_waiver_fixture(self):
+        """The waivers table grows two columns that discuss the real ones.
+
+        "Expected waiver ID" contains "waiver id", so a reader that looks for
+        the keyword anywhere in a header binds the decoy, reads WV-99 against
+        NFR-01, and reports that NFR-03 is waived by nothing.
+        """
+        text = self.rewrite(
+            "| Waiver ID | NFR ID (exactly one) | Requirement waived |",
+            "| Expected waiver ID | Expected NFR ID | Waiver ID | "
+            "NFR ID (exactly one) | Requirement waived |")
+        text = self.rewrite("|---|---|---|---|---|---|---|",
+                            "|---|---|---|---|---|---|---|---|---|", text)
+        return self.rewrite("| WV-01 | NFR-03 | Two-approver refunds |",
+                            "| WV-99 | NFR-01 | WV-01 | NFR-03 | "
+                            "Two-approver refunds |", text)
+
+    def test_a_decoy_column_does_not_answer_for_the_real_waiver_column(self):
+        self.assertEqual([], self.findings(self.decoy_waiver_fixture()))
+
+    def test_a_waivers_table_with_only_decoy_columns_is_refused(self):
+        """The real headers are renamed away and only the decoys are left.
+
+        Nothing binds, so nothing in the table is read as a waiver of anything,
+        and the table is refused by name. A reader that matched the keyword
+        inside the header would have bound the decoys and passed the document
+        on a waiver its author never wrote.
+        """
+        text = self.rewrite("| Waiver ID | NFR ID (exactly one) |",
+                            "| Expected waiver ID | Expected NFR ID |")
+        self.assertIn('section "## 8. Waivers" has a filled table without a '
+                      "Waiver ID and an NFR ID column. A waiver that names its "
+                      "requirement in prose cannot be revoked against one row.",
+                      self.findings(text))
+
+    def test_two_columns_that_could_be_the_waiver_id_are_refused(self):
+        text = self.rewrite("| Requirement waived | Waived by |",
+                            "| Waiver | Waived by |")
+        self.assertIn("the waivers table carries more than one column that "
+                      "could be its Waiver ID column ('Waiver ID', 'Waiver'). "
+                      "This check will not guess which one you mean, because "
+                      "reading the wrong column in silence is worse than "
+                      "saying it cannot tell. Rename all but one.",
+                      self.findings(text))
+
+    def test_a_decoy_column_does_not_answer_for_the_real_status_column(self):
+        """The same defect on the requirement side, and there it failed OPEN.
+
+        An "Expected status" column carries "status". The row still says Met in
+        the column its author meant, and its Verified by cell names no revision
+        tested, which is exactly what this gate exists to catch; a reader bound
+        to the decoy asked nothing of the row and the document passed.
+        """
+        text = self.rewrite(
+            "| ID | Requirement | Surface and workload | Target or owner | "
+            "Status | Verified by |\n|---|---|---|---|---|---|\n| NFR-01 r1 |",
+            "| ID | Requirement | Expected status | Target or owner | "
+            "Status | Verified by |\n|---|---|---|---|---|---|\n| NFR-01 r1 |")
+        text = self.rewrite("Load test log, 2026-05-02, tested NFR-01 r1",
+                            "Load test log, 2026-05-02", text)
+        self.assertIn("NFR-01 says it is 'Met' and nothing in its Verified by "
+                      'cell names the revision that was tested. Write "tested '
+                      'NFR-01 r1" there, so the next revision of this row '
+                      "cannot inherit this result.", self.findings(text))
+
+    def test_a_requirement_table_with_no_status_column_is_reported(self):
+        text = self.rewrite(
+            "| ID | Requirement | Surface and workload | Target or owner | "
+            "Status | Verified by |\n|---|---|---|---|---|---|\n| NFR-01 r1 |",
+            "| ID | Requirement | Surface and workload | Target or owner | "
+            "Progress | Verified by |\n|---|---|---|---|---|---|\n"
+            "| NFR-01 r1 |")
+        self.assertIn('section "## 1. Performance and latency" has a filled '
+                      "requirement table with no Status column. A row that "
+                      "never says whether it is Met, Not met or Waived closes "
+                      "against nothing: re-copy the table from "
+                      "templates/definition/nfr.md.", self.findings(text))
+
+    # --- a requirement waived twice reconciles against either waiver ------
+
+    def second_waiver_fixture(self):
+        """NFR-03 is waived, revisited, and waived again under WV-02.
+
+        Nothing in this gate says a requirement may be waived only once: a
+        waiver carries a revisit date, and the row that revisits it is a second
+        waiver row naming the same requirement. The requirement row names the
+        waiver it is living under now, which is the second one.
+        """
+        text = self.rewrite(
+            "| WV-01 | NFR-03 | Two-approver refunds | Ada Bell, Head of "
+            "Support | Single approver until the console ships | Gate 2 | "
+            "2027-01-31 |",
+            "| WV-01 | NFR-03 | Two-approver refunds | Ada Bell, Head of "
+            "Support | Single approver until the console ships | Gate 2 | "
+            "2026-07-31 |\n| WV-02 | NFR-03 | Two-approver refunds, extended "
+            "| Ada Bell, Head of Support | The console still has not shipped "
+            "| Gate 2 | 2027-01-31 |")
+        return self.rewrite("| Waived WV-01 |", "| Waived WV-02 |", text)
+
+    def test_a_row_naming_the_second_waiver_against_it_reconciles(self):
+        self.assertEqual([], self.findings(self.second_waiver_fixture()))
+
+    def test_a_row_naming_a_waiver_recorded_against_no_one_is_reported(self):
+        """Every waiver against the row is offered, and WV-07 is not one of
+        them, so the mismatch still fires and names both that were."""
+        text = self.rewrite("| Waived WV-02 |", "| Waived WV-07 |",
+                            self.second_waiver_fixture())
+        self.assertIn("NFR-03 says it is waived under WV-07 and the waivers "
+                      "section records WV-01, WV-02 against it.",
+                      self.findings(text))
+
+    def test_one_waiver_id_used_by_two_rows_is_reported(self):
+        """The duplicate check asked the requirement map whether it held a WV-
+        key, which it never does, so it never fired."""
+        text = self.rewrite(
+            "| WV-01 | NFR-03 | Two-approver refunds | Ada Bell, Head of "
+            "Support | Single approver until the console ships | Gate 2 | "
+            "2027-01-31 |",
+            "| WV-01 | NFR-03 | Two-approver refunds | Ada Bell, Head of "
+            "Support | Single approver until the console ships | Gate 2 | "
+            "2027-01-31 |\n| WV-01 | NFR-02 | Settlement window | Ada Bell, "
+            "Head of Support | Batch window under review | Gate 2 | "
+            "2027-01-31 |")
+        self.assertIn("waiver ID WV-01 is used twice.", self.findings(text))
+
     # --- every result names one requirement, at one revision --------------
 
     def test_a_result_that_names_no_revision_is_reported(self):
