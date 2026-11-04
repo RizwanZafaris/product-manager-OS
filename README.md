@@ -175,7 +175,7 @@ verification: {"errors": [], "ok": true}
 
 ## What's inside
 
-[templates/README.md](templates/README.md) catalogs all 108 blanks by stage; every other count below is computed the same way, straight from the tree.
+[templates/README.md](templates/README.md) catalogs all 108 blanks by stage; every count below is taken from the tree by a counting rule written down for it in `tools/docs_contract.py`.
 
 | Count | What | Where to start |
 |---|---|---|
@@ -183,11 +183,11 @@ verification: {"errors": [], "ok": true}
 | 64 framework worksheets in 9 groups | Runnable methods with scales, formulas, and arithmetic | [frameworks/](frameworks/README.md) |
 | 47 industry domain cards, 41 with a worked example | What a specific market changes about the loop | [knowledge/domains/](knowledge/domains/README.md), coverage in [docs/COVERAGE.md](docs/COVERAGE.md) |
 | 15 design cards and 11 canon cards | Named attribution, licensed sources, and honest limits | [knowledge/](knowledge/README.md), [knowledge/design/](knowledge/design/README.md), [docs/REFERENCES-DESIGN.md](docs/REFERENCES-DESIGN.md) |
-| 233 filled examples including 4 end-to-end journeys | See it filled in before you fill your own | [examples/README.md](examples/README.md) |
+| 235 filled examples including 4 end-to-end journeys | See it filled in before you fill your own | [examples/README.md](examples/README.md) |
 | Role ladder: 8 rungs, 7 specializations, 0 with a worked example yet | Who each title is, what they own, and how they fail | [knowledge/roles/ladder.md](knowledge/roles/ladder.md), [knowledge/roles/specializations.md](knowledge/roles/specializations.md) |
 | 29 skills, 12 agents, 4 learning paths | AI runtime procedures, or ignore them and use pencil | [skills/](skills/README.md), [agents/](agents/README.md), [learn/](learn/README.md) |
 
-Every count above is checked against this tree on every commit rather than recomputed by hand: `python3 tools/docs_contract.py --strict` fails when a figure here and the directory it counts disagree, and `python3 tools/ci_gate.py` runs it. Domain and role coverage, including which columns read "none recorded" and why, is the full subject of [docs/COVERAGE.md](docs/COVERAGE.md).
+Every count above is checked against this tree on every commit rather than recomputed by hand: `python3 tools/docs_contract.py --strict` fails when a figure here, or the same figure restated in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) or [docs/FAQ.md](docs/FAQ.md), disagrees with what it counts, when the table states a number no counting rule measures, and when a measured figure drops out of the table, and `python3 tools/ci_gate.py` runs it. Domain and role coverage, including which columns read "none recorded" and why, is the full subject of [docs/COVERAGE.md](docs/COVERAGE.md); the role ladder's worked-example figure is read from that file's matrix, because no file name in `examples/` marks a role example.
 
 ## Implemented, verified, experimental, and planned
 

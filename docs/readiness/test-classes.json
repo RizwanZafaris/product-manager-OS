@@ -196,6 +196,7 @@
    "ReadinessClaimGateTests",
    "ReadinessProbeCiWiringTests",
    "ReadinessProbeMutationAnchorTests",
+   "ReadmeInventoryGateTests",
    "RoadmapCommitmentGateTests",
    "RoadmapContractWiringTests",
    "RoadmapReversionTests",

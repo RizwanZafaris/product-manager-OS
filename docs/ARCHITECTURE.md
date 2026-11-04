@@ -51,7 +51,7 @@ The deletion proof remains deliberately narrow: it concerns the legacy harness a
 
 **Deleting a content layer is a different event again.** `skills/`, `agents/`, `system/`, `routing/`, and `modules/regulated/` are all safe to delete in the sense that nothing depends upward on them and every remaining document still fills and still passes a human gate. They are also link targets: each template's `Skill:` header points up at the procedure that drives it, so the four AI layers together carry hundreds of inbound links and the link gate fails on all of them. Usable without a layer, not lint-clean without it. The tree keeps the cross-references because they are what makes it navigable, and states the limit instead of promising the stronger property.
 
-Since v0.3.0 the knowledge layer carries three sub-layers, `knowledge/roles/` (WHO each product title is), `knowledge/domains/` (WHERE the product plays, forty-four market cards in two tables, general and financial services, the fintech card a pointer to the regulated module), and `knowledge/design/` (how a PM reads and judges experience design, never the DESIGN stage itself), and a further layer sits beside the rest: `learn/` (three study paths, a library, a tutor skill, and a practice workspace). `learn/` depends downward only, on `knowledge/`, `frameworks/`, `templates/`, the `os/` loop files, and the Conductor's question banks, all read-only; nothing outside `learn/` depends on it existing.
+Since v0.3.0 the knowledge layer carries three sub-layers, `knowledge/roles/` (WHO each product title is), `knowledge/domains/` (WHERE the product plays, forty-seven market cards in two tables, general and financial services, the fintech card a pointer to the regulated module), and `knowledge/design/` (how a PM reads and judges experience design, never the DESIGN stage itself), and a further layer sits beside the rest: `learn/` (four study paths, a library, a tutor skill, and a practice workspace). `learn/` depends downward only, on `knowledge/`, `frameworks/`, `templates/`, the `os/` loop files, and the Conductor's question banks, all read-only; nothing outside `learn/` depends on it existing.
 
 The frameworks layer arrived in v0.5.0 to close a gap the first four versions left open: the knowledge layer said why a method exists, the templates said what artifact a stage owes, and nothing in the tree was the sheet you fill in when someone says "let's do a Kano". A method available only as an essay gets performed from memory, and its arithmetic ends up unauditable. Each worksheet states its scales and its formula, names what it feeds, and carries a skip line so the layer never teaches that every method is worth its overhead. A worksheet ships only when a template, a skill, or a gate consumes its output; otherwise the method stays a one-line entry in the knowledge index.
 
@@ -154,7 +154,7 @@ product-manager-OS/
 │       ├── README.md  What a map of content is for, the two link forms (relative markdown load-bearing, wikilinks additive), and the curation rules
 │       └── discover.md · define.md · design.md · build.md · deliver.md · operate.md  One hub note per stage: the templates it owns, the worksheets its methods come from, the skills and agents that run it, and the gate it ends at
 ├── knowledge/
-│   ├── README.md  The canonical rendered index: all 11 cards plus 18 one-line index entries (Mom Test, ICE, WSJF, HEART, 7 Powers, SCR, and the rest), each with originator and year
+│   ├── README.md  The canonical rendered index: all 11 canon cards plus 18 one-line index entries (Mom Test, ICE, WSJF, HEART, 7 Powers, SCR, and the rest), each with originator and year
 │   ├── INDEX.md  Two-line pointer stub to README.md, kept so links written before v0.4.1 resolve
 │   ├── cagan-product-teams.md  Empowered teams, outcomes over output, four risks; attribution to Marty Cagan's Inspired and Empowered; trap: the label without the accountability
 │   ├── torres-continuous-discovery.md  Weekly touchpoints and the opportunity solution tree; attribution to Teresa Torres; trap: a stale tree
@@ -189,7 +189,7 @@ product-manager-OS/
 │       ├── wealth-investing.md · capital-markets.md · insurance.md · crypto-digital-assets.md · regtech-aml-kyc.md · mobile-money-wallets.md · islamic-finance.md  Financial-services cards, continued
 │       └── fintech.md  Pointer card only: routes to modules/regulated and skills/reg-gap-check, duplicates nothing
 ├── frameworks/  64 runnable worksheets: scales, arithmetic, invented example, trap, skip line, and what each feeds
-│   ├── README.md  Rendered directory face and layer index: how frameworks differ from knowledge and templates, all 64 by group with originator and year
+│   ├── README.md  Rendered directory face and layer index: how frameworks differ from knowledge and templates, all 64 worksheets by group with originator and year
 │   ├── INDEX.md  Two-line pointer to README.md, kept so older links resolve
 │   ├── strategy/  strategy-kernel, playing-to-win, seven-powers-audit, wardley-map, swot-tows, porters-five-forces, pestle, ansoff-matrix, business-model-canvas, lean-canvas, value-proposition-canvas, market-sizing, build-buy-partner, positioning-canvas
 │   ├── discovery/  mom-test-interview-guide, jtbd-job-map, opportunity-scoring, assumption-mapping, empathy-map, kano-survey, pmf-survey, design-sprint-runbook
@@ -322,7 +322,7 @@ product-manager-OS/
 │   └── ROLE-PROMPTS.md  Six labeled, individually copyable blocks: the Conductor, then Discovery Researcher, PRD Writer, Architect, Red Teamer, Program Lead; each block names the repo templates it drives so a chat user can paste file contents on request
 ├── knowledge, templates cross-links: see section 3
 ├── skills/
-│   ├── README.md  Rendered directory face: what a skill is here (a procedure a model executes), all 28 skills with use-when and entry point, and how they load in an agent CLI versus a pasted chat session
+│   ├── README.md  Rendered directory face: what a skill is here (a procedure a model executes), all 29 skills with use-when and entry point, and how they load in an agent CLI versus a pasted chat session
 │   ├── conductor/
 │   │   ├── SKILL.md  Entry skill for the stage-gated interviewer; the full protocol lives in os/CONDUCTOR.md, the triggering in CLAUDE.md and AGENTS.md
 │   │   └── questions/
@@ -403,6 +403,7 @@ product-manager-OS/
 │   ├── path-foundations.md  Six steps plus a Gate 1 capstone on Streakline, a fictional habit tracker
 │   ├── path-transitioning.md  Seven steps plus a Gate 2 capstone on Restow, a fictional returns portal
 │   ├── path-senior.md  Six steps plus a Gate 6 capstone on Meterly, fictional API usage metering
+│   ├── path-design.md  Six steps plus a scored design review record as capstone, on Kerbline, a fictional council resident portal
 │   ├── skills/tutor/SKILL.md  Tutor mode: quizzes from the Conductor's banks read-only, one push then a model answer, 0/1/2 scoring on the evidence ladder
 │   └── products/README.md  Practice workspace convention mirroring os/PRODUCT-WORKSPACE.md; invented evidence labeled, real work stays in products/
 └── examples/

@@ -103,7 +103,7 @@ No, and most of it. The intended first hour is [os/OPERATING-LOOP.md](../os/OPER
 
 Keep `os/` and the templates you actually use, because the gates reference them by path.
 
-**The one deletion that quietly costs you** is `frameworks/`, because the methods it runs are the ones people otherwise perform from memory, and a scoring argument reconstructed from memory three weeks later is unauditable. If space is the concern, keep the four worksheets your gates actually consume and delete the other fifty-four.
+**The one deletion that quietly costs you** is `frameworks/`, because the methods it runs are the ones people otherwise perform from memory, and a scoring argument reconstructed from memory three weeks later is unauditable. If space is the concern, keep the four worksheets your gates actually consume and delete the other sixty.
 
 **Inside a document, deleting is the instruction rather than a liberty.** An empty heading reads as an unanswered question and teaches every future reader to skim, which is how the one real answer three sections below it gets missed.
 

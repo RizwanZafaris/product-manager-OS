@@ -571,6 +571,388 @@ def check_gate_count(root: Path) -> list[Issue]:
     return issues
 
 
+# The rest of the README's "What's inside" table, which nothing measured.
+# check_inventory reads the template total and check_gate_count the gate
+# count; every other figure in that table was typed by hand, and the copies of
+# them in docs/ARCHITECTURE.md drifted while the table was right: "all 28
+# skills" beside 29, "forty-four market cards" beside 47, "three study paths"
+# beside four. Each figure is now held to a count taken from the tree, by the
+# rule written for it here and by nothing else.
+#
+# The counting rules, one per figure. A path segment that starts with "." is
+# never counted, which also drops a "._" resource fork (see _markdown). A
+# figure whose source is absent makes no claim and is not checked, because
+# this file is run against fixture roots as well as this repository.
+#   templates         every blank under templates/<folder>/, as
+#                     _template_blanks counts it for check_inventory, so the
+#                     table and the catalog are held to one number.
+#   template-folders  the folders under templates/ that hold a blank.
+#   worksheets        frameworks/<group>/*.md, less README.md and INDEX.md.
+#                     The two files at the top of frameworks/ are the layer's
+#                     index and are not inside a group, so they never count.
+#   worksheet-groups  the frameworks/<group>/ directories holding a worksheet.
+#   domains           knowledge/domains/*.md, less README.md and INDEX.md.
+#                     Reconciled with knowledge/README.md, which says
+#                     "forty-seven cards" and counts the fintech pointer card
+#                     among them, so a pointer card is a card here too.
+#   domain-examples   the domain cards that some examples/domain-<id>.md or
+#                     examples/domain-<id>-<artifact>.md belongs to, matched by
+#                     the longest card id, the rule docs/COVERAGE.md prints.
+#   design            knowledge/design/*.md, less README.md and INDEX.md.
+#   canon             knowledge/*.md at the top level, less README.md and
+#                     INDEX.md: the method cards. The roles, domains and design
+#                     sub-layers are directories and are not counted here.
+#   examples          examples/*.md, less README.md: the journeys, their
+#                     supplementary sheets and the two generated runs
+#                     included. That is the rule the figure was typed by: the
+#                     table said 233 on the commit where examples/ held 233.
+#   journeys          examples/*-journey.md, the family rule that
+#                     check_examples_inventory reads.
+#   rungs             the "## N. Title" headings of knowledge/roles/ladder.md.
+#   specializations   the level-2 headings of
+#                     knowledge/roles/specializations.md, less "## Sources".
+#   role-examples     the rows of docs/COVERAGE.md's "Role ladder" and
+#                     "Specializations" tables whose Worked example cell links
+#                     a file that exists under examples/. Read from the matrix
+#                     rather than from examples/ because the matrix is where a
+#                     role's worked example is defined (a fictional company
+#                     walking the rung end to end) and no file name marks one.
+#                     A stated limit: an example nobody records there is not
+#                     seen.
+#   skills            skills/*/SKILL.md, less skills/runtime/, which holds the
+#                     runtime's own skill contracts rather than the procedure
+#                     layer the table counts.
+#   agents            agents/*-agent.md. README.md and TEAM.md are not agents.
+#   learning-paths    learn/path-*.md.
+README_FIGURES = {
+    "templates": "templates/ holds %d blank(s)",
+    "template-folders": "templates/ holds blanks in %d folder(s)",
+    "worksheets": "frameworks/ holds %d worksheet(s)",
+    "worksheet-groups": "frameworks/ holds worksheets in %d group(s)",
+    "domains": "knowledge/domains/ holds %d card(s)",
+    "domain-examples": "%d domain card(s) have a worked example under examples/",
+    "design": "knowledge/design/ holds %d card(s)",
+    "canon": "knowledge/ holds %d canon card(s)",
+    "examples": "examples/ holds %d filled example(s)",
+    "journeys": "examples/ holds %d journey(s)",
+    "rungs": "knowledge/roles/ladder.md names %d rung(s)",
+    "specializations": "knowledge/roles/specializations.md names %d "
+                       "specialization(s)",
+    "role-examples": "docs/COVERAGE.md records a worked example for %d rung(s) "
+                     "or specialization(s)",
+    "skills": "skills/ holds %d skill(s)",
+    "agents": "agents/ holds %d agent(s)",
+    "learning-paths": "learn/ holds %d learning path(s)",
+}
+# Where the figures are read. CHANGELOG.md is left out for the reason given
+# at INVENTORY_DOCS: its older figures are correct history. So are the
+# directory faces and docs/COVERAGE.md, which restate some of these figures
+# and are not read here; that is a stated limit, checked by a reader.
+README = "README.md"
+README_FIGURE_DOCS = (README, "docs/ARCHITECTURE.md", "docs/FAQ.md")
+README_TABLE = "What's inside"
+COVERAGE = "docs/COVERAGE.md"
+ROLE_TABLES = ("Role ladder", "Specializations")
+# A number as this file reads one: digits, or words up to ninety-nine, the
+# reading GATE_COUNT uses. {N} is the figure a claim states; {n} is a number
+# the claim needs for context and does not state.
+_NUMBER = r"(?:\d+|(?:%s)(?:[-\s](?:%s))?|%s)" % (
+    "|".join(_TENS), "|".join(_UNITS[1:10]), "|".join(_UNITS))
+NUMBER_TOKEN = re.compile(r"\b(?:\d+|%s)\b" % "|".join(
+    sorted(NUMBER_WORDS, key=len, reverse=True)), re.I)
+
+
+def _claim(pattern: str) -> "re.Pattern[str]":
+    return re.compile(pattern.replace("{N}", "(%s)" % _NUMBER)
+                      .replace("{n}", _NUMBER), re.I)
+
+
+# Each phrasing that states a figure, with one group for the figure. Scope
+# "anywhere" is read across all three documents, the table included, and is
+# worded as a whole-inventory claim, so a count of a named subset ("the
+# fourteen financial-services domain cards") is not read: the same stated
+# limit INVENTORY carries. Scope "table" is read only in the first cell of a
+# What's inside row, where every figure counts the whole of something, so a
+# bare "29 skills" is a claim there and nowhere else. A phrasing may span a
+# line break.
+README_CLAIMS = tuple((figure, _claim(pattern), scope) for figure, pattern, scope in (
+    ("templates", r"\b{N}\s+templates\s+in\s+{n}\s+folders\b", "anywhere"),
+    ("template-folders", r"\btemplates\s+in\s+{N}\s+folders\b", "anywhere"),
+    ("worksheets", r"\b{N}\s+(?:framework|runnable)\s+worksheets\b", "anywhere"),
+    ("worksheets", r"\ball\s+{N}\s+(?:(?:framework|runnable)\s+)?worksheets\b",
+     "anywhere"),
+    ("worksheet-groups", r"\bworksheets\s+in\s+{N}\s+groups\b", "anywhere"),
+    ("domains", r"\b{N}\s+(?:industry\s+)?domain\s+cards\b", "anywhere"),
+    ("domains", r"\b{N}\s+market\s+cards\b", "anywhere"),
+    ("domain-examples",
+     r"\bdomain\s+cards,\s+{N}\s+with\s+a\s+worked\s+example\b", "anywhere"),
+    ("design", r"\b{N}\s+design\s+cards\b", "anywhere"),
+    ("canon", r"\b{N}\s+canon(?:ical)?\s+(?:cards|methods)\b", "anywhere"),
+    ("examples", r"\b{N}\s+filled\s+examples\b", "anywhere"),
+    ("journeys", r"\b{N}\s+(?:end-to-end|example)\s+journeys\b", "anywhere"),
+    ("rungs", r"\b{N}\s+rungs\b", "anywhere"),
+    ("specializations", r"\b{N}\s+speciali[sz]ations\b", "anywhere"),
+    ("role-examples",
+     r"\bspeciali[sz]ations,\s+{N}\s+with\s+a\s+worked\s+example\b",
+     "anywhere"),
+    ("skills", r"\ball\s+{N}\s+skills\b", "anywhere"),
+    ("skills", r"\b{N}\s+skills\b", "table"),
+    ("agents", r"\ball\s+{N}\s+agents\b", "anywhere"),
+    ("agents", r"\b{N}\s+agents\b", "table"),
+    ("learning-paths", r"\b{N}\s+(?:learning|study)\s+paths\b", "anywhere"),
+    ("learning-paths", r"\blearn\s+layer\s+covers\s+exactly\s+{N}\s+paths\b",
+     "anywhere"),
+))
+# A figure stated as two parts of a whole, held to the whole: docs/FAQ.md's
+# "keep the four worksheets your gates actually consume and delete the other
+# fifty-four" made 58 while frameworks/ held 64. Both groups are read, within
+# one sentence, and their sum is the claim.
+README_SPLITS = (
+    ("worksheets", _claim(r"\b{N}\s+worksheets\b[^.]*?\bthe\s+other\s+{N}\b")),
+)
+
+
+def _counted(base: Path, pattern: str, leave_out=("README.md", "INDEX.md")):
+    """The files under base matching pattern, relative to it, or None.
+
+    None when base is not a directory, which makes no claim.
+    """
+    if not base.is_dir():
+        return None
+    found = []
+    for path in sorted(base.glob(pattern)):
+        relative = path.relative_to(base)
+        if path.is_file() and path.name not in leave_out \
+                and not any(part.startswith(".") for part in relative.parts):
+            found.append(relative.as_posix())
+    return found
+
+
+def _role_examples(root: Path):
+    """Rungs and specializations the coverage matrix gives a worked example.
+
+    A row counts when its Worked example cell links a file that exists under
+    examples/. None when the matrix, or both of its role tables, is absent.
+    """
+    path = root / COVERAGE
+    if not path.is_file():
+        return None
+    text = path.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    sections = [(number, heading) for number, level, heading in _headings(text)
+                if level == 2]
+    examples = (root / EXAMPLES_DIR).resolve()
+    found, tables = 0, 0
+    for index, (number, heading) in enumerate(sections):
+        if not heading.startswith(ROLE_TABLES):
+            continue
+        tables += 1
+        end = sections[index + 1][0] - 1 if index + 1 < len(sections) \
+            else len(lines)
+        column = None
+        for raw in lines[number:end]:
+            if not raw.lstrip().startswith("|") or _is_table_delimiter(raw):
+                continue
+            cells = _roadmap_cells(raw)
+            if column is None:
+                column = cells.index("Worked example") \
+                    if "Worked example" in cells else None
+                continue
+            if column >= len(cells):
+                continue
+            for link in LINK.finditer(cells[column]):
+                target = link.group(2).strip().split("#", 1)[0].strip("<>")
+                candidate = (path.parent / target).resolve()
+                if candidate.is_file() and examples in candidate.parents:
+                    found += 1
+                    break
+    return found if tables else None
+
+
+def _readme_counts(root: Path) -> dict:
+    """Every README_FIGURES figure, measured by the rule stated above it."""
+    counts = dict.fromkeys(README_FIGURES)
+    if (root / TEMPLATES_DIR).is_dir():
+        grouped = _template_blanks(root)
+        counts["templates"] = sum(len(names) for names in grouped.values())
+        counts["template-folders"] = len(grouped)
+    worksheets = _counted(root / "frameworks", "*/*.md")
+    if worksheets is not None:
+        counts["worksheets"] = len(worksheets)
+        counts["worksheet-groups"] = len({name.split("/")[0]
+                                          for name in worksheets})
+    domains = _counted(root / "knowledge" / "domains", "*.md")
+    examples = _counted(root / EXAMPLES_DIR, "*.md", leave_out=("README.md",))
+    if domains is not None:
+        counts["domains"] = len(domains)
+        ids = [name[:-len(".md")] for name in domains]
+        if examples is not None:
+            matched = set()
+            for name in examples:
+                if not name.startswith("domain-"):
+                    continue
+                rest = name[len("domain-"):-len(".md")]
+                candidates = [card for card in ids
+                              if rest == card or rest.startswith(card + "-")]
+                if candidates:
+                    matched.add(max(candidates, key=len))
+            counts["domain-examples"] = len(matched)
+    for figure, base, pattern in (
+            ("design", root / "knowledge" / "design", "*.md"),
+            ("canon", root / "knowledge", "*.md"),
+            ("agents", root / "agents", "*-agent.md"),
+            ("learning-paths", root / "learn", "path-*.md")):
+        names = _counted(base, pattern)
+        if names is not None:
+            counts[figure] = len(names)
+    if examples is not None:
+        counts["examples"] = len(examples)
+        counts["journeys"] = sum(1 for name in examples
+                                 if name.endswith(JOURNEY))
+    skills = _counted(root / "skills", "*/SKILL.md")
+    if skills is not None:
+        counts["skills"] = sum(1 for name in skills
+                               if name.split("/")[0] != "runtime")
+    roles = root / "knowledge" / "roles"
+    for figure, name, keep in (
+            ("rungs", "ladder.md",
+             lambda heading: re.match(r"\d+\.\s", heading)),
+            ("specializations", "specializations.md",
+             lambda heading: heading.strip() != "Sources")):
+        path = roles / name
+        if path.is_file():
+            counts[figure] = sum(
+                1 for _number, level, heading
+                in _headings(path.read_text(encoding="utf-8"))
+                if level == 2 and keep(heading))
+    counts["role-examples"] = _role_examples(root)
+    return counts
+
+
+def _inventory_cells(text: str):
+    """(offset, cell) for the first cell of each What's inside body row.
+
+    The offset is where the cell starts in text, so a claim read in a cell and
+    the same claim read across the whole document are recognised as one. None
+    when the document has no such section.
+    """
+    offset, inside, found, previous = 0, False, None, None
+    for raw in text.splitlines(keepends=True):
+        heading = HEADING.match(raw.rstrip("\n"))
+        if heading and len(heading.group(1)) <= 2:
+            inside = len(heading.group(1)) == 2 and \
+                heading.group(2).strip() == README_TABLE
+            if inside:
+                found = []
+        elif inside and raw.lstrip().startswith("|"):
+            if _is_table_delimiter(raw):
+                # The row above a delimiter is the header, not a figure.
+                if found and previous is not None and found[-1][0] == previous:
+                    found.pop()
+            else:
+                start = offset + raw.index("|") + 1
+                cell = raw[start - offset:].split("|", 1)[0]
+                found.append((start, cell))
+                previous = start
+        offset += len(raw)
+    return found
+
+
+def check_readme_inventory(root: Path) -> list[Issue]:
+    """The README's What's inside figures, against counts taken from the tree.
+
+    Each figure in README_FIGURES is measured by the rule written above it and
+    compared with every claim of it that README_CLAIMS and README_SPLITS read,
+    in README.md, docs/ARCHITECTURE.md and docs/FAQ.md. Three further readings
+    keep the table from passing by saying less: a number in the first cell of
+    a table row that no claim accounts for is reported, because a count the
+    table adds is a count somebody has to measure; every figure the tree
+    measures has to be stated in the table at least once, so deleting a stale
+    figure is not a way to make it true; and a README.md without the table is
+    reported.
+
+    What this does not read: a count of a named subset, a figure in any other
+    document, and a number written in words above ninety-nine. The template
+    total in the catalog's own prose and the "all N blanks" claim are
+    check_inventory's, and are read there.
+    """
+    issues: list[Issue] = []
+    measured = {figure: count for figure, count in _readme_counts(root).items()
+                if count is not None}
+    if not measured:
+        return issues
+    for name in README_FIGURE_DOCS:
+        path = root / name
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        claims, in_table = {}, set()
+
+        def note(figure, start, said, stated):
+            claims.setdefault((figure, start), (" ".join(said.split()), stated))
+
+        cells = _inventory_cells(text) if name == README else []
+        if name == README and cells is None:
+            issues.append(Issue(
+                "error", "readme-inventory", name, 1,
+                "README.md has no \"## %s\" table, so no figure the tree "
+                "measures is stated where a reader looks for it" % README_TABLE))
+        for offset, cell in cells or ():
+            spans = []
+            for figure, pattern, _scope in README_CLAIMS:
+                for match in pattern.finditer(cell):
+                    note(figure, offset + match.start(1), match.group(0),
+                         _stated_count(match.group(1)))
+                    in_table.add(figure)
+                    spans.append(match.span(1))
+            for token in NUMBER_TOKEN.finditer(cell):
+                if not any(low <= token.start() and token.end() <= high
+                           for low, high in spans):
+                    issues.append(Issue(
+                        "error", "readme-inventory", name,
+                        _line(text, offset + token.start()),
+                        "the %s table states %r in %r, and no counting rule "
+                        "in tools/docs_contract.py measures it. Add one to "
+                        "README_FIGURES and README_CLAIMS, or take the figure "
+                        "out" % (README_TABLE, token.group(0),
+                                 " ".join(cell.split()))))
+        for figure, pattern, scope in README_CLAIMS:
+            if scope != "anywhere":
+                continue
+            for match in pattern.finditer(text):
+                note(figure, match.start(1), match.group(0),
+                     _stated_count(match.group(1)))
+        for (figure, start), (said, stated) in sorted(
+                claims.items(), key=lambda item: (item[0][1], item[0][0])):
+            if figure in measured and stated != measured[figure]:
+                issues.append(Issue(
+                    "error", "readme-inventory", name, _line(text, start),
+                    "this says %r and %s"
+                    % (said, README_FIGURES[figure] % measured[figure])))
+        for figure, pattern in README_SPLITS:
+            if figure not in measured:
+                continue
+            for match in pattern.finditer(text):
+                stated = sum(_stated_count(group) for group in match.groups())
+                if stated != measured[figure]:
+                    issues.append(Issue(
+                        "error", "readme-inventory", name,
+                        _line(text, match.start()),
+                        "this says %r, which makes %d, and %s"
+                        % (" ".join(match.group(0).split()), stated,
+                           README_FIGURES[figure] % measured[figure])))
+        if name == README and cells is not None:
+            for figure in sorted(set(measured) - in_table):
+                issues.append(Issue(
+                    "error", "readme-inventory", name, 1,
+                    "the %s table states no %r figure and %s, so that count "
+                    "is measured by nobody. State it in the table, or remove "
+                    "%r from README_FIGURES in the same change"
+                    % (README_TABLE, figure,
+                       README_FIGURES[figure] % measured[figure], figure)))
+    return issues
+
+
 def _markdown(root: Path, base: Path):
     """Every markdown file under base, in a stable order, skipping the hidden.
 
@@ -2281,6 +2663,7 @@ def check(root: Path) -> list[Issue]:
     issues.extend(check_declared_paths(root))
     issues.extend(check_inventory(root))
     issues.extend(check_gate_count(root))
+    issues.extend(check_readme_inventory(root))
     issues.extend(check_examples_inventory(root))
     issues.extend(check_readiness_claims(root))
     issues.extend(check_roadmaps(root))

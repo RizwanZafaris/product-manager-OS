@@ -63,6 +63,8 @@ from tools.docs_contract import (check as check_docs,  # noqa: E402
                                  check_inventory,
                                  check_pricing_contract,
                                  check_readiness_claims,
+                                 check_readme_inventory,
+                                 _readme_counts,
                                  check_script_count,
                                  evidence_note_issues,
                                  main as docs_contract_main,
@@ -1905,6 +1907,344 @@ class TemplateInventoryGateTests(unittest.TestCase):
             root = copy_tree(tmp)
             shutil.rmtree(root / "templates")
             self.assertEqual([], self.findings(root))
+
+
+README_TABLE_FIXTURE = """# Fixture
+
+## What's inside
+
+| Count, as of 2026 | What | Where to start |
+|---|---|---|
+| 3 templates in 2 folders | Blanks | templates/ |
+| 3 framework worksheets in 2 groups | Worksheets | frameworks/ |
+| 3 industry domain cards, 3 with a worked example | Domains | knowledge/domains/ |
+| 1 design cards and 2 canon cards | Cards | knowledge/ |
+| 6 filled examples including 1 end-to-end journeys | Examples | examples/ |
+| Role ladder: 2 rungs, 3 specializations, 1 with a worked example yet | Roles | knowledge/roles/ |
+| 2 skills, 1 agents, 2 learning paths | Procedures | skills/ |
+
+Every count above is checked against this tree.
+
+## Next
+
+The learn layer covers exactly two paths.
+"""
+
+COVERAGE_FIXTURE = """# Coverage
+
+## Role ladder (2 rungs)
+
+| Role rung | Reference | Worked example |
+|---|---|---|
+| APM | yes | none recorded |
+| PM | yes | [missing.md](../examples/missing.md) |
+
+## Specializations (3)
+
+| Specialization | Reference | Worked example |
+|---|---|---|
+| Core PM | yes | none recorded |
+| Growth PM | yes | [role-growth-pm.md](../examples/role-growth-pm.md) |
+| AI PM | yes | none recorded |
+"""
+
+
+def readme_inventory_tree(tmp):
+    """A small tree, built from nothing, whose README states its own counts.
+
+    Every rule in README_FIGURES has a file here that the rule must leave out
+    (an index, a README, a "._" fork, skills/runtime/, a "## Sources"
+    heading, a coverage row linking a file that does not exist), so a rule
+    that stops leaving it out moves a count and fails a test. Two domain
+    examples carry the shorter card id "saas"; only one belongs to it, and
+    the other belongs to "saas-b2b", so matching by the shorter id loses a
+    card.
+    """
+    root = Path(tmp) / "tree"
+    files = {
+        "templates/README.md": "# Catalog\n",
+        "templates/discovery/a.md": "# A\n",
+        "templates/discovery/b.md": "# B\n",
+        "templates/definition/c.md": "# C\n",
+        "frameworks/README.md": "# Index\n",
+        "frameworks/INDEX.md": "# Pointer\n",
+        "frameworks/strategy/README.md": "# Group face\n",
+        "frameworks/strategy/kernel.md": "# Kernel\n",
+        "frameworks/strategy/swot.md": "# SWOT\n",
+        "frameworks/systems/iceberg.md": "# Iceberg\n",
+        "frameworks/systems/._iceberg.md": "fork\n",
+        "knowledge/README.md": "# Knowledge\n",
+        "knowledge/INDEX.md": "# Pointer\n",
+        "knowledge/kano.md": "# Kano\n",
+        "knowledge/okrs.md": "# OKRs\n",
+        "knowledge/domains/README.md": "# Domains\n",
+        "knowledge/domains/INDEX.md": "# Pointer\n",
+        "knowledge/domains/ecommerce.md": "# Ecommerce\n",
+        "knowledge/domains/saas.md": "# SaaS\n",
+        "knowledge/domains/saas-b2b.md": "# SaaS B2B\n",
+        "knowledge/design/README.md": "# Design\n",
+        "knowledge/design/heuristics.md": "# Heuristics\n",
+        "knowledge/roles/ladder.md":
+            "# Ladder\n\n## 1. APM\n\n## 2. PM\n\n## Sources\n",
+        "knowledge/roles/specializations.md":
+            "# Specializations\n\n## Core PM\n\n## Growth PM\n\n## AI PM\n\n"
+            "```\n## Not a heading\n```\n\n## Sources\n",
+        "docs/COVERAGE.md": COVERAGE_FIXTURE,
+        "examples/README.md": "# Examples\n",
+        "examples/alpha-journey.md": "# Alpha journey\n",
+        "examples/alpha-prd.md": "# Alpha PRD\n",
+        "examples/domain-saas-b2b-nfr.md": "# NFR\n",
+        "examples/domain-ecommerce.md": "# Ecommerce\n",
+        "examples/domain-saas-pricing.md": "# Pricing\n",
+        "examples/role-growth-pm.md": "# Growth\n",
+        "examples/._alpha-prd.md": "fork\n",
+        "skills/README.md": "# Skills\n",
+        "skills/write-prd/SKILL.md": "# Write PRD\n",
+        "skills/conductor/SKILL.md": "# Conductor\n",
+        "skills/runtime/SKILL.md": "# Runtime face\n",
+        "skills/runtime/product-definition/SKILL.md": "# Runtime skill\n",
+        "agents/README.md": "# Agents\n",
+        "agents/TEAM.md": "# Team\n",
+        "agents/research-agent.md": "# Research\n",
+        "learn/README.md": "# Learn\n",
+        "learn/library.md": "# Library\n",
+        "learn/path-foundations.md": "# Foundations\n",
+        "learn/path-senior.md": "# Senior\n",
+        "README.md": README_TABLE_FIXTURE,
+        "docs/ARCHITECTURE.md":
+            "# Architecture\n\n`knowledge/domains/` (three market cards), and "
+            "`learn/` (two study paths).\n\n"
+            "skills/README.md lists all 2 skills.\n",
+        "docs/FAQ.md":
+            "# FAQ\n\nKeep the two worksheets your gates consume and delete "
+            "the other one.\n",
+    }
+    for name, text in files.items():
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+    return root
+
+
+class ReadmeInventoryGateTests(unittest.TestCase):
+    """The README's What's inside table, counted against the tree.
+
+    Only the template total and the gate count were ever measured. The other
+    figures in that table were typed by hand, and their copies in
+    docs/ARCHITECTURE.md went stale while the table stayed right: "all 28
+    skills", "forty-four market cards" and "three study paths" survived every
+    gate, and docs/FAQ.md's "the four ... and the other fifty-four" added up
+    to six worksheets fewer than the tree held. Each test below fails if the
+    check stops measuring, stops reading, or can be satisfied by saying less.
+    """
+
+    MEASURED = {"templates": 3, "template-folders": 2, "worksheets": 3,
+                "worksheet-groups": 2, "domains": 3, "domain-examples": 3,
+                "design": 1, "canon": 2, "examples": 6, "journeys": 1,
+                "rungs": 2, "specializations": 3, "role-examples": 1,
+                "skills": 2, "agents": 1, "learning-paths": 2}
+
+    def findings(self, root):
+        return [(item.path, item.line, item.message)
+                for item in check_readme_inventory(root)]
+
+    def messages(self, root):
+        return [message for _path, _line, message in self.findings(root)]
+
+    def rewrite(self, path, old, new):
+        text = path.read_text(encoding="utf-8")
+        self.assertEqual(1, text.count(old), old)
+        path.write_text(text.replace(old, new), encoding="utf-8")
+
+    def line_of(self, path, needle):
+        lines = path.read_text(encoding="utf-8").splitlines()
+        return next(number for number, raw in enumerate(lines, 1)
+                    if needle in raw)
+
+    def test_each_counting_rule_leaves_out_what_it_says_it_leaves_out(self):
+        """The rules, pinned one figure at a time: an index or README is not
+        a card, a "._" fork is not a file, skills/runtime/ is not the skill
+        layer, "## Sources" is not a specialization, a fenced heading is not
+        a heading, a domain example belongs to the longest card id it
+        carries, and a coverage row linking a missing file is not a worked
+        example."""
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(self.MEASURED,
+                             _readme_counts(readme_inventory_tree(tmp)))
+
+    def test_a_tree_whose_documents_agree_with_it_reports_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual([], self.findings(readme_inventory_tree(tmp)))
+
+    def test_the_tree_as_it_stands_states_its_own_figures(self):
+        self.assertEqual([], self.findings(REPO))
+        self.assertEqual([], [item for item in check_docs(REPO)
+                              if item.code == "readme-inventory"])
+
+    def test_a_skill_added_makes_every_stale_copy_of_the_figure_fail(self):
+        """The direction the defect travelled: the tree grows, and the
+        figures that were right yesterday are the ones that go wrong, in the
+        table and in every document that restates it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = readme_inventory_tree(tmp)
+            (root / "skills" / "story-writer").mkdir()
+            (root / "skills" / "story-writer" / "SKILL.md").write_text(
+                "# Story writer\n", encoding="utf-8")
+            self.assertEqual(
+                sorted([
+                    ("README.md", self.line_of(root / "README.md", "2 skills"),
+                     "this says '2 skills' and skills/ holds 3 skill(s)"),
+                    ("docs/ARCHITECTURE.md",
+                     self.line_of(root / "docs/ARCHITECTURE.md", "all 2 skills"),
+                     "this says 'all 2 skills' and skills/ holds 3 skill(s)")]),
+                sorted(self.findings(root)))
+
+    def test_a_figure_written_in_words_is_read(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = readme_inventory_tree(tmp)
+            self.rewrite(root / "docs" / "ARCHITECTURE.md",
+                         "three market cards", "forty-four market cards")
+            self.assertIn("this says 'forty-four market cards' and "
+                          "knowledge/domains/ holds 3 card(s)",
+                          self.messages(root))
+
+    def test_a_claim_broken_across_a_line_is_still_read(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = readme_inventory_tree(tmp)
+            self.rewrite(root / "docs" / "ARCHITECTURE.md",
+                         "(two study paths)", "(three study\npaths)")
+            self.assertIn("this says 'three study paths' and learn/ holds 2 "
+                          "learning path(s)", self.messages(root))
+
+    def test_a_figure_stated_as_two_parts_is_held_to_the_whole(self):
+        """docs/FAQ.md's shape: neither part names the total, and both parts
+        were right on the day the total was 58."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = readme_inventory_tree(tmp)
+            self.rewrite(root / "docs" / "FAQ.md", "the other one",
+                         "the other two")
+            self.assertIn("this says 'two worksheets your gates consume and "
+                          "delete the other two', which makes 4, and "
+                          "frameworks/ holds 3 worksheet(s)",
+                          self.messages(root))
+
+    def test_each_figure_in_the_table_is_read_against_its_own_rule(self):
+        """One stale digit per row, each reported as the figure it is, so a
+        pattern that reads the wrong group of a row cannot pass."""
+        seeds = (
+            ("3 templates in 2 folders", "3 templates in 4 folders",
+             "this says 'templates in 4 folders' and templates/ holds blanks "
+             "in 2 folder(s)"),
+            ("3 framework worksheets in 2 groups",
+             "3 framework worksheets in 5 groups",
+             "this says 'worksheets in 5 groups' and frameworks/ holds "
+             "worksheets in 2 group(s)"),
+            ("3 industry domain cards, 3 with", "3 industry domain cards, 2 with",
+             "this says 'domain cards, 2 with a worked example' and 3 domain "
+             "card(s) have a worked example under examples/"),
+            ("1 design cards", "4 design cards",
+             "this says '4 design cards' and knowledge/design/ holds 1 card(s)"),
+            ("2 canon cards", "9 canon cards",
+             "this says '9 canon cards' and knowledge/ holds 2 canon card(s)"),
+            ("6 filled examples", "7 filled examples",
+             "this says '7 filled examples' and examples/ holds 6 filled "
+             "example(s)"),
+            ("1 end-to-end journeys", "2 end-to-end journeys",
+             "this says '2 end-to-end journeys' and examples/ holds 1 "
+             "journey(s)"),
+            ("2 rungs", "8 rungs",
+             "this says '8 rungs' and knowledge/roles/ladder.md names 2 "
+             "rung(s)"),
+            ("3 specializations, 1 with", "3 specializations, 0 with",
+             "this says 'specializations, 0 with a worked example' and "
+             "docs/COVERAGE.md records a worked example for 1 rung(s) or "
+             "specialization(s)"),
+            ("1 agents", "12 agents",
+             "this says '12 agents' and agents/ holds 1 agent(s)"),
+        )
+        for old, new, expected in seeds:
+            with self.subTest(seed=new), tempfile.TemporaryDirectory() as tmp:
+                root = readme_inventory_tree(tmp)
+                self.rewrite(root / "README.md", old, new)
+                self.assertEqual([expected], self.messages(root))
+
+    def test_a_number_no_rule_measures_is_reported(self):
+        """The table is where "every count above is checked" is promised,
+        so a count added to it without a rule is the defect, not a gap."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = readme_inventory_tree(tmp)
+            self.rewrite(root / "README.md",
+                         "| 2 skills, 1 agents, 2 learning paths |",
+                         "| 2 skills, 1 agents, 2 learning paths |\n"
+                         "| 7 hooks | Automation | hooks/ |")
+            messages = self.messages(root)
+            self.assertEqual(1, len(messages), messages)
+            self.assertTrue(messages[0].startswith(
+                "the What's inside table states '7' in '7 hooks', and no "
+                "counting rule in tools/docs_contract.py measures it"),
+                messages)
+
+    def test_the_header_row_is_not_read_as_a_figure(self):
+        """The fixture's header carries a year. Reading it would report it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = readme_inventory_tree(tmp)
+            self.assertIn("2026", (root / "README.md").read_text(
+                encoding="utf-8"))
+            self.assertEqual([], self.findings(root))
+
+    def test_dropping_a_figure_from_the_table_is_not_a_way_to_pass(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = readme_inventory_tree(tmp)
+            self.rewrite(root / "README.md", "2 skills, 1 agents, ",
+                         "2 skills, ")
+            self.assertEqual(
+                ["the What's inside table states no 'agents' figure and "
+                 "agents/ holds 1 agent(s), so that count is measured by "
+                 "nobody. State it in the table, or remove 'agents' from "
+                 "README_FIGURES in the same change"], self.messages(root))
+
+    def test_a_readme_without_the_table_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = readme_inventory_tree(tmp)
+            self.rewrite(root / "README.md", "## What's inside",
+                         "## Contents")
+            self.assertEqual([("README.md", 1, "README.md has no \"## What's "
+                               "inside\" table, so no figure the tree "
+                               "measures is stated where a reader looks "
+                               "for it")], self.findings(root))
+
+    def test_a_coverage_row_linking_an_example_counts_as_a_role_example(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = readme_inventory_tree(tmp)
+            (root / "examples" / "missing.md").write_text(
+                "# Now present\n", encoding="utf-8")
+            self.assertEqual(2, _readme_counts(root)["role-examples"])
+            self.assertIn("this says 'specializations, 1 with a worked "
+                          "example' and docs/COVERAGE.md records a worked "
+                          "example for 2 rung(s) or specialization(s)",
+                          self.messages(root))
+
+    def test_a_tree_with_nothing_to_count_makes_no_claim(self):
+        """This gate also runs against fixture roots that carry none of these
+        directories. Silence there is the correct reading."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "README.md").write_text("# Nothing\n", encoding="utf-8")
+            self.assertEqual([], self.findings(root))
+
+    def test_the_gate_itself_fails_on_a_stale_figure(self):
+        """check_readme_inventory passing proves nothing until the gate runs
+        it: the stale figures it was written for passed for as long as no
+        reading of them was wired into check()."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = readme_inventory_tree(tmp)
+            codes = {item.code for item in check_docs(root)}
+            self.assertNotIn("readme-inventory", codes)
+            self.rewrite(root / "docs" / "ARCHITECTURE.md", "two study paths",
+                         "three study paths")
+            self.assertIn("readme-inventory", {item.code for item in
+                                               check_docs(root)
+                                               if item.severity == "error"})
 
 
 class ExamplesInventoryGateTests(unittest.TestCase):
