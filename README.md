@@ -219,15 +219,15 @@ verification: {"errors": [], "ok": true}
 
 ## What's inside
 
-[templates/README.md](templates/README.md) catalogs all 108 blanks by stage; every other count below is computed the same way, straight from the tree.
+[templates/README.md](templates/README.md) catalogs all 122 blanks by stage; every other count below is computed the same way, straight from the tree.
 
 | Count | What | Where to start |
 |---|---|---|
-| 108 templates in 8 folders | Blanks for every artifact a product needs | [templates/](templates/README.md) |
-| 64 framework worksheets in 9 groups | Runnable methods with scales, formulas, and arithmetic | [frameworks/](frameworks/README.md) |
+| 122 templates in 8 folders | Blanks for every artifact a product needs | [templates/](templates/README.md) |
+| 71 framework worksheets in 9 groups | Runnable methods with scales, formulas, and arithmetic | [frameworks/](frameworks/README.md) |
 | 47 industry domain cards, 41 with a worked example | What a specific market changes about the loop | [knowledge/domains/](knowledge/domains/README.md), coverage in [docs/COVERAGE.md](docs/COVERAGE.md) |
 | 15 design cards and 11 canon cards | Named attribution, licensed sources, and honest limits | [knowledge/](knowledge/README.md), [knowledge/design/](knowledge/design/README.md), [docs/REFERENCES-DESIGN.md](docs/REFERENCES-DESIGN.md) |
-| 233 filled examples including 4 end-to-end journeys | See it filled in before you fill your own | [examples/README.md](examples/README.md) |
+| 247 filled examples including 4 end-to-end journeys | See it filled in before you fill your own | [examples/README.md](examples/README.md) |
 | Role ladder: 8 rungs, 7 specializations, 0 with a worked example yet | Who each title is, what they own, and how they fail | [knowledge/roles/ladder.md](knowledge/roles/ladder.md), [knowledge/roles/specializations.md](knowledge/roles/specializations.md) |
 | 29 skills, 12 agents, 4 learning paths | AI runtime procedures, or ignore them and use pencil | [skills/](skills/README.md), [agents/](agents/README.md), [learn/](learn/README.md) |
 

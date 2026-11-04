@@ -188,8 +188,8 @@ product-manager-OS/
 │       ├── core-banking.md · transaction-banking.md · remittances.md · payments-acquiring.md · card-issuing.md · lending-credit.md · embedded-finance-baas.md  Financial-services cards, the second table in README.md, where the licence holder has a veto and every rail has its own rulebook
 │       ├── wealth-investing.md · capital-markets.md · insurance.md · crypto-digital-assets.md · regtech-aml-kyc.md · mobile-money-wallets.md · islamic-finance.md  Financial-services cards, continued
 │       └── fintech.md  Pointer card only: routes to modules/regulated and skills/reg-gap-check, duplicates nothing
-├── frameworks/  64 runnable worksheets: scales, arithmetic, invented example, trap, skip line, and what each feeds
-│   ├── README.md  Rendered directory face and layer index: how frameworks differ from knowledge and templates, all 64 by group with originator and year
+├── frameworks/  71 runnable worksheets: scales, arithmetic, invented example, trap, skip line, and what each feeds
+│   ├── README.md  Rendered directory face and layer index: how frameworks differ from knowledge and templates, all 71 by group with originator and year
 │   ├── INDEX.md  Two-line pointer to README.md, kept so older links resolve
 │   ├── strategy/  strategy-kernel, playing-to-win, seven-powers-audit, wardley-map, swot-tows, porters-five-forces, pestle, ansoff-matrix, business-model-canvas, lean-canvas, value-proposition-canvas, market-sizing, build-buy-partner, positioning-canvas
 │   ├── discovery/  mom-test-interview-guide, jtbd-job-map, opportunity-scoring, assumption-mapping, empathy-map, kano-survey, pmf-survey, design-sprint-runbook
@@ -201,7 +201,7 @@ product-manager-OS/
 │   ├── assessment/  Scores the organization the plan lands in rather than the plan: product-operating-model-assessment, team-topologies-assessment, tech-debt-assessment, westrum-culture-typology
 │   └── design/  Experience-design worksheets, not the DESIGN stage: heuristic-evaluation, content-microcopy-audit, design-critique, choice-symmetry-audit, design-system-audit, ux-scorecard
 ├── templates/
-│   ├── README.md  Rendered directory face: the full catalog, one table per stage directory, all 108 templates with what each is and when to reach for it; carries the three-line header the gate demands of every file here
+│   ├── README.md  Rendered directory face: the full catalog, one table per stage directory, all 122 templates with what each is and when to reach for it; carries the three-line header the gate demands of every file here
 │   ├── discovery/
 │   │   ├── discovery-document.md  Trigger, target user, pain, hypothesis, success signal, go or no-go
 │   │   ├── problem-framing.md  One problem statement, evidence, cost of inaction, owner
