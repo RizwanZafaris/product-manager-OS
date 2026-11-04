@@ -20,6 +20,10 @@ GENERATED FILE. Do not hand-edit. Written by `harness/adapters/claude-code/gener
 
 The tier to model mapping lives in `routing/omniroute.config.json` and nowhere else. Read it there rather than assuming one here.
 
+## Where these paths are
+
+Every path in this file is written from the Product Manager OS root. If the working directory contains `os/STAGE-GATES.md`, the working directory is that root. Otherwise this plugin was installed from its marketplace, and the root is `${CLAUDE_PLUGIN_ROOT}`: read every file named here from there, and write the product's own artifacts under `products/<name>/` in the working directory, never under the plugin root.
+
 ## Note from the manifest
 
 It opens DEFINE after Gate 1; the vision comes first and is approved by the business sponsor, then the strategy, approved by the product owner and the business sponsor, both at Gate 2 per os/STAGE-GATES.md; the filled copies stay in the workspace's planning/ folder.

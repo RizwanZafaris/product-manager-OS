@@ -20,6 +20,10 @@ GENERATED FILE. Do not hand-edit. Written by `harness/adapters/claude-code/gener
 
 The tier to model mapping lives in `routing/omniroute.config.json` and nowhere else. Read it there rather than assuming one here.
 
+## Where these paths are
+
+Every path in this file is written from the Product Manager OS root. If the working directory contains `os/STAGE-GATES.md`, the working directory is that root. Otherwise this plugin was installed from its marketplace, and the root is `${CLAUDE_PLUGIN_ROOT}`: read every file named here from there, and write the product's own artifacts under `products/<name>/` in the working directory, never under the plugin root.
+
 ## Note from the manifest
 
 The overlay hooks the loop at Gate 2 and again at Gate 5; the gate named here is the earlier one, because a precondition constrains the solution space and is cheapest to find before requirements freeze. Files under modules/regulated/ are quoted verbatim and never edited here; the sha256 pins in lint.py enforce that.

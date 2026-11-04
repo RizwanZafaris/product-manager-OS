@@ -3833,6 +3833,47 @@ class GeneratedCommandTests(unittest.TestCase):
         self.assertNotIn("This route writes no template", body,
                          "an artifact route was told it writes nothing")
 
+    def test_every_command_says_which_root_its_paths_are_written_from(self):
+        # A marketplace install copies the plugin into Claude Code's cache, so
+        # a repo-relative path means nothing in the user's own project unless
+        # the command names the root it is written from.
+        for route in self.tasks:
+            body = self._render(route)
+            self.assertIn("## Where these paths are", body, route)
+            self.assertIn("`${CLAUDE_PLUGIN_ROOT}`", body, route)
+            self.assertIn("`os/STAGE-GATES.md`", body, route)
+
+    def test_the_marketplace_roots_one_plugin_at_the_repository(self):
+        data, tasks = self.generate.load_manifest()
+        market = json.loads(self.generate.render_marketplace_json(tasks))
+        plugin = json.loads(self.generate.render_root_plugin_json(tasks))
+        self.assertEqual(len(market["plugins"]), 1)
+        entry = market["plugins"][0]
+        self.assertEqual(entry["source"], "./",
+                         "a plugin rooted below the repository arrives in the "
+                         "cache without the skills and templates it names")
+        self.assertEqual(entry["name"], plugin["name"])
+        self.assertEqual(entry["version"], plugin["version"])
+        self.assertEqual(plugin["commands"],
+                         "./harness/adapters/claude-code/commands")
+        import tomllib
+        with (REPO / "pyproject.toml").open("rb") as stream:
+            release = tomllib.load(stream)["project"]["version"]
+        self.assertEqual(plugin["version"], release)
+
+    def test_agent_pointers_are_roles_only(self):
+        names = [p.name for p in self.generate.role_files()]
+        for not_a_role in ("README.md", "TEAM.md", "hermes-agent.md"):
+            self.assertNotIn(not_a_role, names)
+        self.assertIn("research-agent.md", names)
+        _data, tasks = self.generate.load_manifest()
+        plugin = json.loads(self.generate.render_root_plugin_json(tasks))
+        self.assertEqual(len(plugin["agents"]), len(names))
+        self.assertTrue(all(a.endswith(".md") for a in plugin["agents"]))
+        self.assertNotIn("agents", plugin["description"],
+                         "no agent count is claimed while explicit agent "
+                         "lists do not load")
+
     def test_a_stage_less_route_with_no_gate_note_still_denies_a_gate(self):
         task = self.tasks["explain-role-scope"]
         self.assertIsNone(task["stage"])

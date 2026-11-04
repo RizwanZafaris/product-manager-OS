@@ -20,6 +20,10 @@ GENERATED FILE. Do not hand-edit. Written by `harness/adapters/claude-code/gener
 
 The tier to model mapping lives in `routing/omniroute.config.json` and nowhere else. Read it there rather than assuming one here.
 
+## Where these paths are
+
+Every path in this file is written from the Product Manager OS root. If the working directory contains `os/STAGE-GATES.md`, the working directory is that root. Otherwise this plugin was installed from its marketplace, and the root is `${CLAUDE_PLUGIN_ROOT}`: read every file named here from there, and write the product's own artifacts under `products/<name>/` in the working directory, never under the plugin root.
+
 ## Note from the manifest
 
 The catch-all, and the only entry whose stage is decided at run time: find the stage in os/OPERATING-LOOP.md, fill that stage's template, take it to that stage's gate. It fills a template and files it, so its kind is artifact; the template it fills is not knowable here, so templates is empty and a run of this route names one with --template. templates/README.md is under reads because it is the catalog the stage template is found in, never a document this route writes into. Offer the Conductor once first, per load order step 0 in AGENTS.md. An unroutable request is queued and this table is amended, never guessed at.

@@ -1,0 +1,47 @@
+name: Something is broken
+description: A command, a check, a link, a template or the plugin does not do what its documentation says.
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Which path were you on?
+      options:
+        - Plain Markdown, no model
+        - The pmos CLI
+        - The Claude Code plugin (marketplace install)
+        - The Claude Code plugin (--plugin-dir from a clone)
+        - The desktop MCP adapter
+        - A chat model with system/BOOT-PROMPT.md
+        - The quality gate (tools/ci_gate.py)
+    validations:
+      required: true
+  - type: textarea
+    id: ran
+    attributes:
+      label: What you ran
+      description: The exact command or slash command, and where you ran it from.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What the documentation says should happen
+      description: Link the file and line that makes the promise.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead
+      description: Paste the output. Remove anything private first.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: "Python version, OS, and for the plugin the output of claude --version."
+      placeholder: "Python 3.13, Ubuntu 24.04, Claude Code 2.1.318"

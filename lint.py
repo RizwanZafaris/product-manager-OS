@@ -127,6 +127,7 @@ import posixpath
 import re
 import sys
 import urllib.parse
+import zlib
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parent
@@ -913,6 +914,57 @@ def wikilink_lands(target, tree, aliases, basenames):
 # leading dot: the dot says nothing about whether Git tracks the directory.
 SCRATCH_DIRS = {".git", "__pycache__", ".venv", "node_modules", ".pytest_cache"}
 
+# Raster images the gate can read. The tree was text only, and the ENCODING
+# check fails any file it cannot decode, which is right: a file the gate cannot
+# read is a file it has not cleared. A PNG is not text, but it is a format the
+# gate can read completely, so the few paths below are read as PNG instead of
+# skipped: the signature, every chunk's length and CRC, IHDR first, IEND last
+# and nothing after it, and only the chunk types that carry pixels. A text or
+# metadata chunk (tEXt, zTXt, iTXt, eXIf and the rest) is refused, because the
+# secret gate reads text and would never look inside one. The paths are the
+# README hero and social preview under docs/assets/, rendered from
+# docs/assets/brand.html, and the Claude Code plugin icon. Any other file that
+# does not decode as UTF-8 still fails ENCODING.
+PNG_PATHS = re.compile(r"^(?:docs/assets/[a-z0-9-]+\.png|\.claude-plugin/icon\.png)$")
+PNG_MAX_BYTES = 1024 * 1024
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+PNG_CHUNKS = frozenset({b"IHDR", b"PLTE", b"IDAT", b"IEND", b"tRNS", b"sRGB",
+                        b"gAMA", b"pHYs"})
+
+
+def png_problem(data):
+    """None when data is a well-formed PNG of pixel chunks only, else why not."""
+    if len(data) > PNG_MAX_BYTES:
+        return "is %d bytes, over the %d-byte cap for an image" % (
+            len(data), PNG_MAX_BYTES)
+    if data[:8] != PNG_SIGNATURE:
+        return "does not start with the PNG signature"
+    pos, first, ended = 8, True, False
+    while pos < len(data):
+        if ended:
+            return "carries bytes after its IEND chunk"
+        if pos + 12 > len(data):
+            return "ends inside a chunk header"
+        length = int.from_bytes(data[pos:pos + 4], "big")
+        kind = data[pos + 4:pos + 8]
+        name = kind.decode("latin-1")
+        end = pos + 12 + length
+        if end > len(data):
+            return "has a %s chunk that runs past the end of the file" % name
+        if zlib.crc32(data[pos + 4:pos + 8 + length]) != \
+                int.from_bytes(data[pos + 8 + length:end], "big"):
+            return "has a %s chunk whose CRC does not match its bytes" % name
+        if first and kind != b"IHDR":
+            return "does not open with an IHDR chunk"
+        if kind not in PNG_CHUNKS:
+            return ("carries a %s chunk; only pixel chunks are allowed, so "
+                    "nothing in the file sits where the secret gate cannot "
+                    "read it" % name)
+        first, ended, pos = False, kind == b"IEND", end
+    if not ended:
+        return "has no IEND chunk"
+    return None
+
 
 def tracked_files(root):
     """Every file in the tree except VCS internals, scratch, and workspaces.
@@ -1147,6 +1199,12 @@ def os_check(root, pins=None):
 
     for path in all_files:
         rp = rel[path]
+        if PNG_PATHS.match(rp):
+            problem = png_problem(path.read_bytes())
+            if problem:
+                fail(rp, 1, "IMAGE", problem + ". Re-render it from "
+                     "docs/assets/brand.html rather than editing the bytes.")
+            continue
         try:
             raw = path.read_text(encoding="utf-8")
         except UnicodeDecodeError:

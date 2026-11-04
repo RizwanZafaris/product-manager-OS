@@ -1,0 +1,26 @@
+name: Disprove a claim
+description: A comparison claim, a gap claim, or a belief in docs/PHILOSOPHY.md that you can show is wrong.
+labels: ["claim"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The claims in docs/COMPARISON.md are written to be falsifiable, each with what would disprove it, and every belief in docs/PHILOSOPHY.md carries the strongest case against it. Read the counter-argument already written before you file. The correct response to a disproved claim is to narrow it.
+  - type: input
+    id: claim
+    attributes:
+      label: The claim
+      description: File and heading, or a link to the line.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: The evidence that disproves it
+      description: Public sources, dated. A tool or repository that already does the thing counts.
+    validations:
+      required: true
+  - type: textarea
+    id: narrower
+    attributes:
+      label: The narrower claim you would accept

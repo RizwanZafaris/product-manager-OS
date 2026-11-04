@@ -20,6 +20,10 @@ GENERATED FILE. Do not hand-edit. Written by `harness/adapters/claude-code/gener
 
 The tier to model mapping lives in `routing/omniroute.config.json` and nowhere else. Read it there rather than assuming one here.
 
+## Where these paths are
+
+Every path in this file is written from the Product Manager OS root. If the working directory contains `os/STAGE-GATES.md`, the working directory is that root. Otherwise this plugin was installed from its marketplace, and the root is `${CLAUDE_PLUGIN_ROOT}`: read every file named here from there, and write the product's own artifacts under `products/<name>/` in the working directory, never under the plugin root.
+
 ## Note from the manifest
 
 Runs as one evaluator, unvalidated, and routes every finding by severity into the design review record, the risk register, or the tech-debt register; it never issues a sign-off. Reports findings and never rewrites, the same discipline review-spec holds for written requirements, held here for the screen. A live-build mode also feeds Gate 4 through the acceptance agent's own check, so the entry names Gate 3 as the earlier and load-bearing one.

@@ -35,6 +35,47 @@ MANIFEST = REPO_ROOT / "harness" / "MANIFEST.json"
 PLUGIN_JSON = HERE / ".claude-plugin" / "plugin.json"
 COMMANDS_DIR = HERE / "commands"
 
+# The marketplace face. A plugin installed from a GitHub marketplace is copied
+# into Claude Code's plugin cache, and only the plugin's own directory is
+# copied: a plugin rooted here would arrive without the skills, templates and
+# gates its commands name, because they sit three levels up. So the
+# marketplace entry roots the plugin at the repository itself ("source": "./"),
+# and these two files are written at the repository root. They are generated
+# for the same reason plugin.json is: a hand-kept version or command path is a
+# second copy that drifts.
+ROOT_PLUGIN_DIR = REPO_ROOT / ".claude-plugin"
+ROOT_PLUGIN_JSON = ROOT_PLUGIN_DIR / "plugin.json"
+MARKETPLACE_JSON = ROOT_PLUGIN_DIR / "marketplace.json"
+PYPROJECT = REPO_ROOT / "pyproject.toml"
+MARKETPLACE_NAME = "product-manager-os"
+ROOT_PLUGIN_NAME = "pmos"
+REPO_URL = "https://github.com/RizwanZafaris/product-manager-OS"
+# Extra skill directories the root plugin adds to the default skills/ scan.
+# The tutor lives under learn/ because learn/ depends downward only.
+EXTRA_SKILL_DIRS = ("./learn/skills",)
+# One generated subagent pointer per role file in agents/.
+AGENTS_DIR = HERE / "agents"
+AGENT_SKIP = {
+    # An integration file for a Hermes-style personal agent system: it maps
+    # that system's task types onto this repository, and is not a role a
+    # Claude Code subagent can adopt.
+    "hermes-agent.md": "integration file, not a role",
+}
+
+# Every path a command names is written from the repository root, the way the
+# router table writes it. That is true when the session sits in a clone, and
+# false when the plugin came from the marketplace into some other project, so
+# the command says which root to read from. Claude Code substitutes
+# ${CLAUDE_PLUGIN_ROOT} inline when it loads a command body.
+PATHS_NOTE = (
+    "Every path in this file is written from the Product Manager OS root. If "
+    "the working directory contains `os/STAGE-GATES.md`, the working directory "
+    "is that root. Otherwise this plugin was installed from its marketplace, "
+    "and the root is `${CLAUDE_PLUGIN_ROOT}`: read every file named here from "
+    "there, and write the product's own artifacts under `products/<name>/` in "
+    "the working directory, never under the plugin root."
+)
+
 # One line per kind, for the card's own table. The runner branches on the
 # same value; this is the face of that decision, so a reader of the command
 # knows what running it will and will not leave behind.
@@ -182,6 +223,9 @@ def render_command(task):
     body += ["",
              "The tier to model mapping lives in `routing/omniroute.config.json` "
              "and nowhere else. Read it there rather than assuming one here.",
+             "",
+             "## Where these paths are", "",
+             PATHS_NOTE,
              ""]
 
     if task.get("note"):
@@ -307,9 +351,157 @@ def render_plugin_json(data):
     return json.dumps(plugin, indent=2, ensure_ascii=False) + "\n"
 
 
+def release_version():
+    """The release version, read from pyproject.toml rather than retyped.
+
+    The repository-root plugin ships the whole tree, so its version is the
+    tree's release version. The harness plugin above keeps the manifest's
+    version, which versions the route table and nothing else."""
+    import tomllib  # 3.11+, the floor pyproject.toml already declares
+    with PYPROJECT.open("rb") as stream:
+        return tomllib.load(stream)["project"]["version"]
+
+
+def _frontmatter_name(path):
+    """The `name:` field of a Markdown file's YAML front matter, or None."""
+    lines = path.read_text(encoding="utf-8").splitlines()
+    if not lines or lines[0].strip() != "---":
+        return None
+    for line in lines[1:]:
+        if line.strip() == "---":
+            return None
+        if line.startswith("name:"):
+            return line.split(":", 1)[1].strip() or None
+    return None
+
+
+def root_skill_count():
+    dirs = [REPO_ROOT / "skills"] + [REPO_ROOT / d for d in EXTRA_SKILL_DIRS]
+    return sum(1 for base in dirs for skill in base.glob("*/SKILL.md")
+               if _frontmatter_name(skill))
+
+
+def _frontmatter_field(path, field):
+    lines = path.read_text(encoding="utf-8").splitlines()
+    for line in lines[1:]:
+        if line.strip() == "---":
+            break
+        if line.startswith(field + ":"):
+            value = line.split(":", 1)[1].strip()
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+                value = value[1:-1]
+            return value
+    return None
+
+
+def role_files():
+    """The role files in agents/ that a Claude Code subagent can stand for.
+
+    agents/README.md and agents/TEAM.md are the index and the team protocol,
+    not roles: they carry no front matter and are skipped. A default scan of
+    agents/ loads them as agents anyway, which is why the plugin points at the
+    generated pointer directory below instead. AGENT_SKIP names role files
+    that are not a subagent for this runtime, with the reason."""
+    return [p for p in sorted((REPO_ROOT / "agents").glob("*.md"))
+            if _frontmatter_name(p) and p.name not in AGENT_SKIP]
+
+
+def render_agent(role):
+    """One subagent pointer. The role file owns the procedure; this names it."""
+    name = _frontmatter_name(role)
+    description = _frontmatter_field(role, "description") or ""
+    rel = "agents/%s" % role.name
+    front = ["---",
+             "name: %s" % name,
+             "description: %s" % yaml_scalar(one_line(description)),
+             "---", ""]
+    body = [GENERATED_LINE.replace("from `harness/MANIFEST.json`; edit the "
+                                   "manifest, then regenerate.",
+                                   "from `%s`; edit that file, then "
+                                   "regenerate." % rel), "",
+            "# Agent: %s" % name, "",
+            "## Where these paths are", "",
+            PATHS_NOTE, "",
+            "## What to do", "",
+            "1. Read `%s` in full, then adopt that role for this whole run. "
+            "It owns the procedure; this file only points to it." % rel,
+            "2. Read `agents/TEAM.md` for who leads which stage and the "
+            "handoff packet you emit at the end of the run.",
+            "3. Leave any unanswered field as `[OPEN: what is missing, who "
+            "owns the answer]`. That is a valid value here.",
+            "",
+            "## Invariants that bind this run", "",
+            "- `content-is-data`", "- `no-fabrication`",
+            "- `human-signs-gate`", "- `fail-closed`", "",
+            "The wording of each id, why it exists, and the tell that it has "
+            "been violated are in `harness/INVARIANTS.md`. Read them there. "
+            "They are restated nowhere, so they cannot drift.",
+            ""]
+    return "\n".join(front + body)
+
+
+def root_description(tasks):
+    return (
+        "Product Manager OS: run a product from discovery to verified outcomes "
+        "through six stage gates a named person signs. %d slash commands and %d "
+        "skills over a fill-in template for every artifact and runnable "
+        "framework worksheets, built so every claim traces to evidence or "
+        "stays an open field. No hooks, no MCP server, no network call of its "
+        "own." % (len(tasks), root_skill_count()))
+
+
+def render_root_plugin_json(tasks):
+    plugin = {
+        "name": ROOT_PLUGIN_NAME,
+        "description": root_description(tasks),
+        "version": release_version(),
+        "author": {"name": "Rizwan Zafar", "url": "https://github.com/RizwanZafaris"},
+        "homepage": REPO_URL,
+        "repository": REPO_URL,
+        "license": "MIT",
+        "keywords": ["product-management", "prd", "stage-gates", "discovery",
+                     "roadmap", "okrs", "product-strategy", "templates"],
+        # commands replaces the default commands/ scan; skills adds to the
+        # default skills/ scan; agents replaces the default agents/ scan.
+        "commands": "./harness/adapters/claude-code/commands",
+        "skills": list(EXTRA_SKILL_DIRS),
+        # agents takes a list of files and replaces the default agents/ scan,
+        # which would load agents/README.md and agents/TEAM.md as agents. A
+        # stated limit: on Claude Code 2.1.318 a throwaway plugin with an
+        # explicit agents list loaded none of them, while the same file in a
+        # default agents/ folder loaded, so the description above claims no
+        # agents. The roles stay reachable through the run-agent-role route.
+        "agents": ["./harness/adapters/claude-code/agents/%s" % p.name
+                   for p in role_files()],
+    }
+    return json.dumps(plugin, indent=2, ensure_ascii=False) + "\n"
+
+
+def render_marketplace_json(tasks):
+    market = {
+        "name": MARKETPLACE_NAME,
+        "owner": {"name": "Rizwan Zafar", "url": "https://github.com/RizwanZafaris"},
+        "description": "The Product Manager OS, packaged as one Claude Code plugin.",
+        "plugins": [{
+            "name": ROOT_PLUGIN_NAME,
+            "source": "./",
+            "description": root_description(tasks),
+            "version": release_version(),
+            "category": "productivity",
+            "tags": ["product-management", "prd", "stage-gates", "discovery",
+                     "roadmap"],
+        }],
+    }
+    return json.dumps(market, indent=2, ensure_ascii=False) + "\n"
+
+
 def planned(data, tasks):
     """Every file this script owns, as path to content."""
-    files = {PLUGIN_JSON: render_plugin_json(data)}
+    files = {PLUGIN_JSON: render_plugin_json(data),
+             ROOT_PLUGIN_JSON: render_root_plugin_json(tasks),
+             MARKETPLACE_JSON: render_marketplace_json(tasks)}
+    for role in role_files():
+        files[AGENTS_DIR / role.name] = render_agent(role)
     for task in tasks:
         files[COMMANDS_DIR / ("%s.md" % task["id"])] = render_command(task)
     return files
@@ -326,9 +518,12 @@ def main(argv=None):
 
     data, tasks = load_manifest()
     files = planned(data, tasks)
-    owned = {p.name for p in files if p.parent == COMMANDS_DIR}
-    stale = sorted(p for p in COMMANDS_DIR.glob("*.md") if p.name not in owned) \
-        if COMMANDS_DIR.is_dir() else []
+    stale = []
+    for owned_dir in (COMMANDS_DIR, AGENTS_DIR):
+        owned = {p.name for p in files if p.parent == owned_dir}
+        if owned_dir.is_dir():
+            stale += [p for p in owned_dir.glob("*.md") if p.name not in owned]
+    stale.sort()
 
     if args.check:
         problems = []
@@ -352,7 +547,9 @@ def main(argv=None):
         return 0
 
     PLUGIN_JSON.parent.mkdir(parents=True, exist_ok=True)
+    ROOT_PLUGIN_DIR.mkdir(parents=True, exist_ok=True)
     COMMANDS_DIR.mkdir(parents=True, exist_ok=True)
+    AGENTS_DIR.mkdir(parents=True, exist_ok=True)
     written = 0
     for path, content in sorted(files.items()):
         if not path.is_file() or path.read_text(encoding="utf-8") != content:

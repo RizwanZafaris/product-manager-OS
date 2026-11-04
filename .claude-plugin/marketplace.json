@@ -1,0 +1,24 @@
+{
+  "name": "product-manager-os",
+  "owner": {
+    "name": "Rizwan Zafar",
+    "url": "https://github.com/RizwanZafaris"
+  },
+  "description": "The Product Manager OS, packaged as one Claude Code plugin.",
+  "plugins": [
+    {
+      "name": "pmos",
+      "source": "./",
+      "description": "Product Manager OS: run a product from discovery to verified outcomes through six stage gates a named person signs. 43 slash commands and 30 skills over a fill-in template for every artifact and runnable framework worksheets, built so every claim traces to evidence or stays an open field. No hooks, no MCP server, no network call of its own.",
+      "version": "0.8.0",
+      "category": "productivity",
+      "tags": [
+        "product-management",
+        "prd",
+        "stage-gates",
+        "discovery",
+        "roadmap"
+      ]
+    }
+  ]
+}

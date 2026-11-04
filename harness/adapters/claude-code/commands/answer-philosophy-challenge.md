@@ -20,6 +20,10 @@ GENERATED FILE. Do not hand-edit. Written by `harness/adapters/claude-code/gener
 
 The tier to model mapping lives in `routing/omniroute.config.json` and nowhere else. Read it there rather than assuming one here.
 
+## Where these paths are
+
+Every path in this file is written from the Product Manager OS root. If the working directory contains `os/STAGE-GATES.md`, the working directory is that root. Otherwise this plugin was installed from its marketplace, and the root is `${CLAUDE_PLUGIN_ROOT}`: read every file named here from there, and write the product's own artifacts under `products/<name>/` in the working directory, never under the plugin root.
+
 ## Note from the manifest
 
 No skill and no artifact: these files produce none. Give the counter-argument the file carries alongside the belief. A user who disputes a mechanism here is usually right about their own constraint, and the honest answer is often that they should run something lighter.

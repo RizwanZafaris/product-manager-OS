@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use or adapt this operating system in teaching, research or a published method, cite it as below."
+title: "Product Manager OS"
+abstract: "An evidence-to-decision workspace that runs one product through six gated stages, from discovery to verified outcomes, with fill-in templates, runnable framework worksheets, knowledge cards with named attribution, and optional agent skills."
+type: software
+authors:
+  - name: "Rizwan Zafar"
+repository-code: "https://github.com/RizwanZafaris/product-manager-OS"
+license: MIT
+version: "0.8.0"
+keywords:
+  - product management
+  - stage gates
+  - product discovery
+  - requirements
+  - agent skills
