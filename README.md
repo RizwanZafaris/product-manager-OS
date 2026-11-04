@@ -1,8 +1,52 @@
 # Product Manager OS
 
+[![CI](https://github.com/RizwanZafaris/product-manager-OS/actions/workflows/lint.yml/badge.svg)](https://github.com/RizwanZafaris/product-manager-OS/actions/workflows/lint.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB.svg)](pyproject.toml)
+[![Dependencies: none](https://img.shields.io/badge/dependencies-none-success.svg)](pyproject.toml)
+[![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-D97757.svg)](#install)
+
+![Product Manager OS: product management, with receipts. Six gated stages from DISCOVER to OPERATE, each ending at a numbered gate, with an install command for the Claude Code plugin.](docs/assets/hero.png)
+
 **An evidence-to-decision workspace for technical PMs who need traceability across discovery, PRD and review.** Every claim in a document traces to evidence, every requirement traces back to the discovery that justified it, and every stage advance traces to a named person who signed it, or to a waiver naming who overrode it and why. Payments is the initial pilot segment its regulated overlay and fourteen financial-services domain cards were built against, not a claim of comprehensive compliance for payments or any other regulated industry: read [the regulated module](#the-regulated-module) before you rely on it for one.
 
 A PM's tools are usually scattered: discovery in one product, specs in another, delivery in a tracker, judgment nowhere. This repository is six gated stages, a knowledge layer with named attribution, runnable framework worksheets, a fill-in template for every artifact a product needs, and optional AI layers on top of all of it. It is a document system first and an AI system second: every template works with a text editor alone, and the AI layers, boot prompts, skills, agents, and model routing, are accelerants on a format that stands without them. The exact limit of that claim is in the [quality gate](#quality-gate) section below. How it compares to spec-kit, BMAD-METHOD, Product-Manager-Skills, ChatPRD, and template packs, dated and re-checked 2026-09-15, is in [docs/COMPARISON.md](docs/COMPARISON.md).
+
+## Install
+
+Pick one. None of them needs an account, a model key, or a package beyond Python's standard library.
+
+**In Claude Code** (2.1.275 or later), one line:
+
+```text
+/plugin install pmos --marketplace RizwanZafaris/product-manager-OS
+```
+
+On an older Claude Code, the same thing in two steps:
+
+```text
+/plugin marketplace add RizwanZafaris/product-manager-OS
+/plugin install pmos@product-manager-os
+```
+
+That gives every project you open the 43 routes as `/pmos:<route>` commands, for example `/pmos:write-prd`, `/pmos:run-premortem` or `/pmos:conduct-product-journey`, plus the skills they route to. Every command tells Claude to read its skills, templates and gates from the installed copy of this repository, and to write your product's artifacts under `products/<name>/` in the project you are in. The plugin carries no hooks, no MCP server, and no network call of its own. On Claude Code 2.1.318, `claude plugin details pmos` measured it at about 9,500 tokens of always-on skill and command descriptions per session; uninstall it from projects that do no product work. What the commands do and refuse is in the adapter README, `harness/adapters/claude-code/README.md`.
+
+**With no AI at all**, clone and build a workspace; the full walkthrough is [Start Here](#start-here) below:
+
+```bash
+git clone https://github.com/RizwanZafaris/product-manager-OS.git && cd product-manager-OS
+python3 tools/init_product.py my-product
+```
+
+**In any chat model**, paste [system/BOOT-PROMPT.md](system/BOOT-PROMPT.md) at the start of a session and say "start".
+
+**The first thing to try**, once the plugin is in: run `/pmos:review-spec` on a PRD or spec you already have. It runs fourteen checks against the sentences themselves and returns a severity-ranked table: the exact phrase, where it sits, which check it fails, and the question that gets the missing number or owner out of the author. It never rewrites your draft, and it never calls it ready. That is [skills/spec-review/SKILL.md](skills/spec-review/SKILL.md).
+
+## How it works
+
+1. **Interview.** The Conductor asks one stage question at a time, from DISCOVER to OPERATE, and writes down only the answers you accept. Say "start" in a clone, or run `/pmos:conduct-product-journey` with the plugin.
+2. **Fill.** Each accepted answer lands in a fill-in template with the knowledge card behind it. An unknown stays `[OPEN: what is missing, who owns the answer]` rather than becoming a plausible invention.
+3. **Gate.** Before a stage closes, spec-review tests that the writing can be tested, the gate checklist in [os/STAGE-GATES.md](os/STAGE-GATES.md) is worked line by line, and a named person signs it. Change the proof behind a signed gate and the `pmos` runtime stops calling it complete.
 
 ## Start Here
 
@@ -119,7 +163,7 @@ Six ways to touch this tree, and they give a caller different capabilities: read
 | Plain Markdown, no model | Every template, framework, knowledge card and gate, readable and fillable with any editor | tested: `python3 lint.py --os` runs on every push |
 | Obsidian, as a Markdown editor | The same files, plus frontmatter as properties; a full local editor over the tree with no domain validation on the edit itself | supported for reading and editing raw Markdown; it is not a validated client, and an edit made there is checked the same way any other direct edit is, the next time something asks the runtime for status |
 | The `pmos` CLI | A local SQLite store, the Conductor interview, approvals bound to artifact content, phase status, and the development handoff, with no model or network requirement | tested: the root unit suites in CI, on Python 3.11 and 3.13 |
-| The Claude Code plugin | One slash command per route, generated from the manifest | instruction-only by design: every command hands you a plan and the governing files to read, places no model call of its own, writes nothing, and signs no gate |
+| The Claude Code plugin | One slash command per route, generated from the manifest, installable from this repository's own marketplace (see [Install](#install)) | instruction-only by design: every command hands you a plan and the governing files to read, places no model call of its own, writes nothing, and signs no gate |
 | The desktop MCP adapter | A read-only `pmos_status` tool, proven equal to the CLI's own phase report for the same product | tested for generation and for `pmos_status`; a live client's handshake is untested |
 | Development handoff, for downstream agents | `pmos handoff` writes `handoff/CONTEXT.md` and `handoff/context-index.json`, so an implementing agent has one file to read rather than the whole workspace | tested: `tests/test_pmos_handoff.py`; the Claude Code plugin's `build-development-handoff` route is instruction-only and tells the agent to run this command itself |
 
@@ -175,19 +219,19 @@ verification: {"errors": [], "ok": true}
 
 ## What's inside
 
-[templates/README.md](templates/README.md) catalogs all 108 blanks by stage; every other count below is computed the same way, straight from the tree.
+[templates/README.md](templates/README.md) catalogs all 122 blanks by stage; every other count below is computed the same way, straight from the tree.
 
 | Count | What | Where to start |
 |---|---|---|
-| 108 templates in 8 folders | Blanks for every artifact a product needs | [templates/](templates/README.md) |
-| 64 framework worksheets in 9 groups | Runnable methods with scales, formulas, and arithmetic | [frameworks/](frameworks/README.md) |
+| 122 templates in 8 folders | Blanks for every artifact a product needs | [templates/](templates/README.md) |
+| 71 framework worksheets in 9 groups | Runnable methods with scales, formulas, and arithmetic | [frameworks/](frameworks/README.md) |
 | 47 industry domain cards, 41 with a worked example | What a specific market changes about the loop | [knowledge/domains/](knowledge/domains/README.md), coverage in [docs/COVERAGE.md](docs/COVERAGE.md) |
 | 15 design cards and 11 canon cards | Named attribution, licensed sources, and honest limits | [knowledge/](knowledge/README.md), [knowledge/design/](knowledge/design/README.md), [docs/REFERENCES-DESIGN.md](docs/REFERENCES-DESIGN.md) |
-| 233 filled examples including 4 end-to-end journeys | See it filled in before you fill your own | [examples/README.md](examples/README.md) |
+| 247 filled examples including 4 end-to-end journeys | See it filled in before you fill your own | [examples/README.md](examples/README.md) |
 | Role ladder: 8 rungs, 7 specializations, 0 with a worked example yet | Who each title is, what they own, and how they fail | [knowledge/roles/ladder.md](knowledge/roles/ladder.md), [knowledge/roles/specializations.md](knowledge/roles/specializations.md) |
 | 29 skills, 12 agents, 4 learning paths | AI runtime procedures, or ignore them and use pencil | [skills/](skills/README.md), [agents/](agents/README.md), [learn/](learn/README.md) |
 
-Every count above is checked against this tree on every commit rather than recomputed by hand: `python3 tools/docs_contract.py --strict` fails when a figure here and the directory it counts disagree, and `python3 tools/ci_gate.py` runs it. Domain and role coverage, including which columns read "none recorded" and why, is the full subject of [docs/COVERAGE.md](docs/COVERAGE.md).
+One count above is checked against this tree on every commit: the template total, which `python3 tools/docs_contract.py --strict` recounts from `templates/` and fails on when the figure here disagrees, and `python3 tools/ci_gate.py` runs it. The same check holds [examples/README.md](examples/README.md) to the files in `examples/`, but it does not read the example figure in this table. Every other figure here is recounted by hand when the tree changes, which is a weaker claim: `docs/ARCHITECTURE.md` carried three stale ones until 2026-11-04. Domain and role coverage, including which columns read "none recorded" and why, is the full subject of [docs/COVERAGE.md](docs/COVERAGE.md).
 
 ## Implemented, verified, experimental, and planned
 

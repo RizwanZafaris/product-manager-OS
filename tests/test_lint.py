@@ -422,6 +422,65 @@ class WorkspaceExclusion(unittest.TestCase):
             any(n.endswith("learn/products/README.md") for n in names))
 
 
+def _png_chunk(kind, body):
+    import zlib
+    return (len(body).to_bytes(4, "big") + kind + body
+            + zlib.crc32(kind + body).to_bytes(4, "big"))
+
+
+def _png(*extra):
+    """A one-pixel greyscale PNG, with any extra chunks before IDAT."""
+    import zlib
+    ihdr = (1).to_bytes(4, "big") * 2 + bytes([8, 0, 0, 0, 0])
+    return (lint.PNG_SIGNATURE + _png_chunk(b"IHDR", ihdr) + b"".join(extra)
+            + _png_chunk(b"IDAT", zlib.compress(b"\x00\x00"))
+            + _png_chunk(b"IEND", b""))
+
+
+class PngReaderTests(unittest.TestCase):
+    """The tree's three images are read as PNG, not skipped.
+
+    The ENCODING check fails any file the gate cannot decode. A PNG is not
+    UTF-8, so the README hero, the social preview and the plugin icon are read
+    as PNG instead, on an allowlist of paths: a well-formed file of pixel
+    chunks passes, and anything that could carry text past the secret gate,
+    or any other binary anywhere else, still fails.
+    """
+
+    def test_a_well_formed_pixel_only_png_is_cleared(self):
+        self.assertIsNone(lint.png_problem(_png()))
+
+    def test_the_committed_images_are_cleared(self):
+        for rel in ("docs/assets/hero.png", "docs/assets/social-preview.png",
+                    ".claude-plugin/icon.png"):
+            self.assertTrue(lint.PNG_PATHS.match(rel), rel)
+            self.assertIsNone(lint.png_problem((REPO / rel).read_bytes()), rel)
+
+    def test_a_text_chunk_is_refused(self):
+        text = _png_chunk(b"tEXt", b"Comment\x00not read by the secret gate")
+        self.assertIn("tEXt", lint.png_problem(_png(text)) or "")
+
+    def test_a_bad_crc_is_refused(self):
+        data = bytearray(_png())
+        data[-5] ^= 0xFF  # the last byte of the IEND CRC
+        self.assertIn("CRC", lint.png_problem(bytes(data)) or "")
+
+    def test_bytes_after_iend_are_refused(self):
+        self.assertIn("after", lint.png_problem(_png() + b"hidden") or "")
+
+    def test_a_missing_signature_is_refused(self):
+        self.assertIn("signature", lint.png_problem(b"GIF89a" + _png()) or "")
+
+    def test_the_size_cap_holds(self):
+        big = _png_chunk(b"IDAT", b"\x00" * (lint.PNG_MAX_BYTES + 1))
+        self.assertIn("cap", lint.png_problem(_png(big)) or "")
+
+    def test_only_allowlisted_paths_are_read_as_png(self):
+        for rel in ("docs/hero.png", "templates/x.png", "docs/assets/A.PNG",
+                    ".claude-plugin/other.png", "docs/assets/sub/x.png"):
+            self.assertIsNone(lint.PNG_PATHS.match(rel), rel)
+
+
 class TrackedDotUnderscoreFileIsLinted(unittest.TestCase):
     """A ``._`` name alone must not excuse tracked content from the OS gate.
 

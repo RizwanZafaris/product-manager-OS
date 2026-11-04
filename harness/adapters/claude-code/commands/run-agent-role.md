@@ -20,6 +20,10 @@ GENERATED FILE. Do not hand-edit. Written by `harness/adapters/claude-code/gener
 
 The tier to model mapping lives in `routing/omniroute.config.json` and nowhere else. Read it there rather than assuming one here.
 
+## Where these paths are
+
+Every path in this file is written from the Product Manager OS root. If the working directory contains `os/STAGE-GATES.md`, the working directory is that root. Otherwise this plugin was installed from its marketplace, and the root is `${CLAUDE_PLUGIN_ROOT}`: read every file named here from there, and write the product's own artifacts under `products/<name>/` in the working directory, never under the plugin root.
+
 ## Note from the manifest
 
 One role per run, from an instruction file in agents/, and every handoff carries the packet in agents/TEAM.md. The tier here is the shared shape of the work, one artifact per run; the ends differ and are recorded in the taskMap in routing/omniroute.config.json, where validation-agent runs on extraction and red-team-agent runs on judgment. An adapter routes the named agent by its taskMap entry, not by this row.

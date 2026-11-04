@@ -33,6 +33,10 @@ This file is a hub node. Its job is to give the graph one place per stage to fan
 | [sales-enablement-one-pager.md](../../templates/delivery/sales-enablement-one-pager.md) | Derived from positioning: pains, proof, objections, demo path |
 | [gtm-plan.md](../../templates/planning/gtm-plan.md) | First cohort and channel with evidence the channel reaches them, and a stop condition |
 | [positioning.md](../../templates/planning/positioning.md) | Alternatives forward to a category, never a tagline backward |
+| [rollout-plan.md](../../templates/delivery/rollout-plan.md) | Flags, ramp stages, numeric halt thresholds, kill switch, holdout, flag retirement date |
+| [trust-safety-harm-model.md](../../templates/delivery/trust-safety-harm-model.md) | Actors, abuse vectors and controls, reporting and appeals, moderation queues, prevalence |
+| [customer-success-handoff.md](../../templates/operate/customer-success-handoff.md) | The launch handed to customer success and support: adoption per segment, renewal risk, health signals, deflection target |
+| [partner-channel-plan.md](../../templates/planning/partner-channel-plan.md) | Partner types, each side's margin arithmetic, deal registration and conflict rules, sourced against influenced pipeline |
 
 The AI overlay verifies guardrails live in the release candidate and tests the kill switch rather than designing it. The regulated overlay re-checks here that what was promised at DEFINE is true of the artifact that ships, routed through [reg-gap-check](../../skills/reg-gap-check/SKILL.md) into [modules/regulated/README.md](../../modules/regulated/README.md).
 
@@ -82,7 +86,7 @@ Wikilinks below are additive: they exist so the Obsidian graph draws the edges. 
 
 - Loop and gates: [[os/OPERATING-LOOP.md]] · [[os/STAGE-GATES.md]] · [[os/PRODUCT-WORKSPACE.md]]
 - Neighbor hubs: [[os/maps/build.md]] · [[os/maps/operate.md]] · [[os/maps/README.md]]
-- Templates: [[templates/delivery/uat-plan.md]] · [[templates/delivery/release-readiness.md]] · [[templates/delivery/migration-cutover-plan.md]] · [[templates/delivery/support-runbook.md]] · [[templates/delivery/launch-comms-plan.md]] · [[templates/delivery/customer-comms.md]] · [[templates/delivery/release-notes.md]] · [[templates/delivery/sla-slo-definition.md]] · [[templates/delivery/sales-enablement-one-pager.md]] · [[templates/planning/gtm-plan.md]] · [[templates/planning/positioning.md]]
+- Templates: [[templates/delivery/uat-plan.md]] · [[templates/delivery/release-readiness.md]] · [[templates/delivery/migration-cutover-plan.md]] · [[templates/delivery/support-runbook.md]] · [[templates/delivery/launch-comms-plan.md]] · [[templates/delivery/customer-comms.md]] · [[templates/delivery/release-notes.md]] · [[templates/delivery/sla-slo-definition.md]] · [[templates/delivery/sales-enablement-one-pager.md]] · [[templates/planning/gtm-plan.md]] · [[templates/planning/positioning.md]] · [[templates/delivery/rollout-plan.md]] · [[templates/delivery/trust-safety-harm-model.md]] · [[templates/operate/customer-success-handoff.md]] · [[templates/planning/partner-channel-plan.md]]
 - Overlay routes: [[modules/regulated/README.md]] · [[templates/ai/guardrails.md]]
 - Frameworks: [[frameworks/strategy/positioning-canvas.md]] · [[frameworks/pricing/packaging-good-better-best.md]] · [[frameworks/execution/raci.md]] · [[frameworks/execution/risk-matrix.md]] · [[frameworks/execution/premortem-worksheet.md]]
 - Knowledge: [[knowledge/crossing-the-chasm.md]] · [[knowledge/README.md]]

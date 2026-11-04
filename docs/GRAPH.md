@@ -20,13 +20,13 @@ One subgraph per stage of the loop in [os/OPERATING-LOOP.md](../os/OPERATING-LOO
 
 | Measure | Count |
 |---|---|
-| Files scanned in the six declaring layers | 340 |
-| Files carrying frontmatter of any shape | 340 |
+| Files scanned in the six declaring layers | 361 |
+| Files carrying frontmatter of any shape | 361 |
 | Files with no frontmatter yet | 0 |
-| Files declaring a `feeds` key | 146 |
-| Nodes in the diagram | 258 |
-| Artifact nodes | 252 |
-| Edges in the diagram | 554 |
+| Files declaring a `feeds` key | 167 |
+| Nodes in the diagram | 280 |
+| Artifact nodes | 274 |
+| Edges in the diagram | 632 |
 | Feeds values that resolved to nothing | 0 |
 
 A file with no frontmatter is not an error, and a file with frontmatter has not necessarily declared a feed: every SKILL.md and agent file carries a name and a description already. The `feeds` pass lands file by file, and until it reaches a file, that file still contributes whatever its Stage header declares.
@@ -40,6 +40,7 @@ flowchart LR
     G1["Gate 1: Problem worth solving"]
     n_agents_research_agent_md_cfc97215["agents/research-agent"]
     n_frameworks_discovery_assumption_mapping_md_10947104["discovery/assumption-mapping"]
+    n_frameworks_discovery_consequence_scanning_md_428ae725["discovery/consequence-scanning"]
     n_frameworks_discovery_design_sprint_runbook_md_8dfe6664["discovery/design-sprint-runbook"]
     n_frameworks_discovery_empathy_map_md_de2c947d["discovery/empathy-map"]
     n_frameworks_discovery_jtbd_job_map_md_351ddf11["discovery/jtbd-job-map"]
@@ -103,10 +104,12 @@ flowchart LR
     n_skills_story_writer_SKILL_md_3f6bcabf["skills/story-writer"]
     n_skills_write_prd_SKILL_md_599775fd["skills/write-prd"]
     n_templates_definition_acceptance_criteria_md_d879ee6a["definition/acceptance-criteria"]
+    n_templates_definition_admin_entitlements_spec_md_0fabd957["definition/admin-entitlements-spec"]
     n_templates_definition_assumptions_register_md_53c75258["definition/assumptions-register"]
     n_templates_definition_brd_md_094926c4["definition/brd"]
     n_templates_definition_business_rules_md_52490163["definition/business-rules"]
     n_templates_definition_design_brief_md_14e72d21["definition/design-brief"]
+    n_templates_definition_developer_experience_spec_md_e682b7a3["definition/developer-experience-spec"]
     n_templates_definition_frd_md_ca6a8d44["definition/frd"]
     n_templates_definition_nfr_md_146602a4["definition/nfr"]
     n_templates_definition_one_pager_md_51aafec8["definition/one-pager"]
@@ -125,6 +128,7 @@ flowchart LR
     G3["Gate 3: Architecture and risks reviewed"]
     n_agents_architect_agent_md_a0136972["agents/architect-agent"]
     n_agents_red_team_agent_md_2e22b587["agents/red-team-agent"]
+    n_frameworks_assessment_green_software_assessment_md_311d8642["assessment/green-software-assessment"]
     n_frameworks_assessment_team_topologies_assessment_md_103f1efa["assessment/team-topologies-assessment"]
     n_frameworks_assessment_tech_debt_assessment_md_6243cfcb["assessment/tech-debt-assessment"]
     n_frameworks_design_content_microcopy_audit_md_8c136806["design/content-microcopy-audit"]
@@ -152,10 +156,12 @@ flowchart LR
     n_templates_architecture_adr_md_f97d984a["architecture/adr"]
     n_templates_architecture_api_contract_md_5d4f236f["architecture/api-contract"]
     n_templates_architecture_component_spec_md_1289f89d["architecture/component-spec"]
+    n_templates_architecture_data_contract_md_372a3f36["architecture/data-contract"]
     n_templates_architecture_data_model_md_80a5f8ca["architecture/data-model"]
     n_templates_architecture_design_md_md_7556683b["architecture/design-md"]
     n_templates_architecture_design_review_record_md_4b50f927["architecture/design-review-record"]
     n_templates_architecture_development_handoff_md_64b0eebc["architecture/development-handoff"]
+    n_templates_architecture_information_architecture_md_17e68338["architecture/information-architecture"]
     n_templates_architecture_integrations_md_a45e4f74["architecture/integrations"]
     n_templates_architecture_localisation_rtl_checklist_md_76aa2954["architecture/localisation-rtl-checklist"]
     n_templates_architecture_observability_md_978fba88["architecture/observability"]
@@ -200,11 +206,14 @@ flowchart LR
     n_templates_delivery_migration_cutover_plan_md_0483f7c3["delivery/migration-cutover-plan"]
     n_templates_delivery_release_notes_md_63fdc6cb["delivery/release-notes"]
     n_templates_delivery_release_readiness_md_22b1a9d7["delivery/release-readiness"]
+    n_templates_delivery_rollout_plan_md_428d5eb3["delivery/rollout-plan"]
     n_templates_delivery_sales_enablement_one_pager_md_d3ce4dec["delivery/sales-enablement-one-pager"]
     n_templates_delivery_sla_slo_definition_md_6502497b["delivery/sla-slo-definition"]
     n_templates_delivery_support_runbook_md_df8b0158["delivery/support-runbook"]
     n_templates_delivery_testing_strategy_md_95f20197["delivery/testing-strategy"]
+    n_templates_delivery_trust_safety_harm_model_md_f203d130["delivery/trust-safety-harm-model"]
     n_templates_delivery_uat_plan_md_71125f94["delivery/uat-plan"]
+    n_templates_operate_customer_success_handoff_md_67e6a4e9["operate/customer-success-handoff"]
     n_templates_operate_operational_readiness_review_md_8614622d["operate/operational-readiness-review"]
     n_templates_planning_gtm_plan_md_61b54e46["planning/gtm-plan"]
   end
@@ -216,7 +225,9 @@ flowchart LR
     n_frameworks_discovery_pmf_survey_md_40fe4160["discovery/pmf-survey"]
     n_frameworks_execution_five_whys_fishbone_md_34a9bf35["execution/five-whys-fishbone"]
     n_frameworks_metrics_aarrr_funnel_md_87053e87["metrics/aarrr-funnel"]
+    n_frameworks_metrics_activation_churn_diagnosis_md_2b6f605f["metrics/activation-churn-diagnosis"]
     n_frameworks_metrics_cohort_retention_md_7c2e24a7["metrics/cohort-retention"]
+    n_frameworks_metrics_customer_health_score_md_7a852704["metrics/customer-health-score"]
     n_frameworks_metrics_growth_loops_md_05134c83["metrics/growth-loops"]
     n_frameworks_metrics_space_framework_md_f11317a8["metrics/space-framework"]
     n_frameworks_systems_causal_loop_diagram_md_20516488["systems/causal-loop-diagram"]
@@ -251,6 +262,7 @@ flowchart LR
     n_frameworks_pricing_gabor_granger_md_7557712e["pricing/gabor-granger"]
     n_frameworks_pricing_packaging_good_better_best_md_9e6eec47["pricing/packaging-good-better-best"]
     n_frameworks_pricing_van_westendorp_md_c269759b["pricing/van-westendorp"]
+    n_frameworks_prioritization_enterprise_request_triage_md_e5990a0a["prioritization/enterprise-request-triage"]
     n_frameworks_prioritization_now_next_later_md_cafa2818["prioritization/now-next-later"]
     n_frameworks_prioritization_rice_scoring_sheet_md_764b3996["prioritization/rice-scoring-sheet"]
     n_frameworks_prioritization_wsjf_cost_of_delay_md_75b90b0d["prioritization/wsjf-cost-of-delay"]
@@ -259,8 +271,10 @@ flowchart LR
     n_frameworks_strategy_lean_canvas_md_0d9a2f85["strategy/lean-canvas"]
     n_frameworks_strategy_market_sizing_md_1966eea9["strategy/market-sizing"]
     n_frameworks_strategy_pestle_md_3c60d6fb["strategy/pestle"]
+    n_frameworks_strategy_platform_ecosystem_canvas_md_658de58d["strategy/platform-ecosystem-canvas"]
     n_frameworks_strategy_playing_to_win_md_77c988d1["strategy/playing-to-win"]
     n_frameworks_strategy_porters_five_forces_md_87112b60["strategy/porters-five-forces"]
+    n_frameworks_strategy_portfolio_allocation_md_45d7d826["strategy/portfolio-allocation"]
     n_frameworks_strategy_positioning_canvas_md_4d3cd58c["strategy/positioning-canvas"]
     n_frameworks_strategy_seven_powers_audit_md_4c8d1ae6["strategy/seven-powers-audit"]
     n_frameworks_strategy_strategy_kernel_md_bf3a3b8d["strategy/strategy-kernel"]
@@ -276,6 +290,7 @@ flowchart LR
     n_skills_strategy_critic_SKILL_md_9bcb47c6["skills/strategy-critic"]
     n_skills_write_vision_strategy_SKILL_md_0897714a["skills/write-vision-strategy"]
     n_templates_execution_hiring_scorecard_md_07be53e8["execution/hiring-scorecard"]
+    n_templates_planning_acquisition_integration_plan_md_3edb06cd["planning/acquisition-integration-plan"]
     n_templates_planning_business_case_md_22a95f6b["planning/business-case"]
     n_templates_planning_capacity_plan_md_365fef02["planning/capacity-plan"]
     n_templates_planning_decision_memo_md_7ae1eec5["planning/decision-memo"]
@@ -283,6 +298,9 @@ flowchart LR
     n_templates_planning_first_90_days_md_9be523cc["planning/first-90-days"]
     n_templates_planning_north_star_metric_md_ece69b06["planning/north-star-metric"]
     n_templates_planning_okrs_md_0ec1515d["planning/okrs"]
+    n_templates_planning_partner_channel_plan_md_38901b7d["planning/partner-channel-plan"]
+    n_templates_planning_partner_integration_brief_md_2c6c5278["planning/partner-integration-brief"]
+    n_templates_planning_portfolio_review_md_8aa1df23["planning/portfolio-review"]
     n_templates_planning_positioning_md_bfa6b195["planning/positioning"]
     n_templates_planning_pricing_packaging_md_5a0c4db5["planning/pricing-packaging"]
     n_templates_planning_program_charter_md_73783114["planning/program-charter"]
@@ -297,9 +315,11 @@ flowchart LR
     n_templates_ai_hallucination_controls_md_be61af90["ai/hallucination-controls"]
     n_templates_ai_human_approval_gates_md_f7587d50["ai/human-approval-gates"]
     n_templates_ai_model_card_md_474465f8["ai/model-card"]
+    n_templates_ai_model_selection_md_4ef2de9a["ai/model-selection"]
     n_templates_ai_multi_agent_workflow_md_076fa80b["ai/multi-agent-workflow"]
     n_templates_ai_prompt_structure_md_ccc07264["ai/prompt-structure"]
     n_templates_ai_red_team_review_md_38beb9e3["ai/red-team-review"]
+    n_templates_ai_responsible_ai_impact_assessment_md_91458172["ai/responsible-ai-impact-assessment"]
   end
   subgraph s_ALL_STAGES["ALL STAGES, cross cutting"]
     direction LR
@@ -317,8 +337,10 @@ flowchart LR
     n_skills_escalation_SKILL_md_6365f2dc["skills/escalation"]
     n_skills_product_review_SKILL_md_f7dfaf72["skills/product-review"]
     n_templates_execution_decision_log_md_3fafa06d["execution/decision-log"]
+    n_templates_execution_product_ops_charter_md_1b3e95a5["execution/product-ops-charter"]
     n_templates_execution_retrospective_md_85798293["execution/retrospective"]
     n_templates_execution_state_md_879f453c["execution/state"]
+    n_templates_execution_team_working_agreement_md_d2a92696["execution/team-working-agreement"]
   end
   n_skills_conductor_questions_build_md_287f6936 --> G4
   n_skills_conductor_questions_define_md_57bda0cc --> G2
@@ -338,20 +360,26 @@ flowchart LR
   n_templates_ai_human_approval_gates_md_f7587d50 --> G3
   n_templates_ai_human_approval_gates_md_f7587d50 --> G5
   n_templates_ai_model_card_md_474465f8 --> G5
+  n_templates_ai_model_selection_md_4ef2de9a --> G3
+  n_templates_ai_model_selection_md_4ef2de9a --> G4
   n_templates_ai_multi_agent_workflow_md_076fa80b --> G3
   n_templates_ai_prompt_structure_md_ccc07264 --> G4
   n_templates_ai_red_team_review_md_38beb9e3 --> G5
+  n_templates_ai_responsible_ai_impact_assessment_md_91458172 --> G3
+  n_templates_ai_responsible_ai_impact_assessment_md_91458172 --> G6
   n_templates_architecture_accessibility_checklist_md_cb69b48a --> G3
   n_templates_architecture_accessibility_checklist_md_cb69b48a --> G4
   n_templates_architecture_adr_md_f97d984a --> G3
   n_templates_architecture_api_contract_md_5d4f236f --> G3
   n_templates_architecture_component_spec_md_1289f89d --> G3
   n_templates_architecture_component_spec_md_1289f89d --> G4
+  n_templates_architecture_data_contract_md_372a3f36 --> G3
   n_templates_architecture_data_model_md_80a5f8ca --> G3
   n_templates_architecture_design_md_md_7556683b --> G3
   n_templates_architecture_design_review_record_md_4b50f927 --> G3
   n_templates_architecture_design_review_record_md_4b50f927 --> G4
   n_templates_architecture_development_handoff_md_64b0eebc --> G3
+  n_templates_architecture_information_architecture_md_17e68338 --> G3
   n_templates_architecture_integrations_md_a45e4f74 --> G3
   n_templates_architecture_localisation_rtl_checklist_md_76aa2954 --> G3
   n_templates_architecture_localisation_rtl_checklist_md_76aa2954 --> G4
@@ -363,10 +391,12 @@ flowchart LR
   n_templates_architecture_solution_architecture_md_e92b44cf --> G3
   n_templates_architecture_system_design_md_8da77cd0 --> G3
   n_templates_definition_acceptance_criteria_md_d879ee6a --> G2
+  n_templates_definition_admin_entitlements_spec_md_0fabd957 --> G2
   n_templates_definition_assumptions_register_md_53c75258 --> G2
   n_templates_definition_brd_md_094926c4 --> G2
   n_templates_definition_business_rules_md_52490163 --> G2
   n_templates_definition_design_brief_md_14e72d21 --> G2
+  n_templates_definition_developer_experience_spec_md_e682b7a3 --> G2
   n_templates_definition_frd_md_ca6a8d44 --> G2
   n_templates_definition_nfr_md_146602a4 --> G2
   n_templates_definition_one_pager_md_51aafec8 --> G2
@@ -385,11 +415,13 @@ flowchart LR
   n_templates_delivery_migration_cutover_plan_md_0483f7c3 --> G5
   n_templates_delivery_release_notes_md_63fdc6cb --> G5
   n_templates_delivery_release_readiness_md_22b1a9d7 --> G5
+  n_templates_delivery_rollout_plan_md_428d5eb3 --> G5
   n_templates_delivery_sales_enablement_one_pager_md_d3ce4dec --> G5
   n_templates_delivery_sla_slo_definition_md_6502497b --> G5
   n_templates_delivery_sla_slo_definition_md_6502497b --> G6
   n_templates_delivery_support_runbook_md_df8b0158 --> G5
   n_templates_delivery_testing_strategy_md_95f20197 --> G5
+  n_templates_delivery_trust_safety_harm_model_md_f203d130 --> G5
   n_templates_delivery_uat_plan_md_71125f94 --> G5
   n_templates_discovery_competitive_analysis_md_a6532c41 --> G1
   n_templates_discovery_discovery_document_md_6c5a75c5 --> G1
@@ -422,6 +454,7 @@ flowchart LR
   n_templates_execution_tech_debt_register_md_2a21e713 --> G3
   n_templates_operate_compliance_impact_assessment_md_26f196a7 --> G2
   n_templates_operate_compliance_impact_assessment_md_26f196a7 --> G5
+  n_templates_operate_customer_success_handoff_md_67e6a4e9 --> G5
   n_templates_operate_dashboard_spec_md_9dddffd1 --> G6
   n_templates_operate_experiment_brief_md_591ae29b --> G6
   n_templates_operate_feedback_program_md_a8c13945 --> G6
@@ -438,6 +471,7 @@ flowchart LR
   n_templates_planning_capacity_plan_md_365fef02 --> G2
   n_templates_planning_growth_plan_md_ab26a0ea --> G6
   n_templates_planning_gtm_plan_md_61b54e46 --> G5
+  n_templates_planning_portfolio_review_md_8aa1df23 --> G6
   n_templates_planning_pricing_packaging_md_5a0c4db5 --> G5
   n_templates_planning_product_strategy_md_09d425db --> G2
   n_templates_planning_program_charter_md_73783114 --> G2
@@ -477,6 +511,9 @@ flowchart LR
   n_agents_validation_agent_md_95b01d24 -.-> n_agents_analyst_agent_md_1207e895
   n_agents_validation_agent_md_95b01d24 -.-> n_agents_drafting_agent_md_57d815a7
   n_agents_validation_agent_md_95b01d24 -.-> n_agents_red_team_agent_md_2e22b587
+  n_frameworks_assessment_green_software_assessment_md_311d8642 -.-> n_templates_architecture_adr_md_f97d984a
+  n_frameworks_assessment_green_software_assessment_md_311d8642 -.-> n_templates_architecture_solution_architecture_md_e92b44cf
+  n_frameworks_assessment_green_software_assessment_md_311d8642 -.-> n_templates_definition_nfr_md_146602a4
   n_frameworks_assessment_product_operating_model_assessment_md_63503108 -.-> n_templates_planning_capacity_plan_md_365fef02
   n_frameworks_assessment_product_operating_model_assessment_md_63503108 -.-> n_templates_planning_product_strategy_md_09d425db
   n_frameworks_assessment_product_operating_model_assessment_md_63503108 -.-> n_templates_planning_roadmap_md_2afb97a8
@@ -510,6 +547,9 @@ flowchart LR
   n_frameworks_discovery_assumption_mapping_md_10947104 -.-> n_templates_definition_assumptions_register_md_53c75258
   n_frameworks_discovery_assumption_mapping_md_10947104 -.-> n_templates_discovery_opportunity_solution_tree_md_f29c68a9
   n_frameworks_discovery_assumption_mapping_md_10947104 -.-> n_templates_operate_experiment_brief_md_591ae29b
+  n_frameworks_discovery_consequence_scanning_md_428ae725 -.-> n_templates_ai_responsible_ai_impact_assessment_md_91458172
+  n_frameworks_discovery_consequence_scanning_md_428ae725 -.-> n_templates_discovery_problem_framing_md_91fe3c23
+  n_frameworks_discovery_consequence_scanning_md_428ae725 -.-> n_templates_execution_risk_register_md_4a73bbfc
   n_frameworks_discovery_design_sprint_runbook_md_8dfe6664 -.-> n_templates_definition_assumptions_register_md_53c75258
   n_frameworks_discovery_design_sprint_runbook_md_8dfe6664 -.-> n_templates_discovery_discovery_document_md_6c5a75c5
   n_frameworks_discovery_design_sprint_runbook_md_8dfe6664 -.-> n_templates_execution_decision_log_md_3fafa06d
@@ -562,9 +602,15 @@ flowchart LR
   n_frameworks_metrics_aarrr_funnel_md_87053e87 -.-> n_templates_delivery_analytics_instrumentation_spec_md_d96ee1b5
   n_frameworks_metrics_aarrr_funnel_md_87053e87 -.-> n_templates_operate_experiment_brief_md_591ae29b
   n_frameworks_metrics_aarrr_funnel_md_87053e87 -.-> n_templates_planning_growth_plan_md_ab26a0ea
+  n_frameworks_metrics_activation_churn_diagnosis_md_2b6f605f -.-> n_templates_operate_experiment_brief_md_591ae29b
+  n_frameworks_metrics_activation_churn_diagnosis_md_2b6f605f -.-> n_templates_operate_metrics_review_md_80204247
+  n_frameworks_metrics_activation_churn_diagnosis_md_2b6f605f -.-> n_templates_planning_growth_plan_md_ab26a0ea
   n_frameworks_metrics_cohort_retention_md_7c2e24a7 -.-> n_frameworks_metrics_unit_economics_md_55edd310
   n_frameworks_metrics_cohort_retention_md_7c2e24a7 -.-> n_templates_operate_metrics_review_md_80204247
   n_frameworks_metrics_cohort_retention_md_7c2e24a7 -.-> n_templates_planning_growth_plan_md_ab26a0ea
+  n_frameworks_metrics_customer_health_score_md_7a852704 -.-> n_templates_operate_customer_success_handoff_md_67e6a4e9
+  n_frameworks_metrics_customer_health_score_md_7a852704 -.-> n_templates_operate_metrics_dictionary_md_de7d51ca
+  n_frameworks_metrics_customer_health_score_md_7a852704 -.-> n_templates_operate_metrics_review_md_80204247
   n_frameworks_metrics_dora_four_keys_md_1c8615be -.-> n_templates_delivery_release_readiness_md_22b1a9d7
   n_frameworks_metrics_dora_four_keys_md_1c8615be -.-> n_templates_operate_incident_postmortem_md_b2d5d291
   n_frameworks_metrics_dora_four_keys_md_1c8615be -.-> n_templates_operate_metrics_review_md_80204247
@@ -595,6 +641,9 @@ flowchart LR
   n_frameworks_prioritization_decision_doors_md_dbd2a854 -.-> n_templates_architecture_adr_md_f97d984a
   n_frameworks_prioritization_decision_doors_md_dbd2a854 -.-> n_templates_execution_decision_log_md_3fafa06d
   n_frameworks_prioritization_decision_doors_md_dbd2a854 -.-> n_templates_planning_decision_memo_md_7ae1eec5
+  n_frameworks_prioritization_enterprise_request_triage_md_e5990a0a -.-> n_templates_execution_backlog_md_e545b557
+  n_frameworks_prioritization_enterprise_request_triage_md_e5990a0a -.-> n_templates_execution_decision_log_md_3fafa06d
+  n_frameworks_prioritization_enterprise_request_triage_md_e5990a0a -.-> n_templates_planning_partner_integration_brief_md_2c6c5278
   n_frameworks_prioritization_impact_mapping_md_c80c9ab5 -.-> n_templates_definition_assumptions_register_md_53c75258
   n_frameworks_prioritization_impact_mapping_md_c80c9ab5 -.-> n_templates_definition_prd_md_aa4941e0
   n_frameworks_prioritization_impact_mapping_md_c80c9ab5 -.-> n_templates_discovery_opportunity_solution_tree_md_f29c68a9
@@ -634,12 +683,19 @@ flowchart LR
   n_frameworks_strategy_pestle_md_3c60d6fb -.-> n_templates_execution_risk_register_md_4a73bbfc
   n_frameworks_strategy_pestle_md_3c60d6fb -.-> n_templates_planning_product_strategy_md_09d425db
   n_frameworks_strategy_pestle_md_3c60d6fb -.-> n_templates_planning_vision_md_40cadae0
+  n_frameworks_strategy_platform_ecosystem_canvas_md_658de58d -.-> n_frameworks_strategy_seven_powers_audit_md_4c8d1ae6
+  n_frameworks_strategy_platform_ecosystem_canvas_md_658de58d -.-> n_templates_planning_pricing_packaging_md_5a0c4db5
+  n_frameworks_strategy_platform_ecosystem_canvas_md_658de58d -.-> n_templates_planning_product_strategy_md_09d425db
   n_frameworks_strategy_playing_to_win_md_77c988d1 -.-> n_templates_definition_assumptions_register_md_53c75258
   n_frameworks_strategy_playing_to_win_md_77c988d1 -.-> n_templates_planning_product_strategy_md_09d425db
   n_frameworks_strategy_playing_to_win_md_77c988d1 -.-> n_templates_planning_vision_md_40cadae0
   n_frameworks_strategy_porters_five_forces_md_87112b60 -.-> n_templates_discovery_competitive_analysis_md_a6532c41
   n_frameworks_strategy_porters_five_forces_md_87112b60 -.-> n_templates_planning_pricing_packaging_md_5a0c4db5
   n_frameworks_strategy_porters_five_forces_md_87112b60 -.-> n_templates_planning_product_strategy_md_09d425db
+  n_frameworks_strategy_portfolio_allocation_md_45d7d826 -.-> n_templates_planning_business_case_md_22a95f6b
+  n_frameworks_strategy_portfolio_allocation_md_45d7d826 -.-> n_templates_planning_capacity_plan_md_365fef02
+  n_frameworks_strategy_portfolio_allocation_md_45d7d826 -.-> n_templates_planning_portfolio_review_md_8aa1df23
+  n_frameworks_strategy_portfolio_allocation_md_45d7d826 -.-> n_templates_planning_roadmap_md_2afb97a8
   n_frameworks_strategy_positioning_canvas_md_4d3cd58c -.-> n_frameworks_strategy_value_proposition_canvas_md_1a38d091
   n_frameworks_strategy_positioning_canvas_md_4d3cd58c -.-> n_templates_planning_gtm_plan_md_61b54e46
   n_frameworks_strategy_positioning_canvas_md_4d3cd58c -.-> n_templates_planning_positioning_md_bfa6b195
@@ -848,26 +904,70 @@ flowchart LR
   n_skills_write_vision_strategy_SKILL_md_0897714a -.-> n_templates_planning_vision_md_40cadae0
   n_templates_ai_ai_interaction_spec_md_db283ab4 -.-> n_templates_ai_eval_spec_md_0940a501
   n_templates_ai_ai_interaction_spec_md_db283ab4 -.-> n_templates_architecture_accessibility_checklist_md_cb69b48a
+  n_templates_ai_model_selection_md_4ef2de9a -.-> n_templates_ai_eval_spec_md_0940a501
+  n_templates_ai_model_selection_md_4ef2de9a -.-> n_templates_ai_model_card_md_474465f8
+  n_templates_ai_model_selection_md_4ef2de9a -.-> n_templates_architecture_adr_md_f97d984a
+  n_templates_ai_responsible_ai_impact_assessment_md_91458172 -.-> n_templates_ai_guardrails_md_f822b20c
+  n_templates_ai_responsible_ai_impact_assessment_md_91458172 -.-> n_templates_ai_model_card_md_474465f8
+  n_templates_ai_responsible_ai_impact_assessment_md_91458172 -.-> n_templates_execution_risk_register_md_4a73bbfc
   n_templates_architecture_component_spec_md_1289f89d -.-> n_templates_architecture_design_review_record_md_4b50f927
   n_templates_architecture_component_spec_md_1289f89d -.-> n_templates_delivery_testing_strategy_md_95f20197
   n_templates_architecture_component_spec_md_1289f89d -.-> n_templates_execution_risk_register_md_4a73bbfc
+  n_templates_architecture_data_contract_md_372a3f36 -.-> n_templates_architecture_integrations_md_a45e4f74
+  n_templates_architecture_data_contract_md_372a3f36 -.-> n_templates_architecture_observability_md_978fba88
+  n_templates_architecture_data_contract_md_372a3f36 -.-> n_templates_execution_dependency_register_md_5edd4dc1
   n_templates_architecture_design_md_md_7556683b -.-> n_templates_architecture_accessibility_checklist_md_cb69b48a
   n_templates_architecture_design_md_md_7556683b -.-> n_templates_architecture_component_spec_md_1289f89d
   n_templates_architecture_design_md_md_7556683b -.-> n_templates_architecture_design_review_record_md_4b50f927
   n_templates_architecture_design_review_record_md_4b50f927 -.-> n_templates_execution_decision_log_md_3fafa06d
   n_templates_architecture_design_review_record_md_4b50f927 -.-> n_templates_execution_risk_register_md_4a73bbfc
   n_templates_architecture_design_review_record_md_4b50f927 -.-> n_templates_execution_tech_debt_register_md_2a21e713
+  n_templates_architecture_information_architecture_md_17e68338 -.-> n_templates_architecture_accessibility_checklist_md_cb69b48a
+  n_templates_architecture_information_architecture_md_17e68338 -.-> n_templates_architecture_design_review_record_md_4b50f927
+  n_templates_architecture_information_architecture_md_17e68338 -.-> n_templates_architecture_development_handoff_md_64b0eebc
   n_templates_architecture_localisation_rtl_checklist_md_76aa2954 -.-> n_templates_architecture_design_review_record_md_4b50f927
   n_templates_architecture_localisation_rtl_checklist_md_76aa2954 -.-> n_templates_delivery_edge_cases_md_955e9f84
   n_templates_architecture_localisation_rtl_checklist_md_76aa2954 -.-> n_templates_delivery_testing_strategy_md_95f20197
+  n_templates_definition_admin_entitlements_spec_md_0fabd957 -.-> n_templates_architecture_data_model_md_80a5f8ca
+  n_templates_definition_admin_entitlements_spec_md_0fabd957 -.-> n_templates_architecture_security_architecture_md_557cfead
+  n_templates_definition_admin_entitlements_spec_md_0fabd957 -.-> n_templates_definition_acceptance_criteria_md_d879ee6a
+  n_templates_definition_admin_entitlements_spec_md_0fabd957 -.-> n_templates_definition_nfr_md_146602a4
   n_templates_definition_assumptions_register_md_53c75258 -.-> n_templates_definition_brd_md_094926c4
   n_templates_definition_assumptions_register_md_53c75258 -.-> n_templates_definition_prd_md_aa4941e0
+  n_templates_definition_developer_experience_spec_md_e682b7a3 -.-> n_templates_architecture_api_contract_md_5d4f236f
+  n_templates_definition_developer_experience_spec_md_e682b7a3 -.-> n_templates_definition_nfr_md_146602a4
+  n_templates_definition_developer_experience_spec_md_e682b7a3 -.-> n_templates_delivery_sla_slo_definition_md_6502497b
   n_templates_definition_ui_state_inventory_md_12cadc49 -.-> n_templates_architecture_design_review_record_md_4b50f927
   n_templates_definition_ui_state_inventory_md_12cadc49 -.-> n_templates_definition_acceptance_criteria_md_d879ee6a
   n_templates_definition_ui_state_inventory_md_12cadc49 -.-> n_templates_delivery_testing_strategy_md_95f20197
   n_templates_definition_ux_writing_guide_md_5da176ac -.-> n_templates_architecture_localisation_rtl_checklist_md_76aa2954
   n_templates_definition_ux_writing_guide_md_5da176ac -.-> n_templates_definition_acceptance_criteria_md_d879ee6a
   n_templates_definition_ux_writing_guide_md_5da176ac -.-> n_templates_delivery_release_notes_md_63fdc6cb
+  n_templates_delivery_rollout_plan_md_428d5eb3 -.-> n_templates_delivery_launch_comms_plan_md_98489a84
+  n_templates_delivery_rollout_plan_md_428d5eb3 -.-> n_templates_delivery_release_readiness_md_22b1a9d7
+  n_templates_delivery_rollout_plan_md_428d5eb3 -.-> n_templates_execution_tech_debt_register_md_2a21e713
+  n_templates_delivery_rollout_plan_md_428d5eb3 -.-> n_templates_operate_post_launch_review_md_8d9e56ee
+  n_templates_delivery_trust_safety_harm_model_md_f203d130 -.-> n_templates_delivery_failure_scenarios_md_c27670e6
+  n_templates_delivery_trust_safety_harm_model_md_f203d130 -.-> n_templates_delivery_support_runbook_md_df8b0158
+  n_templates_delivery_trust_safety_harm_model_md_f203d130 -.-> n_templates_execution_risk_register_md_4a73bbfc
+  n_templates_execution_product_ops_charter_md_1b3e95a5 -.-> n_templates_delivery_launch_comms_plan_md_98489a84
+  n_templates_execution_product_ops_charter_md_1b3e95a5 -.-> n_templates_operate_feedback_program_md_a8c13945
+  n_templates_execution_product_ops_charter_md_1b3e95a5 -.-> n_templates_operate_metrics_dictionary_md_de7d51ca
+  n_templates_execution_team_working_agreement_md_d2a92696 -.-> n_templates_execution_decision_log_md_3fafa06d
+  n_templates_execution_team_working_agreement_md_d2a92696 -.-> n_templates_execution_retrospective_md_85798293
+  n_templates_execution_team_working_agreement_md_d2a92696 -.-> n_templates_execution_stakeholder_map_md_782efdb3
+  n_templates_operate_customer_success_handoff_md_67e6a4e9 -.-> n_templates_delivery_release_readiness_md_22b1a9d7
+  n_templates_operate_customer_success_handoff_md_67e6a4e9 -.-> n_templates_operate_feedback_program_md_a8c13945
+  n_templates_operate_customer_success_handoff_md_67e6a4e9 -.-> n_templates_operate_metrics_review_md_80204247
+  n_templates_planning_acquisition_integration_plan_md_3edb06cd -.-> n_templates_execution_risk_register_md_4a73bbfc
+  n_templates_planning_acquisition_integration_plan_md_3edb06cd -.-> n_templates_operate_sunset_eol_plan_md_d9b8025a
+  n_templates_planning_acquisition_integration_plan_md_3edb06cd -.-> n_templates_planning_roadmap_md_2afb97a8
+  n_templates_planning_partner_channel_plan_md_38901b7d -.-> n_templates_delivery_sales_enablement_one_pager_md_d3ce4dec
+  n_templates_planning_partner_channel_plan_md_38901b7d -.-> n_templates_planning_gtm_plan_md_61b54e46
+  n_templates_planning_partner_channel_plan_md_38901b7d -.-> n_templates_planning_pricing_packaging_md_5a0c4db5
+  n_templates_planning_portfolio_review_md_8aa1df23 -.-> n_templates_operate_sunset_eol_plan_md_d9b8025a
+  n_templates_planning_portfolio_review_md_8aa1df23 -.-> n_templates_planning_capacity_plan_md_365fef02
+  n_templates_planning_portfolio_review_md_8aa1df23 -.-> n_templates_planning_roadmap_md_2afb97a8
   G1 ==> G2
   G2 ==> G3
   G3 ==> G4
@@ -882,12 +982,12 @@ flowchart LR
 
 | Stage | Gates | Artifacts with a declared relationship |
 |---|---|---|
-| DISCOVER | Gate 1 | 40 |
-| DEFINE | Gate 2 | 37 |
-| DESIGN | Gate 3 | 43 |
+| DISCOVER | Gate 1 | 41 |
+| DEFINE | Gate 2 | 39 |
+| DESIGN | Gate 3 | 46 |
 | BUILD | Gate 4 | 11 |
-| DELIVER | Gate 5 | 22 |
-| OPERATE | Gate 6 | 29 |
-| PLANNING track | none | 43 |
-| AI overlay track | none | 11 |
-| ALL STAGES, cross cutting | none | 16 |
+| DELIVER | Gate 5 | 25 |
+| OPERATE | Gate 6 | 31 |
+| PLANNING track | none | 50 |
+| AI overlay track | none | 13 |
+| ALL STAGES, cross cutting | none | 18 |

@@ -14,7 +14,7 @@ Skill: [the Conductor](../skills/conductor/SKILL.md) fills these by interview; i
 
 A template is the blank a stage produces and a gate reads. Every one opens with the same three-line header this page carries, naming the stage it serves and the gate it feeds, the knowledge card behind it, and the skill or agent that drives it, so a copy you fill in still knows where it came from and which checklist will judge it. Nothing here needs a model: the blanks are fields, the gates are checklists, and a pencil finishes the job. Before some of these blanks get filled, a worksheet in [frameworks/](../frameworks/README.md) has often done the arithmetic that lands in them, the reconciled TAM/SAM/SOM a business case argues from, the RICE score a roadmap sequences by.
 
-Eight directories, 108 templates. Six carry stage work: `discovery` and `definition` sit under DISCOVER and DEFINE, `architecture` holds the DESIGN artifacts while `execution` holds the registers and logs that open early and stay open, `delivery` carries BUILD through DELIVER, and `operate` closes the loop at Gate 6. The last two, `planning` and `ai`, are the tracks that run across every stage rather than inside one. The stage definitions are in [os/OPERATING-LOOP.md](../os/OPERATING-LOOP.md); the checklists these feed are in [os/STAGE-GATES.md](../os/STAGE-GATES.md).
+Eight directories, 122 templates. Six carry stage work: `discovery` and `definition` sit under DISCOVER and DEFINE, `architecture` holds the DESIGN artifacts while `execution` holds the registers and logs that open early and stay open, `delivery` carries BUILD through DELIVER, and `operate` closes the loop at Gate 6. The last two, `planning` and `ai`, are the tracks that run across every stage rather than inside one. The stage definitions are in [os/OPERATING-LOOP.md](../os/OPERATING-LOOP.md); the checklists these feed are in [os/STAGE-GATES.md](../os/STAGE-GATES.md).
 
 Which frameworks feed each template, which filled examples show it, and the ID its working copy gets are listed phase by phase in [the phase index](../docs/PHASE-INDEX.md), generated from these files.
 
@@ -41,7 +41,7 @@ DISCOVER, feeding Gate 1: problem worth solving. A no-go here is a success, beca
 | [service-blueprint.md](discovery/service-blueprint.md) | One scenario across frontstage, backstage, and support systems, with line-of-visibility failure points, each owned | The product is a service and the failure happens behind the counter |
 | [evidence-note.md](discovery/evidence-note.md) | One note per source: claim, verbatim load-bearing quote, source, dates, confidence | Any claim is about to enter a template and would not survive the question "says who" |
 
-## definition (13 templates)
+## definition (15 templates)
 
 DEFINE, feeding Gate 2: requirements signed off. Pick the weight before you pick the template; the gate asks the same questions either way.
 
@@ -60,8 +60,10 @@ DEFINE, feeding Gate 2: requirements signed off. Pick the weight before you pick
 | [prfaq.md](definition/prfaq.md) | Mock press release, customer quote, external and internal FAQ, availability | Working backwards from the launch is cheaper than arguing forward from a feature list |
 | [ui-state-inventory.md](definition/ui-state-inventory.md) | The single owner of the list of states a screen or component must render, across empty, loading, populated, error, offline and permission-denied | A component spec, content audit, review record or localisation checklist needs that list and would otherwise each restate it differently |
 | [ux-writing-guide.md](definition/ux-writing-guide.md) | The product's own voice, terminology and message patterns, so every string is audited against one standard instead of reinvented per squad | Written with the design brief, before Gate 2, and kept current through OPERATE |
+| [developer-experience-spec.md](definition/developer-experience-spec.md) | The product side of an API or developer platform: the developer's job, a measured time-to-first-call target, quickstart and sandbox, SDKs, auth, rate limits as a product decision, errors as experience, versioning and deprecation notice, and developer-facing metrics | The customer is a developer, and the technical api-contract.md says what the endpoints do but not how fast a stranger gets to a working call |
+| [admin-entitlements-spec.md](definition/admin-entitlements-spec.md) | Tenancy model, role-by-permission matrix with invariants, SSO and SCIM behaviour, audit log events, plan-to-entitlement mapping with over-limit and downgrade rules, residency per data class, and what the customer admin can self-serve | A B2B product sells to organizations whose IT admins and security reviewers must approve it before anyone else can use it |
 
-## architecture (16 templates)
+## architecture (18 templates)
 
 DESIGN, feeding Gate 3: architecture and risks reviewed. Alternatives get considered on paper here, while changing your mind is still free.
 
@@ -83,8 +85,10 @@ DESIGN, feeding Gate 3: architecture and risks reviewed. Alternatives get consid
 | [design-md.md](architecture/design-md.md) | The product's DESIGN.md: tokens, components, content and accessibility rules an agent or a human can read in one sitting | The filled copy lives at `products/<name>/DESIGN.md`, the workspace root beside STATE.md |
 | [design-review-record.md](architecture/design-review-record.md) | The one signed record of an experience-design review, across the Gate 3 critique and the Gate 4 live-build check | Before Gate 3, and again in BUILD once the evidence column can be filled from the shipped surface |
 | [localisation-rtl-checklist.md](architecture/localisation-rtl-checklist.md) | The walkable localisation and bidi checklist behind the one-line RTL row in edge-cases.md, market by market | The product ships into a right-to-left or multi-script market and direction needs to be proven, not assumed |
+| [information-architecture.md](architecture/information-architecture.md) | Top tasks, a content inventory, card-sort evidence of the users' mental model, tree-test results per task with the arithmetic, the navigation model, the labels users actually used, and URL and deep-link structure | A product or a major area is being restructured, or users cannot find what is already there, and the navigation is about to be argued from opinion |
+| [data-contract.md](architecture/data-contract.md) | One dataset or event stream's promise to its consumers: grain, schema and semantics, freshness and completeness levels with numbers, quality checks, personal-data class, a breaking-change policy with notice, and the incident path | Another team or product will build on this data, and a silent schema change would break them before anyone noticed |
 
-## execution (11 templates)
+## execution (13 templates)
 
 These open early and are never finished. The stakeholder map is first required at Gate 2, the risk and dependency registers open at DESIGN and are governed weekly through DELIVER, and the decision log and STATE.md run for the life of the product.
 
@@ -101,8 +105,10 @@ These open early and are never finished. The stakeholder map is first required a
 | [tech-debt-register.md](execution/tech-debt-register.md) | A ledger with an interest rate: what each item costs the team every quarter it stands against what it costs once to remove | Debt is contested at every planning meeting and nobody can say what it actually costs to carry |
 | [retrospective.md](execution/retrospective.md) | One format's worth of what happened, kept blameless, ending in two or three actions with owners | The end of a cycle or a gate, where the alternative is skipping straight to the next one and repeating the same miss |
 | [hiring-scorecard.md](execution/hiring-scorecard.md) | The outcomes a seat must move, competencies with what strong and weak evidence sound like, a structured loop, and a decision made on evidence rows | A PM req opens, written before any candidate exists so the rubric cannot be built around a favorite |
+| [team-working-agreement.md](execution/team-working-agreement.md) | The product, design and engineering trio's agreement: who it binds and their overlap hours, decision rights, async-first defaults with response times, rituals and cadence, how disagreement escalates, and a review date | A trio forms or changes, works across time zones, or keeps re-arguing who decides, and the rules live only in whoever was in the first meeting |
+| [product-ops-charter.md](execution/product-ops-charter.md) | The problems a product operations function owns, what it explicitly does not own, its customers, its service levels, and how its value is measured | A company is creating a product ops role or team and "product ops" means something different to everyone who asked for it |
 
-## delivery (13 templates)
+## delivery (15 templates)
 
 BUILD into DELIVER, feeding Gate 4: acceptance criteria met, and Gate 5: release readiness green.
 
@@ -111,8 +117,10 @@ BUILD into DELIVER, feeding Gate 4: acceptance criteria met, and Gate 5: release
 | [testing-strategy.md](delivery/testing-strategy.md) | Test levels, coverage targets, environments, entry and exit criteria | BUILD is starting and "we will test it" is the whole plan so far |
 | [edge-cases.md](delivery/edge-cases.md) | Case, trigger, expected behavior, linked test ID, with no case left undecided | The happy path is what the team builds by instinct. This register is where the product earns its keep |
 | [failure-scenarios.md](delivery/failure-scenarios.md) | Scenario, blast radius, detection, recovery, data-loss risk | The worry is not bad input but the system around the product breaking |
+| [trust-safety-harm-model.md](delivery/trust-safety-harm-model.md) | Actors, harm severity tiers, abuse vectors with prevention, detection and response controls, the reporting and appeals flow, moderation queues with time targets, and prevalence and time-to-action metrics | Users can post, message, trade or meet through the product, so some of them will use it to hurt others, and launch has to know how that is caught |
 | [uat-plan.md](delivery/uat-plan.md) | Scope, entry and exit criteria, testers, defect severity, a sign-off form | Real users have to confirm it works for their actual job before Gate 5 |
 | [release-readiness.md](delivery/release-readiness.md) | The go or no-go checklist: features, tests, known issues, rollback, comms, sign-offs per function | Always. This file is Gate 5, and it is opened before the launch meeting, not during it |
+| [rollout-plan.md](delivery/rollout-plan.md) | Flags with type, owner and retirement date; ramp stages with cohorts and exit criteria; per-stage guardrails with numeric halt thresholds and a named halt caller; kill switch, holdout, and a stage log | A release ramps behind a flag through internal, beta and percentage stages to GA, and someone must be able to stop it on a number rather than in a meeting |
 | [release-notes.md](delivery/release-notes.md) | One set of facts about what changed, cut three ways for three readers: customers, internal teams, and support | A release ships and each audience needs a different cut of the same facts rather than three separately negotiated stories |
 | [migration-cutover-plan.md](delivery/migration-cutover-plan.md) | The phased sequence, the rehearsals that prove it, the rollback and where it stops being possible, and the reconciliation that proves nothing was lost | The release moves data, traffic, or customers from one system to another and has a point of no return in it |
 | [sla-slo-definition.md](delivery/sla-slo-definition.md) | The SLI measured from the user's side, the SLO the team commits to and alerts on, and the SLA promised externally, kept deliberately looser than the SLO | Before first production traffic, so an error-budget breach becomes a policy decision instead of a surprised customer credit |
@@ -122,7 +130,7 @@ BUILD into DELIVER, feeding Gate 4: acceptance criteria met, and Gate 5: release
 | [customer-comms.md](delivery/customer-comms.md) | The messages themselves, per channel, with the approval chain each one passed through and Minto's situation, complication, resolution spine underneath | The launch comms plan has said who hears when, and now the actual words have to exist and get approved before send |
 | [sales-enablement-one-pager.md](delivery/sales-enablement-one-pager.md) | A one-page derivative of positioning, the GTM plan, and pricing, with a proof point behind every claim, sized for reading between calls | A rep needs to talk about a new release before support tickets and forum posts become the only training material |
 
-## operate (12 templates)
+## operate (13 templates)
 
 OPERATE, feeding Gate 6: outcomes verified, learn or sunset. Skipping this stage is how zombie products are born.
 
@@ -140,8 +148,9 @@ OPERATE, feeding Gate 6: outcomes verified, learn or sunset. Skipping this stage
 | [win-loss-review.md](operate/win-loss-review.md) | Outcome, primary and secondary reasons, competitor, quotes, action items | Per meaningful win, loss, or no-decision, because the CRM dropdown always says "price" |
 | [qbr-board-update.md](operate/qbr-board-update.md) | Metrics versus goal, wins, risks and asks, next-quarter roadmap, decisions needed | Leadership has to act on the numbers, not applaud them |
 | [sunset-eol-plan.md](operate/sunset-eol-plan.md) | EOL rationale, timeline, migration path, comms cascade, decommission steps | Gate 6 returned SUNSET. A shutdown is a launch in reverse and gets the same discipline |
+| [customer-success-handoff.md](operate/customer-success-handoff.md) | What changed for customers, the adoption plan per segment, the health-score signals the launch moves, renewal-risk accounts, help content with a stated deflection target, macros and escalation, and the feedback loop back to product | Before Gate 5, when a launch changes what customers do. The support runbook answers the customer on the line; this hands the accounts, renewals and queue to the people who own them after launch |
 
-## planning (16 templates)
+## planning (19 templates)
 
 The PLANNING track. Most of these feed every stage and are reviewed on their own cadence rather than at a gate. A product's vision, strategy and roadmap are the exceptions at the start of the loop: they open DEFINE and are approved at Gate 2. The GTM plan and the growth plan are exceptions too: they are written at DELIVER and OPERATE and feed Gate 5 and Gate 6.
 
@@ -161,10 +170,13 @@ The PLANNING track. Most of these feed every stage and are reviewed on their own
 | [partner-integration-brief.md](planning/partner-integration-brief.md) | One lean go or no-go per partnership: the exchange, the evidenced user problem, the integration surface with owners on both sides, commercial shape and exit terms | Someone proposes building on a partner and the open question is yes or no, not how |
 | [program-charter.md](planning/program-charter.md) | The one-page agreement on what a program exists to change, who decides what, and how it is run, signed once and re-read at every gate | Several initiatives share one outcome, one sponsor, and one cadence, and "who can change scope" would otherwise get re-argued in month three |
 | [capacity-plan.md](planning/capacity-plan.md) | Supply of team time set against the roadmap's demand, so Now holds only what the team can carry and Next stays honest | A roadmap gets signed without anyone having checked whether the team sizing it can actually staff it |
+| [portfolio-review.md](planning/portfolio-review.md) | The periodic multi-product review: each line's stage and outcome against target, a product-line P&L with definitions, investment and headcount by horizon, bets judged against a milestone, and one decision per line: invest, sustain, harvest or sunset | More than one product or bet competes for the same budget and headcount, and allocation is being decided by whoever argues last |
 | [decision-memo.md](planning/decision-memo.md) | One decision stated as a question, options priced with the door type named, one recommendation, and the dissent on the record | A question has been debated twice by the same people, or a reversible call is getting one-way-door treatment |
 | [exec-update.md](planning/exec-update.md) | The one-page monthly read for whoever funds and unblocks the work, ending in asks rather than activity | A decision is needed from a room this week and the honest answer to "where are we" is longer than a sentence |
+| [partner-channel-plan.md](planning/partner-channel-plan.md) | Partner types in scope, each partner's own margin and our net revenue with the arithmetic beside direct, tiers, enablement ending in tests, deal registration and channel-conflict rules, marketplace listing requirements, and sourced against influenced pipeline defined | Revenue will come through resellers, referrers, co-sellers or a marketplace, and nobody has written down what each partner earns, what we keep, or who wins a contested deal |
+| [acquisition-integration-plan.md](planning/acquisition-integration-plan.md) | The deal thesis restated as testable hypotheses with kill signals, the product and customer overlap map, one integrate, keep separate or sunset decision per acquired line, inherited commitments, integration risks, the first 100 days, key-people retention, and the metrics that would show the thesis wrong | The company has acquired a product or team and the product leader inherits a thesis written for a board |
 
-## ai (11 templates)
+## ai (13 templates)
 
 The AI OVERLAY, active whenever the product itself contains a model. It attaches to DEFINE and DESIGN, and its thresholds become blocking checks at Gate 4 and Gate 5.
 
@@ -181,6 +193,8 @@ The AI OVERLAY, active whenever the product itself contains a model. It attaches
 | [red-team-review.md](ai/red-team-review.md) | Entry points, attack scenarios (injection, jailbreak, leak, tool misuse), a break-fix log, re-test sign-off | Before Gate 5, or whenever the feature has only been read by people who want it to succeed |
 | [model-card.md](ai/model-card.md) | Intended use and explicit out-of-scope uses, known limitations citing the eval spec and red-team review, performance with segment variance, data provenance, update policy and contact | Someone outside the building team needs to know what this is, what it is for, and where it breaks |
 | [ai-interaction-spec.md](ai/ai-interaction-spec.md) | The user-facing half of the AI overlay: how generation is disclosed, loading versus wrong states, where a claim's source shows, and how the user pulls the plug | Guardrails and hallucination-controls.md say what the model may do; this says what the user sees while it does it |
+| [model-selection.md](ai/model-selection.md) | Latency and cost budgets first, then candidates scored on the team's own eval set, fully loaded cost per successful task with the arithmetic, latency against budget, context, vendor terms and deprecation risk, the fallback, and a revisit trigger | Before the eval spec pins a model, so the choice is priced and reversible rather than inherited from the prototype |
+| [responsible-ai-impact-assessment.md](ai/responsible-ai-impact-assessment.md) | Intended and out-of-scope use, affected groups including non-users, harms by severity and likelihood, fairness checks by segment with the measure named, transparency, human oversight and appeal, monitoring and the stop condition | An AI feature ships where no financial or data regulator is in scope; where one is, reg-gap-check and the regulated module apply instead |
 
 ## Which of these do you actually need
 

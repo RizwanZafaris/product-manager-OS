@@ -117,7 +117,8 @@ templates/discovery/    problem-framing.md, user-research-plan.md, personas.md,
 templates/definition/   brd.md, prd.md, one-pager.md, frd.md, nfr.md,
                business-rules.md, assumptions-register.md,
                acceptance-criteria.md, user-stories.md, prfaq.md,
-               design-brief.md, ui-state-inventory.md, ux-writing-guide.md
+               design-brief.md, ui-state-inventory.md, ux-writing-guide.md,
+               admin-entitlements-spec.md, developer-experience-spec.md
 templates/architecture/ system-design.md, solution-architecture.md, adr.md,
                data-model.md, api-contract.md, sequence-diagram.md,
                integrations.md, security-architecture.md, observability.md,
@@ -125,36 +126,42 @@ templates/architecture/ system-design.md, solution-architecture.md, adr.md,
                component-spec.md, design-md.md (the filled copy lands at
                products/<name>/DESIGN.md, not in a stage subfolder),
                design-review-record.md, localisation-rtl-checklist.md,
-               development-handoff.md
+               development-handoff.md, information-architecture.md,
+               data-contract.md
 templates/execution/    stakeholder-map.md, risk-register.md, decision-log.md,
                dependency-register.md, state.md (the STATE.md blank the
                Conductor keeps per product), change-request.md,
                status-report.md, retrospective.md, tech-debt-register.md,
-               hiring-scorecard.md, backlog.md
+               hiring-scorecard.md, backlog.md, team-working-agreement.md,
+               product-ops-charter.md
 templates/delivery/     testing-strategy.md, edge-cases.md,
                failure-scenarios.md, uat-plan.md, release-readiness.md,
                analytics-instrumentation-spec.md, launch-comms-plan.md,
                migration-cutover-plan.md, support-runbook.md,
                sla-slo-definition.md, release-notes.md, customer-comms.md,
-               sales-enablement-one-pager.md
+               sales-enablement-one-pager.md, rollout-plan.md,
+               trust-safety-harm-model.md
 templates/operate/      operational-readiness-review.md,
                compliance-impact-assessment.md, metrics-review.md,
                experiment-brief.md, win-loss-review.md, qbr-board-update.md,
                post-launch-review.md, sunset-eol-plan.md,
                incident-postmortem.md, feedback-program.md,
-               metrics-dictionary.md, dashboard-spec.md
+               metrics-dictionary.md, dashboard-spec.md,
+               customer-success-handoff.md
 templates/planning/     roadmap.md, okrs.md, first-90-days.md, gtm-plan.md,
                growth-plan.md, vision.md, product-strategy.md,
                north-star-metric.md, positioning.md, pricing-packaging.md,
                partner-integration-brief.md, business-case.md,
                decision-memo.md, program-charter.md, capacity-plan.md,
-               exec-update.md
+               exec-update.md, portfolio-review.md, partner-channel-plan.md,
+               acquisition-integration-plan.md
 templates/ai/           eval-spec.md, guardrails.md, hallucination-controls.md,
                human-approval-gates.md, agent-architecture.md,
                multi-agent-workflow.md, prompt-structure.md,
                context-management.md, red-team-review.md, model-card.md,
-               ai-interaction-spec.md
-frameworks/    README.md, INDEX.md, and 64 worksheets in nine folders. Each
+               ai-interaction-spec.md, model-selection.md,
+               responsible-ai-impact-assessment.md
+frameworks/    README.md, INDEX.md, and 71 worksheets in nine folders. Each
                sheet carries its scales, its arithmetic written out, the
                inputs it needs first, a worked invented example, its trap and
                its skip line. Ask for a sheet whenever a template field wants
@@ -165,18 +172,21 @@ frameworks/design/      choice-symmetry-audit.md, content-microcopy-audit.md,
 frameworks/discovery/   jtbd-job-map.md, mom-test-interview-guide.md,
                kano-survey.md, assumption-mapping.md, empathy-map.md,
                opportunity-scoring.md, pmf-survey.md,
-               design-sprint-runbook.md
+               design-sprint-runbook.md, consequence-scanning.md
 frameworks/prioritization/ rice-scoring-sheet.md, wsjf-cost-of-delay.md,
                weighted-decision-matrix.md, moscow.md, now-next-later.md,
-               impact-mapping.md, user-story-map.md, decision-doors.md
+               impact-mapping.md, user-story-map.md, decision-doors.md,
+               enterprise-request-triage.md
 frameworks/strategy/    playing-to-win.md, strategy-kernel.md, wardley-map.md,
                seven-powers-audit.md, porters-five-forces.md, pestle.md,
                swot-tows.md, ansoff-matrix.md, business-model-canvas.md,
                lean-canvas.md, value-proposition-canvas.md,
-               positioning-canvas.md, market-sizing.md, build-buy-partner.md
+               positioning-canvas.md, market-sizing.md, build-buy-partner.md,
+               portfolio-allocation.md, platform-ecosystem-canvas.md
 frameworks/metrics/     north-star-input-tree.md, aarrr-funnel.md,
                growth-loops.md, heart-metrics.md, cohort-retention.md,
-               unit-economics.md, dora-four-keys.md, space-framework.md
+               unit-economics.md, dora-four-keys.md, space-framework.md,
+               activation-churn-diagnosis.md, customer-health-score.md
 frameworks/pricing/     van-westendorp.md, gabor-granger.md,
                packaging-good-better-best.md
 frameworks/execution/   premortem-worksheet.md, risk-matrix.md, raci.md,
@@ -190,7 +200,9 @@ frameworks/systems/     The diagnostic group: iceberg-model.md, cynefin.md,
 frameworks/assessment/  product-operating-model-assessment.md,
                team-topologies-assessment.md, tech-debt-assessment.md,
                westrum-culture-typology.md. These score the organization the
-               plan lands in rather than the plan.
+               plan lands in rather than the plan, and
+               green-software-assessment.md, which scores the product's
+               software carbon intensity per unit of work.
 knowledge/     README.md, INDEX.md, and eleven cards: cagan-product-teams.md,
                torres-continuous-discovery.md, jobs-to-be-done.md,
                kano-model.md, rice-prioritization.md, shape-up.md,
@@ -305,7 +317,23 @@ examples/      README.md, expense-copilot-discovery.md,
                example-heart-metrics.md, example-lean-canvas.md,
                example-prfaq.md, example-privacy-impact-assessment.md,
                example-program-charter.md, example-risk-matrix.md,
-               example-unit-economics.md. Forty-one industry examples, one
+               example-unit-economics.md. Fourteen more standalone examples,
+               one per template added on 2026-11-04:
+               quillmark-rollout-plan.md,
+               plumline-admin-entitlements-spec.md,
+               corbelline-developer-experience-spec.md,
+               tillwick-information-architecture.md,
+               sorrelbank-data-contract.md,
+               brisklane-team-working-agreement.md,
+               orchardly-product-ops-charter.md,
+               lanternway-trust-safety-harm-model.md,
+               stackyard-customer-success-handoff.md,
+               tallowmere-portfolio-review.md,
+               kiteline-partner-channel-plan.md,
+               calderbank-acquisition-integration-plan.md,
+               tidewell-model-selection.md,
+               ridgeback-responsible-ai-impact-assessment.md.
+               Forty-one industry examples, one
                per knowledge/domains/ card's "Filled in this repo" line:
                domain-aerospace-defence-analytics-instrumentation-spec.md,
                domain-agritech-business-case.md,

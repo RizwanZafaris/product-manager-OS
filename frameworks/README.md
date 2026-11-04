@@ -10,7 +10,7 @@ aliases: ["Frameworks Index"]
 
 The frameworks layer is the one you run. [Knowledge](../knowledge/INDEX.md) cards answer WHY a method exists and how it misleads; templates hold the artifact a stage owes its gate. Between them sat a gap this layer fills: the sheet you actually fill in when someone says "let's do a Kano" or "score these with RICE" or "what is the TAM". A method you can only read about is a method the team performs from memory, badly, and then argues about.
 
-Every worksheet here carries the same seven parts: what it is for, when to run it, one line beginning **Skip it when**, the inputs it needs and where they come from, the worksheet itself with its scales and its arithmetic stated, how to read the result, an invented example labeled ILLUSTRATIVE, the trap, and what it feeds. The arithmetic is written out because a scoring method whose formula lives in someone's head is a ranking nobody can audit. The skip line is there because a library that only says when to use things quietly teaches that every method is always worth its overhead, which is how a team runs a survey to learn what the support queue already said.
+Every worksheet here carries the same nine parts: what it is for, when to run it, one line beginning **Skip it when**, the inputs it needs and where they come from, the worksheet itself with its scales and its arithmetic stated, how to read the result, an invented example labeled ILLUSTRATIVE, the trap, and what it feeds. The arithmetic is written out because a scoring method whose formula lives in someone's head is a ranking nobody can audit. The skip line is there because a library that only says when to use things quietly teaches that every method is always worth its overhead, which is how a team runs a survey to learn what the support queue already said.
 
 Attribution is named in every file, and the honesty extends to the cases where there is nobody to name: TAM/SAM/SOM, RACI, and the risk matrix have no single originator, and their files say so rather than inventing a founder.
 
@@ -43,6 +43,8 @@ A worksheet is smaller than a template and larger than a definition. It produces
 | [Market sizing](strategy/market-sizing.md) | Build TAM, SAM, SOM twice, top-down and bottom-up, and reconcile them | no single originator |
 | [Build, buy, partner, or wait](strategy/build-buy-partner.md) | Score the four options on strategic core, time, cost, control, and exit | after Coase (1937) and Williamson |
 | [Positioning canvas](strategy/positioning-canvas.md) | Work from competitive alternatives to a market category, never from a tagline backward | April Dunford (2019) |
+| [Portfolio allocation](strategy/portfolio-allocation.md) | Compare current against target allocation by horizon and by core, adjacent and transformational, size each bet to its evidence, and set the kill or continue review | Baghai, Coley and White (1999); Nagji and Tuff (2012) |
+| [Platform ecosystem canvas](strategy/platform-ecosystem-canvas.md) | Name the sides and the core interaction, score each network effect's direction and evidence, plan the cold start, and test the take rate against disintermediation | Parker, Van Alstyne, and Choudary (2016) |
 
 ## Discovery
 
@@ -56,6 +58,7 @@ A worksheet is smaller than a template and larger than a definition. It produces
 | [Kano survey](discovery/kano-survey.md) | Classify attributes as basic, performance, delighter, indifferent, or reverse, from the question pair | Kano and colleagues (1984) |
 | [Product-market fit survey](discovery/pmf-survey.md) | Ask the disappointment question, segment the answers, and read the bands | Sean Ellis (2009) |
 | [Design sprint runbook](discovery/design-sprint-runbook.md) | Run five days from framed problem to tested prototype, with the decisions timeboxed | Jake Knapp and colleagues (2016) |
+| [Consequence scanning](discovery/consequence-scanning.md) | Ask what the product could cause beyond its intended use, score each consequence on likelihood and impact, and sort it into act, influence or monitor | Doteveryone (2019) |
 
 ## Prioritization
 
@@ -69,6 +72,7 @@ A worksheet is smaller than a template and larger than a definition. It produces
 | [User story map](prioritization/user-story-map.md) | Arrange stories along the journey so a release is a working slice | Jeff Patton (2005, book 2014) |
 | [Impact mapping](prioritization/impact-mapping.md) | Trace every deliverable to an actor whose behavior must change | Gojko Adzic (2012) |
 | [Decision doors](prioritization/decision-doors.md) | Classify a decision by reversibility to set how much process it deserves | Jeff Bezos, Amazon letter (2015) |
+| [Enterprise request triage](prioritization/enterprise-request-triage.md) | Weigh a deal-attached request by the revenue that hinges on it, its breadth, fit and cost, flag the one-customer trap, and route it to build, configure, partner, or a written decline | no single originator |
 
 ## Metrics and growth
 
@@ -82,6 +86,8 @@ A worksheet is smaller than a template and larger than a definition. It produces
 | [Unit economics](metrics/unit-economics.md) | Work contribution margin, acquisition cost, lifetime value, and payback honestly | after David Skok (2013) |
 | [DORA four keys](metrics/dora-four-keys.md) | Measure delivery on deployment frequency, lead time, change failure rate, and time to restore | Forsgren, Humble, and Kim (2018) |
 | [SPACE framework](metrics/space-framework.md) | Build a productivity slate across five dimensions, so no single number becomes the target | Forsgren, Storey, and colleagues (2021) |
+| [Activation and churn diagnosis](metrics/activation-churn-diagnosis.md) | Find the activation event by comparing retained and churned users, price onboarding drop-off, code churn reasons with a kappa check, and test save flows against a control | no single originator; after McClure (2007), with Cohen's kappa (1960) |
+| [Customer health score](metrics/customer-health-score.md) | Build a weighted 0 to 100 account score from leading signals and back-test it against renewals before trusting it, with NPS and CSAT defined precisely | no single originator; NPS from Reichheld (2003) |
 
 ## Pricing
 
@@ -126,6 +132,7 @@ The other groups score the work. This one scores the place the work has to happe
 | [Team topologies assessment](assessment/team-topologies-assessment.md) | Name the shape each team actually operates as, against the shape it is called, and price the gap | Skelton and Pais (2019) |
 | [Tech debt assessment](assessment/tech-debt-assessment.md) | Give every known compromise a carrying cost, a removal cost, and a quadrant | Ward Cunningham (1992); Fowler's quadrant (2009) |
 | [Westrum culture typology](assessment/westrum-culture-typology.md) | Score how bad news travels, so you know how far to discount what you are told | Ron Westrum (2004) |
+| [Green software assessment](assessment/green-software-assessment.md) | Estimate carbon per functional unit with the SCI formula, then price the product decisions that move it | Green Software Foundation, SCI specification (2021) |
 
 ## Design
 

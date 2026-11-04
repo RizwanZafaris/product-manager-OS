@@ -24,6 +24,7 @@
    "NfrClosureTests",
    "OsTreeGateTests",
    "PathGateFenceTests",
+   "PngReaderTests",
    "RegulatedPrdDepthTests",
    "ReviewGateTests",
    "ScratchDirectoryExclusion",

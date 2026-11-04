@@ -1,0 +1,39 @@
+{
+  "name": "pmos",
+  "description": "Product Manager OS: run a product from discovery to verified outcomes through six stage gates a named person signs. 43 slash commands and 30 skills over a fill-in template for every artifact and runnable framework worksheets, built so every claim traces to evidence or stays an open field. No hooks, no MCP server, no network call of its own.",
+  "version": "0.8.0",
+  "author": {
+    "name": "Rizwan Zafar",
+    "url": "https://github.com/RizwanZafaris"
+  },
+  "homepage": "https://github.com/RizwanZafaris/product-manager-OS",
+  "repository": "https://github.com/RizwanZafaris/product-manager-OS",
+  "license": "MIT",
+  "keywords": [
+    "product-management",
+    "prd",
+    "stage-gates",
+    "discovery",
+    "roadmap",
+    "okrs",
+    "product-strategy",
+    "templates"
+  ],
+  "commands": "./harness/adapters/claude-code/commands",
+  "skills": [
+    "./learn/skills"
+  ],
+  "agents": [
+    "./harness/adapters/claude-code/agents/acceptance-agent.md",
+    "./harness/adapters/claude-code/agents/analyst-agent.md",
+    "./harness/adapters/claude-code/agents/architect-agent.md",
+    "./harness/adapters/claude-code/agents/drafting-agent.md",
+    "./harness/adapters/claude-code/agents/estimator-agent.md",
+    "./harness/adapters/claude-code/agents/growth-agent.md",
+    "./harness/adapters/claude-code/agents/pmm-agent.md",
+    "./harness/adapters/claude-code/agents/red-team-agent.md",
+    "./harness/adapters/claude-code/agents/release-manager-agent.md",
+    "./harness/adapters/claude-code/agents/research-agent.md",
+    "./harness/adapters/claude-code/agents/validation-agent.md"
+  ]
+}

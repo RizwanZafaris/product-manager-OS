@@ -51,7 +51,7 @@ The deletion proof remains deliberately narrow: it concerns the legacy harness a
 
 **Deleting a content layer is a different event again.** `skills/`, `agents/`, `system/`, `routing/`, and `modules/regulated/` are all safe to delete in the sense that nothing depends upward on them and every remaining document still fills and still passes a human gate. They are also link targets: each template's `Skill:` header points up at the procedure that drives it, so the four AI layers together carry hundreds of inbound links and the link gate fails on all of them. Usable without a layer, not lint-clean without it. The tree keeps the cross-references because they are what makes it navigable, and states the limit instead of promising the stronger property.
 
-Since v0.3.0 the knowledge layer carries three sub-layers, `knowledge/roles/` (WHO each product title is), `knowledge/domains/` (WHERE the product plays, forty-four market cards in two tables, general and financial services, the fintech card a pointer to the regulated module), and `knowledge/design/` (how a PM reads and judges experience design, never the DESIGN stage itself), and a further layer sits beside the rest: `learn/` (three study paths, a library, a tutor skill, and a practice workspace). `learn/` depends downward only, on `knowledge/`, `frameworks/`, `templates/`, the `os/` loop files, and the Conductor's question banks, all read-only; nothing outside `learn/` depends on it existing.
+Since v0.3.0 the knowledge layer carries three sub-layers, `knowledge/roles/` (WHO each product title is), `knowledge/domains/` (WHERE the product plays, forty-seven market cards in two tables, general and financial services, the fintech card a pointer to the regulated module), and `knowledge/design/` (how a PM reads and judges experience design, never the DESIGN stage itself), and a further layer sits beside the rest: `learn/` (four study paths, a library, a tutor skill, and a practice workspace). `learn/` depends downward only, on `knowledge/`, `frameworks/`, `templates/`, the `os/` loop files, and the Conductor's question banks, all read-only; nothing outside `learn/` depends on it existing.
 
 The frameworks layer arrived in v0.5.0 to close a gap the first four versions left open: the knowledge layer said why a method exists, the templates said what artifact a stage owes, and nothing in the tree was the sheet you fill in when someone says "let's do a Kano". A method available only as an essay gets performed from memory, and its arithmetic ends up unauditable. Each worksheet states its scales and its formula, names what it feeds, and carries a skip line so the layer never teaches that every method is worth its overhead. A worksheet ships only when a template, a skill, or a gate consumes its output; otherwise the method stays a one-line entry in the knowledge index.
 
@@ -188,8 +188,8 @@ product-manager-OS/
 │       ├── core-banking.md · transaction-banking.md · remittances.md · payments-acquiring.md · card-issuing.md · lending-credit.md · embedded-finance-baas.md  Financial-services cards, the second table in README.md, where the licence holder has a veto and every rail has its own rulebook
 │       ├── wealth-investing.md · capital-markets.md · insurance.md · crypto-digital-assets.md · regtech-aml-kyc.md · mobile-money-wallets.md · islamic-finance.md  Financial-services cards, continued
 │       └── fintech.md  Pointer card only: routes to modules/regulated and skills/reg-gap-check, duplicates nothing
-├── frameworks/  64 runnable worksheets: scales, arithmetic, invented example, trap, skip line, and what each feeds
-│   ├── README.md  Rendered directory face and layer index: how frameworks differ from knowledge and templates, all 64 by group with originator and year
+├── frameworks/  71 runnable worksheets: scales, arithmetic, invented example, trap, skip line, and what each feeds
+│   ├── README.md  Rendered directory face and layer index: how frameworks differ from knowledge and templates, all 71 by group with originator and year
 │   ├── INDEX.md  Two-line pointer to README.md, kept so older links resolve
 │   ├── strategy/  strategy-kernel, playing-to-win, seven-powers-audit, wardley-map, swot-tows, porters-five-forces, pestle, ansoff-matrix, business-model-canvas, lean-canvas, value-proposition-canvas, market-sizing, build-buy-partner, positioning-canvas
 │   ├── discovery/  mom-test-interview-guide, jtbd-job-map, opportunity-scoring, assumption-mapping, empathy-map, kano-survey, pmf-survey, design-sprint-runbook
@@ -201,7 +201,7 @@ product-manager-OS/
 │   ├── assessment/  Scores the organization the plan lands in rather than the plan: product-operating-model-assessment, team-topologies-assessment, tech-debt-assessment, westrum-culture-typology
 │   └── design/  Experience-design worksheets, not the DESIGN stage: heuristic-evaluation, content-microcopy-audit, design-critique, choice-symmetry-audit, design-system-audit, ux-scorecard
 ├── templates/
-│   ├── README.md  Rendered directory face: the full catalog, one table per stage directory, all 108 templates with what each is and when to reach for it; carries the three-line header the gate demands of every file here
+│   ├── README.md  Rendered directory face: the full catalog, one table per stage directory, all 122 templates with what each is and when to reach for it; carries the three-line header the gate demands of every file here
 │   ├── discovery/
 │   │   ├── discovery-document.md  Trigger, target user, pain, hypothesis, success signal, go or no-go
 │   │   ├── problem-framing.md  One problem statement, evidence, cost of inaction, owner
@@ -322,7 +322,7 @@ product-manager-OS/
 │   └── ROLE-PROMPTS.md  Six labeled, individually copyable blocks: the Conductor, then Discovery Researcher, PRD Writer, Architect, Red Teamer, Program Lead; each block names the repo templates it drives so a chat user can paste file contents on request
 ├── knowledge, templates cross-links: see section 3
 ├── skills/
-│   ├── README.md  Rendered directory face: what a skill is here (a procedure a model executes), all 28 skills with use-when and entry point, and how they load in an agent CLI versus a pasted chat session
+│   ├── README.md  Rendered directory face: what a skill is here (a procedure a model executes), all 29 skills with use-when and entry point, and how they load in an agent CLI versus a pasted chat session
 │   ├── conductor/
 │   │   ├── SKILL.md  Entry skill for the stage-gated interviewer; the full protocol lives in os/CONDUCTOR.md, the triggering in CLAUDE.md and AGENTS.md
 │   │   └── questions/

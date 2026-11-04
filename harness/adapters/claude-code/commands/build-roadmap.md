@@ -20,6 +20,10 @@ GENERATED FILE. Do not hand-edit. Written by `harness/adapters/claude-code/gener
 
 The tier to model mapping lives in `routing/omniroute.config.json` and nowhere else. Read it there rather than assuming one here.
 
+## Where these paths are
+
+Every path in this file is written from the Product Manager OS root. If the working directory contains `os/STAGE-GATES.md`, the working directory is that root. Otherwise this plugin was installed from its marketplace, and the root is `${CLAUDE_PLUGIN_ROOT}`: read every file named here from there, and write the product's own artifacts under `products/<name>/` in the working directory, never under the plugin root.
+
 ## Note from the manifest
 
 A product's roadmap orders phases, each with an outcome, a success measure and its dependencies, after the vision and strategy, and is approved at Gate 2 by the product owner and the engineering lead; a portfolio roadmap (which products enter the loop and when) and an OKR set on its own are planning work, reviewed on their own cadence, where no gate applies.

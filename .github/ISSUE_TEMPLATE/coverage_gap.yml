@@ -1,0 +1,52 @@
+name: Missing PM method or artifact
+description: A part of product management this system does not cover, or covers too thinly to use.
+labels: ["coverage-gap"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check [docs/PHASE-INDEX.md](https://github.com/RizwanZafaris/product-manager-OS/blob/main/docs/PHASE-INDEX.md) and [frameworks/README.md](https://github.com/RizwanZafaris/product-manager-OS/blob/main/frameworks/README.md) first; the method may exist under another name.
+  - type: textarea
+    id: situation
+    attributes:
+      label: The situation a PM is in when they need it
+      description: Concrete enough that someone else could tell whether a proposed file solves it.
+    validations:
+      required: true
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Which stage does it feed?
+      options:
+        - DISCOVER
+        - DEFINE
+        - DESIGN
+        - BUILD
+        - DELIVER
+        - OPERATE
+        - PLANNING track (runs across stages)
+        - Not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What would fill it?
+      options:
+        - A template (a fill-in artifact)
+        - A framework worksheet (a method with scales and arithmetic)
+        - A skill (a procedure an agent follows)
+        - A knowledge card (the method behind a template, with its limits)
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: Where the method comes from
+      description: The named author, book, paper or public source. A method with no attributable source is hard to merge.
+  - type: textarea
+    id: failure
+    attributes:
+      label: How it fails, and the tell
+      description: When does this method mislead, and what would you see when it does? This is the part worth most.
