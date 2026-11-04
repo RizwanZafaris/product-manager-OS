@@ -8,7 +8,8 @@ It copies the committed expense copilot documents, with the Ledgerline journey s
 product workspace, answers every Gate 1 to 3 question from the document that question's lands_in
 names, or from a named fallback where the chain never wrote that document, and records what the
 runtime returned, pmos's check of each answer's quote included. It stops, and
-writes no record, when an example declares nothing to fill in its first eight lines or declares a
+writes no record, when an example declares nothing to fill in its opening lines (the window
+template_rubric.example_opening() reads for every tool that reads the declaration) or declares a
 file that does not exist, when two examples land on one workspace path, when a question has no
 written answer or no document to cite, when an answer is written for a question no bank asks,
 when a quoted span is not in the section its answer names, when an answer is a verbatim slice of
@@ -34,6 +35,7 @@ from pmos.banks import load_contract
 from pmos.cli import main as pmos_main
 from pmos.conductor import VERIFICATION_LABELS
 from pmos.phases import _LANDS_IN_MD_RE
+import template_rubric
 import workspace
 
 
@@ -49,12 +51,13 @@ SLUG = "expense-copilot"
 GATE_OF = {"discover": 1, "define": 2, "design": 3}
 
 # What an example fills is what it says it fills, in the phrasing tools/phase_index.py reads
-# and in its first eight lines, naming a frameworks/ file as well as the templates/ files
-# phase_index reads. This used to be the first templates/ path anywhere in the file,
-# so an example that mentioned one template before declaring another was stamped as the one it
-# mentioned, and a file declaring nothing was skipped without a word.
+# and in the opening lines template_rubric.example_opening() returns, naming a frameworks/ file
+# as well as the templates/ files phase_index reads. This used to be the first templates/ path
+# anywhere in the file, so an example that mentioned one template before declaring another was
+# stamped as the one it mentioned, and a file declaring nothing was skipped without a word. The
+# window used to be eight lines of this file's own, copied from phase_index, while the
+# template-backpointers gate read five; it is now the one template_rubric.NAMES_BACK_WITHIN sets.
 FILLS_RE = re.compile(r"(?:Fills|Produced with) \[((?:templates|frameworks)/[^\]\s]+\.md)\]")
-HEAD_LINES = 8
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.*?)\s*$")
 
 # What an evidence class claims, and so what the cited document must show before an answer is
@@ -363,7 +366,7 @@ ANSWERS = {
 
 def declared_fill(text):
     """The templates/ or frameworks/ file an example declares it fills, or None."""
-    match = FILLS_RE.search("\n".join(text.split("\n")[:HEAD_LINES]))
+    match = FILLS_RE.search(template_rubric.example_opening(text))
     return match.group(1) if match else None
 
 
@@ -387,7 +390,7 @@ def build_workspace(root: Path):
         if template is None:
             raise SystemExit("%s declares nothing to fill: none of its first %d lines says "
                              "'Fills [templates/...]' or 'Produced with [templates/...]', so it has "
-                             "no workspace path" % (f.name, HEAD_LINES))
+                             "no workspace path" % (f.name, template_rubric.NAMES_BACK_WITHIN))
         if not (REPO / template).is_file():
             raise SystemExit("%s declares it fills %s, which is not a file" % (f.name, template))
         # The declared file's own text, not the example's: for a frameworks/ declaration the

@@ -116,29 +116,50 @@ ILLUSTRATIVE_RE = re.compile(
 # having none, which is the false negative F21 asked this file to fix rather
 # than paper over with padding. EXAMPLE_LINK_RE and worked_example_link() below
 # recognise it: a Markdown link that resolves to a file under examples/, whose
-# own first five lines name this template's repo path back, the same
-# convention every examples/*.md file opens with ("Fills
+# own opening lines (NAMES_BACK_WITHIN below) name this template's repo path
+# back, the same convention every examples/*.md file opens with ("Fills
 # [templates/...](../templates/...)."). A link to some other template's
 # example, or to a file that is not there, earns nothing, on purpose: the
 # credit is for a real, checkable, completed exercise, not for a link that
 # merely looks like one.
 EXAMPLE_LINK_RE = re.compile(r"(?<!!)\[[^\]]*\]\(([^)]+)\)")
 # How many opening lines of an examples/ file are searched for the template's
-# path. One constant, because two readers depend on agreeing about it:
-# linked_examples() checks a link against this window, and backpointer_rows()
-# lists every file a link could point at by the same window. A wider listing
-# would offer files the check then refuses; a narrower one would hide files it
-# accepts.
+# path. Defined here and nowhere else, because every tool that decides which
+# template an example fills has to agree about it: linked_examples() checks a
+# link against this window, backpointer_rows() lists every file a link could
+# point at by the same window, and tools/example_availability.py,
+# tools/phase_index.py and tools/journey_chain.py read an example's
+# declaration through example_opening() below. A wider listing would offer
+# files the check then refuses; a narrower one would hide files it accepts.
+#
+# Each of those tools used to carry its own number, and two of them read eight
+# lines where this gate read five, so an example whose Fills line sat on line
+# 6, 7 or 8 would be listed as filled in docs/PHASE-INDEX.md, and stamped into
+# the expense copilot chain, while the template-backpointers gate refused it.
+# No example in the tree sat there when the window was made one: every one
+# names its template on its third line.
 NAMES_BACK_WITHIN = 5
 
 
+def example_opening(text):
+    """The part of an examples/ file's `text` that may declare what it fills:
+    its first NAMES_BACK_WITHIN lines, joined by newlines.
+
+    Every reader of that declaration slices through this one function, so they
+    agree on what counts as a line as well as on how many lines to read. It
+    reads NAMES_BACK_WITHIN when it is called, not when it is imported, so a
+    reader cannot keep a stale copy of the window.
+    """
+    return "\n".join(text.splitlines()[:NAMES_BACK_WITHIN])
+
+
 def _opening(path):
-    """A file's first NAMES_BACK_WITHIN lines, or None when it is unreadable."""
+    """A file's example_opening(), or None when it is unreadable."""
     try:
         head = path.read_text(encoding="utf-8")
     except (UnicodeDecodeError, OSError):
         return None
-    return "\n".join(head.splitlines()[:NAMES_BACK_WITHIN])
+    return example_opening(head)
 
 
 def linked_examples(path, text):

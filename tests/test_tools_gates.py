@@ -50,6 +50,8 @@ import prose_metrics  # noqa: E402
 import readiness  # noqa: E402
 import readiness_probe  # noqa: E402
 import example_availability  # noqa: E402
+import journey_chain  # noqa: E402
+import phase_index  # noqa: E402
 import template_rubric  # noqa: E402
 from tools.docs_contract import (check as check_docs,  # noqa: E402
                                  _example_families,
@@ -3412,6 +3414,104 @@ class TemplateBackpointerGateTests(unittest.TestCase):
                     (root / "examples" / "images").mkdir()
                 code, output = self.gate(root)
                 self.assertEqual(0, code, output)
+
+
+class FillsWindowAgreementTests(unittest.TestCase):
+    """Every reader of an example's Fills line reads the same opening lines.
+
+    tools/template_rubric.py and tools/example_availability.py read an
+    example's first five lines for the template it fills, while
+    tools/phase_index.py read eight and tools/journey_chain.py copied that
+    eight, so an example declaring its template on line 6, 7 or 8 would be
+    listed in docs/PHASE-INDEX.md as filling a template the
+    template-backpointers gate refused it for. Every example in the tree
+    declares on its third line, so the tree itself cannot tell the windows
+    apart; these fixtures can. Each one declares the same template on the last
+    line inside the window and on the first line outside it, and all four
+    readers have to name the inside one and only it. The window is then moved,
+    by patching the one constant, and all four have to move with it, which is
+    what fails if any reader carries its own number again.
+    """
+
+    # On the backpointer exception list because no example in the tree names
+    # it back, so the fixtures below are the only examples that do.
+    TEMPLATE = "templates/definition/assumptions-register.md"
+    INSIDE = "window-inside.md"
+    OUTSIDE = "window-outside.md"
+
+    def tree(self, tmp, window):
+        """The one template, linking both fixtures, and the two fixtures."""
+        root = Path(tmp).resolve() / "repo"
+        template = root / self.TEMPLATE
+        template.parent.mkdir(parents=True)
+        (root / "examples").mkdir()
+        template.write_text(
+            (REPO / self.TEMPLATE).read_text(encoding="utf-8")
+            + "\nFilled example: [inside](../../examples/%s)\n"
+              "Filled example: [outside](../../examples/%s)\n"
+            % (self.INSIDE, self.OUTSIDE), encoding="utf-8")
+        for name, line in ((self.INSIDE, window), (self.OUTSIDE, window + 1)):
+            opening = (["# %s" % name] + ["filler"] * (line - 2)
+                       + ["Fills [%s](../%s). Invented." % (self.TEMPLATE,
+                                                            self.TEMPLATE)])
+            (root / "examples" / name).write_text(
+                "\n".join(opening) + "\nThe body.\n", encoding="utf-8")
+        return root
+
+    def readers(self, root):
+        """The fixture examples each reader says fill TEMPLATE, by name."""
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(unittest.mock.patch.object(
+                template_rubric, "REPO", root))
+            stack.enter_context(unittest.mock.patch.object(
+                template_rubric, "TEMPLATES", root / "templates"))
+            stack.enter_context(unittest.mock.patch.object(
+                phase_index, "ROOT", root))
+            row = next(row for row in template_rubric.backpointer_rows()
+                       if row["path"] == self.TEMPLATE)
+            index = phase_index.collect()
+        examples = sorted((root / "examples").glob("*.md"))
+        return {
+            "template_rubric linked": sorted(Path(p).name
+                                             for p in row["linked"]),
+            "template_rubric candidates": sorted(Path(p).name
+                                                 for p in row["candidates"]),
+            "example_availability": example_availability.declared_examples(
+                root).get(self.TEMPLATE, []),
+            "phase_index": sorted(Path(p).name for p in
+                                  index["filled_by"].get(self.TEMPLATE, [])),
+            "journey_chain": [
+                path.name for path in examples
+                if journey_chain.declared_fill(path.read_text(
+                    encoding="utf-8")) == self.TEMPLATE],
+        }
+
+    def agree(self, window):
+        with tempfile.TemporaryDirectory() as tmp:
+            found = self.readers(self.tree(tmp, window))
+        self.assertEqual({reader: [self.INSIDE] for reader in found}, found)
+
+    def test_the_line_after_the_window_is_outside_it_for_every_reader(self):
+        """The defect itself: a Fills line one past the gate's window, which
+        phase_index and journey_chain used to accept and the gate refused."""
+        self.agree(template_rubric.NAMES_BACK_WITHIN)
+
+    def test_moving_the_one_window_moves_every_reader(self):
+        """A reader that kept its own number passes the test above while the
+        numbers happen to match, and fails here."""
+        for window in (3, 8):
+            with self.subTest(window=window), unittest.mock.patch.object(
+                    template_rubric, "NAMES_BACK_WITHIN", window):
+                self.agree(window)
+
+    def test_no_reader_carries_a_window_of_its_own(self):
+        """The window is defined in tools/template_rubric.py and nowhere
+        else, so none of the other readers binds a name to a number of lines
+        to read."""
+        for module in (example_availability, phase_index, journey_chain):
+            with self.subTest(module=module.__name__):
+                for name in ("NAMES_BACK_WITHIN", "HEAD_LINES"):
+                    self.assertFalse(hasattr(module, name), name)
 
 
 class PmWorkingSetGateTests(unittest.TestCase):
