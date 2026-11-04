@@ -1231,7 +1231,7 @@ class RouteContractTests(unittest.TestCase):
         self.tasks, _note = runner.load_manifest()
 
     def test_a_multi_template_route_without_template_refuses(self):
-        task = self.tasks["write-prd"]
+        task = self.tasks["draft-prd"]
         self.assertGreater(len(task["templates"]), 1)
         with self.assertRaises(runner.RunnerError) as caught:
             runner.template_for(task, None)
@@ -1241,7 +1241,7 @@ class RouteContractTests(unittest.TestCase):
             self.assertIn(path, message, "the choices were not listed")
 
     def test_a_named_template_is_honored(self):
-        task = self.tasks["write-prd"]
+        task = self.tasks["draft-prd"]
         chosen = runner.template_for(task, "templates/definition/brd.md")
         self.assertEqual(chosen.name, "brd.md",
                          "a BRD request resolved to something else")
@@ -3841,6 +3841,96 @@ class GeneratedCommandTests(unittest.TestCase):
         self.assertIn("There is no gate on this output", body,
                       "the denial is not blanket and must survive for the "
                       "routes that really end at no gate")
+
+
+class RouteSkillNameCollisionTests(unittest.TestCase):
+    """route-id-equals-skill-name: the plugin exposes commands and skills
+    under one namespace. Three route ids (write-prd, design-review,
+    write-vision-strategy) were also skill directory names, so `claude plugin
+    details` listed each name twice and `/<plugin>:write-prd` could mean the
+    route card or the skill. generate.py now refuses that shape in both
+    modes; these tests build the bad input and assert the refusal.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.generate = _load_by_path(
+            "_generate_collisions",
+            REPO / "harness" / "adapters" / "claude-code" / "generate.py")
+        _data, cls.tasks = cls.generate.load_manifest()
+
+    def _with_id(self, route_id):
+        task = copy.deepcopy(self.tasks[0])
+        task["id"] = route_id
+        return task
+
+    def test_no_route_id_in_the_manifest_is_a_skill_name(self):
+        self.assertEqual(self.generate.name_collisions(self.tasks), [])
+
+    def test_the_three_renamed_ids_are_gone_and_their_skills_remain(self):
+        ids = {task["id"] for task in self.tasks}
+        for old, new in (("write-prd", "draft-prd"),
+                         ("design-review", "run-design-review"),
+                         ("write-vision-strategy", "draft-vision-strategy")):
+            self.assertNotIn(old, ids, "%s is still a route id" % old)
+            self.assertIn(new, ids, "%s is missing from the manifest" % new)
+            self.assertTrue((REPO / "skills" / old / "SKILL.md").is_file(),
+                            "the skill %s should keep its name" % old)
+
+    def test_a_route_named_like_a_skill_under_skills_is_refused(self):
+        found = self.generate.name_collisions([self._with_id("write-prd")])
+        self.assertEqual(len(found), 1)
+        self.assertIn("skills/write-prd/SKILL.md", found[0])
+
+    def test_a_route_named_like_the_tutor_under_learn_skills_is_refused(self):
+        found = self.generate.name_collisions([self._with_id("tutor")])
+        self.assertEqual(len(found), 1)
+        self.assertIn("learn/skills/tutor/SKILL.md", found[0])
+
+    def test_a_route_named_like_a_runtime_skill_is_refused(self):
+        found = self.generate.name_collisions(
+            [self._with_id("independent-review")])
+        self.assertEqual(len(found), 1, "skills/runtime/ was not scanned")
+        self.assertIn("skills/runtime/independent-review/SKILL.md", found[0])
+
+    def test_a_frontmatter_name_that_differs_from_its_directory_is_caught(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = Path(tmp) / "alpha"
+            skill_dir.mkdir()
+            (skill_dir / "SKILL.md").write_text(
+                "---\nname: beta\ndescription: x\n---\n\n# Beta\n",
+                encoding="utf-8")
+            roots = (Path(tmp),)
+            names = self.generate.skill_names(roots)
+            self.assertIn("alpha", names)
+            self.assertIn("beta", names)
+            self.assertEqual(len(self.generate.name_collisions(
+                [self._with_id("beta")], roots)), 1)
+
+    def _main_with(self, tasks, argv):
+        data = {"name": "x", "version": "0.0.0", "tasks": tasks}
+        err = io.StringIO()
+        with mock.patch.object(self.generate, "load_manifest",
+                               return_value=(data, tasks)), \
+                mock.patch.object(self.generate, "planned",
+                                  side_effect=AssertionError(
+                                      "planned files despite a collision")), \
+                contextlib.redirect_stderr(err):
+            code = self.generate.main(argv)
+        return code, err.getvalue()
+
+    def test_check_mode_exits_one_and_names_the_collision(self):
+        code, err = self._main_with([self._with_id("design-review")],
+                                    ["--check"])
+        self.assertEqual(code, 1)
+        self.assertIn("collision: route id design-review", err)
+        self.assertIn("skills/design-review/SKILL.md", err)
+
+    def test_write_mode_refuses_before_writing_anything(self):
+        code, err = self._main_with(
+            [self._with_id("write-vision-strategy")], [])
+        self.assertEqual(code, 1)
+        self.assertIn("collision: route id write-vision-strategy", err)
 
 
 class CliPlanGateTests(unittest.TestCase):

@@ -1,16 +1,16 @@
 ---
-name: write-vision-strategy
+name: draft-vision-strategy
 description: "Router row: A vision, a product strategy, or \"where are we going and what are we not doing\". DEFINE stage, Gate 2, judgment tier. Say: a vision; a product strategy; where are we going and what are we not doing."
 disable-model-invocation: true
 ---
 
 GENERATED FILE. Do not hand-edit. Written by `harness/adapters/claude-code/generate.py` from `harness/MANIFEST.json`; edit the manifest, then regenerate.
 
-# Route: write-vision-strategy
+# Route: draft-vision-strategy
 
 | Field | Value |
 |---|---|
-| Route id | `write-vision-strategy` |
+| Route id | `draft-vision-strategy` |
 | Router row | A vision, a product strategy, or "where are we going and what are we not doing" |
 | Stage | DEFINE |
 | Gate | 2 |

@@ -41,7 +41,7 @@ The server finds the repository by walking up from its own file until it sees `h
 |---|---|
 | `python3 harness/adapters/desktop/server.py` | Serves MCP over stdio. Needs the SDK. |
 | `python3 harness/adapters/desktop/server.py --list` | Prints the generated tool names, tiers, and stages. Standard library only. |
-| `python3 harness/adapters/desktop/server.py --plan write-prd` | Prints one route's plan. Standard library only. |
+| `python3 harness/adapters/desktop/server.py --plan draft-prd` | Prints one route's plan. Standard library only. |
 | `python3 harness/adapters/desktop/selftest.py` | Checks the tool count against the manifest, the schemas, and the SDK-absent path. Now also checks status parity: that `pmos_status`'s `phases` equal `pmos status --json`'s `phases` for the same product, fresh, after one accepted answer, and with a stale pin. For a symlinked artifact and a corrupt pin, it compares `pmos_status`'s result with a live `pmos status --json` for the same product. For a corrupt runtime database and a missing runtime, it checks only that `runtime_status.status()` returns `ok: false` with an error, without running the CLI. Exit 1 on any failure. |
 
 ## Two ways it fails closed

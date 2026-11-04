@@ -1,16 +1,16 @@
 ---
-name: write-prd
+name: draft-prd
 description: "Router row: A PRD, a spec, a BRD or FRD, or \"write up what we are building\". DEFINE stage, Gate 2, drafting tier. Say: a PRD; a spec; a BRD; an FRD; write up what we are building."
 disable-model-invocation: true
 ---
 
 GENERATED FILE. Do not hand-edit. Written by `harness/adapters/claude-code/generate.py` from `harness/MANIFEST.json`; edit the manifest, then regenerate.
 
-# Route: write-prd
+# Route: draft-prd
 
 | Field | Value |
 |---|---|
-| Route id | `write-prd` |
+| Route id | `draft-prd` |
 | Router row | A PRD, a spec, a BRD or FRD, or "write up what we are building" |
 | Stage | DEFINE |
 | Gate | 2 |

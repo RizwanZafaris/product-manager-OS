@@ -65,7 +65,7 @@
       "note": "Source notes run on extraction; the reconcile-before-handoff pass runs on judgment, per the taskMap in routing/omniroute.config.json."
     },
     {
-      "id": "write-prd",
+      "id": "draft-prd",
       "router_row": "A PRD, a spec, a BRD or FRD, or \"write up what we are building\"",
       "trigger": ["a PRD", "a spec", "a BRD", "an FRD", "write up what we are building"],
       "stage": "DEFINE",
@@ -411,7 +411,7 @@
       "note": "PLANNING overlay. OKRs supply the targets Gate 6 verifies; the OKR set itself is not gated."
     },
     {
-      "id": "write-vision-strategy",
+      "id": "draft-vision-strategy",
       "router_row": "A vision, a product strategy, or \"where are we going and what are we not doing\"",
       "trigger": ["a vision", "a product strategy", "where are we going and what are we not doing"],
       "stage": "DEFINE",
@@ -607,7 +607,7 @@
       "note": "No skill: the role cards answer the question and the two templates are what a reader does next."
     },
     {
-      "id": "design-review",
+      "id": "run-design-review",
       "router_row": "A design review, a heuristic evaluation or cognitive walkthrough, a live-build design check before Gate 4, or an accessibility, content, localisation or deceptive-design pass on a flow",
       "trigger": ["a design review", "a heuristic evaluation", "a cognitive walkthrough", "an accessibility pass", "a localisation pass", "a deceptive-design pass", "a live-build design check"],
       "stage": "DESIGN",
