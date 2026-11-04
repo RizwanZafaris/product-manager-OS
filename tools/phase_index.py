@@ -6,7 +6,10 @@
 
 The index is a reading of declarations already in the tree, never a second copy:
 a framework's feeds frontmatter names the templates it feeds; an example names
-the template it fills on its third line; a template's stage and gate are read
+the template it fills in its opening lines, read through
+template_rubric.example_opening(), the one window the template-backpointers
+gate also reads, so an example is listed here only when that gate would accept
+it as filling the template; a template's stage and gate are read
 the way the workspace stamps a copy of it; tools/workspace.py resolves where the
 working copy lands, its artifact ID and what it depends on; and
 os/STAGE-GATES.md holds the gate titles. IDs and paths are shown for a product
@@ -45,6 +48,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import graph  # noqa: E402
 import workspace  # noqa: E402
 import init_product  # noqa: E402
+import template_rubric  # noqa: E402
 from lint import tracked_files  # noqa: E402
 
 
@@ -123,7 +127,7 @@ def collect():
     for ex_rel in tracked:
         if not (ex_rel.startswith("examples/") and ex_rel.endswith(".md")):
             continue
-        head = "\n".join((_read_text(ROOT / ex_rel) or "").split("\n")[:8])
+        head = template_rubric.example_opening(_read_text(ROOT / ex_rel) or "")
         for needle in FILLS:
             pos = head.find(needle)
             if pos < 0:
@@ -196,11 +200,12 @@ def render(index):
         "`python3 tools/phase_index.py --check`.",
         "",
         "Every row is read from declarations already in the tree: a "
-        "framework's `feeds` frontmatter, the template an example names on "
-        "its third line, the template's own stage and gate, "
+        "framework's `feeds` frontmatter, the template an example names in "
+        "its first %d lines, the template's own stage and gate, "
         "`tools/workspace.py` for where the working copy lands, its artifact "
         "ID and what it depends on, and `os/STAGE-GATES.md` for the gate "
-        "titles. IDs and paths are shown for a product named ledgerline.",
+        "titles. IDs and paths are shown for a product named ledgerline."
+        % template_rubric.NAMES_BACK_WITHIN,
         "",
         "## The journey",
         "",

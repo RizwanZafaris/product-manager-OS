@@ -130,12 +130,16 @@ class JourneyChainTests(unittest.TestCase):
             self.assertIn("expense-copilot-stray.md declares nothing to fill", done.stderr)
             self.assertFalse(out.exists())
 
-    def test_only_the_first_eight_lines_declare_what_an_example_fills(self):
-        """The rule tools/phase_index.py reads: a declaration further down is body text."""
+    def test_only_the_opening_lines_declare_what_an_example_fills(self):
+        """The window every reader of the declaration shares, set once as
+        template_rubric.NAMES_BACK_WITHIN: a declaration further down is body text.
+        This used to pin eight lines, the window this file had copied from
+        tools/phase_index.py while the template-backpointers gate read five."""
+        window = journey_chain.template_rubric.NAMES_BACK_WITHIN
         declaration = "Fills [templates/definition/prd.md](../templates/definition/prd.md)."
-        self.assertEqual(journey_chain.declared_fill("\n" * 7 + declaration),
+        self.assertEqual(journey_chain.declared_fill("\n" * (window - 1) + declaration),
                          "templates/definition/prd.md")
-        self.assertIsNone(journey_chain.declared_fill("\n" * 8 + declaration))
+        self.assertIsNone(journey_chain.declared_fill("\n" * window + declaration))
 
     def test_the_declared_template_decides_even_when_the_body_mentions_another_first(self):
         with tempfile.TemporaryDirectory() as tmp:

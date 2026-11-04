@@ -14,7 +14,8 @@ second copy of them:
 
 - examples/*.md declare which template they fill, in the "Fills [templates/...]"
   sentence in their opening lines, the same declaration tools/template_rubric.py
-  --backpointers reads from the template's side;
+  --backpointers reads from the template's side, through the same window
+  (template_rubric.NAMES_BACK_WITHIN, read by template_rubric.example_opening());
 - an example declares it was written for a domain by being named
   domain-<card-stem>-<template-stem>.md;
 - a card declares which templates it bends in its "**Templates this bends:**" line.
@@ -54,6 +55,10 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "tools"))
+
+import template_rubric  # noqa: E402
+
 BEGIN = "<!-- generated: example-availability -->"
 END = "<!-- end generated: example-availability -->"
 ANCHOR = "**Filled in this repo:**"
@@ -64,10 +69,11 @@ TEMPLATE_RE = re.compile(r"templates/[a-z0-9-]+/[a-z0-9-]+\.md")
 # file in that link's URL made the card claim it bends 2 templates when it declares
 # a pack of eleven plus one more.
 DIR_LINK_RE = re.compile(r"\[templates/([a-z0-9-]+)/\]\([^)]*\)")
-# How many opening lines of an examples/ file declare which template it fills.
-# The same window tools/template_rubric.py reads from the other side, so the two
-# gates cannot disagree about what counts as a declared example.
-NAMES_BACK_WITHIN = 5
+# This file does not set how many opening lines of an examples/ file declare
+# which template it fills. declared_examples() reads them through
+# template_rubric.example_opening(), the window tools/template_rubric.py reads
+# from the other side, so the two gates cannot disagree about what counts as a
+# declared example. This file used to carry its own copy of the number.
 
 # A template stem as a card writes one: bare, wrapped in markdown emphasis, or
 # written as a link. Review found that a single backtick round the stem walked a
@@ -109,7 +115,7 @@ def declared_examples(root: Path) -> dict:
         if f.name == "README.md":
             continue
         try:
-            head = "\n".join(f.read_text(encoding="utf-8").splitlines()[:NAMES_BACK_WITHIN])
+            head = template_rubric.example_opening(f.read_text(encoding="utf-8"))
         except (UnicodeDecodeError, OSError):
             continue
         for m in set(TEMPLATE_RE.findall(head)):
