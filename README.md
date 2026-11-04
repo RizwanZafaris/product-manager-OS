@@ -29,7 +29,7 @@ On an older Claude Code, the same thing in two steps:
 /plugin install pmos@product-manager-os
 ```
 
-That gives every project you open the 43 routes as `/pmos:<route>` commands, for example `/pmos:write-prd`, `/pmos:run-premortem` or `/pmos:conduct-product-journey`, plus the skills they route to. Every command tells Claude to read its skills, templates and gates from the installed copy of this repository, and to write your product's artifacts under `products/<name>/` in the project you are in. The plugin carries no hooks, no MCP server, and no network call of its own. On Claude Code 2.1.318, `claude plugin details pmos` measured it at about 9,500 tokens of always-on skill and command descriptions per session; uninstall it from projects that do no product work. What the commands do and refuse is in [the adapter README](harness/adapters/claude-code/README.md).
+That gives every project you open the 43 routes as `/pmos:<route>` commands, for example `/pmos:write-prd`, `/pmos:run-premortem` or `/pmos:conduct-product-journey`, plus the skills they route to. Every command tells Claude to read its skills, templates and gates from the installed copy of this repository, and to write your product's artifacts under `products/<name>/` in the project you are in. The plugin carries no hooks, no MCP server, and no network call of its own. On Claude Code 2.1.318, `claude plugin details pmos` measured it at about 9,500 tokens of always-on skill and command descriptions per session; uninstall it from projects that do no product work. What the commands do and refuse is in the adapter README, `harness/adapters/claude-code/README.md`.
 
 **With no AI at all**, clone and build a workspace; the full walkthrough is [Start Here](#start-here) below:
 
