@@ -1833,12 +1833,12 @@ class TemplateInventoryGateTests(unittest.TestCase):
             root = copy_tree(tmp)
             catalog = root / self.CATALOG
             self.rewrite(catalog, "(16 templates)", "(15 templates)", 1)
-            self.rewrite(catalog, "(11 templates)", "(10 templates)", 1)
+            self.rewrite(catalog, "(13 templates)", "(12 templates)", 1)
             for name, before, after in (
-                    (self.CATALOG, "108 templates", "105 templates"),
-                    ("README.md", "all 108 blanks", "all 105 blanks"),
-                    ("docs/ARCHITECTURE.md", "all 108 templates",
-                     "all 105 templates")):
+                    (self.CATALOG, "122 templates", "119 templates"),
+                    ("README.md", "all 122 blanks", "all 119 blanks"),
+                    ("docs/ARCHITECTURE.md", "all 122 templates",
+                     "all 119 templates")):
                 self.rewrite(root / name, before, after)
             reported = {path for path, _message in self.findings(root)}
             self.assertEqual({self.CATALOG, "README.md",
@@ -1855,13 +1855,13 @@ class TemplateInventoryGateTests(unittest.TestCase):
             catalog = root / self.CATALOG
             self.rewrite(catalog, "## discovery (16 templates)",
                          "## discovery (15 templates)", 1)
-            self.rewrite(catalog, "## definition (13 templates)",
-                         "## definition (14 templates)", 1)
+            self.rewrite(catalog, "## definition (15 templates)",
+                         "## definition (16 templates)", 1)
             self.assertEqual(
                 sorted([(self.CATALOG, "the discovery section says 15 "
                          "template(s) and the directory holds 16"),
-                        (self.CATALOG, "the definition section says 14 "
-                         "template(s) and the directory holds 13")]),
+                        (self.CATALOG, "the definition section says 16 "
+                         "template(s) and the directory holds 15")]),
                 sorted(self.findings(root)))
 
     def test_a_catalog_row_pointing_at_no_file_is_reported(self):
@@ -1876,9 +1876,9 @@ class TemplateInventoryGateTests(unittest.TestCase):
     def test_dropping_the_claim_is_not_a_way_to_pass(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = copy_tree(tmp)
-            self.rewrite(root / "README.md", "all 108 blanks", "the blanks")
+            self.rewrite(root / "README.md", "all 122 blanks", "the blanks")
             self.rewrite(root / "docs" / "ARCHITECTURE.md",
-                         "all 108 templates", "the templates")
+                         "all 122 templates", "the templates")
             messages = [message for _path, message in self.findings(root)]
             self.assertTrue(any(message.startswith("no operator document "
                                                    "states the template "
@@ -1893,7 +1893,7 @@ class TemplateInventoryGateTests(unittest.TestCase):
             root = copy_tree(tmp)
             self.assertEqual([], [item for item in check_docs(root)
                                   if item.severity == "error"])
-            self.rewrite(root / "README.md", "all 108 blanks", "all 98 blanks")
+            self.rewrite(root / "README.md", "all 122 blanks", "all 98 blanks")
             codes = {item.code for item in check_docs(root)
                      if item.severity == "error"}
             self.assertIn("inventory-count", codes)
@@ -2035,14 +2035,14 @@ class ExamplesInventoryGateTests(unittest.TestCase):
 
     def test_a_standalone_count_off_by_one_is_reported(self):
         """A section that names no journey is held to its rows, and only by
-        the rows comparison: nothing else reads "the 16 files below"."""
+        the rows comparison: nothing else reads "the 30 files below"."""
         with tempfile.TemporaryDirectory() as tmp:
             root = copy_tree(tmp)
-            self.rewrite(root / self.INDEX, "Each of the 16 files below",
-                         "Each of the 17 files below")
-            line = self.line_of(root, "Each of the 17 files below")
+            self.rewrite(root / self.INDEX, "Each of the 30 files below",
+                         "Each of the 31 files below")
+            line = self.line_of(root, "Each of the 31 files below")
             self.assertIn((self.INDEX, line, "the 'Standalone examples' "
-                           "section says 17 file(s) and its table has 16 "
+                           "section says 31 file(s) and its table has 30 "
                            "row(s)"), self.findings(root))
 
     def test_dropping_the_total_is_not_a_way_to_pass(self):
@@ -2108,9 +2108,9 @@ class ExamplesInventoryGateTests(unittest.TestCase):
 
     def test_the_lead_counts_are_held_to_their_sections(self):
         seeds = (
-            ("16 standalone examples", "17 standalone examples",
-             "the index says '17 standalone examples' and the 'Standalone "
-             "examples' table has 16 row(s)"),
+            ("30 standalone examples", "31 standalone examples",
+             "the index says '31 standalone examples' and the 'Standalone "
+             "examples' table has 30 row(s)"),
             ("41 single-file industry examples",
              "40 single-file industry examples",
              "the index says '40 single-file industry examples' and the "
