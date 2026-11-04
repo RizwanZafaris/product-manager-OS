@@ -9,13 +9,13 @@ It adds no procedure. Every command names the `SKILL.md` that owns the work, the
 | Component | Path here | Count | Source |
 |---|---|---|---|
 | Plugin manifest | [.claude-plugin/plugin.json](.claude-plugin/plugin.json) | 1 | Generated. `name` and `version` come from the manifest. |
-| Slash commands | `commands/*.md` | 43 | Generated, one per manifest entry, named by its route id. |
+| Slash commands | `commands/*.md` | 43 | Generated, one per manifest entry, named by its route id. No route id may equal a skill name, so no name is listed twice. |
 | Skills | `skills` | 29 | Symlink to `skills/` at the repository root. Referenced, never copied. Skills under `skills/runtime/` are runtime skills listed in `skills/runtime-manifest.json`. |
 | Generator | [generate.py](generate.py) | 1 | Hand written. Standard library only. |
 
 This plugin is route-only. Every command hands you the plan for that route: the skill to follow, the files to read first, the templates the output lands in, and the gate it must pass, then stops. It runs no model call of its own, writes nothing, and signs no gate. `build-development-handoff`, the DESIGN-exit route for the development handoff, is generated the same way as every other command; its plan does not fill the template or run the check for you, it tells you to run `pmos handoff --path <workspace> --product-id <id> --json` yourself and read `handoff/CONTEXT.md` for what the package is still missing. Runtime status works the same way: this plugin carries no tool that opens the runtime, so the `phases` a product is actually in come from the `pmos` CLI (`pmos status`), never from a command here. The desktop MCP adapter is the one adapter with a tool of its own for that, `pmos_status`; see [its README](../desktop/README.md).
 
-Commands are namespaced by the plugin name, so the route ids become `/product-manager-os-harness:write-prd`, `/product-manager-os-harness:run-premortem`, and so on. Read one to see the shape: [commands/write-prd.md](commands/write-prd.md).
+Commands are namespaced by the plugin name, so the route ids become `/product-manager-os-harness:draft-prd`, `/product-manager-os-harness:run-premortem`, and so on. Read one to see the shape: [commands/draft-prd.md](commands/draft-prd.md).
 
 Every command sets `disable-model-invocation: true`. That is deliberate. The commands are the face a person types at; model invoked work goes through the skills, which [skills/write-prd/SKILL.md](skills/write-prd/SKILL.md) and its siblings already carry. Claude cannot pick a route on your behalf and skip the row you asked for.
 
@@ -35,7 +35,7 @@ Then in the session:
 | Step | What you type | What you should see |
 |---|---|---|
 | List the routes | `/help`, then the custom commands tab | 43 commands under the plugin name |
-| Run one | `/product-manager-os-harness:write-prd a PRD for the payout retry screen` | The route card, then the skill it routes to |
+| Run one | `/product-manager-os-harness:draft-prd a PRD for the payout retry screen` | The route card, then the skill it routes to |
 | Pick up an edit | `/reload-plugins` | Commands reloaded without restarting |
 
 To validate the plugin without starting a session:
@@ -54,6 +54,8 @@ python3 harness/adapters/claude-code/generate.py --check     # exit 1 if they dr
 ```
 
 The generator is the only thing that writes `commands/` and `plugin.json`. It rewrites what changed, deletes any command file whose route left the manifest, and touches nothing else. `--check` writes nothing and names each file that is missing, changed by hand, or no longer in the manifest.
+
+Both modes refuse, exit 1 and write nothing when a route id equals a skill name under `skills/` (runtime skills included) or `learn/skills/`, by directory or by the `name` in its SKILL.md frontmatter. Claude Code lists a plugin's commands and skills side by side, so that name would appear twice and its slash command would not say whether it means the route card or the skill. Route ids are verb-object forms such as `draft-prd` and `run-design-review`; the skills they route to keep their own names.
 
 Run `--check` in CI beside the other two gates. Each one proves a different thing and none of them substitutes for another:
 
@@ -74,5 +76,6 @@ A green run of all three says the routing is consistent. It says nothing about w
 | Restating an invariant | Commands carry the ids only. The wording lives in [../../INVARIANTS.md](../../INVARIANTS.md). |
 | Storing state or credentials | The harness stores no state. `OMNIROUTE_BASE_URL` and `OMNIROUTE_API_KEY` are read from the environment at call time and are never written under this directory. |
 | Hand edits to a generated file | They are overwritten on the next run and reported by `--check` in the meantime. |
+| A route id that is also a skill name | The plugin would list the name twice and `/<plugin>:<name>` would be ambiguous. The generator names the collision and stops. |
 
 Delete this directory and the OS still runs exactly as `AGENTS.md` describes. The adapter is a face, not a dependency.

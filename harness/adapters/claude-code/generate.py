@@ -15,6 +15,12 @@ the plugin quietly answers with last week's routing. --check catches that in CI
 and reports the drift as a diff of route ids and changed bodies. It exits 1 on
 any difference, 0 when the emitted tree matches the manifest byte for byte.
 
+Both modes also refuse a route id that equals a skill name under skills/ or
+learn/skills/, by directory or by SKILL.md frontmatter. Claude Code lists a
+plugin's commands and skills side by side, so that id would appear twice and
+its slash command would be ambiguous between the route card and the skill.
+The refusal exits 1 and writes nothing.
+
 Limits, stated rather than hidden. This script proves the plugin agrees with the
 manifest. tools/check_manifest.py proves the manifest agrees with the router
 table in CLAUDE.md. Neither one reads a skill, so neither can tell you whether
@@ -34,6 +40,14 @@ MANIFEST = REPO_ROOT / "harness" / "MANIFEST.json"
 
 PLUGIN_JSON = HERE / ".claude-plugin" / "plugin.json"
 COMMANDS_DIR = HERE / "commands"
+
+# Where the skills a session can see live. `skills/` reaches the plugin
+# through the symlink beside this file, runtime skills under skills/runtime/
+# included; `learn/skills/` holds the tutor, which a route names and a session
+# started at the repository root reads in place. Claude Code lists a plugin's
+# commands and its skills under the same namespace, so a route id that equals
+# any skill name here gives `/<plugin>:<name>` two meanings.
+SKILL_ROOTS = (REPO_ROOT / "skills", REPO_ROOT / "learn" / "skills")
 
 # One line per kind, for the card's own table. The runner branches on the
 # same value; this is the face of that decision, so a reader of the command
@@ -96,6 +110,52 @@ def load_manifest():
             die("manifest id %s is not usable as a file name" % route)
         seen.add(route)
     return data, tasks
+
+
+def frontmatter_name(skill_md):
+    """The `name:` field of a SKILL.md frontmatter block, or None."""
+    lines = skill_md.read_text(encoding="utf-8").splitlines()
+    if not lines or lines[0].strip() != "---":
+        return None
+    for line in lines[1:]:
+        if line.strip() == "---":
+            return None
+        if line.startswith("name:"):
+            value = line[len("name:"):].strip().strip("\"'")
+            return value or None
+    return None
+
+
+def skill_names(roots=SKILL_ROOTS):
+    """Every name a skill answers to, mapped to the SKILL.md that owns it.
+
+    A skill answers to its directory name and to the `name` in its own
+    frontmatter. The two agree across the tree today; both are read anyway,
+    because the one Claude Code shows is the frontmatter name and the one a
+    person sees in the tree is the directory, and a collision on either is
+    the same ambiguity at the prompt.
+    """
+    names = {}
+    for root in roots:
+        if not root.is_dir():
+            continue
+        for skill_md in sorted(root.rglob("SKILL.md")):
+            rel = skill_md.relative_to(REPO_ROOT).as_posix() \
+                if skill_md.is_relative_to(REPO_ROOT) else skill_md.as_posix()
+            for name in (skill_md.parent.name, frontmatter_name(skill_md)):
+                if name:
+                    names.setdefault(name, rel)
+    return names
+
+
+def name_collisions(tasks, roots=SKILL_ROOTS):
+    """One line per route id that is also a skill name. Empty when clean."""
+    names = skill_names(roots)
+    return ["route id %s is also the skill %s, so /<plugin>:%s names two "
+            "things; rename the route in harness/MANIFEST.json to a "
+            "verb-object id that no skill carries"
+            % (task["id"], names[task["id"]], task["id"])
+            for task in tasks if task["id"] in names]
 
 
 def yaml_scalar(text):
@@ -325,6 +385,17 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     data, tasks = load_manifest()
+
+    # Before anything is compared or written: a route id that is also a
+    # skill name makes the plugin list that name twice, and the slash command
+    # a person types cannot say which of the two it means. Both modes refuse,
+    # and the write mode writes nothing, so a colliding plugin never lands.
+    collisions = name_collisions(tasks)
+    if collisions:
+        for line in collisions:
+            sys.stderr.write("collision: %s\n" % line)
+        return 1
+
     files = planned(data, tasks)
     owned = {p.name for p in files if p.parent == COMMANDS_DIR}
     stale = sorted(p for p in COMMANDS_DIR.glob("*.md") if p.name not in owned) \

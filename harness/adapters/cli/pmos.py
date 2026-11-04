@@ -2,7 +2,7 @@
 """pmos: the CLI face of the harness contract. Standard library only.
 
     harness/adapters/cli/pmos list
-    harness/adapters/cli/pmos write-prd
+    harness/adapters/cli/pmos draft-prd
     harness/adapters/cli/pmos review-spec --input products/dispute/PRD.md
     harness/adapters/cli/pmos build-roadmap --tier drafting
 
@@ -422,7 +422,7 @@ def cmd_plan(root, entry, tier, notes, input_lines, facts, rules, out):
 EPILOG = """\
 examples:
   harness/adapters/cli/pmos list
-  harness/adapters/cli/pmos write-prd
+  harness/adapters/cli/pmos draft-prd
   harness/adapters/cli/pmos review-spec --input products/dispute/PRD.md
   harness/adapters/cli/pmos build-roadmap --tier drafting
 

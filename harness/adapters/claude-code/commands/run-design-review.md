@@ -1,16 +1,16 @@
 ---
-name: design-review
+name: run-design-review
 description: "Router row: A design review, a heuristic evaluation or cognitive walkthrough, a live-build design check before Gate 4, or an accessibility, content, localisation or deceptive-design pass on a flow. DESIGN stage, Gate 3, judgment tier. Say: a design review; a heuristic evaluation; a cognitive walkthrough; an accessibility pass; a localisation pass; a deceptive-design pass; a live-build design check."
 disable-model-invocation: true
 ---
 
 GENERATED FILE. Do not hand-edit. Written by `harness/adapters/claude-code/generate.py` from `harness/MANIFEST.json`; edit the manifest, then regenerate.
 
-# Route: design-review
+# Route: run-design-review
 
 | Field | Value |
 |---|---|
-| Route id | `design-review` |
+| Route id | `run-design-review` |
 | Router row | A design review, a heuristic evaluation or cognitive walkthrough, a live-build design check before Gate 4, or an accessibility, content, localisation or deceptive-design pass on a flow |
 | Stage | DESIGN |
 | Gate | 3 |
